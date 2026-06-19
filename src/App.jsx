@@ -415,33 +415,73 @@ export default function App() {
           <div style={styles.mainContent}>
             
             {/* MASALARIM SEKME PANELİ */}
-            {activeTab === 'masalar' && (
-              <div style={styles.posLayout}>
-                <div style={{flex: 1}}>
-                  <div style={styles.contentHeader}>
-                    <h2 style={styles.pageTitle}>Canlı Salon Planı</h2>
-                    {user?.role === 'owner' && (
-                      <form onSubmit={masaEkle} style={{display:'flex', gap:'8px'}}>
-                        <input type="text" placeholder="Masa İsmi" value={yeniMasaAdi} onChange={e => setYeniMasaAdi(e.target.value)} style={styles.tableInputMini} />
-                        <button type="submit" style={styles.addBtnMini}>+ Masa</button>
-                      </form>
-                    )}
-                  </div>
-                  
-                  {aktifMasalar.length === 0 ? (
-                    <div style={{color:'#64748b'}}>Henüz tanımlı masanız yok. Ayarlar sekmesinden ekleyin.</div>
-                  ) : (
-                    <div style={styles.mesaGrid}>
-                      {aktifMasalar.map(m => (
-                        <div key={m.id} onClick={() => setSelectedMasaId(m.id)} style={{...styles.mesaCard, borderColor: m.id === (selectedMasaId || aktifMasalar[0]?.id) ? '#ff6b35' : 'transparent', backgroundColor: m.dolu ? '#fee2e2' : '#fff'}}>
-                          <div style={{fontWeight:'bold', color:'#1e293b'}}>{m.ad}</div>
-                          <div style={{...styles.mesaStatusText, color: m.dolu ? '#ef4444' : '#10b981'}}>{m.dolu ? `${m.tutar} TL` : 'Boş'}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            // ... kodunun içindeki activeTab === 'masalar' kısmını bununla değiştir ...
 
+{activeTab === 'masalar' && (
+  <div style={{ display: 'flex', gap: '20px', padding: '20px', alignItems: 'flex-start' }}>
+    
+    {/* SOL TARAF: SALON PLANI */}
+    <div style={{ flex: 2 }}>
+      <div style={styles.contentHeader}>
+        <h2 style={styles.pageTitle}>Canlı Salon Planı</h2>
+        {user?.role === 'owner' && (
+          <form onSubmit={masaEkle} style={{ display: 'flex', gap: '8px' }}>
+            <input type="text" placeholder="Masa İsmi" value={yeniMasaAdi} onChange={e => setYeniMasaAdi(e.target.value)} style={styles.tableInputMini} />
+            <button type="submit" style={styles.addBtnMini}>+ Masa</button>
+          </form>
+        )}
+      </div>
+      
+      <div style={styles.mesaGrid}>
+        {aktifMasalar.map(m => (
+          <div key={m.id} onClick={() => setSelectedMasaId(m.id)} style={{...styles.mesaCard, borderColor: m.id === selectedMasaId ? '#ff6b35' : 'transparent', backgroundColor: m.dolu ? '#fee2e2' : '#fff'}}>
+            <div style={{fontWeight:'bold'}}>{m.ad}</div>
+            <div style={{color: m.dolu ? '#ef4444' : '#10b981'}}>{m.dolu ? `${m.tutar} TL` : 'Boş'}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* SAĞ TARAF: BÜYÜTÜLMÜŞ HESAP PANELİ */}
+    <div style={{ flex: 1, minHeight: '500px', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+      <h3 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>🧾 {activeMasa ? activeMasa.ad : 'Masa'} Canlı Fişi</h3>
+      
+      {/* Ürün Ekleme ve Not Alanı */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '15px 0' }}>
+        <select value={seciliUrunId} onChange={e => setSeciliUrunId(e.target.value)} style={styles.panelSelect}>
+          <option value="">Ürün Seçin</option>
+          {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad} ({u.fiyat} TL)</option>)}
+        </select>
+        <input type="text" placeholder="Ürün notu (az şekerli, vb)..." style={styles.panelSelect} />
+        <button onClick={masayaSeciliUrunuEkle} style={styles.panelAddBtn}>Ekle</button>
+      </div>
+
+      <div style={{ flexGrow: 1, borderTop: '1px solid #eee', paddingTop: '10px' }}>
+        {activeMasa?.siparisler.map((s, idx) => (
+          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+            <span>{s.adet}x {s.ad}</span>
+            <span>{s.fiyat * s.adet} TL</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Ödeme Tipi Seçimi */}
+      <div style={{ marginTop: '20px', borderTop: '2px solid #ff6b35', paddingTop: '10px' }}>
+        <div style={{ marginBottom: '10px' }}>
+          <label>Ödeme Tipi:</label>
+          <select style={{ marginLeft: '10px', padding: '5px' }}>
+            <option>Nakit</option>
+            <option>Kart</option>
+          </select>
+        </div>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'right' }}>
+          Toplam: {activeMasa?.tutar || 0} TL
+        </div>
+        {activeMasa?.dolu && <button onClick={() => adisyonKapat(activeMasa.id)} style={styles.checkoutBtn}>Hesabı Kapat</button>}
+      </div>
+    </div>
+  </div>
+)}
                 {/* SAĞ ADİSYON SİPARİŞ PANELİ */}
                 <div style={styles.adisyonPanel}>
                   <h3 style={styles.panelTitle}>🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'} Canlı Fişi</h3>
