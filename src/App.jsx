@@ -248,7 +248,7 @@ const testConnection = async () => {
           {/* Üst Menü / Navbar */}
           <header style={styles.navbar}>
             <div style={{...styles.logoContainer, cursor:'pointer'}} onClick={() => setScreen('landing')}>
-              <span style={styles.orangeDot}>●</span> <strong style={{color:'#1e293b'}}>integra</strong><span style={{color:'#ff6b35'}}>SaaS</span>
+              <span style={styles.orangeDot}>●</span> <strong style={{color:'#1e293b'}}>integra</strong><span style={{color:'#ff6b35'}}></span>
             </div>
             <nav style={styles.landingNavLinks}>
               <a href="#ozellikler" style={styles.navLinkItem}>Özellikler</a>
