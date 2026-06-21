@@ -1,6 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase';
 
 export default function App() {
+  useEffect(() => {
+  testConnection()
+}, [])
+
+const testConnection = async () => {
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('*')
+
+  console.log('SUPABASE DATA:', data)
+  console.log('SUPABASE ERROR:', error)
+}
   const [screen, setScreen] = useState('landing'); // 'landing', 'login', 'register', 'dashboard'
   const [activeTab, setActiveTab] = useState('masalar'); // 'masalar', 'menu', 'raporlar', 'super_admin'
   const [reportType, setReportType] = useState('gunluk'); // 'gunluk', 'aylik'
@@ -312,13 +325,13 @@ export default function App() {
                 <h4 style={styles.footerHeading}>İletişim Bilgileri</h4>
                 <ul style={styles.footerList}>
                   <li style={styles.footerListItem}>📞 <b>Telefon:</b> <a href="tel:05325014277" style={styles.footerLink}>0532 501 42 77</a></li>
-                  <li style={styles.footerListItem}>✉️ <b>E-posta:</b> destek@integra.com</li>
-                  <li style={styles.footerListItem}>📍 <b>Merkez:</b> Maslak Teknopark, No:42 Sarıyer / İstanbul</li>
+                  <li style={styles.footerListItem}>✉️ <b>E-posta:</b> info@integraposbilisim.com</li>
+                  <li style={styles.footerListItem}>📍 <b>Merkez:</b> integraposbilisim.com</li>
                 </ul>
               </div>
             </div>
             <div style={styles.footerBottom}>
-              © 2026 Integra SaaS Yazılım Teknolojileri A.Ş. Tüm Hakları Saklıdır.
+              © 2026 Integra Yazılım Teknolojileri A.Ş. Tüm Hakları Saklıdır.
             </div>
           </footer>
         </div>
