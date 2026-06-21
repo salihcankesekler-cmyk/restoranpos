@@ -344,7 +344,7 @@ const testConnection = async () => {
           <div style={styles.authCard}>
             {/* LOGOYA TIKLAYINCA LANDING SAYFASINA DÖNÜŞ DÜZELTİLDİ */}
             <div onClick={() => setScreen('landing')} style={{...styles.logoContainer, cursor:'pointer', marginBottom:'15px', justifyContent:'center'}}>
-              <span style={styles.orangeDot}>●</span> <strong style={{color:'#1e293b'}}>integra</strong><span style={{color:'#ff6b35'}}>SaaS</span>
+              <span style={styles.orangeDot}>●</span> <strong style={{color:'#1e293b'}}>integra</strong><span style={{color:'#ff6b35'}}></span>
             </div>
             <h3 style={styles.authTitle}>Çoklu İşletme POS Girişi</h3>
             <form onSubmit={handleLogin} style={styles.form}>
