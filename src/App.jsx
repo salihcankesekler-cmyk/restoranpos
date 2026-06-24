@@ -7838,7 +7838,7 @@ function IntegraApp() {
                           fontSize: '12px',
                         }}
                       >
-                        🧾 Hesap Öncesi Adisyon Yazdır
+                        🧾Adisyon
                       </button>
                     </div>
                   )}
