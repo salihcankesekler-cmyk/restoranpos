@@ -77,6 +77,12 @@ function IntegraApp() {
   const [activeTab, setActiveTab] = useState(baslangicTab);
   const [reportType, setReportType] = useState('gunluk');
 
+  // mobil ve tablet ekranlarda panelin taşmasını engelleyen kod
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 900;
+  });
+
   // auth
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -6468,6 +6474,22 @@ function IntegraApp() {
     }
   }, [user?.id, screen, activeTab]);
 
+  // ekran boyutu değişince mobil düzeni güncelleyen kod
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const ekranBoyutunuKontrolEt = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+
+    ekranBoyutunuKontrolEt();
+    window.addEventListener('resize', ekranBoyutunuKontrolEt);
+
+    return () => {
+      window.removeEventListener('resize', ekranBoyutunuKontrolEt);
+    };
+  }, []);
+
   // açık ekran bilgisini yenileme sonrası koruyan kod
   useEffect(() => {
     localStorage.setItem('integra_screen', screen);
@@ -7269,9 +7291,9 @@ function IntegraApp() {
 
       {/* giriş sonrası yönetim panelini gösteren kod */}
       {screen === 'dashboard' && user && (
-        <div style={styles.dashboardLayout}>
+        <div style={isMobile ? styles.dashboardLayoutMobile : styles.dashboardLayout}>
           {/* SIDEBAR */}
-          <div style={styles.sidebar}>
+          <div style={isMobile ? styles.sidebarMobile : styles.sidebar}>
             <div
               onClick={() => setScreen('landing')}
               style={{ ...styles.sidebarLogo, cursor: 'pointer' }}
@@ -7290,7 +7312,7 @@ function IntegraApp() {
               </div>
             </div>
 
-            <nav style={styles.navGroup}>
+            <nav style={isMobile ? styles.navGroupMobile : styles.navGroup}>
               {tabGorunur('raporlar') && (
                 <button
                   type="button"
@@ -7452,10 +7474,10 @@ function IntegraApp() {
           </div>
 
           {/* MAIN */}
-          <div style={styles.mainContent}>
+          <div style={isMobile ? styles.mainContentMobile : styles.mainContent}>
             {/* masalar ve canlı adisyon ekranını gösteren kod */}
             {activeTab === 'masalar' && (
-              <div style={styles.posLayout}>
+              <div style={isMobile ? styles.posLayoutMobile : styles.posLayout}>
                 {/* sol tarafta bölüm sekmeleri ve masa kartlarını gösteren kod */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={styles.contentHeader}>
@@ -7550,7 +7572,7 @@ function IntegraApp() {
                       {aktifMasaBolumu} bölümünde henüz tanımlı masa yok.
                     </div>
                   ) : (
-                    <div style={styles.mesaGrid}>
+                    <div style={isMobile ? styles.mesaGridMobile : styles.mesaGrid}>
                       {aktifMasalar.map(m => {
                         const kaynakMasaMi =
                           masaAktarmaModu && String(m.id) === String(aktarilanKaynakMasaId);
@@ -7686,7 +7708,7 @@ function IntegraApp() {
                 </div>
 
                 {/* sağ tarafta ürün ekleme ve adisyon panelini gösteren kod */}
-                <div style={styles.adisyonPanel}>
+                <div style={isMobile ? styles.adisyonPanelMobile : styles.adisyonPanel}>
                   <h3 style={styles.panelTitle}>
                     🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'} Canlı Fişi
                   </h3>
@@ -9478,7 +9500,7 @@ function IntegraApp() {
                       style={{ ...styles.input, width: '100%', boxSizing: 'border-box', marginBottom: '12px' }}
                     />
 
-                    <div style={styles.mesaGrid}>
+                    <div style={isMobile ? styles.mesaGridMobile : styles.mesaGrid}>
                       {aktifHizliSatisGrubuUrunleri.map(urun => (
                         <button
                           key={urun.id}
@@ -11799,6 +11821,17 @@ const styles = {
     background: '#f8fafc',
   },
 
+  dashboardLayoutMobile: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    minHeight: '100vh',
+    margin: 0,
+    padding: 0,
+    background: '#f8fafc',
+    overflowX: 'hidden',
+  },
+
   sidebar: {
     width: '270px',
     minWidth: '270px',
@@ -11808,6 +11841,22 @@ const styles = {
     flexDirection: 'column',
     padding: '22px',
     boxSizing: 'border-box',
+  },
+
+  sidebarMobile: {
+    width: '100%',
+    minWidth: 0,
+    maxHeight: '48vh',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    backgroundColor: '#1e293b',
+    color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '16px',
+    boxSizing: 'border-box',
+    position: 'relative',
+    zIndex: 5,
   },
 
   sidebarLogo: {
@@ -11828,6 +11877,13 @@ const styles = {
     flexDirection: 'column',
     gap: '8px',
     flex: 1,
+  },
+
+  navGroupMobile: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '8px',
+    flex: '0 0 auto',
   },
 
   navItem: {
@@ -11877,11 +11933,32 @@ const styles = {
     minWidth: 0,
   },
 
+  mainContentMobile: {
+    width: '100%',
+    flex: '0 0 auto',
+    padding: '14px',
+    overflowY: 'visible',
+    overflowX: 'hidden',
+    boxSizing: 'border-box',
+    minWidth: 0,
+  },
+
   posLayout: {
     display: 'flex',
     gap: '22px',
     minHeight: 'calc(100vh - 52px)',
     alignItems: 'stretch',
+  },
+
+  posLayoutMobile: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    minHeight: 'auto',
+    alignItems: 'stretch',
+    width: '100%',
+    maxWidth: '100%',
+    overflowX: 'hidden',
   },
 
   contentHeader: {
@@ -11925,6 +12002,13 @@ const styles = {
     gap: '14px',
   },
 
+  mesaGridMobile: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '10px',
+    width: '100%',
+  },
+
   mesaCard: {
     backgroundColor: '#fff',
     padding: '22px 16px',
@@ -11947,6 +12031,20 @@ const styles = {
     backgroundColor: '#fff',
     borderRadius: '18px',
     padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    border: '1px solid #e2e8f0',
+    boxSizing: 'border-box',
+    boxShadow: '0 18px 40px -28px rgba(15,23,42,0.16)',
+  },
+
+  adisyonPanelMobile: {
+    width: '100%',
+    minWidth: 0,
+    maxWidth: '100%',
+    backgroundColor: '#fff',
+    borderRadius: '18px',
+    padding: '14px',
     display: 'flex',
     flexDirection: 'column',
     border: '1px solid #e2e8f0',
