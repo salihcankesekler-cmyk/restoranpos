@@ -4458,7 +4458,7 @@ function IntegraApp() {
     setRezervasyonlar(rezervasyonlar.map(r => r.id === rezervasyon.id ? { ...r, durum: data.durum } : r));
   };
 
-  // gün sonunu kapatıp günlük hareketleri kasa Z arşivine aktaran kod
+  // gün sonunu tek işlemle Supabase tarafında kapatıp Kasa Z arşivine aktaran kod
   const gunSonuKapatVeKasayaAktar = async () => {
     if (reportType !== 'gunluk') {
       alert('Gün sonu kapatma için rapor tipini Günlük seçin.');
@@ -4466,215 +4466,56 @@ function IntegraApp() {
     }
 
     const seciliTarih = raporTarihi || new Date().toISOString().split('T')[0];
-    const gunlukSatislar = satisGecmisi.filter(s => {
-      return String(s.restaurantId) === String(mevcutRestaurantId) &&
-        String(s.tarih || '') === seciliTarih &&
-        !s.gunSonuKapandi;
-    });
 
-    const gunlukGiderler = giderler.filter(g => {
-      return String(g.restaurantId) === String(mevcutRestaurantId) &&
-        String(g.tarih || '') === seciliTarih &&
-        !g.gunSonuKapandi;
-    });
+    const onay = window.confirm(
+      `${seciliTarih} gün sonu kapatılsın mı? Bu işlem günlük masa satışlarını, paket servisleri, hızlı satışları, giderleri, iade/ikram/zayi kayıtlarını ve kasa hareketlerini Kasa bölümündeki Z raporu arşivine aktarır. Kapatılan hareketler rapor ekranında tekrar görünmez.`
+    );
 
-    const gunlukIadeler = iadeKayitlari.filter(i => {
-      return String(i.restaurantId) === String(mevcutRestaurantId) &&
-        String(i.tarih || '') === seciliTarih &&
-        !i.gunSonuKapandi;
-    });
-
-    const gunlukPaketler = paketSiparisleri.filter(p => {
-      const paketTarihi = String(p.kapanisSaati || p.teslimSaati || p.createdAt || '').split('T')[0];
-      return String(p.restaurantId) === String(mevcutRestaurantId) &&
-        paketTarihi === seciliTarih &&
-        !p.gunSonuKapandi &&
-        (p.odendi || String(p.durum || '').toLowerCase().includes('teslim'));
-    });
-
-    if (gunlukSatislar.length === 0 && gunlukGiderler.length === 0 && gunlukIadeler.length === 0 && gunlukPaketler.length === 0) {
-      alert('Bu gün için aktarılacak hareket bulunmuyor.');
-      return;
-    }
-
-    const onay = window.confirm(`${seciliTarih} gün sonu kapatılsın mı? Günlük satış, paket, gider ve iade/ikram/zayi hareketleri rapor ekranından kalkar ve Kasa bölümüne Z raporu olarak aktarılır.`);
     if (!onay) return;
 
-    const toplamCiro = gunlukSatislar.reduce((t, s) => t + Number(s.fiyat || 0) * Number(s.adet || 1), 0);
-    const maliyetToplam = gunlukSatislar.reduce((t, s) => {
-      return t + Number(s.toplamMaliyet || s.maliyet || 0) * (s.toplamMaliyet ? 1 : Number(s.adet || 1));
-    }, 0);
-    const giderToplam = gunlukGiderler.reduce((t, g) => t + Number(g.tutar || 0), 0);
-    const iadeIkramZayiToplam = gunlukIadeler.reduce((t, i) => t + Number(i.tutar || 0), 0);
+    const gercekKasaDegeri = kasaGercekTutar === '' || kasaGercekTutar === null
+      ? null
+      : sayiyaCevir(kasaGercekTutar);
 
-    const sayilanAdisyonlar = new Set();
-    let nakitSatis = 0;
-    let kartSatis = 0;
-
-    gunlukSatislar.forEach(s => {
-      const odemeler = Array.isArray(s.odemeler) ? s.odemeler : [];
-      const adisyonAnahtari = s.adisyonId || `${s.masaId || 'masa'}-${s.tarih}-${JSON.stringify(odemeler)}`;
-      if (sayilanAdisyonlar.has(adisyonAnahtari)) return;
-      sayilanAdisyonlar.add(adisyonAnahtari);
-
-      odemeler.forEach(o => {
-        const tip = String(o.tip || '').toLowerCase();
-        const tutar = Number(o.tutar || 0);
-        if (tip.includes('nakit')) nakitSatis += tutar;
-        if (tip.includes('kart')) kartSatis += tutar;
-      });
+    const { data: sonuc, error } = await supabase.rpc('gun_sonu_kapat_v2', {
+      p_restaurant_id: mevcutRestaurantId,
+      p_tarih: seciliTarih,
+      p_gercek_kasa: gercekKasaDegeri,
     });
 
-    const kasaAcilis = kasaHareketleri.filter(k => k.tip === 'Açılış').reduce((t, k) => t + Number(k.tutar || 0), 0);
-    const kasaGiris = kasaHareketleri.filter(k => k.tip === 'Giriş').reduce((t, k) => t + Number(k.tutar || 0), 0);
-    const kasaCikis = kasaHareketleri.filter(k => k.tip === 'Çıkış').reduce((t, k) => t + Number(k.tutar || 0), 0);
-    const beklenenKasa = kasaAcilis + nakitSatis + kasaGiris - kasaCikis;
-    const gercekKasa = sayiyaCevir(kasaGercekTutar || beklenenKasa);
-    const kasaFarki = gercekKasa - beklenenKasa;
-    const tahminiKar = toplamCiro - maliyetToplam - giderToplam - iadeIkramZayiToplam;
-
-    const detaylar = {
-      satislar: gunlukSatislar,
-      paketSiparisleri: gunlukPaketler,
-      giderler: gunlukGiderler,
-      iadeIkramZayi: gunlukIadeler,
-      kasaHareketleri,
-      kapatmaSaati: new Date().toISOString(),
-    };
-
-    const { data: zData, error: zError } = await supabase
-      .from('z_raporlari')
-      .insert([{
-        restaurant_id: mevcutRestaurantId,
-        tarih: seciliTarih,
-        toplam_ciro: toplamCiro,
-        nakit_satis: nakitSatis,
-        kart_satis: kartSatis,
-        gider_toplam: giderToplam + iadeIkramZayiToplam,
-        maliyet_toplam: maliyetToplam,
-        tahmini_kar: tahminiKar,
-        beklenen_kasa: beklenenKasa,
-        gercek_kasa: gercekKasa,
-        kasa_farki: kasaFarki,
-        detaylar,
-      }])
-      .select()
-      .single();
-
-    if (zError) {
-      console.error('Gün sonu kasaya aktarılamadı:', zError);
-      alert('Gün sonu kasaya aktarılamadı: ' + zError.message);
+    if (error) {
+      console.error('Gün sonu kapatılamadı:', error);
+      alert('Gün sonu kapatılamadı: ' + error.message);
       return;
     }
 
-    const satisIds = gunlukSatislar.map(s => s.id).filter(Boolean);
-    const giderIds = gunlukGiderler.map(g => g.id).filter(Boolean);
-    const iadeIds = gunlukIadeler.map(i => i.id).filter(Boolean);
-    const kasaIds = kasaHareketleri.map(k => k.id).filter(Boolean);
-    const paketIds = Array.from(new Set([
-      ...gunlukSatislar.map(s => s.paketSiparisId).filter(Boolean),
-      ...gunlukPaketler.map(p => p.id).filter(Boolean),
-    ]));
-
-    const kapanisSaati = new Date().toISOString();
-    const gunSonuHatalari = [];
-
-    if (satisIds.length > 0) {
-      const { error } = await supabase
-        .from('satis_gecmisi')
-        .update({
-          gun_sonu_kapatildi: true,
-          gunsonu_kapandi: true,
-          gun_sonu_rapor_id: zData.id,
-          gunsonu_rapor_id: zData.id,
-          gun_sonu_kapanis_saati: kapanisSaati
-        })
-        .in('id', satisIds);
-      if (error) gunSonuHatalari.push('Satışlar: ' + error.message);
-    }
-
-    if (giderIds.length > 0) {
-      const { error } = await supabase
-        .from('giderler')
-        .update({
-          gun_sonu_kapatildi: true,
-          gunsonu_kapandi: true,
-          gun_sonu_rapor_id: zData.id,
-          gunsonu_rapor_id: zData.id
-        })
-        .in('id', giderIds);
-      if (error) gunSonuHatalari.push('Giderler: ' + error.message);
-    }
-
-    if (iadeIds.length > 0) {
-      const { error } = await supabase
-        .from('iade_kayitlari')
-        .update({
-          gun_sonu_kapatildi: true,
-          gunsonu_kapandi: true,
-          gun_sonu_rapor_id: zData.id,
-          gunsonu_rapor_id: zData.id
-        })
-        .in('id', iadeIds);
-      if (error) gunSonuHatalari.push('İade/ikram/zayi: ' + error.message);
-    }
-
-    if (paketIds.length > 0) {
-      const { error } = await supabase
-        .from('paket_siparisleri')
-        .update({
-          gun_sonu_kapatildi: true,
-          gunsonu_kapandi: true,
-          gun_sonu_rapor_id: zData.id,
-          gunsonu_rapor_id: zData.id,
-          gun_sonu_kapanis_saati: kapanisSaati
-        })
-        .in('id', paketIds);
-      if (error) gunSonuHatalari.push('Paket servis: ' + error.message);
-    }
-
-    if (kasaIds.length > 0) {
-      const { error } = await supabase
-        .from('kasa_hareketleri')
-        .update({
-          gun_sonu_kapatildi: true,
-          gunsonu_kapandi: true,
-          gun_sonu_rapor_id: zData.id,
-          gunsonu_rapor_id: zData.id
-        })
-        .in('id', kasaIds);
-      if (error) gunSonuHatalari.push('Kasa hareketleri: ' + error.message);
-    }
-
-    if (gunSonuHatalari.length > 0) {
-      alert('Gün sonu raporu kasaya yazıldı ama bazı hareketler kapatılamadı:\n' + gunSonuHatalari.join('\n'));
-      console.error('Gün sonu kapatma hataları:', gunSonuHatalari);
+    if (!sonuc || sonuc.success === false) {
+      alert(sonuc?.message || 'Gün sonu kapatılamadı.');
       return;
     }
+
+    const toplamlar = sonuc.toplamlar || {};
+    const z = sonuc.z_rapor || {};
 
     const yeniZRaporu = {
-      id: zData.id,
-      restaurantId: zData.restaurant_id,
-      tarih: zData.tarih,
-      toplamCiro: Number(zData.toplam_ciro || 0),
-      nakitSatis: Number(zData.nakit_satis || 0),
-      kartSatis: Number(zData.kart_satis || 0),
-      giderToplam: Number(zData.gider_toplam || 0),
-      maliyetToplam: Number(zData.maliyet_toplam || 0),
-      tahminiKar: Number(zData.tahmini_kar || 0),
-      beklenenKasa: Number(zData.beklenen_kasa || 0),
-      gercekKasa: Number(zData.gercek_kasa || 0),
-      kasaFarki: Number(zData.kasa_farki || 0),
-      detaylar: zData.detaylar || detaylar,
-      createdAt: zData.created_at,
+      id: z.id,
+      restaurantId: z.restaurant_id || mevcutRestaurantId,
+      tarih: z.tarih || seciliTarih,
+      toplamCiro: Number(z.toplam_ciro ?? toplamlar.toplamCiro ?? 0),
+      nakitSatis: Number(z.nakit_satis ?? toplamlar.nakitSatis ?? 0),
+      kartSatis: Number(z.kart_satis ?? toplamlar.kartSatis ?? 0),
+      giderToplam: Number(z.gider_toplam ?? toplamlar.giderToplam ?? 0),
+      maliyetToplam: Number(z.maliyet_toplam ?? toplamlar.maliyetToplam ?? 0),
+      tahminiKar: Number(z.tahmini_kar ?? toplamlar.tahminiKar ?? 0),
+      beklenenKasa: Number(z.beklenen_kasa ?? toplamlar.beklenenKasa ?? 0),
+      gercekKasa: Number(z.gercek_kasa ?? toplamlar.gercekKasa ?? 0),
+      kasaFarki: Number(z.kasa_farki ?? toplamlar.kasaFarki ?? 0),
+      detaylar: z.detaylar || sonuc.detaylar || {},
+      createdAt: z.created_at || new Date().toISOString(),
     };
 
     setZRaporlari([yeniZRaporu, ...zRaporlari]);
-    setSatisGecmisi(satisGecmisi.filter(s => !satisIds.includes(s.id)));
-    setGiderler(giderler.filter(g => !giderIds.includes(g.id)));
-    setIadeKayitlari(iadeKayitlari.filter(i => !iadeIds.includes(i.id)));
-    setPaketSiparisleri(paketSiparisleri.filter(p => !paketIds.includes(p.id)));
-    setKasaHareketleri(kasaHareketleri.filter(k => !kasaIds.includes(k.id)));
+    setKasaGercekTutar('');
 
     if (typeof satisGecmisiniSupabasedenCek === 'function') await satisGecmisiniSupabasedenCek(mevcutRestaurantId);
     if (typeof paketSiparisleriniSupabasedenCek === 'function') await paketSiparisleriniSupabasedenCek(mevcutRestaurantId);
@@ -4685,17 +4526,19 @@ function IntegraApp() {
 
     zRaporuYazdir({
       tarih: seciliTarih,
-      toplamCiro,
-      nakitSatis,
-      kartSatis,
-      giderToplam,
-      iadeIkramZayiToplam,
-      maliyetToplam,
-      tahminiKar,
-      beklenenKasa,
-      gercekKasa,
-      kasaFarki,
+      toplamCiro: Number(toplamlar.toplamCiro ?? yeniZRaporu.toplamCiro ?? 0),
+      nakitSatis: Number(toplamlar.nakitSatis ?? yeniZRaporu.nakitSatis ?? 0),
+      kartSatis: Number(toplamlar.kartSatis ?? yeniZRaporu.kartSatis ?? 0),
+      giderToplam: Number(toplamlar.giderToplam ?? 0),
+      iadeIkramZayiToplam: Number(toplamlar.iadeIkramZayiToplam ?? 0),
+      maliyetToplam: Number(toplamlar.maliyetToplam ?? yeniZRaporu.maliyetToplam ?? 0),
+      tahminiKar: Number(toplamlar.tahminiKar ?? yeniZRaporu.tahminiKar ?? 0),
+      beklenenKasa: Number(toplamlar.beklenenKasa ?? yeniZRaporu.beklenenKasa ?? 0),
+      gercekKasa: Number(toplamlar.gercekKasa ?? yeniZRaporu.gercekKasa ?? 0),
+      kasaFarki: Number(toplamlar.kasaFarki ?? yeniZRaporu.kasaFarki ?? 0),
     });
+
+    alert('Gün sonu başarıyla kapatıldı ve Kasa bölümündeki Z raporları arşivine aktarıldı.');
   };
 
   // gün sonu Z raporu çıktısı oluşturan kod
@@ -7838,7 +7681,7 @@ function IntegraApp() {
                           fontSize: '12px',
                         }}
                       >
-                        🧾Adisyon
+                        🧾 Hesap Öncesi Adisyon Yazdır
                       </button>
                     </div>
                   )}
