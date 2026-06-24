@@ -160,12 +160,52 @@ function IntegraApp() {
 
   // masaya ürün eklerken tutar indirim alanını tutan kod
   const [seciliUrunIndirimTutari, setSeciliUrunIndirimTutari] = useState('');
+  // fiş yazıcı ve firma bilgisi için varsayılan ayarları oluşturan kod
+  function varsayilanFisAyarlari(firmaAdi = '') {
+    return {
+      firmaAdi: firmaAdi || 'Integra POS',
+      firmaTelefon: '',
+      firmaAdres: '',
+      vergiBilgisi: '',
+      fisAltNotu: 'Bizi tercih ettiğiniz için teşekkür ederiz.',
+      adisyonYaziciAdi: 'Adisyon Yazıcısı',
+      mutfakYaziciAdi: 'Mutfak Yazıcısı',
+      mutfakFisYazdirmaModu: 'sor',
+    };
+  }
+
+  // her restoran için fiş ayarlarını ayrı tarayıcı kaydında tutan kod
+  function fisAyarlariLocalKey(restaurantId) {
+    return `integra_fis_yazici_ayarlari_${restaurantId || 'genel'}`;
+  }
+
   // fiş yazdırma tercih ayarını tutan kod
   const [fisYazdirmaModu, setFisYazdirmaModu] = useState(
     localStorage.getItem('integra_fis_yazdirma_modu') || 'sor'
   );
+
+  // firma adı, fiş alt notu ve adisyon/mutfak yazıcı seçimlerini tutan kod
+  const [fisAyarlari, setFisAyarlari] = useState(() => {
+    const ilkKullanici = kayitliUser || {};
+    const ilkRestaurantId = ilkKullanici?.role === 'waiter'
+      ? ilkKullanici?.parentRestaurantId
+      : ilkKullanici?.restaurantId;
+    const varsayilan = varsayilanFisAyarlari(ilkKullanici?.restaurant || '');
+
+    try {
+      const kayit = localStorage.getItem(fisAyarlariLocalKey(ilkRestaurantId)) || localStorage.getItem('integra_fis_yazici_ayarlari');
+      return kayit ? { ...varsayilan, ...JSON.parse(kayit) } : varsayilan;
+    } catch {
+      return varsayilan;
+    }
+  });
+
+  // fiş ayarları kaydedilirken butonu kilitleyen kod
+  const [fisAyarlariKaydediliyor, setFisAyarlariKaydediliyor] = useState(false);
   // ödeme sonrası fiş yazdırma sorusunu ekranda modal olarak göstermek için kullanılan kod
   const [fisSorModal, setFisSorModal] = useState(null);
+  // mutfak fişi yazdırma sorusunu ekranda modal olarak göstermek için kullanılan kod
+  const [mutfakFisSorModal, setMutfakFisSorModal] = useState(null);
   // son kapatılan adisyonun fiş bilgisini tutan kod
   const [sonFisBilgisi, setSonFisBilgisi] = useState(null);
   // ödeme alırken girilen tutarı tutan kod
@@ -374,6 +414,67 @@ function IntegraApp() {
   const sayiyaCevir = (deger) => {
     const sayi = Number(String(deger || '').replace(',', '.'));
     return Number.isFinite(sayi) ? sayi : 0;
+  };
+
+  // fiş ayarı formundaki alanları güncelleyen kod
+  const fisAyariGuncelle = (alan, deger) => {
+    setFisAyarlari(prev => ({
+      ...prev,
+      [alan]: deger,
+    }));
+  };
+
+  // yazdırma HTML'i içinde özel karakterleri güvenli hale getiren kod
+  const htmlGuvenli = (deger) => {
+    return String(deger ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  // fiş ayarlarını uygulama formatına çeviren kod
+  const fisAyarlariKaydiniTemizle = (kayit = {}) => {
+    return {
+      firmaAdi: kayit.firmaAdi ?? kayit.firma_adi ?? '',
+      firmaTelefon: kayit.firmaTelefon ?? kayit.firma_telefon ?? '',
+      firmaAdres: kayit.firmaAdres ?? kayit.firma_adres ?? '',
+      vergiBilgisi: kayit.vergiBilgisi ?? kayit.vergi_bilgisi ?? '',
+      fisAltNotu: kayit.fisAltNotu ?? kayit.fis_alt_notu ?? 'Bizi tercih ettiğiniz için teşekkür ederiz.',
+      adisyonYaziciAdi: kayit.adisyonYaziciAdi ?? kayit.adisyon_yazici_adi ?? 'Adisyon Yazıcısı',
+      mutfakYaziciAdi: kayit.mutfakYaziciAdi ?? kayit.mutfak_yazici_adi ?? 'Mutfak Yazıcısı',
+      mutfakFisYazdirmaModu: kayit.mutfakFisYazdirmaModu ?? kayit.mutfak_fis_yazdirma_modu ?? 'sor',
+    };
+  };
+
+  // termal fişlerin üst firma bilgisini hazırlayan kod
+  const fisBaslikHtml = (altBaslik = 'Fiş') => {
+    const ayarlar = {
+      ...varsayilanFisAyarlari(user?.restaurant || ''),
+      ...fisAyarlari,
+    };
+
+    const firmaAdi = htmlGuvenli(ayarlar.firmaAdi || user?.restaurant || 'Integra POS');
+    const telefon = String(ayarlar.firmaTelefon || '').trim();
+    const adres = String(ayarlar.firmaAdres || '').trim();
+    const vergiBilgisi = String(ayarlar.vergiBilgisi || '').trim();
+
+    return `
+      <div class="center">
+        <div class="title">${firmaAdi}</div>
+        ${telefon ? `<div class="subtitle">Tel: ${htmlGuvenli(telefon)}</div>` : ''}
+        ${adres ? `<div class="subtitle">${htmlGuvenli(adres)}</div>` : ''}
+        ${vergiBilgisi ? `<div class="subtitle">${htmlGuvenli(vergiBilgisi)}</div>` : ''}
+        <div class="subtitle"><strong>${htmlGuvenli(altBaslik)}</strong></div>
+      </div>
+    `;
+  };
+
+  // fiş alt notunu hazırlayan kod
+  const fisAltNotHtml = (varsayilanMetin = 'Bizi tercih ettiğiniz için teşekkür ederiz.') => {
+    const notMetni = String(fisAyarlari?.fisAltNotu || varsayilanMetin || '').trim();
+    return notMetni ? `<div class="thanks">${htmlGuvenli(notMetni)}</div>` : '';
   };
 
   // ürün ekleme alanındaki fiyat, indirim ve son birim fiyatı hesaplayan kod
@@ -973,6 +1074,107 @@ function IntegraApp() {
     }
   };
 
+  // fiş ve yazıcı ayarlarını Supabase'den çeken kod
+  const fisAyarlariSupabasedenCek = async (restaurantId) => {
+    if (!restaurantId || String(restaurantId) === 'super_admin') return;
+
+    const localKey = fisAyarlariLocalKey(restaurantId);
+    const varsayilan = varsayilanFisAyarlari(user?.restaurant || restaurantName || '');
+
+    try {
+      const localKayit = localStorage.getItem(localKey) || localStorage.getItem('integra_fis_yazici_ayarlari');
+      if (localKayit) {
+        setFisAyarlari({
+          ...varsayilan,
+          ...fisAyarlariKaydiniTemizle(JSON.parse(localKayit)),
+        });
+      } else {
+        setFisAyarlari(prev => ({
+          ...varsayilan,
+          ...prev,
+          firmaAdi: prev?.firmaAdi || varsayilan.firmaAdi,
+        }));
+      }
+    } catch {
+      setFisAyarlari(varsayilan);
+    }
+
+    const { data, error } = await supabase
+      .from('fis_yazici_ayarlari')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Fiş/yazıcı ayarları Supabase tablosundan çekilemedi. SQL henüz çalıştırılmamış olabilir:', error.message);
+      return;
+    }
+
+    if (data) {
+      const temizAyarlar = {
+        ...varsayilan,
+        ...fisAyarlariKaydiniTemizle(data),
+      };
+
+      setFisAyarlari(temizAyarlar);
+      localStorage.setItem(localKey, JSON.stringify(temizAyarlar));
+    }
+  };
+
+  // fiş ve yazıcı ayarlarını Supabase'e kaydeden kod
+  const fisAyarlariKaydet = async () => {
+    if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') {
+      alert('Fiş ayarları için aktif restoran bulunamadı.');
+      return;
+    }
+
+    const temizAyarlar = {
+      ...varsayilanFisAyarlari(user?.restaurant || ''),
+      ...fisAyarlari,
+      firmaAdi: String(fisAyarlari?.firmaAdi || user?.restaurant || 'Integra POS').trim(),
+      firmaTelefon: String(fisAyarlari?.firmaTelefon || '').trim(),
+      firmaAdres: String(fisAyarlari?.firmaAdres || '').trim(),
+      vergiBilgisi: String(fisAyarlari?.vergiBilgisi || '').trim(),
+      fisAltNotu: String(fisAyarlari?.fisAltNotu || '').trim(),
+      adisyonYaziciAdi: String(fisAyarlari?.adisyonYaziciAdi || 'Adisyon Yazıcısı').trim(),
+      mutfakYaziciAdi: String(fisAyarlari?.mutfakYaziciAdi || 'Mutfak Yazıcısı').trim(),
+      mutfakFisYazdirmaModu: fisAyarlari?.mutfakFisYazdirmaModu || 'sor',
+    };
+
+    setFisAyarlariKaydediliyor(true);
+    setFisAyarlari(temizAyarlar);
+    localStorage.setItem(fisAyarlariLocalKey(mevcutRestaurantId), JSON.stringify(temizAyarlar));
+
+    const { error } = await supabase
+      .from('fis_yazici_ayarlari')
+      .upsert(
+        {
+          restaurant_id: mevcutRestaurantId,
+          firma_adi: temizAyarlar.firmaAdi,
+          firma_telefon: temizAyarlar.firmaTelefon,
+          firma_adres: temizAyarlar.firmaAdres,
+          vergi_bilgisi: temizAyarlar.vergiBilgisi,
+          fis_alt_notu: temizAyarlar.fisAltNotu,
+          adisyon_yazici_adi: temizAyarlar.adisyonYaziciAdi,
+          mutfak_yazici_adi: temizAyarlar.mutfakYaziciAdi,
+          mutfak_fis_yazdirma_modu: temizAyarlar.mutfakFisYazdirmaModu,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'restaurant_id' }
+      );
+
+    setFisAyarlariKaydediliyor(false);
+
+    if (error) {
+      console.warn('Fiş/yazıcı ayarları Supabase kaydı yapılamadı:', error.message);
+      alert('Ayarlar bu tarayıcıda kaydedildi. Supabase için verdiğim SQL dosyasını çalıştırırsan tüm cihazlarda da kalıcı olur. Hata: ' + error.message);
+      return;
+    }
+
+    alert('Fiş ve yazıcı ayarları kaydedildi.');
+  };
+
+
     // login
   // kullanıcı, garson ve süper admin giriş işlemini yöneten kod
   const handleLogin = async (e) => {
@@ -1078,6 +1280,10 @@ function IntegraApp() {
       await masalariSupabasedenCek(aktifRestaurantId);
       await menuGruplariniSupabasedenCek(aktifRestaurantId);
       await menuUrunleriniSupabasedenCek(aktifRestaurantId);
+
+      if (typeof fisAyarlariSupabasedenCek === 'function') {
+        await fisAyarlariSupabasedenCek(aktifRestaurantId);
+      }
 
       if (typeof paketSiparisleriniSupabasedenCek === 'function') {
         await paketSiparisleriniSupabasedenCek(aktifRestaurantId);
@@ -1933,6 +2139,8 @@ function IntegraApp() {
           ...(Array.isArray(prev) ? prev : []),
         ]);
 
+        mutfakFisYazdirmaKontrolEt([yeniMutfakFisi]);
+
         if (typeof mutfakFisleriniSupabasedenCek === 'function') {
           await mutfakFisleriniSupabasedenCek(mevcutRestaurantId);
         }
@@ -2141,7 +2349,7 @@ function IntegraApp() {
       const adet = Number(s.adet || 1);
       const fiyat = Number(s.fiyat || 0);
       const satirToplam = adet * fiyat;
-      const notSatiri = s.not ? `<div class="muted">Not: ${s.not}</div>` : '';
+      const notSatiri = s.not ? `<div class="muted">Not: ${htmlGuvenli(s.not)}</div>` : '';
       const ekstraSatiri = Number(s.ekstraUcret || 0) > 0 ? `<div class="muted">Ekstra: +${Number(s.ekstraUcret || 0)} TL</div>` : '';
       const fiyatDegistiSatiri = s.fiyatDegistirildi ? `<div class="muted">Satış fiyatı: ${Number(s.satisFiyati || s.fiyat || 0)} TL</div>` : '';
       const indirimSatiri = Number(s.indirimTutari || 0) > 0
@@ -2152,7 +2360,7 @@ function IntegraApp() {
       return `
         <div class="item">
           <div>
-            <strong>${s.ad}</strong>
+            <strong>${htmlGuvenli(s.ad)}</strong>
             <div class="muted">${adet} x ${fiyat} TL</div>
             ${notSatiri}
             ${ekstraSatiri}
@@ -2164,6 +2372,102 @@ function IntegraApp() {
         </div>
       `;
     }).join('');
+  };
+
+  // mutfak fişi satırlarını hazırlayan kod
+  const mutfakFisSatirlariHazirla = (fisler = []) => {
+    return fisler.map(fis => `
+      <div class="kitchen-item">
+        <div class="qty">${Number(fis.adet || 1)}x</div>
+        <div class="kitchen-detail">
+          <strong>${htmlGuvenli(fis.urunAdi || fis.ad || '-')}</strong>
+          ${fis.notMetni ? `<div class="note">Not: ${htmlGuvenli(fis.notMetni)}</div>` : ''}
+          ${fis.departman ? `<div class="muted">Departman: ${htmlGuvenli(fis.departman)}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  };
+
+  // mutfak ekranındaki siparişi termal mutfak fişi olarak yazdıran kod
+  const mutfakFisiYazdir = (fislerInput = [], baslik = 'Mutfak Fişi') => {
+    const fisler = (Array.isArray(fislerInput) ? fislerInput : [fislerInput]).filter(Boolean);
+
+    if (fisler.length === 0) {
+      alert('Yazdırılacak mutfak fişi bulunamadı.');
+      return;
+    }
+
+    const ilkFis = fisler[0] || {};
+    const tarihSaat = new Date().toLocaleString('tr-TR');
+    const masaAdi = ilkFis.masaAdi || 'Mutfak';
+    const garsonAdi = ilkFis.garsonAdi || '-';
+    const yaziciAdi = fisAyarlari?.mutfakYaziciAdi || 'Mutfak Yazıcısı';
+    const urunSatirlari = mutfakFisSatirlariHazirla(fisler);
+
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${htmlGuvenli(yaziciAdi)} - ${htmlGuvenli(baslik)}</title>
+          <style>
+            @page { size: 80mm auto; margin: 4mm; }
+            body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
+            .receipt { width: 72mm; font-size: 13px; }
+            .center { text-align: center; }
+            .title { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
+            .subtitle { font-size: 11px; margin-bottom: 4px; }
+            .line { border-top: 1px dashed #000; margin: 9px 0; }
+            .row { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0; }
+            .kitchen-item { display: grid; grid-template-columns: 34px 1fr; gap: 8px; border-bottom: 1px dashed #999; padding: 8px 0; }
+            .qty { font-size: 20px; font-weight: 900; }
+            .kitchen-detail strong { font-size: 17px; }
+            .note { font-size: 13px; font-weight: 900; margin-top: 4px; }
+            .muted { font-size: 10px; color: #333; margin-top: 3px; }
+            .footer { text-align: center; font-size: 10px; margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            ${fisBaslikHtml(baslik)}
+            <div class="line"></div>
+            <div class="row"><span>Yazıcı</span><strong>${htmlGuvenli(yaziciAdi)}</strong></div>
+            <div class="row"><span>Masa/Sipariş</span><strong>${htmlGuvenli(masaAdi)}</strong></div>
+            <div class="row"><span>Garson</span><strong>${htmlGuvenli(garsonAdi)}</strong></div>
+            <div class="row"><span>Tarih</span><strong>${htmlGuvenli(tarihSaat)}</strong></div>
+            <div class="line"></div>
+            ${urunSatirlari}
+            <div class="line"></div>
+            <div class="footer">Fiyat bilgisi mutfak fişinde gösterilmez.</div>
+          </div>
+          <script>
+            window.onload = function () {
+              window.print();
+              setTimeout(function () { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    yazdirHtml(html, `${yaziciAdi} - ${baslik}`);
+  };
+
+  // mutfak fişi ayarına göre otomatik yazdıran veya kullanıcıya soran kod
+  const mutfakFisYazdirmaKontrolEt = (fislerInput = []) => {
+    const fisler = (Array.isArray(fislerInput) ? fislerInput : [fislerInput]).filter(Boolean);
+    if (fisler.length === 0) return;
+
+    const yazdirmaModu = fisAyarlari?.mutfakFisYazdirmaModu || 'sor';
+
+    if (yazdirmaModu === 'yazdir') {
+      mutfakFisiYazdir(fisler);
+      return;
+    }
+
+    if (yazdirmaModu === 'sor') {
+      setMutfakFisSorModal({ fisler });
+    }
   };
 
   // kapatılan adisyon için termal fiş yazdırma penceresi oluşturan kod
@@ -2224,13 +2528,10 @@ function IntegraApp() {
       </head>
       <body>
         <div class="receipt">
-          <div class="center">
-            <div class="title">${user?.restaurant || 'Integra POS'}</div>
-            <div class="subtitle">Adisyon Fişi</div>
-          </div>
+          ${fisBaslikHtml('Adisyon Fişi')}
           <div class="line"></div>
-          <div class="row"><span>Masa</span><strong>${masa.ad}</strong></div>
-          ${masa.musteriAdi ? `<div class="row"><span>Müşteri</span><strong>${masa.musteriAdi}</strong></div>` : ''}
+          <div class="row"><span>Masa</span><strong>${htmlGuvenli(masa.ad)}</strong></div>
+          ${masa.musteriAdi ? `<div class="row"><span>Müşteri</span><strong>${htmlGuvenli(masa.musteriAdi)}</strong></div>` : ''}
           <div class="row"><span>Tarih</span><strong>${tarihSaat}</strong></div>
           <div class="line"></div>
           ${urunSatirlari}
@@ -2239,7 +2540,7 @@ function IntegraApp() {
           <div class="line"></div>
           ${odemeSatirlari}
           <div class="line"></div>
-          <div class="thanks">Bizi tercih ettiğiniz için teşekkür ederiz.</div>
+          ${fisAltNotHtml()}
         </div>
         <script>
           window.onload = function () {
@@ -2290,13 +2591,10 @@ function IntegraApp() {
         </head>
         <body>
           <div class="receipt">
-            <div class="center">
-              <div class="title">${user?.restaurant || 'Integra POS'}</div>
-              <div class="subtitle">Hesap Öncesi Adisyon</div>
-            </div>
+            ${fisBaslikHtml('Hesap Öncesi Adisyon')}
             <div class="line"></div>
-            <div class="row"><span>Masa</span><strong>${masa.ad}</strong></div>
-            ${masa.musteriAdi ? `<div class="row"><span>Müşteri</span><strong>${masa.musteriAdi}</strong></div>` : ''}
+            <div class="row"><span>Masa</span><strong>${htmlGuvenli(masa.ad)}</strong></div>
+            ${masa.musteriAdi ? `<div class="row"><span>Müşteri</span><strong>${htmlGuvenli(masa.musteriAdi)}</strong></div>` : ''}
             <div class="row"><span>Açılış</span><strong>${saatYaz(masa.adisyonAcilisSaati)}</strong></div>
             <div class="row"><span>Tarih</span><strong>${tarihSaat}</strong></div>
             <div class="line"></div>
@@ -2363,11 +2661,8 @@ function IntegraApp() {
         </head>
         <body>
           <div class="receipt">
-            <div class="center">
-              <div class="title">${user?.restaurant || 'Integra POS'}</div>
-              <div class="subtitle">Gün Sonu / Rapor Çıktısı</div>
-              <div class="subtitle">${raporBasligi()}</div>
-            </div>
+            ${fisBaslikHtml('Gün Sonu / Rapor Çıktısı')}
+            <div class="center"><div class="subtitle">${htmlGuvenli(raporBasligi())}</div></div>
             <div class="line"></div>
             <div class="row"><span>Toplam Ciro</span><strong>${raporData.toplamCiro} TL</strong></div>
             <div class="row"><span>Toplam İndirim</span><strong>${raporData.toplamIndirim} TL</strong></div>
@@ -2416,7 +2711,7 @@ function IntegraApp() {
     const urunSatirlari = paket.urunler.map(u => `
       <div class="item">
         <div>
-          <strong>${u.ad}</strong>${u.not ? `<div class="muted">Not: ${u.not}</div>` : ''}
+          <strong>${htmlGuvenli(u.ad)}</strong>${u.not ? `<div class="muted">Not: ${htmlGuvenli(u.not)}</div>` : ''}
           <div class="muted">${u.adet} x ${u.fiyat} TL</div>
         </div>
         <strong>${Number(u.adet || 1) * Number(u.fiyat || 0)} TL</strong>
@@ -2452,23 +2747,20 @@ function IntegraApp() {
 
         <body>
           <div class="receipt">
-            <div class="center">
-              <div class="title">${user?.restaurant || 'Integra POS'}</div>
-              <div class="subtitle">Paket Servis Fişi</div>
-            </div>
+            ${fisBaslikHtml('Paket Servis Fişi')}
 
             <div class="line"></div>
 
-            <div class="row"><span>Müşteri</span><strong>${paket.musteriAdi || '-'}</strong></div>
-            <div class="row"><span>Telefon</span><strong>${paket.telefon || '-'}</strong></div>
-            <div class="row"><span>Durum</span><strong>${paket.durum || '-'}</strong></div>
-            <div class="row"><span>Ödeme</span><strong>${paket.odemeTipi || 'Bekliyor'}</strong></div>
+            <div class="row"><span>Müşteri</span><strong>${htmlGuvenli(paket.musteriAdi || '-')}</strong></div>
+            <div class="row"><span>Telefon</span><strong>${htmlGuvenli(paket.telefon || '-')}</strong></div>
+            <div class="row"><span>Durum</span><strong>${htmlGuvenli(paket.durum || '-')}</strong></div>
+            <div class="row"><span>Ödeme</span><strong>${htmlGuvenli(paket.odemeTipi || 'Bekliyor')}</strong></div>
             ${paket.odendi ? `<div class="row"><span>Alınan</span><strong>${Number(paket.alinanTutar || paket.tutar || 0)} TL</strong></div>` : ''}
             ${Number(paket.paraUstu || 0) > 0 ? `<div class="row"><span>Para Üstü</span><strong>${Number(paket.paraUstu || 0)} TL</strong></div>` : ''}
             <div class="row"><span>Tarih</span><strong>${tarihSaat}</strong></div>
 
-            ${paket.adres ? `<div class="note"><strong>Adres:</strong> ${paket.adres}</div>` : ''}
-            ${paket.notMetni ? `<div class="note"><strong>Not:</strong> ${paket.notMetni}</div>` : ''}
+            ${paket.adres ? `<div class="note"><strong>Adres:</strong> ${htmlGuvenli(paket.adres)}</div>` : ''}
+            ${paket.notMetni ? `<div class="note"><strong>Not:</strong> ${htmlGuvenli(paket.notMetni)}</div>` : ''}
 
             <div class="line"></div>
             ${urunSatirlari}
@@ -2477,7 +2769,7 @@ function IntegraApp() {
             <div class="row total"><span>Toplam</span><strong>${toplamTutar} TL</strong></div>
 
             <div class="line"></div>
-            <div class="thanks">Afiyet olsun.</div>
+            ${fisAltNotHtml('Afiyet olsun.')}
           </div>
 
           <script>
@@ -3039,6 +3331,8 @@ function IntegraApp() {
           ...yeniMutfakFisleri,
           ...(Array.isArray(prev) ? prev : []),
         ]);
+
+        mutfakFisYazdirmaKontrolEt(yeniMutfakFisleri);
       }
     }
 
@@ -4178,6 +4472,8 @@ function IntegraApp() {
           ...yeniMutfakFisleri,
           ...(Array.isArray(prev) ? prev : []),
         ]);
+
+        mutfakFisYazdirmaKontrolEt(yeniMutfakFisleri);
       }
     }
 
@@ -6347,6 +6643,15 @@ function IntegraApp() {
     localStorage.setItem('integra_fis_yazdirma_modu', fisYazdirmaModu);
   }, [fisYazdirmaModu]);
 
+  // fiş/yazıcı ayarlarını değişiklik oldukça tarayıcıda yedekleyen kod
+  useEffect(() => {
+    if (!user || user.role === 'super_admin') return;
+    const aktifRestaurantId = user.role === 'waiter' ? user.parentRestaurantId : user.restaurantId;
+    if (!aktifRestaurantId) return;
+
+    localStorage.setItem(fisAyarlariLocalKey(aktifRestaurantId), JSON.stringify(fisAyarlari));
+  }, [fisAyarlari, user?.id, user?.restaurantId, user?.parentRestaurantId, user?.role]);
+
   // sayfa yenilenince oturum verilerini Supabase'den tekrar yükleyen kod
   useEffect(() => {
     if (!user || screen !== 'dashboard') return;
@@ -6371,6 +6676,10 @@ function IntegraApp() {
         await masalariSupabasedenCek(aktifRestaurantId);
         await menuGruplariniSupabasedenCek(aktifRestaurantId);
         await menuUrunleriniSupabasedenCek(aktifRestaurantId);
+
+        if (typeof fisAyarlariSupabasedenCek === 'function') {
+          await fisAyarlariSupabasedenCek(aktifRestaurantId);
+        }
 
         if (typeof paketSiparisleriniSupabasedenCek === 'function') {
           await paketSiparisleriniSupabasedenCek(aktifRestaurantId);
@@ -6557,6 +6866,123 @@ function IntegraApp() {
                 }}
               >
                 Fişi Yazdır
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* mutfak fişi yazdırma sorusunu ortada modal olarak gösteren kod */}
+      {mutfakFisSorModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.55)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '430px',
+              backgroundColor: '#fff',
+              borderRadius: '18px',
+              padding: '24px',
+              boxShadow: '0 30px 80px -30px rgba(15,23,42,0.45)',
+              border: '1px solid #e2e8f0',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: '54px',
+                height: '54px',
+                borderRadius: '50%',
+                backgroundColor: '#ecfdf5',
+                color: '#10b981',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '26px',
+                margin: '0 auto 14px',
+              }}
+            >
+              👨‍🍳
+            </div>
+
+            <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '20px', fontWeight: '900' }}>
+              Mutfak fişi yazdırılsın mı?
+            </h3>
+
+            <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: '14px', lineHeight: '1.6' }}>
+              Bu sipariş mutfak ekranına düştü. İstersen aynı anda <strong>{fisAyarlari?.mutfakYaziciAdi || 'Mutfak Yazıcısı'}</strong> için fiş penceresi açılır.
+            </p>
+
+            <div
+              style={{
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '12px',
+                marginBottom: '18px',
+                textAlign: 'left',
+                fontSize: '13px',
+                color: '#334155',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span>Fiş sayısı:</span>
+                <strong>{mutfakFisSorModal.fisler?.length || 0}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Sipariş:</span>
+                <strong>{mutfakFisSorModal.fisler?.[0]?.masaAdi || '-'}</strong>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setMutfakFisSorModal(null)}
+                style={{
+                  flex: 1,
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#fff',
+                  color: '#475569',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '800',
+                  fontSize: '14px',
+                }}
+              >
+                Sadece Ekranda Kalsın
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  mutfakFisiYazdir(mutfakFisSorModal.fisler || []);
+                  setMutfakFisSorModal(null);
+                }}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  backgroundColor: '#10b981',
+                  color: '#fff',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '800',
+                  fontSize: '14px',
+                }}
+              >
+                Mutfak Fişi Yazdır
               </button>
             </div>
           </div>
@@ -8331,22 +8757,42 @@ function IntegraApp() {
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => mutfakFisleriniSupabasedenCek(mevcutRestaurantId)}
-                    style={{
-                      border: 'none',
-                      backgroundColor: '#1e293b',
-                      color: '#fff',
-                      padding: '10px 13px',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      fontWeight: '800',
-                      fontSize: '12px',
-                    }}
-                  >
-                    Yenile
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => mutfakFisiYazdir(mutfakFisleri, 'Mutfak Toplu Fiş')}
+                      disabled={!Array.isArray(mutfakFisleri) || mutfakFisleri.length === 0}
+                      style={{
+                        border: 'none',
+                        backgroundColor: (!Array.isArray(mutfakFisleri) || mutfakFisleri.length === 0) ? '#94a3b8' : '#10b981',
+                        color: '#fff',
+                        padding: '10px 13px',
+                        borderRadius: '10px',
+                        cursor: (!Array.isArray(mutfakFisleri) || mutfakFisleri.length === 0) ? 'not-allowed' : 'pointer',
+                        fontWeight: '800',
+                        fontSize: '12px',
+                      }}
+                    >
+                      Mutfak Fişi Yazdır
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => mutfakFisleriniSupabasedenCek(mevcutRestaurantId)}
+                      style={{
+                        border: 'none',
+                        backgroundColor: '#1e293b',
+                        color: '#fff',
+                        padding: '10px 13px',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontWeight: '800',
+                        fontSize: '12px',
+                      }}
+                    >
+                      Yenile
+                    </button>
+                  </div>
                 </div>
 
                 {(!Array.isArray(mutfakFisleri) || mutfakFisleri.length === 0) ? (
@@ -8446,13 +8892,13 @@ function IntegraApp() {
                           </div>
                         </div>
 
-                        {fis.durum !== 'Hazırlandı' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'stretch' }}>
                           <button
                             type="button"
-                            onClick={() => mutfakFisiniHazirla(fis.id)}
+                            onClick={() => mutfakFisiYazdir([fis])}
                             style={{
                               border: 'none',
-                              backgroundColor: '#10b981',
+                              backgroundColor: '#1e293b',
                               color: '#fff',
                               padding: '10px 12px',
                               borderRadius: '10px',
@@ -8461,9 +8907,28 @@ function IntegraApp() {
                               fontSize: '12px',
                             }}
                           >
-                            Hazırlandı
+                            Fiş Yazdır
                           </button>
-                        )}
+
+                          {fis.durum !== 'Hazırlandı' && (
+                            <button
+                              type="button"
+                              onClick={() => mutfakFisiniHazirla(fis.id)}
+                              style={{
+                                border: 'none',
+                                backgroundColor: '#10b981',
+                                color: '#fff',
+                                padding: '10px 12px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontWeight: '900',
+                                fontSize: '12px',
+                              }}
+                            >
+                              Hazırlandı
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -9688,43 +10153,175 @@ function IntegraApp() {
                   Ürünleri Ana Yemekler, İçecekler, Tatlılar gibi gruplara ayırabilirsiniz. Ürünler departman, KDV ve mutfak ayarını bağlı olduğu gruptan alır.
                 </p>
 
-                {/* ödeme sonrası fiş yazdırma davranışını menü ve ayarlar ekranında seçen kod */}
+                {/* firma bilgisi ve adisyon/mutfak yazıcı ayarlarını yöneten kod */}
                 <div
                   style={{
                     backgroundColor: '#f8fafc',
                     border: '1px solid #e2e8f0',
                     borderRadius: '14px',
-                    padding: '12px',
+                    padding: '14px',
                     marginBottom: '16px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '12px',
-                    flexWrap: 'wrap',
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '14px' }}>
-                      🖨️ Fiş Yazdırma Ayarı
-                    </div>
-                    <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>
-                      Ödeme tamamlandığında sistemin fişi nasıl yöneteceğini buradan seçebilirsiniz.
-                    </div>
-                  </div>
-
-                  <select
-                    value={fisYazdirmaModu}
-                    onChange={e => setFisYazdirmaModu(e.target.value)}
+                  <div
                     style={{
-                      ...styles.input,
-                      minWidth: '220px',
-                      fontWeight: '800',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      marginBottom: '12px',
                     }}
                   >
-                    <option value="sor">Ödeme sonrası sor</option>
-                    <option value="yazdir">Otomatik yazdır</option>
-                    <option value="yazdirma">Yazdırma</option>
-                  </select>
+                    <div>
+                      <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>
+                        🖨️ Fiş Dizaynı ve Yazıcı Ayarları
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700', lineHeight: 1.5 }}>
+                        Firma adı fişin üstünde görünür. Adisyon ve mutfak için ayrı yazıcı adı tanımlayabilirsiniz.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={fisAyarlariKaydet}
+                      disabled={fisAyarlariKaydediliyor}
+                      style={{
+                        border: 'none',
+                        backgroundColor: fisAyarlariKaydediliyor ? '#94a3b8' : '#10b981',
+                        color: '#fff',
+                        padding: '10px 13px',
+                        borderRadius: '10px',
+                        cursor: fisAyarlariKaydediliyor ? 'not-allowed' : 'pointer',
+                        fontWeight: '900',
+                        fontSize: '12px',
+                      }}
+                    >
+                      {fisAyarlariKaydediliyor ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(220px, 1fr))',
+                      gap: '10px',
+                    }}
+                  >
+                    <input
+                      type="text"
+                      placeholder="Fişte görünecek firma adı"
+                      value={fisAyarlari.firmaAdi}
+                      onChange={e => fisAyariGuncelle('firmaAdi', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Telefon"
+                      value={fisAyarlari.firmaTelefon}
+                      onChange={e => fisAyariGuncelle('firmaTelefon', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Adres"
+                      value={fisAyarlari.firmaAdres}
+                      onChange={e => fisAyariGuncelle('firmaAdres', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Vergi bilgisi / belge notu"
+                      value={fisAyarlari.vergiBilgisi}
+                      onChange={e => fisAyariGuncelle('vergiBilgisi', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Fiş alt notu"
+                      value={fisAyarlari.fisAltNotu}
+                      onChange={e => fisAyariGuncelle('fisAltNotu', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <select
+                      value={fisYazdirmaModu}
+                      onChange={e => setFisYazdirmaModu(e.target.value)}
+                      style={{ ...styles.input, fontWeight: '800' }}
+                    >
+                      <option value="sor">Adisyon: ödeme sonrası sor</option>
+                      <option value="yazdir">Adisyon: otomatik yazdır</option>
+                      <option value="yazdirma">Adisyon: yazdırma</option>
+                    </select>
+
+                    <input
+                      type="text"
+                      placeholder="Adisyon yazıcı adı"
+                      value={fisAyarlari.adisyonYaziciAdi}
+                      onChange={e => fisAyariGuncelle('adisyonYaziciAdi', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Mutfak yazıcı adı"
+                      value={fisAyarlari.mutfakYaziciAdi}
+                      onChange={e => fisAyariGuncelle('mutfakYaziciAdi', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <select
+                      value={fisAyarlari.mutfakFisYazdirmaModu}
+                      onChange={e => fisAyariGuncelle('mutfakFisYazdirmaModu', e.target.value)}
+                      style={{ ...styles.input, fontWeight: '800' }}
+                    >
+                      <option value="sor">Mutfak: siparişte sor</option>
+                      <option value="yazdir">Mutfak: otomatik fiş yazdır</option>
+                      <option value="yazdirma">Mutfak: sadece ekranda göster</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => fisYazdir({ ad: 'Test Adisyon', tutar: 100, musteriAdi: 'Test Müşteri', siparisler: [{ ad: 'Test Ürün', fiyat: 100, adet: 1, not: 'Az pişmiş' }] }, [{ tip: 'Nakit', tutar: 100 }])}
+                      style={{
+                        border: 'none',
+                        backgroundColor: '#1e293b',
+                        color: '#fff',
+                        padding: '10px 13px',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontWeight: '900',
+                        fontSize: '12px',
+                      }}
+                    >
+                      Test Adisyon Fişi
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => mutfakFisiYazdir([{ masaAdi: 'Test Masa', urunAdi: 'Test Ürün', adet: 1, notMetni: 'Soğansız', departman: 'Mutfak', garsonAdi: user?.waiterName || user?.restaurant || 'Test' }])}
+                      style={{
+                        border: 'none',
+                        backgroundColor: '#10b981',
+                        color: '#fff',
+                        padding: '10px 13px',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontWeight: '900',
+                        fontSize: '12px',
+                      }}
+                    >
+                      Test Mutfak Fişi
+                    </button>
+                  </div>
+
+                  <div style={{ color: '#64748b', fontSize: '11px', marginTop: '10px', lineHeight: 1.5, fontWeight: '700' }}>
+                    Not: Tarayıcı güvenliği nedeniyle web sitesinden yazıcıyı sessizce seçmek mümkün değildir. Bu ayar fiş başlığını ve yazdırma akışını düzenler; tam otomatik adisyon/mutfak yazıcısı seçimi için sonraki aşamada yerel yazdırma servisi eklenir.
+                  </div>
                 </div>
 
                 {/* yeni menü grubu ekleme alanı */}
