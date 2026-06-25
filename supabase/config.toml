@@ -1,0 +1,2 @@
+[functions.admin-mail-gonder]
+verify_jwt = false
