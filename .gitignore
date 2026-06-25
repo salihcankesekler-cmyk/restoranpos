@@ -33,3 +33,8 @@ coverage
 *.bak
 *.backup
 *_yedek*
+
+Add-Content .gitignore "`nsupabase/.temp/"
+supabase/.temp/
+
+supabase/.temp/
