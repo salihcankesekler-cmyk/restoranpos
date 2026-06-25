@@ -70,7 +70,7 @@ function IntegraApp() {
     kayitliUser?.role === 'waiter'
       ? 'masalar'
       : kayitliUser?.role === 'super_admin'
-        ? 'super_admin'
+        ? (['super_admin', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
         : kayitliActiveTab || 'raporlar';
 
   const [screen, setScreen] = useState(baslangicScreen);
@@ -671,7 +671,7 @@ function IntegraApp() {
   // giriş yapan kullanıcının görebileceği sekmeleri hazırlayan kod
   const kullaniciSekmeleri = (() => {
     if (user?.role === 'super_admin') {
-      return ['super_admin'];
+      return ['super_admin', 'admin_destek'];
     }
 
     if (user?.role === 'owner') {
@@ -1346,15 +1346,20 @@ function IntegraApp() {
 
     // Super admin demo girişi
     if (email === 'admin@integra.com' && password === 'admin123') {
-      setUser({
+      const superAdminKullanici = {
         id: 'super_admin',
         email: 'admin@integra.com',
         restaurant: 'Integra Admin',
         restaurantId: 'super_admin',
         role: 'super_admin',
         durum: 'Aktif',
-      });
+      };
 
+      localStorage.setItem('integra_user', JSON.stringify(superAdminKullanici));
+      localStorage.setItem('integra_screen', 'dashboard');
+      localStorage.setItem('integra_activeTab', 'super_admin');
+
+      setUser(superAdminKullanici);
       setScreen('dashboard');
       setActiveTab('super_admin');
 
