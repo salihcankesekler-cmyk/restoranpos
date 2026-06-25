@@ -33,3 +33,4 @@ coverage
 *.bak
 *.backup
 *_yedek*
+supabase/.temp/
