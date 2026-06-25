@@ -102,6 +102,7 @@ function IntegraApp() {
   const [adminBildirimleri, setAdminBildirimleri] = useState([]);
   const [destekTalepleri, setDestekTalepleri] = useState([]);
   const [adminDetayAcikId, setAdminDetayAcikId] = useState(null);
+  const [adminDestekFiltresi, setAdminDestekFiltresi] = useState('Açık');
   const [user, setUser] = useState(kayitliUser);
   const [yeniGarsonAdi, setYeniGarsonAdi] = useState('');
   const [yeniGarsonEmail, setYeniGarsonEmail] = useState('');
@@ -792,6 +793,16 @@ function IntegraApp() {
     const arananAlan = `${c.ad || ''} ${c.telefon || ''} ${c.notMetni || ''}`.toLocaleLowerCase('tr-TR');
     return !rezervasyonCariAramaMetni || arananAlan.includes(rezervasyonCariAramaMetni);
   });
+
+  // süper admin destek panelinde durumlara göre filtrelenen talepleri hazırlayan kod
+  const adminDestekAcikSayisi = destekTalepleri.filter(t => String(t.durum || 'Yeni') !== 'Tamamlandı').length;
+  const adminDestekTamamlananSayisi = destekTalepleri.filter(t => String(t.durum || 'Yeni') === 'Tamamlandı').length;
+  const adminDestekListe = destekTalepleri.filter(t => {
+    const durum = String(t.durum || 'Yeni');
+    if (adminDestekFiltresi === 'Tümü') return true;
+    if (adminDestekFiltresi === 'Açık') return durum !== 'Tamamlandı';
+    return durum === adminDestekFiltresi;
+  });
   // canlı masa ekranında aktif rezervasyonu bulan kod
   const aktifRezervasyonBul = (masaId, kontrolTarihi = new Date()) => {
     const kontrol = new Date(kontrolTarihi).getTime();
@@ -955,7 +966,33 @@ function IntegraApp() {
       durum: t.durum || 'Yeni',
       adminNotu: t.admin_notu || '',
       createdAt: t.created_at || '',
+      updatedAt: t.updated_at || '',
     })));
+  };
+
+  // süper admin destek panelinde talebin durumunu güncelleyen kod
+  const destekTalebiDurumGuncelle = async (talepId, yeniDurum) => {
+    if (!talepId) return;
+
+    const { error } = await supabase
+      .from('destek_talepleri')
+      .update({
+        durum: yeniDurum,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', talepId);
+
+    if (error) {
+      console.error('Destek talebi durumu güncellenemedi:', error);
+      alert('Destek talebi durumu güncellenemedi: ' + error.message);
+      return;
+    }
+
+    setDestekTalepleri(prev => prev.map(t => (
+      String(t.id) === String(talepId)
+        ? { ...t, durum: yeniDurum, updatedAt: new Date().toISOString() }
+        : t
+    )));
   };
 
   // Edge Function aktifse admin maili göndermeyi deneyen kod
@@ -8023,13 +8060,25 @@ function IntegraApp() {
               )}
 
               {user?.role === 'super_admin' && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('super_admin')}
-                  style={activeTab === 'super_admin' ? styles.navItemActive : styles.navItem}
-                >
-                  👑 Tüm integra Müşterileri
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('super_admin')}
+                    style={activeTab === 'super_admin' ? styles.navItemActive : styles.navItem}
+                  >
+                    👑 Tüm integra Müşterileri
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setActiveTab('admin_destek');
+                      await destekTalepleriniSupabasedenCek();
+                    }}
+                    style={activeTab === 'admin_destek' ? styles.navItemActive : styles.navItem}
+                  >
+                    🛠️ Destek Paneli {adminDestekAcikSayisi > 0 ? `(${adminDestekAcikSayisi})` : ''}
+                  </button>
+                </>
               )}
             </nav>
             <button
@@ -11920,7 +11969,10 @@ function IntegraApp() {
                   </div>
 
                   <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '16px' }}>
-                    <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>🛠️ Destek ve Geliştirme Talepleri</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', marginBottom: '12px' }}>
+                      <h3 style={{ margin: 0, color: '#1e293b' }}>🛠️ Destek ve Geliştirme Talepleri</h3>
+                      <button type="button" onClick={() => setActiveTab('admin_destek')} style={styles.filterBtn}>Panele Git</button>
+                    </div>
                     {destekTalepleri.length === 0 ? (
                       <div style={{ color: '#94a3b8', fontSize: '13px' }}>Henüz destek talebi yok.</div>
                     ) : (
@@ -12029,6 +12081,106 @@ function IntegraApp() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* süper admin destek talepleri ekranını gösteren kod */}
+            {activeTab === 'admin_destek' && (
+              <div style={styles.panelCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '18px' }}>
+                  <div>
+                    <h2 style={styles.pageTitle}>🛠️ Destek Paneli</h2>
+                    <p style={{ color: '#64748b', marginTop: '-6px' }}>Siteden gelen destek ve geliştirme talepleri burada listelenir. Durumu değiştirerek talebi tamamlandı yapabilirsiniz.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={destekTalepleriniSupabasedenCek}
+                    style={styles.btnOrange}
+                  >
+                    🔄 Talepleri Yenile
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Açık Talepler</span>
+                    <strong>{adminDestekAcikSayisi}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Tamamlanan</span>
+                    <strong>{adminDestekTamamlananSayisi}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Toplam Talep</span>
+                    <strong>{destekTalepleri.length}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '18px' }}>
+                  {['Açık', 'Yeni', 'İnceleniyor', 'Tamamlandı', 'Tümü'].map(filtre => (
+                    <button
+                      key={filtre}
+                      type="button"
+                      onClick={() => setAdminDestekFiltresi(filtre)}
+                      style={adminDestekFiltresi === filtre ? styles.filterBtnActive : styles.filterBtn}
+                    >
+                      {filtre}
+                    </button>
+                  ))}
+                </div>
+
+                {adminDestekListe.length === 0 ? (
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '16px', padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                    Bu filtrede destek talebi yok.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '14px' }}>
+                    {adminDestekListe.map(t => {
+                      const durum = String(t.durum || 'Yeni');
+                      const tamamlandi = durum === 'Tamamlandı';
+
+                      return (
+                        <div key={t.id} style={{ backgroundColor: '#fff', border: tamamlandi ? '1px solid #bbf7d0' : '1px solid #fed7aa', borderRadius: '18px', padding: '16px', boxShadow: '0 18px 36px -30px rgba(15,23,42,0.28)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                            <div>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '6px' }}>
+                                <strong style={{ color: '#1e293b', fontSize: '16px' }}>🏢 {t.firmaAdi || 'Firma adı yok'}</strong>
+                                <span style={{ fontSize: '11px', color: '#0f766e', fontWeight: '900', backgroundColor: '#ccfbf1', padding: '4px 8px', borderRadius: '999px' }}>{t.talepTipi}</span>
+                                <span style={{ fontSize: '11px', color: tamamlandi ? '#166534' : '#c2410c', fontWeight: '900', backgroundColor: tamamlandi ? '#dcfce7' : '#ffedd5', padding: '4px 8px', borderRadius: '999px' }}>{durum}</span>
+                              </div>
+                              <div style={{ color: '#64748b', fontSize: '12px' }}>
+                                {t.adSoyad ? `${t.adSoyad} / ` : ''}{t.email}{t.telefon ? ` / ${t.telefon}` : ''}
+                              </div>
+                              <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Gönderim: {tarihSaatYaz(t.createdAt)}</div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <select
+                                value={durum}
+                                onChange={e => destekTalebiDurumGuncelle(t.id, e.target.value)}
+                                style={{ ...styles.input, minWidth: '160px', padding: '9px 10px' }}
+                              >
+                                <option>Yeni</option>
+                                <option>İnceleniyor</option>
+                                <option>Tamamlandı</option>
+                              </select>
+                              {durum !== 'Tamamlandı' && (
+                                <button type="button" onClick={() => destekTalebiDurumGuncelle(t.id, 'Tamamlandı')} style={styles.actionBtnApprove}>
+                                  ✔️ Tamamlandı
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ marginTop: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}>
+                            <div style={{ color: '#1e293b', fontWeight: '900', marginBottom: '6px' }}>{t.konu || 'Konu yok'}</div>
+                            <div style={{ color: '#475569', fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{t.mesaj}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
