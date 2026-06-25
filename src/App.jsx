@@ -178,6 +178,10 @@ function IntegraApp() {
 
   // masaya ürün eklerken tutar indirim alanını tutan kod
   const [seciliUrunIndirimTutari, setSeciliUrunIndirimTutari] = useState('');
+
+  // açık masanın/adisyonun genel toplamına uygulanacak yüzde ve TL indirimini tutan kod
+  const [adisyonToplamIndirimYuzde, setAdisyonToplamIndirimYuzde] = useState('');
+  const [adisyonToplamIndirimTutari, setAdisyonToplamIndirimTutari] = useState('');
   // fiş yazıcı ve firma bilgisi için varsayılan ayarları oluşturan kod
   function varsayilanFisAyarlari(firmaAdi = '') {
     return {
@@ -253,6 +257,10 @@ function IntegraApp() {
   const [paketUrunler, setPaketUrunler] = useState([]);
   const [paketSeciliUrunId, setPaketSeciliUrunId] = useState('');
   const [paketSeciliAdet, setPaketSeciliAdet] = useState(1);
+
+  // paket servis sipariş toplamına uygulanacak yüzde ve TL indirimini tutan kod
+  const [paketToplamIndirimYuzde, setPaketToplamIndirimYuzde] = useState('');
+  const [paketToplamIndirimTutari, setPaketToplamIndirimTutari] = useState('');
 
   // paket serviste seçilen ürüne özel notu tutan kod
   const [paketSeciliUrunNotu, setPaketSeciliUrunNotu] = useState('');
@@ -493,6 +501,56 @@ function IntegraApp() {
   const fisAltNotHtml = (varsayilanMetin = 'Bizi tercih ettiğiniz için teşekkür ederiz.') => {
     const notMetni = String(fisAyarlari?.fisAltNotu || varsayilanMetin || '').trim();
     return notMetni ? `<div class="thanks">${htmlGuvenli(notMetni)}</div>` : '';
+  };
+
+  // sipariş satırlarının brüt toplamını hesaplayan kod
+  const siparislerAraToplamHesapla = (siparisler = []) => {
+    return (Array.isArray(siparisler) ? siparisler : []).reduce((toplam, s) => {
+      return toplam + Number(s.fiyat || 0) * Number(s.adet || 1);
+    }, 0);
+  };
+
+  // adisyon, hızlı satış ve paket servis genel toplam indirimini hesaplayan kod
+  const toplamIndirimHesapla = (araToplam, yuzdeDegeri, tutarDegeri) => {
+    const brutToplam = Math.max(Number(araToplam || 0), 0);
+    const indirimYuzde = Math.min(Math.max(sayiyaCevir(yuzdeDegeri), 0), 100);
+    const yuzdeIndirimTutari = brutToplam * indirimYuzde / 100;
+    const tlIndirimTutari = Math.max(sayiyaCevir(tutarDegeri), 0);
+    const toplamIndirim = Math.min(brutToplam, yuzdeIndirimTutari + tlIndirimTutari);
+    const netToplam = Math.max(brutToplam - toplamIndirim, 0);
+
+    return {
+      brutToplam,
+      indirimYuzde,
+      tlIndirimTutari,
+      yuzdeIndirimTutari,
+      toplamIndirim,
+      netToplam,
+    };
+  };
+
+  // toplam indirimi satış satırlarına oransal olarak dağıtan kod
+  const toplamIndirimiSatirlaraDagit = (siparisler = [], toplamIndirim = 0, araToplam = null) => {
+    const brutToplam = araToplam === null ? siparislerAraToplamHesapla(siparisler) : Number(araToplam || 0);
+    const indirimToplami = Math.min(Math.max(Number(toplamIndirim || 0), 0), brutToplam);
+
+    return (Array.isArray(siparisler) ? siparisler : []).map(s => {
+      const adet = Number(s.adet || 1);
+      const satirBrut = Number(s.fiyat || 0) * adet;
+      const satirPayi = brutToplam > 0 ? satirBrut / brutToplam : 0;
+      const satirToplamIndirim = Math.min(satirBrut, indirimToplami * satirPayi);
+      const satirNetToplam = Math.max(satirBrut - satirToplamIndirim, 0);
+      const netBirimFiyat = adet > 0 ? satirNetToplam / adet : 0;
+
+      return {
+        kaynak: s,
+        adet,
+        satirBrut,
+        satirToplamIndirim,
+        satirNetToplam,
+        netBirimFiyat,
+      };
+    });
   };
 
   // ürün ekleme alanındaki fiyat, indirim ve son birim fiyatı hesaplayan kod
@@ -1198,6 +1256,9 @@ function IntegraApp() {
       ad: m.ad,
       dolu: m.dolu || false,
       tutar: Number(m.tutar || 0),
+      brutTutar: Number(m.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(m.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(m.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(m.siparisler) ? m.siparisler : [],
       odemeler: Array.isArray(m.odemeler) ? m.odemeler : [],
       adisyonAcilisSaati: m.adisyon_acilis_saati || null,
@@ -1673,6 +1734,9 @@ function IntegraApp() {
       durum: p.durum || 'Hazırlanıyor',
       odemeTipi: p.odeme_tipi || 'Bekliyor',
       tutar: Number(p.tutar || 0),
+      brutTutar: Number(p.brut_tutar || 0),
+      indirimYuzde: Number(p.indirim_yuzde || 0),
+      indirimTutari: Number(p.indirim_tutari || 0),
       urunler: Array.isArray(p.urunler) ? p.urunler : [],
       odendi: Boolean(p.odendi),
       alinanTutar: Number(p.alinan_tutar || 0),
@@ -2403,7 +2467,13 @@ function IntegraApp() {
       });
     }
 
-    const yeniTutar = Number(masa.tutar || 0) + birimFiyat * adet;
+    const yeniAraToplam = siparislerAraToplamHesapla(yeniSiparisler);
+    const genelIndirimOzeti = toplamIndirimHesapla(
+      yeniAraToplam,
+      masa.adisyonIndirimYuzde || 0,
+      masa.adisyonIndirimTutari || 0
+    );
+    const yeniTutar = genelIndirimOzeti.netToplam;
 
     // masa ilk kez doluyorsa adisyon açılış saatini belirleyen kod
     const adisyonAcilisSaati =
@@ -2420,6 +2490,9 @@ function IntegraApp() {
       .update({
         dolu: true,
         tutar: yeniTutar,
+        brut_tutar: genelIndirimOzeti.brutToplam,
+        adisyon_indirim_yuzde: genelIndirimOzeti.indirimYuzde,
+        adisyon_indirim_tutari: genelIndirimOzeti.tlIndirimTutari,
         siparisler: yeniSiparisler,
         adisyon_acilis_saati: adisyonAcilisSaati,
         adisyon_garson_adi: adisyonGarsonAdi,
@@ -2440,6 +2513,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -2551,16 +2627,24 @@ function IntegraApp() {
       })
       .filter(s => Number(s.adet || 0) > 0);
 
-    const yeniTutar = Math.max(
-      Number(masa.tutar || 0) - Number(hedefSiparis.fiyat || 0),
-      0
-    );
+    const yeniAraToplam = siparislerAraToplamHesapla(yeniSiparisler);
+    const genelIndirimOzeti = yeniSiparisler.length > 0
+      ? toplamIndirimHesapla(
+          yeniAraToplam,
+          masa.adisyonIndirimYuzde || 0,
+          masa.adisyonIndirimTutari || 0
+        )
+      : toplamIndirimHesapla(0, 0, 0);
+    const yeniTutar = genelIndirimOzeti.netToplam;
 
     const { data, error } = await supabase
       .from('masalar')
       .update({
         dolu: yeniSiparisler.length > 0,
         tutar: yeniTutar,
+        brut_tutar: genelIndirimOzeti.brutToplam,
+        adisyon_indirim_yuzde: yeniSiparisler.length > 0 ? genelIndirimOzeti.indirimYuzde : 0,
+        adisyon_indirim_tutari: yeniSiparisler.length > 0 ? genelIndirimOzeti.tlIndirimTutari : 0,
         siparisler: yeniSiparisler,
         adisyon_acilis_saati: yeniSiparisler.length > 0 ? masa.adisyonAcilisSaati : null,
         adisyon_garson_adi: yeniSiparisler.length > 0 ? masa.adisyonGarsonAdi : null,
@@ -2581,6 +2665,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -2658,13 +2745,24 @@ function IntegraApp() {
       });
     }
 
-    const yeniTutar = Math.max(Number(masa.tutar || 0) - birimFiyat, 0);
+    const yeniAraToplam = siparislerAraToplamHesapla(yeniSiparisler);
+    const genelIndirimOzeti = yeniSiparisler.length > 0
+      ? toplamIndirimHesapla(
+          yeniAraToplam,
+          masa.adisyonIndirimYuzde || 0,
+          masa.adisyonIndirimTutari || 0
+        )
+      : toplamIndirimHesapla(0, 0, 0);
+    const yeniTutar = genelIndirimOzeti.netToplam;
 
     const { data, error } = await supabase
       .from('masalar')
       .update({
         dolu: yeniSiparisler.length > 0,
         tutar: yeniTutar,
+        brut_tutar: genelIndirimOzeti.brutToplam,
+        adisyon_indirim_yuzde: yeniSiparisler.length > 0 ? genelIndirimOzeti.indirimYuzde : 0,
+        adisyon_indirim_tutari: yeniSiparisler.length > 0 ? genelIndirimOzeti.tlIndirimTutari : 0,
         siparisler: yeniSiparisler,
         adisyon_acilis_saati: yeniSiparisler.length > 0 ? masa.adisyonAcilisSaati : null,
         adisyon_garson_adi: yeniSiparisler.length > 0 ? masa.adisyonGarsonAdi : null,
@@ -2685,6 +2783,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -2844,6 +2945,11 @@ function IntegraApp() {
     }
 
     const toplamTutar = Number(masa.tutar || 0);
+    const araToplam = siparislerAraToplamHesapla(masa.siparisler || []);
+    const toplamIndirim = Math.max(araToplam - toplamTutar, 0);
+    const indirimSatiri = toplamIndirim > 0
+      ? `<div class="row"><span>Toplam İndirim</span><strong>-${toplamIndirim} TL</strong></div>`
+      : '';
 
     const odemeSatirlari = odemeler.length > 0
       ? odemeler.map(o => `
@@ -2903,6 +3009,7 @@ function IntegraApp() {
           <div class="line"></div>
           ${urunSatirlari}
           <div class="line"></div>
+          ${indirimSatiri}
           <div class="row total"><span>Toplam</span><strong>${toplamTutar} TL</strong></div>
           <div class="line"></div>
           ${odemeSatirlari}
@@ -2930,6 +3037,11 @@ function IntegraApp() {
     }
 
     const toplamTutar = Number(masa.tutar || 0);
+    const araToplam = siparislerAraToplamHesapla(masa.siparisler || []);
+    const toplamIndirim = Math.max(araToplam - toplamTutar, 0);
+    const indirimSatiri = toplamIndirim > 0
+      ? `<div class="row"><span>Toplam İndirim</span><strong>-${toplamIndirim} TL</strong></div>`
+      : '';
     const odenen = odemeToplami(masa);
     const kalan = kalanTutar(masa);
     const urunSatirlari = fisUrunSatirlariHazirla(masa.siparisler || []);
@@ -2967,6 +3079,7 @@ function IntegraApp() {
             <div class="line"></div>
             ${urunSatirlari}
             <div class="line"></div>
+            ${indirimSatiri}
             <div class="row total"><span>Toplam</span><strong>${toplamTutar} TL</strong></div>
             <div class="row"><span>Ödenen</span><strong>${odenen} TL</strong></div>
             <div class="row"><span>Kalan</span><strong>${kalan} TL</strong></div>
@@ -3069,11 +3182,14 @@ function IntegraApp() {
       return;
     }
 
-    const toplamTutar = Number(
-      paket.tutar || paket.urunler.reduce((toplam, urun) => {
-        return toplam + Number(urun.fiyat || 0) * Number(urun.adet || 1);
-      }, 0)
-    );
+    const paketAraToplamFis = paket.brutTutar || paket.urunler.reduce((toplam, urun) => {
+      return toplam + Number(urun.fiyat || 0) * Number(urun.adet || 1);
+    }, 0);
+    const toplamTutar = Number(paket.tutar || paketAraToplamFis || 0);
+    const toplamIndirim = Math.max(Number(paketAraToplamFis || 0) - toplamTutar, 0);
+    const indirimSatiri = toplamIndirim > 0
+      ? `<div class="row"><span>Toplam İndirim</span><strong>-${toplamIndirim} TL</strong></div>`
+      : '';
 
     const urunSatirlari = paket.urunler.map(u => `
       <div class="item">
@@ -3133,6 +3249,7 @@ function IntegraApp() {
             ${urunSatirlari}
             <div class="line"></div>
 
+            ${indirimSatiri}
             <div class="row total"><span>Toplam</span><strong>${toplamTutar} TL</strong></div>
 
             <div class="line"></div>
@@ -3171,6 +3288,59 @@ function IntegraApp() {
   // masada kalan ödeme tutarını hesaplayan yardımcı fonksiyon
   const kalanTutar = (masa) => {
     return Math.max(Number(masa?.tutar || 0) - odemeToplami(masa), 0);
+  };
+
+  // açık masanın genel toplam indirimini Supabase'e kaydeden kod
+  const adisyonToplamIndirimiKaydet = async () => {
+    const masa = activeMasa;
+
+    if (!masa || !masa.dolu || !Array.isArray(masa.siparisler) || masa.siparisler.length === 0) {
+      alert('İndirim uygulanacak açık adisyon yok.');
+      return;
+    }
+
+    const araToplam = siparislerAraToplamHesapla(masa.siparisler);
+    const indirimOzeti = toplamIndirimHesapla(
+      araToplam,
+      adisyonToplamIndirimYuzde,
+      adisyonToplamIndirimTutari
+    );
+
+    if (odemeToplami(masa) > indirimOzeti.netToplam) {
+      alert('Bu adisyonda alınan ödeme yeni indirimli toplamdan fazla. Önce ödeme durumunu kontrol edin.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('masalar')
+      .update({
+        tutar: indirimOzeti.netToplam,
+        brut_tutar: indirimOzeti.brutToplam,
+        adisyon_indirim_yuzde: indirimOzeti.indirimYuzde,
+        adisyon_indirim_tutari: indirimOzeti.tlIndirimTutari,
+      })
+      .eq('id', masa.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Adisyon toplam indirimi kaydedilemedi:', error);
+      alert('Toplam indirim kaydedilemedi: ' + error.message);
+      return;
+    }
+
+    const guncelMasa = {
+      ...masa,
+      tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || indirimOzeti.brutToplam),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
+    };
+
+    setMasalar(masalar.map(m => String(m.id) === String(guncelMasa.id) ? guncelMasa : m));
+
+    alert(`Toplam indirim kaydedildi. Yeni adisyon toplamı: ${indirimOzeti.netToplam} TL`);
   };
 
   // nakit veya kredi kartı ile parçalı ödeme alan ve ödeme tamamlanınca hesabı kapatan fonksiyon
@@ -3245,6 +3415,9 @@ function IntegraApp() {
         ad: data.ad,
         dolu: data.dolu || false,
         tutar: Number(data.tutar || 0),
+        brutTutar: Number(data.brut_tutar || 0),
+        adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+        adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
         siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
         odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
         adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -3278,15 +3451,31 @@ function IntegraApp() {
         ? 'Parçalı'
         : yeniOdemeler[0]?.tip || odemeTipi;
 
+    const masaAraToplam = siparislerAraToplamHesapla(masa.siparisler);
+    const masaGenelIndirimOzeti = toplamIndirimHesapla(
+      masaAraToplam,
+      masa.adisyonIndirimYuzde || 0,
+      masa.adisyonIndirimTutari || 0
+    );
+    const dagitilmisMasaSatirlari = toplamIndirimiSatirlaraDagit(
+      masa.siparisler,
+      masaGenelIndirimOzeti.toplamIndirim,
+      masaGenelIndirimOzeti.brutToplam
+    );
+
     // kapanan masadaki ürünleri satış geçmişine ödeme bilgisiyle kaydeden kod
-    const satisKayitlari = masa.siparisler.map(s => ({
+    const satisKayitlari = dagitilmisMasaSatirlari.map(satir => {
+      const s = satir.kaynak;
+      const satirIndirimTutari = Number(s.indirimTutari || 0) + Number(satir.satirToplamIndirim || 0) / Math.max(Number(s.adet || 1), 1);
+
+      return ({
       restaurant_id: mevcutRestaurantId,
       masa_id: masa.id,
       masa_adi: masa.ad,
       musteri_adi: masa.musteriAdi || null,
       adisyon_id: adisyonId,
       ad: s.ad,
-      fiyat: Number(s.fiyat || 0),
+      fiyat: Number(satir.netBirimFiyat || 0),
       adet: Number(s.adet || 1),
       tarih: bugun,
       odeme_tipi: odemeOzeti,
@@ -3297,16 +3486,17 @@ function IntegraApp() {
       ekstra_ucret: Number(s.ekstraUcret || 0),
       normal_fiyat: Number(s.normalFiyat || s.fiyat || 0),
       liste_fiyati: Number(s.listeFiyati || s.normalFiyat || s.fiyat || 0),
-      satis_fiyati: Number(s.satisFiyati || s.fiyat || 0),
-      indirim_yuzde: Number(s.indirimYuzde || 0),
-      indirim_tutari: Number(s.indirimTutari || 0),
-      fiyat_degistirildi: Boolean(s.fiyatDegistirildi),
+      satis_fiyati: Number(satir.netBirimFiyat || 0),
+      indirim_yuzde: Number(s.indirimYuzde || 0) || Number(masaGenelIndirimOzeti.indirimYuzde || 0),
+      indirim_tutari: satirIndirimTutari,
+      fiyat_degistirildi: Boolean(s.fiyatDegistirildi) || Number(satir.satirToplamIndirim || 0) > 0,
       ikram: Boolean(s.ikram),
       menu_grubu: s.menuGrubu || 'Genel',
       departman: s.departman || 'Mutfak',
       kdv_orani: Number(s.kdvOrani || 10),
       garson_adi: masa.adisyonGarsonAdi || '',
-    }));
+    });
+    });
     const { error: satisError } = await supabase
       .from('satis_gecmisi')
       .insert(satisKayitlari);
@@ -3324,6 +3514,9 @@ function IntegraApp() {
       .update({
         dolu: false,
         tutar: 0,
+        brut_tutar: 0,
+        adisyon_indirim_yuzde: 0,
+        adisyon_indirim_tutari: 0,
         siparisler: [],
         odemeler: [],
         adisyon_acilis_saati: null,
@@ -3360,7 +3553,11 @@ function IntegraApp() {
     }
 
     // ekranı yenilemeden rapora anlık satış ekleyen kod
-    const yeniRaporKayitlari = masa.siparisler.map(s => ({
+    const yeniRaporKayitlari = dagitilmisMasaSatirlari.map(satir => {
+      const s = satir.kaynak;
+      const satirIndirimTutari = Number(s.indirimTutari || 0) + Number(satir.satirToplamIndirim || 0) / Math.max(Number(s.adet || 1), 1);
+
+      return ({
       id: Date.now() + Math.random(),
       restaurantId: mevcutRestaurantId,
       masaId: masa.id,
@@ -3368,7 +3565,7 @@ function IntegraApp() {
       musteriAdi: masa.musteriAdi || '',
       adisyonId: adisyonId,
       ad: s.ad,
-      fiyat: Number(s.fiyat || 0),
+      fiyat: Number(satir.netBirimFiyat || 0),
       adet: Number(s.adet || 1),
       tarih: bugun,
       odemeTipi: odemeOzeti,
@@ -3379,16 +3576,17 @@ function IntegraApp() {
       ekstraUcret: Number(s.ekstraUcret || 0),
       normalFiyat: Number(s.normalFiyat || s.fiyat || 0),
       listeFiyati: Number(s.listeFiyati || s.normalFiyat || s.fiyat || 0),
-      satisFiyati: Number(s.satisFiyati || s.fiyat || 0),
-      indirimYuzde: Number(s.indirimYuzde || 0),
-      indirimTutari: Number(s.indirimTutari || 0),
-      fiyatDegistirildi: Boolean(s.fiyatDegistirildi),
+      satisFiyati: Number(satir.netBirimFiyat || 0),
+      indirimYuzde: Number(s.indirimYuzde || 0) || Number(masaGenelIndirimOzeti.indirimYuzde || 0),
+      indirimTutari: satirIndirimTutari,
+      fiyatDegistirildi: Boolean(s.fiyatDegistirildi) || Number(satir.satirToplamIndirim || 0) > 0,
       ikram: Boolean(s.ikram),
       menuGrubu: s.menuGrubu || 'Genel',
       departman: s.departman || 'Mutfak',
       kdvOrani: Number(s.kdvOrani || 10),
       garsonAdi: masa.adisyonGarsonAdi || '',
-    }));
+    });
+    });
 
     setSatisGecmisi([...satisGecmisi, ...yeniRaporKayitlari]);
 
@@ -3398,6 +3596,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -3448,6 +3649,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -3564,9 +3768,15 @@ function IntegraApp() {
   };
 
   // paket servis toplamını hesaplayan kod
-  const paketToplam = paketUrunler.reduce((toplam, urun) => {
+  const paketAraToplam = paketUrunler.reduce((toplam, urun) => {
     return toplam + Number(urun.fiyat || 0) * Number(urun.adet || 1);
   }, 0);
+  const paketIndirimOzeti = toplamIndirimHesapla(
+    paketAraToplam,
+    paketToplamIndirimYuzde,
+    paketToplamIndirimTutari
+  );
+  const paketToplam = paketIndirimOzeti.netToplam;
 
   // paket servis siparişi oluşturan kod
   const paketSiparisOlustur = async (e) => {
@@ -3598,6 +3808,9 @@ function IntegraApp() {
           durum: 'Hazırlanıyor',
           odeme_tipi: 'Bekliyor',
           tutar: paketToplam,
+          brut_tutar: paketIndirimOzeti.brutToplam,
+          indirim_yuzde: paketIndirimOzeti.indirimYuzde,
+          indirim_tutari: paketIndirimOzeti.tlIndirimTutari,
           urunler: paketUrunler,
           odendi: false,
           alinan_tutar: 0,
@@ -3629,6 +3842,9 @@ function IntegraApp() {
       durum: data.durum || 'Hazırlanıyor',
       odemeTipi: data.odeme_tipi || 'Bekliyor',
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || paketIndirimOzeti.brutToplam || 0),
+      indirimYuzde: Number(data.indirim_yuzde || paketIndirimOzeti.indirimYuzde || 0),
+      indirimTutari: Number(data.indirim_tutari || paketIndirimOzeti.tlIndirimTutari || 0),
       urunler: Array.isArray(data.urunler) ? data.urunler : paketUrunler,
       odendi: Boolean(data.odendi),
       alinanTutar: Number(data.alinan_tutar || 0),
@@ -3713,6 +3929,8 @@ function IntegraApp() {
     setPaketOdemeTipi('Nakit');
     setPaketDurumu('Hazırlanıyor');
     setPaketUrunler([]);
+    setPaketToplamIndirimYuzde('');
+    setPaketToplamIndirimTutari('');
     setPaketSeciliUrunId('');
     setPaketSeciliAdet(1);
     setPaketSeciliUrunNotu('');
@@ -3816,14 +4034,30 @@ function IntegraApp() {
       },
     ];
 
-    const satisKayitlari = paket.urunler.map(u => ({
+    const paketAraToplamKapanis = siparislerAraToplamHesapla(paket.urunler);
+    const paketIndirimOzetiKapanis = toplamIndirimHesapla(
+      paketAraToplamKapanis,
+      paket.indirimYuzde || 0,
+      paket.indirimTutari || 0
+    );
+    const dagitilmisPaketSatirlari = toplamIndirimiSatirlaraDagit(
+      paket.urunler,
+      paketIndirimOzetiKapanis.toplamIndirim,
+      paketIndirimOzetiKapanis.brutToplam
+    );
+
+    const satisKayitlari = dagitilmisPaketSatirlari.map(satir => {
+      const u = satir.kaynak;
+      const satirIndirimTutari = Number(satir.satirToplamIndirim || 0) / Math.max(Number(u.adet || 1), 1);
+
+      return ({
       restaurant_id: mevcutRestaurantId,
       masa_id: null,
       masa_adi: 'Paket Servis',
       musteri_adi: paket.musteriAdi || '',
       adisyon_id: adisyonId,
       ad: u.ad,
-      fiyat: Number(u.fiyat || 0),
+      fiyat: Number(satir.netBirimFiyat || 0),
       adet: Number(u.adet || 1),
       tarih: bugun,
       odeme_tipi: odemeTipi,
@@ -3836,17 +4070,18 @@ function IntegraApp() {
       maliyet: Number(u.maliyet || 0),
       toplam_maliyet: Number(u.maliyet || 0) * Number(u.adet || 1),
       liste_fiyati: Number(u.listeFiyati || u.normalFiyat || u.fiyat || 0),
-      satis_fiyati: Number(u.fiyat || 0),
-      indirim_yuzde: 0,
-      indirim_tutari: 0,
-      fiyat_degistirildi: false,
+      satis_fiyati: Number(satir.netBirimFiyat || 0),
+      indirim_yuzde: Number(paketIndirimOzetiKapanis.indirimYuzde || 0),
+      indirim_tutari: satirIndirimTutari,
+      fiyat_degistirildi: Number(satir.satirToplamIndirim || 0) > 0,
       menu_grubu: u.menuGrubu || 'Genel',
       departman: u.departman || 'Paket Servis',
       kdv_orani: Number(u.kdvOrani || 10),
       garson_adi: paket.kuryeAdi || 'Paket Servis',
       siparis_tipi: 'Paket Servis',
       paket_siparis_id: paket.id,
-    }));
+    });
+    });
 
     const { error: satisError } = await supabase
       .from('satis_gecmisi')
@@ -3891,6 +4126,9 @@ function IntegraApp() {
       odendi: Boolean(data.odendi),
       alinanTutar: Number(data.alinan_tutar || girilenTutar),
       paraUstu: Number(data.para_ustu || paraUstu),
+      brutTutar: Number(paket.brutTutar || paketIndirimOzetiKapanis.brutToplam || 0),
+      indirimYuzde: Number(paket.indirimYuzde || paketIndirimOzetiKapanis.indirimYuzde || 0),
+      indirimTutari: Number(paket.indirimTutari || paketIndirimOzetiKapanis.tlIndirimTutari || 0),
       kapanisSaati: data.kapanis_saati || kapanisSaati,
       teslimSaati: data.teslim_saati || kapanisSaati,
       kuryeAdi: data.kurye_adi || paket.kuryeAdi || kuryeAdiInputs[paket.id] || '',
@@ -3905,7 +4143,11 @@ function IntegraApp() {
       return p;
     }));
 
-    const yeniRaporKayitlari = paket.urunler.map(u => ({
+    const yeniRaporKayitlari = dagitilmisPaketSatirlari.map(satir => {
+      const u = satir.kaynak;
+      const satirIndirimTutari = Number(satir.satirToplamIndirim || 0) / Math.max(Number(u.adet || 1), 1);
+
+      return ({
       id: Date.now() + Math.random(),
       restaurantId: mevcutRestaurantId,
       masaId: null,
@@ -3913,7 +4155,7 @@ function IntegraApp() {
       musteriAdi: paket.musteriAdi || '',
       adisyonId,
       ad: u.ad,
-      fiyat: Number(u.fiyat || 0),
+      fiyat: Number(satir.netBirimFiyat || 0),
       adet: Number(u.adet || 1),
       tarih: bugun,
       odemeTipi,
@@ -3926,17 +4168,18 @@ function IntegraApp() {
       maliyet: Number(u.maliyet || 0),
       toplamMaliyet: Number(u.maliyet || 0) * Number(u.adet || 1),
       listeFiyati: Number(u.listeFiyati || u.normalFiyat || u.fiyat || 0),
-      satisFiyati: Number(u.fiyat || 0),
-      indirimYuzde: 0,
-      indirimTutari: 0,
-      fiyatDegistirildi: false,
+      satisFiyati: Number(satir.netBirimFiyat || 0),
+      indirimYuzde: Number(paketIndirimOzetiKapanis.indirimYuzde || 0),
+      indirimTutari: satirIndirimTutari,
+      fiyatDegistirildi: Number(satir.satirToplamIndirim || 0) > 0,
       menuGrubu: u.menuGrubu || 'Genel',
       departman: u.departman || 'Paket Servis',
       kdvOrani: Number(u.kdvOrani || 10),
       garsonAdi: paket.kuryeAdi || 'Paket Servis',
       siparisTipi: 'Paket Servis',
       paketSiparisId: paket.id,
-    }));
+    });
+    });
 
     setSatisGecmisi([...satisGecmisi, ...yeniRaporKayitlari]);
 
@@ -4150,6 +4393,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -4449,6 +4695,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -4746,7 +4995,7 @@ function IntegraApp() {
       musteri_adi: 'Gel-Al',
       adisyon_id: adisyonId,
       ad: u.ad,
-      fiyat: Number(u.fiyat || 0),
+      fiyat: Number(satir.netBirimFiyat || 0),
       adet: Number(u.adet || 1),
       tarih: bugun,
       odeme_tipi: hizliSatisOdemeTipi,
@@ -4759,7 +5008,7 @@ function IntegraApp() {
       liste_fiyati: Number(u.fiyat || 0),
       satis_fiyati: Number(satir.netBirimFiyat || 0),
       indirim_yuzde: hizliSatisIndirimYuzdeSayi,
-      indirim_tutari: Number(satir.satirIndirim || 0),
+      indirim_tutari: Number(satir.satirIndirim || 0) / Math.max(Number(u.adet || 1), 1),
       fiyat_degistirildi: Number(satir.satirIndirim || 0) > 0 || Boolean(u.ikram),
       ikram: Boolean(u.ikram),
       menu_grubu: u.menuGrubu || 'Genel',
@@ -4856,7 +5105,7 @@ function IntegraApp() {
         musteriAdi: 'Gel-Al',
         adisyonId,
         ad: u.ad,
-        fiyat: Number(u.fiyat || 0),
+        fiyat: Number(satir.netBirimFiyat || 0),
         adet: Number(u.adet || 1),
         tarih: bugun,
         odemeTipi: hizliSatisOdemeTipi,
@@ -4870,21 +5119,33 @@ function IntegraApp() {
         garsonAdi: user?.waiterName || user?.restaurant || 'Kasiyer',
         not: u.not || '',
         indirimYuzde: hizliSatisIndirimYuzdeSayi,
-        indirimTutari: Number(satir.satirIndirim || 0),
+        indirimTutari: Number(satir.satirIndirim || 0) / Math.max(Number(u.adet || 1), 1),
         ikram: Boolean(u.ikram),
       });
       }),
     ]);
 
+    const hizliSatisFiseGidenUrunler = hizliSatisUrunler.map(u => {
+      const satir = hizliSatisSatirHesapla(u);
+      return {
+        ...u,
+        fiyat: Number(satir.netBirimFiyat || 0),
+        normalFiyat: Number(u.normalFiyat || u.fiyat || 0),
+        listeFiyati: Number(u.fiyat || 0),
+        indirimYuzde: hizliSatisIndirimYuzdeSayi,
+        indirimTutari: Number(satir.satirIndirim || 0) / Math.max(Number(u.adet || 1), 1),
+      };
+    });
+
     setSonFisBilgisi({
-      masa: { ad: 'Hızlı Satış', tutar, siparisler: hizliSatisUrunler },
+      masa: { ad: 'Hızlı Satış', tutar, siparisler: hizliSatisFiseGidenUrunler },
       odemeler,
     });
 
     if (fisYazdirmaModu === 'yazdir') {
-      fisYazdir({ ad: 'Hızlı Satış', tutar, siparisler: hizliSatisUrunler }, odemeler);
+      fisYazdir({ ad: 'Hızlı Satış', tutar, siparisler: hizliSatisFiseGidenUrunler }, odemeler);
     } else if (fisYazdirmaModu === 'sor') {
-      setFisSorModal({ masa: { ad: 'Hızlı Satış', tutar, siparisler: hizliSatisUrunler }, odemeler });
+      setFisSorModal({ masa: { ad: 'Hızlı Satış', tutar, siparisler: hizliSatisFiseGidenUrunler }, odemeler });
     }
 
     setHizliSatisUrunler([]);
@@ -5488,6 +5749,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -5541,6 +5805,9 @@ function IntegraApp() {
       ad: data.ad,
       dolu: data.dolu || false,
       tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
       siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || null,
@@ -7035,6 +7302,15 @@ function IntegraApp() {
     setPaketSeciliUrunId(String(urun.id));
   };
 
+  // açık masa/adisyon toplam indirim özetini hazırlayan kod
+  const aktifMasaAraToplam = activeMasa ? siparislerAraToplamHesapla(activeMasa.siparisler || []) : 0;
+  const aktifMasaIndirimOzeti = activeMasa
+    ? toplamIndirimHesapla(aktifMasaAraToplam, activeMasa.adisyonIndirimYuzde || 0, activeMasa.adisyonIndirimTutari || 0)
+    : toplamIndirimHesapla(0, 0, 0);
+  const adisyonIndirimOnizleme = activeMasa
+    ? toplamIndirimHesapla(aktifMasaAraToplam, adisyonToplamIndirimYuzde, adisyonToplamIndirimTutari)
+    : toplamIndirimHesapla(0, 0, 0);
+
   // ödeme alanında girilen paraya göre para üstünü hesaplayan kod
   const odemeGirisTutari = sayiyaCevir(odemeTutariInput);
   const aktifMasaKalanTutar = activeMasa ? kalanTutar(activeMasa) : 0;
@@ -7044,6 +7320,12 @@ function IntegraApp() {
   useEffect(() => {
     setMusteriAdiInput(activeMasa?.musteriAdi || '');
   }, [activeMasa?.id, activeMasa?.musteriAdi]);
+
+  // seçili masa değişince adisyon toplam indirim alanlarını güncelleyen kod
+  useEffect(() => {
+    setAdisyonToplamIndirimYuzde(activeMasa?.adisyonIndirimYuzde ? String(activeMasa.adisyonIndirimYuzde) : '');
+    setAdisyonToplamIndirimTutari(activeMasa?.adisyonIndirimTutari ? String(activeMasa.adisyonIndirimTutari) : '');
+  }, [activeMasa?.id, activeMasa?.adisyonIndirimYuzde, activeMasa?.adisyonIndirimTutari]);
 
   // menü grupları değişince adisyon ve paket servis ürün seçim grubunu güvenli tutan kod
   useEffect(() => {
@@ -9103,6 +9385,49 @@ function IntegraApp() {
                           </span>
                         </div>
 
+                        {activeMasa.dolu && (Number(activeMasa.adisyonIndirimYuzde || 0) > 0 || Number(activeMasa.adisyonIndirimTutari || 0) > 0) && (
+                          <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: '10px', padding: '8px 10px', fontSize: '12px', fontWeight: '900', marginBottom: '10px' }}>
+                            Ara Toplam: {aktifMasaIndirimOzeti.brutToplam} TL / Toplam İndirim: -{aktifMasaIndirimOzeti.toplamIndirim} TL
+                          </div>
+                        )}
+
+                        {activeMasa.dolu && (
+                          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px', marginBottom: '10px' }}>
+                            <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900', marginBottom: '8px' }}>Adisyon Toplam İndirimi</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                placeholder="% indirim"
+                                value={adisyonToplamIndirimYuzde}
+                                onChange={e => setAdisyonToplamIndirimYuzde(e.target.value)}
+                                style={{ ...styles.panelSelect, padding: '8px', fontSize: '12px', width: '100%', boxSizing: 'border-box' }}
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="TL indirim"
+                                value={adisyonToplamIndirimTutari}
+                                onChange={e => setAdisyonToplamIndirimTutari(e.target.value)}
+                                style={{ ...styles.panelSelect, padding: '8px', fontSize: '12px', width: '100%', boxSizing: 'border-box' }}
+                              />
+                              <button
+                                type="button"
+                                onClick={adisyonToplamIndirimiKaydet}
+                                style={{ ...styles.checkoutBtn, backgroundColor: '#0f766e', padding: '9px', fontSize: '12px', width: isMobile ? '100%' : 'auto' }}
+                              >
+                                Uygula
+                              </button>
+                            </div>
+                            <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b', fontWeight: '800', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span>Ara toplam: {adisyonIndirimOnizleme.brutToplam} TL</span>
+                              <span>İndirim: -{adisyonIndirimOnizleme.toplamIndirim} TL</span>
+                              <span>İndirimli toplam: {adisyonIndirimOnizleme.netToplam} TL</span>
+                            </div>
+                          </div>
+                        )}
+
                         {activeMasa.dolu && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
                             <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px' }}>
@@ -9878,6 +10203,34 @@ function IntegraApp() {
                           <button type="button" onClick={() => paketUrunSil(index)} style={styles.deleteItemBtn}>❌</button>
                         </div>
                       ))}
+                      <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
+                        <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900', marginBottom: '8px' }}>Paket Toplam İndirimi</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            placeholder="% indirim"
+                            value={paketToplamIndirimYuzde}
+                            onChange={e => setPaketToplamIndirimYuzde(e.target.value)}
+                            style={{ ...styles.input, minWidth: 0 }}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="TL indirim"
+                            value={paketToplamIndirimTutari}
+                            onChange={e => setPaketToplamIndirimTutari(e.target.value)}
+                            style={{ ...styles.input, minWidth: 0 }}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b', fontWeight: '800', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <span>Ara toplam: {paketIndirimOzeti.brutToplam} TL</span>
+                          <span>İndirim: -{paketIndirimOzeti.toplamIndirim} TL</span>
+                        </div>
+                      </div>
+
                       <div style={{ ...styles.totalRow, marginTop: '10px' }}>
                         <span>Toplam</span>
                         <strong>{paketToplam} TL</strong>
@@ -9929,6 +10282,14 @@ function IntegraApp() {
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ color: '#ff6b35', fontWeight: '900' }}>{p.tutar} TL</div>
+                            {Number(p.indirimTutari || 0) > 0 || Number(p.indirimYuzde || 0) > 0 ? (
+                              <div style={{ color: '#10b981', fontSize: '11px', fontWeight: '900', marginTop: '3px' }}>
+                                İndirim: {Number(p.indirimYuzde || 0) > 0 ? `%${p.indirimYuzde}` : ''} {Number(p.indirimTutari || 0) > 0 ? `+ ${p.indirimTutari} TL` : ''}
+                              </div>
+                            ) : null}
+                            {p.brutTutar && Number(p.brutTutar || 0) > Number(p.tutar || 0) ? (
+                              <div style={{ color: '#64748b', fontSize: '11px', fontWeight: '800' }}>Ara toplam: {p.brutTutar} TL</div>
+                            ) : null}
                             {p.odendi ? (
                               <div
                                 style={{
