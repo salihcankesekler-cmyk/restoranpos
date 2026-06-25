@@ -70,7 +70,7 @@ function IntegraApp() {
     kayitliUser?.role === 'waiter'
       ? 'masalar'
       : kayitliUser?.role === 'super_admin'
-        ? (['super_admin', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
+        ? (['super_admin', 'admin_lisans', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
         : kayitliActiveTab || 'raporlar';
 
   const [screen, setScreen] = useState(baslangicScreen);
@@ -103,6 +103,8 @@ function IntegraApp() {
   const [destekTalepleri, setDestekTalepleri] = useState([]);
   const [adminDetayAcikId, setAdminDetayAcikId] = useState(null);
   const [adminDestekFiltresi, setAdminDestekFiltresi] = useState('Açık');
+  const [adminLisansFiltresi, setAdminLisansFiltresi] = useState('Tümü');
+  const [adminLisansArama, setAdminLisansArama] = useState('');
   const [user, setUser] = useState(kayitliUser);
   const [yeniGarsonAdi, setYeniGarsonAdi] = useState('');
   const [yeniGarsonEmail, setYeniGarsonEmail] = useState('');
@@ -671,7 +673,7 @@ function IntegraApp() {
   // giriş yapan kullanıcının görebileceği sekmeleri hazırlayan kod
   const kullaniciSekmeleri = (() => {
     if (user?.role === 'super_admin') {
-      return ['super_admin', 'admin_destek'];
+      return ['super_admin', 'admin_lisans', 'admin_destek'];
     }
 
     if (user?.role === 'owner') {
@@ -803,6 +805,86 @@ function IntegraApp() {
     if (adminDestekFiltresi === 'Açık') return durum !== 'Tamamlandı';
     return durum === adminDestekFiltresi;
   });
+
+  // süper admin lisans / paket / ödeme paneli için hesaplamaları yapan kod
+  const bugunLocalTarih = new Date();
+  const tarihInputDegeri = (tarih = new Date()) => {
+    const kopya = new Date(tarih);
+    if (Number.isNaN(kopya.getTime())) return '';
+    return kopya.toISOString().split('T')[0];
+  };
+
+  const birAySonraTarih = () => {
+    const tarih = new Date();
+    tarih.setMonth(tarih.getMonth() + 1);
+    return tarihInputDegeri(tarih);
+  };
+
+  const kalanGunHesapla = (tarihDegeri) => {
+    if (!tarihDegeri) return null;
+    const hedef = new Date(`${tarihDegeri}T23:59:59`);
+    if (Number.isNaN(hedef.getTime())) return null;
+    const gunMs = 24 * 60 * 60 * 1000;
+    return Math.ceil((hedef.getTime() - bugunLocalTarih.getTime()) / gunMs);
+  };
+
+  const lisansRozetiHazirla = (restoran) => {
+    const kalanGun = kalanGunHesapla(restoran.sonrakiOdemeTarihi || restoran.sonOdemeTarihi);
+    const lisans = String(restoran.lisansDurumu || restoran.durum || 'Onay Bekliyor');
+    const odeme = String(restoran.odemeDurumu || 'Ödeme Bekliyor');
+
+    if (lisans === 'Donduruldu' || lisans === 'Askıya Alındı') {
+      return { etiket: 'Askıya Alındı', renk: '#991b1b', zemin: '#fee2e2', kalanGun };
+    }
+
+    if (kalanGun !== null && kalanGun < 0) {
+      return { etiket: 'Ödeme Gecikti', renk: '#b91c1c', zemin: '#fee2e2', kalanGun };
+    }
+
+    if (odeme === 'Ödeme Bekliyor' || lisans === 'Ödeme Bekliyor') {
+      return { etiket: 'Ödeme Bekliyor', renk: '#b45309', zemin: '#fef3c7', kalanGun };
+    }
+
+    if (kalanGun !== null && kalanGun <= 7) {
+      return { etiket: 'Yaklaşıyor', renk: '#c2410c', zemin: '#ffedd5', kalanGun };
+    }
+
+    if (lisans === 'Aktif') {
+      return { etiket: 'Aktif', renk: '#15803d', zemin: '#dcfce7', kalanGun };
+    }
+
+    return { etiket: lisans, renk: '#475569', zemin: '#e2e8f0', kalanGun };
+  };
+
+  const sahipRestoranlar = restoranlar.filter(r => r.rol === 'owner');
+  const adminLisansAramaMetni = String(adminLisansArama || '').toLocaleLowerCase('tr-TR').trim();
+
+  const adminLisansListe = sahipRestoranlar.filter(r => {
+    const rozet = lisansRozetiHazirla(r);
+    const arananAlan = `${r.ad || ''} ${r.email || ''} ${r.yetkiliAdi || ''} ${r.firmaTelefon || ''} ${r.paketAdi || ''}`.toLocaleLowerCase('tr-TR');
+    const aramaUyuyor = !adminLisansAramaMetni || arananAlan.includes(adminLisansAramaMetni);
+
+    if (!aramaUyuyor) return false;
+    if (adminLisansFiltresi === 'Tümü') return true;
+    if (adminLisansFiltresi === 'Aktif') return rozet.etiket === 'Aktif';
+    if (adminLisansFiltresi === 'Yaklaşan Ödeme') return rozet.etiket === 'Yaklaşıyor';
+    if (adminLisansFiltresi === 'Geciken') return rozet.etiket === 'Ödeme Gecikti';
+    if (adminLisansFiltresi === 'Ödeme Bekliyor') return rozet.etiket === 'Ödeme Bekliyor';
+    if (adminLisansFiltresi === 'Askıya Alındı') return rozet.etiket === 'Askıya Alındı';
+    return true;
+  });
+
+  const adminLisansOzet = {
+    toplam: sahipRestoranlar.length,
+    aktif: sahipRestoranlar.filter(r => lisansRozetiHazirla(r).etiket === 'Aktif').length,
+    yaklasan: sahipRestoranlar.filter(r => lisansRozetiHazirla(r).etiket === 'Yaklaşıyor').length,
+    geciken: sahipRestoranlar.filter(r => lisansRozetiHazirla(r).etiket === 'Ödeme Gecikti').length,
+    bekleyen: sahipRestoranlar.filter(r => lisansRozetiHazirla(r).etiket === 'Ödeme Bekliyor').length,
+    aski: sahipRestoranlar.filter(r => lisansRozetiHazirla(r).etiket === 'Askıya Alındı').length,
+    aylikTahmini: sahipRestoranlar
+      .filter(r => !['Donduruldu', 'Askıya Alındı'].includes(String(r.lisansDurumu || r.durum || '')))
+      .reduce((toplam, r) => toplam + Number(r.aylikUcret || 0), 0),
+  };
   // canlı masa ekranında aktif rezervasyonu bulan kod
   const aktifRezervasyonBul = (masaId, kontrolTarihi = new Date()) => {
     const kontrol = new Date(kontrolTarihi).getTime();
@@ -884,7 +966,12 @@ function IntegraApp() {
     basvuruPaketi: r.basvuru_paketi || r.paket_adi || 'Profesyonel',
     aylikUcret: Number(r.aylik_ucret || 699),
     sonOdemeTarihi: r.son_odeme_tarihi || '',
+    sonrakiOdemeTarihi: r.sonraki_odeme_tarihi || r.son_odeme_tarihi || '',
+    sonOdemeTutari: Number(r.son_odeme_tutari || 0),
+    sonOdemeYontemi: r.son_odeme_yontemi || 'Banka / Havale',
+    odemeDurumu: r.odeme_durumu || 'Ödeme Bekliyor',
     lisansDurumu: r.lisans_durumu || r.durum || 'Onay Bekliyor',
+    lisansNotu: r.lisans_notu || '',
     kullaniciLimiti: Number(r.kullanici_limiti || 3),
     yetkiliAdi: r.yetkili_adi || '',
     firmaTelefon: r.firma_telefon || r.telefon || '',
@@ -5617,6 +5704,122 @@ function IntegraApp() {
     }));
   };
 
+  // restoranın lisans / paket / ödeme alanlarını süper admin panelinden güncelleyen kod
+  const restoranLisansAlanGuncelle = async (restoran, alan, deger) => {
+    if (!restoran?.id) return;
+
+    const kolonMap = {
+      paketAdi: 'paket_adi',
+      aylikUcret: 'aylik_ucret',
+      lisansDurumu: 'lisans_durumu',
+      odemeDurumu: 'odeme_durumu',
+      sonOdemeTarihi: 'son_odeme_tarihi',
+      sonrakiOdemeTarihi: 'sonraki_odeme_tarihi',
+      sonOdemeTutari: 'son_odeme_tutari',
+      sonOdemeYontemi: 'son_odeme_yontemi',
+      lisansNotu: 'lisans_notu',
+    };
+
+    const kolon = kolonMap[alan];
+    if (!kolon) return;
+
+    let temizDeger = deger;
+    if (['aylikUcret', 'sonOdemeTutari'].includes(alan)) {
+      temizDeger = Math.max(sayiyaCevir(deger), 0);
+    }
+
+    const guncelleme = { [kolon]: temizDeger };
+
+    if (alan === 'paketAdi') {
+      guncelleme.basvuru_paketi = temizDeger;
+      if (temizDeger === 'Profesyonel') {
+        guncelleme.aylik_ucret = Number(restoran.aylikUcret || 699) || 699;
+        guncelleme.kullanici_limiti = Number(restoran.kullaniciLimiti || 3) || 3;
+      }
+    }
+
+    if (alan === 'lisansDurumu') {
+      guncelleme.durum = temizDeger === 'Aktif' ? 'Aktif' : temizDeger === 'Askıya Alındı' ? 'Donduruldu' : temizDeger;
+    }
+
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update(guncelleme)
+      .eq('id', restoran.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Lisans alanı güncellenemedi:', error);
+      alert('Lisans bilgisi güncellenemedi: ' + error.message);
+      return;
+    }
+
+    const temizRestoran = restoranSatiriniHazirla(data);
+    setRestoranlar(restoranlar.map(r => String(r.id) === String(restoran.id) ? temizRestoran : r));
+  };
+
+  // ödeme alındığında lisansı aktif yapıp sonraki ödeme tarihini 1 ay ileri alan kod
+  const restoranOdemeAlindi = async (restoran) => {
+    if (!restoran?.id) return;
+
+    const bugun = tarihInputDegeri(new Date());
+    const sonrakiOdeme = birAySonraTarih();
+    const tutar = Number(restoran.aylikUcret || 699);
+
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({
+        durum: 'Aktif',
+        lisans_durumu: 'Aktif',
+        odeme_durumu: 'Ödendi',
+        son_odeme_tarihi: bugun,
+        sonraki_odeme_tarihi: sonrakiOdeme,
+        son_odeme_tutari: tutar,
+        son_odeme_yontemi: restoran.sonOdemeYontemi || 'Banka / Havale',
+        aylik_ucret: tutar,
+        paket_adi: restoran.paketAdi || 'Profesyonel',
+      })
+      .eq('id', restoran.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Ödeme kaydı güncellenemedi:', error);
+      alert('Ödeme kaydı güncellenemedi: ' + error.message);
+      return;
+    }
+
+    const temizRestoran = restoranSatiriniHazirla(data);
+    setRestoranlar(restoranlar.map(r => String(r.id) === String(restoran.id) ? temizRestoran : r));
+    alert(`${temizRestoran.ad} için ödeme alındı ve lisans aktif edildi.`);
+  };
+
+  // restoran lisansını hızlıca askıya alan kod
+  const restoranLisansAskıyaAl = async (restoran) => {
+    if (!restoran?.id) return;
+
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({
+        durum: 'Donduruldu',
+        lisans_durumu: 'Askıya Alındı',
+        odeme_durumu: 'Ödeme Bekliyor',
+      })
+      .eq('id', restoran.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Lisans askıya alınamadı:', error);
+      alert('Lisans askıya alınamadı: ' + error.message);
+      return;
+    }
+
+    const temizRestoran = restoranSatiriniHazirla(data);
+    setRestoranlar(restoranlar.map(r => String(r.id) === String(restoran.id) ? temizRestoran : r));
+  };
+
   // restorana bağlı yeni personel kaydı oluşturan kod
   const personelEkle = async (e) => {
     e.preventDefault();
@@ -8072,6 +8275,13 @@ function IntegraApp() {
                     style={activeTab === 'super_admin' ? styles.navItemActive : styles.navItem}
                   >
                     👑 Tüm integra Müşterileri
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('admin_lisans')}
+                    style={activeTab === 'admin_lisans' ? styles.navItemActive : styles.navItem}
+                  >
+                    💳 Lisans & Ödeme {adminLisansOzet.geciken > 0 ? `(${adminLisansOzet.geciken})` : ''}
                   </button>
                   <button
                     type="button"
@@ -12086,6 +12296,241 @@ function IntegraApp() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* süper admin lisans / paket / ödeme ekranını gösteren kod */}
+            {activeTab === 'admin_lisans' && (
+              <div style={styles.panelCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '18px' }}>
+                  <div>
+                    <h2 style={styles.pageTitle}>💳 Lisans & Ödeme Takibi</h2>
+                    <p style={{ color: '#64748b', marginTop: '-6px' }}>Müşteri paketlerini, aylık ücretlerini, ödeme tarihlerini ve lisans durumlarını tek ekrandan yönetin.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={restoranlariSupabasedenCek}
+                    style={styles.btnOrange}
+                  >
+                    🔄 Firmaları Yenile
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Toplam Firma</span>
+                    <strong>{adminLisansOzet.toplam}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Aktif Lisans</span>
+                    <strong>{adminLisansOzet.aktif}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Yaklaşan Ödeme</span>
+                    <strong>{adminLisansOzet.yaklasan}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Geciken</span>
+                    <strong>{adminLisansOzet.geciken}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Bekleyen</span>
+                    <strong>{adminLisansOzet.bekleyen}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Aylık Tahmini</span>
+                    <strong>{adminLisansOzet.aylikTahmini} TL</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '18px' }}>
+                  <input
+                    value={adminLisansArama}
+                    onChange={e => setAdminLisansArama(e.target.value)}
+                    placeholder="Firma, yetkili, mail, telefon ara..."
+                    style={{ ...styles.input, minWidth: isMobile ? '100%' : '300px' }}
+                  />
+                  {['Tümü', 'Aktif', 'Yaklaşan Ödeme', 'Geciken', 'Ödeme Bekliyor', 'Askıya Alındı'].map(filtre => (
+                    <button
+                      key={filtre}
+                      type="button"
+                      onClick={() => setAdminLisansFiltresi(filtre)}
+                      style={adminLisansFiltresi === filtre ? styles.filterBtnActive : styles.filterBtn}
+                    >
+                      {filtre}
+                    </button>
+                  ))}
+                </div>
+
+                {adminLisansListe.length === 0 ? (
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '16px', padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                    Bu filtreye uyan firma bulunamadı.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '14px' }}>
+                    {adminLisansListe.map(r => {
+                      const rozet = lisansRozetiHazirla(r);
+                      const kalanGun = rozet.kalanGun;
+
+                      return (
+                        <div key={r.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '16px', boxShadow: '0 18px 36px -30px rgba(15,23,42,0.28)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: '14px' }}>
+                            <div>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <strong style={{ color: '#1e293b', fontSize: '17px' }}>🏢 {r.ad}</strong>
+                                <span style={{ fontSize: '11px', color: rozet.renk, backgroundColor: rozet.zemin, padding: '5px 9px', borderRadius: '999px', fontWeight: '900' }}>
+                                  {rozet.etiket}
+                                </span>
+                              </div>
+                              <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px' }}>
+                                {r.yetkiliAdi ? `${r.yetkiliAdi} / ` : ''}{r.email}{r.firmaTelefon ? ` / ${r.firmaTelefon}` : ''}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <button type="button" onClick={() => restoranOdemeAlindi(r)} style={styles.actionBtnApprove}>
+                                💰 Ödeme Alındı
+                              </button>
+                              <button type="button" onClick={() => restoranLisansAskıyaAl(r)} style={styles.actionBtnBlock}>
+                                🛑 Askıya Al
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Paket
+                              <select
+                                value={r.paketAdi || 'Profesyonel'}
+                                onChange={e => restoranLisansAlanGuncelle(r, 'paketAdi', e.target.value)}
+                                style={styles.input}
+                              >
+                                <option>Profesyonel</option>
+                                <option>Kurumsal</option>
+                                <option>Özel Paket</option>
+                              </select>
+                            </label>
+
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Aylık Ücret
+                              <input
+                                type="number"
+                                min="0"
+                                defaultValue={r.aylikUcret || 699}
+                                onBlur={e => restoranLisansAlanGuncelle(r, 'aylikUcret', e.target.value)}
+                                style={styles.input}
+                              />
+                            </label>
+
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Kullanıcı Limiti
+                              <input
+                                type="number"
+                                min="0"
+                                defaultValue={r.kullaniciLimiti || 3}
+                                onBlur={e => restoranKullaniciLimitiGuncelle(r, e.target.value)}
+                                style={styles.input}
+                              />
+                            </label>
+
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Lisans Durumu
+                              <select
+                                value={r.lisansDurumu || r.durum || 'Onay Bekliyor'}
+                                onChange={e => restoranLisansAlanGuncelle(r, 'lisansDurumu', e.target.value)}
+                                style={styles.input}
+                              >
+                                <option>Aktif</option>
+                                <option>Onay Bekliyor</option>
+                                <option>Ödeme Bekliyor</option>
+                                <option>Askıya Alındı</option>
+                                <option>Donduruldu</option>
+                              </select>
+                            </label>
+
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Ödeme Durumu
+                              <select
+                                value={r.odemeDurumu || 'Ödeme Bekliyor'}
+                                onChange={e => restoranLisansAlanGuncelle(r, 'odemeDurumu', e.target.value)}
+                                style={styles.input}
+                              >
+                                <option>Ödendi</option>
+                                <option>Ödeme Bekliyor</option>
+                                <option>Gecikti</option>
+                                <option>Muaf</option>
+                              </select>
+                            </label>
+
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Son Ödeme Tarihi
+                              <input
+                                type="date"
+                                value={r.sonOdemeTarihi || ''}
+                                onChange={e => restoranLisansAlanGuncelle(r, 'sonOdemeTarihi', e.target.value)}
+                                style={styles.input}
+                              />
+                            </label>
+
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Sonraki Ödeme Tarihi
+                              <input
+                                type="date"
+                                value={r.sonrakiOdemeTarihi || ''}
+                                onChange={e => restoranLisansAlanGuncelle(r, 'sonrakiOdemeTarihi', e.target.value)}
+                                style={styles.input}
+                              />
+                            </label>
+
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Son Ödeme Tutarı
+                              <input
+                                type="number"
+                                min="0"
+                                defaultValue={r.sonOdemeTutari || r.aylikUcret || 699}
+                                onBlur={e => restoranLisansAlanGuncelle(r, 'sonOdemeTutari', e.target.value)}
+                                style={styles.input}
+                              />
+                            </label>
+
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Ödeme Yöntemi
+                              <select
+                                value={r.sonOdemeYontemi || 'Banka / Havale'}
+                                onChange={e => restoranLisansAlanGuncelle(r, 'sonOdemeYontemi', e.target.value)}
+                                style={styles.input}
+                              >
+                                <option>Banka / Havale</option>
+                                <option>Nakit</option>
+                                <option>Kredi Kartı</option>
+                                <option>Online Ödeme</option>
+                                <option>Diğer</option>
+                              </select>
+                            </label>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '10px', alignItems: 'end', marginTop: '12px' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                              Lisans / Ödeme Notu
+                              <input
+                                defaultValue={r.lisansNotu || ''}
+                                onBlur={e => restoranLisansAlanGuncelle(r, 'lisansNotu', e.target.value)}
+                                placeholder="Örn: WhatsApp ile ödeme hatırlatması yapıldı"
+                                style={{ ...styles.input, minWidth: '100%' }}
+                              />
+                            </label>
+
+                            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px', fontSize: '12px', color: '#475569', minWidth: isMobile ? '100%' : '220px' }}>
+                              <div><strong>Kalan gün:</strong> {kalanGun === null ? '-' : kalanGun < 0 ? `${Math.abs(kalanGun)} gün gecikti` : `${kalanGun} gün`}</div>
+                              <div><strong>Son ödeme:</strong> {r.sonOdemeTarihi || '-'}</div>
+                              <div><strong>Sonraki ödeme:</strong> {r.sonrakiOdemeTarihi || '-'}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
