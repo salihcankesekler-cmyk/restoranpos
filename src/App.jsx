@@ -87,6 +87,21 @@ function IntegraApp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
+  const [kayitYetkiliAdi, setKayitYetkiliAdi] = useState('');
+  const [kayitTelefon, setKayitTelefon] = useState('');
+  const [kayitAdres, setKayitAdres] = useState('');
+  const [kayitNotu, setKayitNotu] = useState('');
+  const [kayitPaketi, setKayitPaketi] = useState('Profesyonel');
+  const [destekAdSoyad, setDestekAdSoyad] = useState('');
+  const [destekFirmaAdi, setDestekFirmaAdi] = useState('');
+  const [destekEmail, setDestekEmail] = useState('');
+  const [destekTelefon, setDestekTelefon] = useState('');
+  const [destekTalepTipi, setDestekTalepTipi] = useState('Geliştirme Talebi');
+  const [destekKonu, setDestekKonu] = useState('');
+  const [destekMesaj, setDestekMesaj] = useState('');
+  const [adminBildirimleri, setAdminBildirimleri] = useState([]);
+  const [destekTalepleri, setDestekTalepleri] = useState([]);
+  const [adminDetayAcikId, setAdminDetayAcikId] = useState(null);
   const [user, setUser] = useState(kayitliUser);
   const [yeniGarsonAdi, setYeniGarsonAdi] = useState('');
   const [yeniGarsonEmail, setYeniGarsonEmail] = useState('');
@@ -846,6 +861,28 @@ function IntegraApp() {
       minute: '2-digit',
     });
   };
+
+  // Supabase restaurants satırını süper admin panelinin anlayacağı formata çeviren kod
+  const restoranSatiriniHazirla = (r) => ({
+    id: r.id,
+    ad: r.restaurant_name || r.name || r.firma_adi || 'İsimsiz İşletme',
+    email: r.email || '',
+    durum: r.durum || 'Onay Bekliyor',
+    rol: r.rol || 'owner',
+    paketAdi: r.paket_adi || r.basvuru_paketi || 'Profesyonel',
+    basvuruPaketi: r.basvuru_paketi || r.paket_adi || 'Profesyonel',
+    aylikUcret: Number(r.aylik_ucret || 699),
+    sonOdemeTarihi: r.son_odeme_tarihi || '',
+    lisansDurumu: r.lisans_durumu || r.durum || 'Onay Bekliyor',
+    kullaniciLimiti: Number(r.kullanici_limiti || 3),
+    yetkiliAdi: r.yetkili_adi || '',
+    firmaTelefon: r.firma_telefon || r.telefon || '',
+    firmaAdres: r.firma_adres || r.adres || '',
+    kayitNotu: r.kayit_notu || '',
+    adminNotu: r.admin_notu || '',
+    createdAt: r.created_at || '',
+  });
+
   // süper admin için restoran listesini Supabase'den çeken kod
   const restoranlariSupabasedenCek = async () => {
     const { data, error } = await supabase
@@ -859,20 +896,105 @@ function IntegraApp() {
       return;
     }
 
-    const temizListe = data.map(r => ({
-      id: r.id,
-      ad: r.restaurant_name || r.name,
-      email: r.email,
-      durum: r.durum || 'Onay Bekliyor',
-      rol: r.rol || 'owner',
-      paketAdi: r.paket_adi || 'Starter',
-      aylikUcret: Number(r.aylik_ucret || 0),
-      sonOdemeTarihi: r.son_odeme_tarihi || '',
-      lisansDurumu: r.lisans_durumu || r.durum || 'Aktif',
-      kullaniciLimiti: Number(r.kullanici_limiti || 3),
-    }));
+    const temizListe = (Array.isArray(data) ? data : []).map(restoranSatiriniHazirla);
 
     setRestoranlar(temizListe);
+  };
+
+  // süper admin bildirimlerini Supabase'den çeken kod
+  const adminBildirimleriniSupabasedenCek = async () => {
+    const { data, error } = await supabase
+      .from('admin_bildirimleri')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (error) {
+      console.error('Admin bildirimleri çekilemedi:', error);
+      setAdminBildirimleri([]);
+      return;
+    }
+
+    setAdminBildirimleri((Array.isArray(data) ? data : []).map(b => ({
+      id: b.id,
+      tip: b.tip || 'Bilgi',
+      baslik: b.baslik || '',
+      mesaj: b.mesaj || '',
+      hedefEmail: b.hedef_email || 'salihcankesekler@gmail.com',
+      restaurantId: b.restaurant_id || null,
+      metadata: b.metadata || {},
+      okundu: Boolean(b.okundu),
+      createdAt: b.created_at || '',
+    })));
+  };
+
+  // destek ve geliştirme taleplerini süper admin için çeken kod
+  const destekTalepleriniSupabasedenCek = async () => {
+    const { data, error } = await supabase
+      .from('destek_talepleri')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Destek talepleri çekilemedi:', error);
+      setDestekTalepleri([]);
+      return;
+    }
+
+    setDestekTalepleri((Array.isArray(data) ? data : []).map(t => ({
+      id: t.id,
+      restaurantId: t.restaurant_id || null,
+      adSoyad: t.ad_soyad || '',
+      firmaAdi: t.firma_adi || '',
+      email: t.email || '',
+      telefon: t.telefon || '',
+      talepTipi: t.talep_tipi || 'Geliştirme Talebi',
+      konu: t.konu || '',
+      mesaj: t.mesaj || '',
+      durum: t.durum || 'Yeni',
+      adminNotu: t.admin_notu || '',
+      createdAt: t.created_at || '',
+    })));
+  };
+
+  // Edge Function aktifse admin maili göndermeyi deneyen kod
+  const adminMailGonder = async ({ tip, baslik, mesaj, metadata = {} }) => {
+    try {
+      const { error } = await supabase.functions.invoke('admin-mail-gonder', {
+        body: {
+          to: 'salihcankesekler@gmail.com',
+          tip,
+          baslik,
+          mesaj,
+          metadata,
+        },
+      });
+
+      if (error) {
+        console.warn('Admin mail gönderimi şimdilik aktif değil:', error.message);
+      }
+    } catch (err) {
+      console.warn('Admin mail fonksiyonu çağrılamadı:', err?.message || err);
+    }
+  };
+
+  // admin paneline bildirim kaydı atan kod
+  const adminBildirimKaydiOlustur = async ({ tip, baslik, mesaj, restaurantId = null, metadata = {} }) => {
+    try {
+      await supabase
+        .from('admin_bildirimleri')
+        .insert([{
+          tip,
+          baslik,
+          mesaj,
+          hedef_email: 'salihcankesekler@gmail.com',
+          restaurant_id: restaurantId,
+          metadata,
+        }]);
+    } catch (err) {
+      console.warn('Admin bildirim kaydı oluşturulamadı:', err?.message || err);
+    }
   };
 
   // restoran sahibine bağlı garson hesaplarını Supabase'den çeken kod
@@ -1205,20 +1327,11 @@ function IntegraApp() {
         .order('id', { ascending: true });
 
       if (!error && data) {
-        const temizListe = data.map(r => ({
-          id: r.id,
-          ad: r.restaurant_name || r.name,
-          email: r.email,
-          durum: r.durum || 'Onay Bekliyor',
-          rol: r.rol || 'owner',
-          paketAdi: r.paket_adi || 'Starter',
-          aylikUcret: Number(r.aylik_ucret || 0),
-          sonOdemeTarihi: r.son_odeme_tarihi || '',
-          lisansDurumu: r.lisans_durumu || r.durum || 'Aktif',
-          kullaniciLimiti: Number(r.kullanici_limiti || 3),
-        }));
+        const temizListe = (Array.isArray(data) ? data : []).map(restoranSatiriniHazirla);
 
         setRestoranlar(temizListe);
+        if (typeof adminBildirimleriniSupabasedenCek === 'function') await adminBildirimleriniSupabasedenCek();
+        if (typeof destekTalepleriniSupabasedenCek === 'function') await destekTalepleriniSupabasedenCek();
       } else {
         console.error('Admin restoran listesi çekilemedi:', error);
       }
@@ -1818,8 +1931,8 @@ function IntegraApp() {
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    if (!restaurantName || !email || !password) {
-      alert('Lütfen restoran adı, e-posta ve şifre girin.');
+    if (!restaurantName || !kayitYetkiliAdi || !kayitTelefon || !email || !password) {
+      alert('Lütfen işletme adı, yetkili adı, telefon, e-posta ve şifre girin.');
       return;
     }
 
@@ -1842,6 +1955,15 @@ function IntegraApp() {
           restaurant_name: restaurantName,
           email: email,
           password: password,
+          yetkili_adi: kayitYetkiliAdi,
+          firma_telefon: kayitTelefon,
+          firma_adres: kayitAdres,
+          kayit_notu: kayitNotu,
+          basvuru_paketi: kayitPaketi,
+          paket_adi: kayitPaketi,
+          aylik_ucret: kayitPaketi === 'Profesyonel' ? 699 : 0,
+          lisans_durumu: 'Onay Bekliyor',
+          kullanici_limiti: kayitPaketi === 'Profesyonel' ? 3 : 0,
           durum: 'Onay Bekliyor',
           rol: 'owner',
         },
@@ -1895,19 +2017,134 @@ function IntegraApp() {
 
     console.log('Oluşan masalar:', olusanMasalar);
 
-    alert('Kayıt başarılı. Varsayılan masalar oluşturuldu. Admin onayından sonra giriş yapabilirsiniz.');
+    const adminMesaji = `Yeni kayıt başvurusu: ${restaurantName} / Yetkili: ${kayitYetkiliAdi} / Telefon: ${kayitTelefon} / Paket: ${kayitPaketi}`;
+
+    await adminBildirimKaydiOlustur({
+      tip: 'Yeni Kayıt',
+      baslik: 'Yeni restoran başvurusu var',
+      mesaj: adminMesaji,
+      restaurantId: yeniRestoran.id,
+      metadata: {
+        restaurantName,
+        yetkiliAdi: kayitYetkiliAdi,
+        telefon: kayitTelefon,
+        adres: kayitAdres,
+        email,
+        paket: kayitPaketi,
+        not: kayitNotu,
+      },
+    });
+
+    await adminMailGonder({
+      tip: 'Yeni Kayıt Başvurusu',
+      baslik: 'Integra POS yeni kayıt başvurusu',
+      mesaj: adminMesaji,
+      metadata: {
+        restaurantName,
+        yetkiliAdi: kayitYetkiliAdi,
+        telefon: kayitTelefon,
+        adres: kayitAdres,
+        email,
+        paket: kayitPaketi,
+        not: kayitNotu,
+      },
+    });
+
+    alert('Kayıt başarılı. Başvurunuz bize ulaştı. Admin onayından sonra giriş yapabilirsiniz.');
 
     setRestaurantName('');
+    setKayitYetkiliAdi('');
+    setKayitTelefon('');
+    setKayitAdres('');
+    setKayitNotu('');
+    setKayitPaketi('Profesyonel');
     setEmail('');
     setPassword('');
     setScreen('login');
+  };
+
+  // ana sayfadaki destek/geliştirme talebini Supabase'e ve admin bildirimlerine gönderen kod
+  const destekTalebiGonder = async (e) => {
+    e.preventDefault();
+
+    if (!destekFirmaAdi || !destekEmail || !destekMesaj) {
+      alert('Lütfen firma adı, e-posta ve talep açıklamasını yazın.');
+      return;
+    }
+
+    const destekPayload = {
+      ad_soyad: destekAdSoyad,
+      firma_adi: destekFirmaAdi,
+      email: destekEmail,
+      telefon: destekTelefon,
+      talep_tipi: destekTalepTipi,
+      konu: destekKonu,
+      mesaj: destekMesaj,
+      durum: 'Yeni',
+    };
+
+    const { data, error } = await supabase
+      .from('destek_talepleri')
+      .insert([destekPayload])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Destek talebi gönderilemedi:', error);
+      alert('Talep gönderilemedi: ' + error.message);
+      return;
+    }
+
+    const adminMesaji = `${destekTalepTipi}: ${destekFirmaAdi} / ${destekEmail} / ${destekKonu || 'Konu yok'}`;
+
+    await adminBildirimKaydiOlustur({
+      tip: 'Destek Talebi',
+      baslik: 'Yeni destek/geliştirme talebi',
+      mesaj: adminMesaji,
+      metadata: {
+        talepId: data?.id,
+        adSoyad: destekAdSoyad,
+        firmaAdi: destekFirmaAdi,
+        email: destekEmail,
+        telefon: destekTelefon,
+        talepTipi: destekTalepTipi,
+        konu: destekKonu,
+        mesaj: destekMesaj,
+      },
+    });
+
+    await adminMailGonder({
+      tip: 'Destek/Geliştirme Talebi',
+      baslik: 'Integra POS yeni destek/geliştirme talebi',
+      mesaj: `${adminMesaji}\n\n${destekMesaj}`,
+      metadata: {
+        talepId: data?.id,
+        adSoyad: destekAdSoyad,
+        firmaAdi: destekFirmaAdi,
+        email: destekEmail,
+        telefon: destekTelefon,
+        talepTipi: destekTalepTipi,
+        konu: destekKonu,
+        mesaj: destekMesaj,
+      },
+    });
+
+    setDestekAdSoyad('');
+    setDestekFirmaAdi('');
+    setDestekEmail('');
+    setDestekTelefon('');
+    setDestekTalepTipi('Geliştirme Talebi');
+    setDestekKonu('');
+    setDestekMesaj('');
+
+    alert('Talebiniz alındı. Destek ekibi en kısa sürede dönüş yapacak.');
   };
 
   // süper adminin restoran durumunu aktif veya kapalı yapmasını sağlayan kod
   const restoranDurumDegistir = async (id, yeniDurum) => {
     const { data, error } = await supabase
       .from('restaurants')
-      .update({ durum: yeniDurum })
+      .update({ durum: yeniDurum, lisans_durumu: yeniDurum })
       .eq('id', id)
       .select()
       .single();
@@ -1923,6 +2160,7 @@ function IntegraApp() {
         return {
           ...r,
           durum: data.durum,
+          lisansDurumu: data.lisans_durumu || data.durum,
         };
       }
       return r;
@@ -6660,6 +6898,8 @@ function IntegraApp() {
       try {
         if (user.role === 'super_admin') {
           await restoranlariSupabasedenCek();
+          await adminBildirimleriniSupabasedenCek();
+          await destekTalepleriniSupabasedenCek();
           return;
         }
 
@@ -7003,6 +7243,7 @@ function IntegraApp() {
               <a href="#moduller" style={styles.navLinkItem}>Modüller</a>
               <a href="#nasil-calisir" style={styles.navLinkItem}>Nasıl Çalışır?</a>
               <a href="#fiyatlar" style={styles.navLinkItem}>Fiyatlar</a>
+              <a href="#destek" style={styles.navLinkItem}>Destek</a>
               <a href="#sss" style={styles.navLinkItem}>SSS</a>
             </nav>
 
@@ -7314,47 +7555,79 @@ function IntegraApp() {
           <section id="fiyatlar" style={styles.pricingSection}>
             <div style={styles.sectionHeadWrap}>
               <span style={styles.sectionBadge}>Fiyatlar</span>
-              <h2 style={styles.sectionTitle}>İşletmenize uygun lisans paketi</h2>
-              <p style={styles.sectionSubtitle}>Kullanıcı limiti, modül erişimi ve destek kapsamına göre paketlendirilmiş esnek yapı.</p>
+              <h2 style={styles.sectionTitle}>Şeffaf ve satışa hazır fiyatlandırma</h2>
+              <p style={styles.sectionSubtitle}>Restoran, kafe ve paket servis işletmeleri için aylık lisans modeli.</p>
             </div>
 
-            <div style={styles.pricingGrid}>
-              <div style={styles.priceCard}>
-                <div style={styles.pricePlan}>Starter</div>
-                <div style={styles.priceValue}>₺999<span style={styles.pricePeriod}>/ay</span></div>
-                <ul style={styles.priceList}>
-                  <li style={styles.priceListItem}>Masa & adisyon yönetimi</li>
-                  <li style={styles.priceListItem}>Menü grupları</li>
-                  <li style={styles.priceListItem}>Temel raporlar</li>
-                  <li style={styles.priceListItem}>Fiş yazdırma</li>
-                </ul>
-                <button onClick={() => setScreen('register')} style={styles.priceBtnLight}>Başvur</button>
-              </div>
-
+            <div style={{ ...styles.pricingGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
               <div style={{ ...styles.priceCard, ...styles.priceCardFeatured }}>
-                <div style={styles.pricePopularBadge}>En Popüler</div>
-                <div style={styles.pricePlan}>Pro</div>
-                <div style={styles.priceValue}>₺1.999<span style={styles.pricePeriod}>/ay</span></div>
+                <div style={styles.pricePopularBadge}>Önerilen Paket</div>
+                <div style={styles.pricePlan}>Profesyonel</div>
+                <div style={styles.priceValue}>699 TL<span style={styles.pricePeriod}>/ay</span></div>
                 <ul style={styles.priceList}>
-                  <li style={styles.priceListItem}>Sınırsız masa / menü</li>
-                  <li style={styles.priceListItem}>Mutfak ekranı</li>
-                  <li style={styles.priceListItem}>Gün sonu raporu</li>
-                  <li style={styles.priceListItem}>Parçalı ödeme & indirim</li>
+                  <li style={styles.priceListItem}>Masa, adisyon ve masa aktarma</li>
+                  <li style={styles.priceListItem}>Paket servis ve hızlı satış</li>
+                  <li style={styles.priceListItem}>Mutfak ekranı ve fiş tasarımı</li>
+                  <li style={styles.priceListItem}>Gün sonu, kasa ve raporlar</li>
+                  <li style={styles.priceListItem}>Personel yetkileri ve kullanıcı limiti</li>
                 </ul>
-                <button onClick={() => setScreen('register')} style={styles.priceBtn}>Demo Talep Et</button>
+                <button onClick={() => { setKayitPaketi('Profesyonel'); setScreen('register'); }} style={styles.priceBtn}>21 Gün Ücretsiz Dene</button>
               </div>
 
               <div style={styles.priceCard}>
-                <div style={styles.pricePlan}>Kurumsal</div>
-                <div style={styles.priceValue}>Teklif Al</div>
+                <div style={styles.pricePlan}>Kurumsal / Özel Çözüm</div>
+                <div style={styles.priceValue}>İletişime Geçin</div>
                 <ul style={styles.priceList}>
                   <li style={styles.priceListItem}>Çok şubeli yapı</li>
-                  <li style={styles.priceListItem}>Özel kurulum desteği</li>
-                  <li style={styles.priceListItem}>Gelişmiş yetkilendirme</li>
-                  <li style={styles.priceListItem}>Özel entegrasyonlar</li>
+                  <li style={styles.priceListItem}>Özel kurulum ve eğitim desteği</li>
+                  <li style={styles.priceListItem}>Yazıcı ve donanım danışmanlığı</li>
+                  <li style={styles.priceListItem}>Özel entegrasyon ve geliştirme</li>
                 </ul>
-                <button onClick={() => setScreen('register')} style={styles.priceBtnLight}>İletişime Geç</button>
+                <button onClick={() => { setKayitPaketi('Kurumsal'); setScreen('register'); }} style={styles.priceBtnLight}>İletişime Geç</button>
               </div>
+            </div>
+          </section>
+
+          {/* DESTEK VE GELİŞTİRME */}
+          <section id="destek" style={{ padding: '82px 4%', backgroundColor: '#fff7ed', borderTop: '1px solid #fed7aa' }}>
+            <div style={{ maxWidth: '1120px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '28px', alignItems: 'start' }}>
+              <div>
+                <span style={styles.sectionBadge}>Destek ve Geliştirme</span>
+                <h2 style={styles.sectionTitle}>İstek, hata ve geliştirme taleplerinizi bize gönderin.</h2>
+                <p style={styles.sectionSubtitle}>Müşterilerinizden gelen ihtiyaçlara göre sistemi büyütelim. Formdan gönderilen tüm talepler süper admin paneline düşer ve mail bildirimi denenir.</p>
+                <div style={{ display: 'grid', gap: '12px', marginTop: '22px' }}>
+                  {[
+                    'Yeni özellik isteği',
+                    'Fiş/yazıcı desteği',
+                    'Kullanım veya kurulum desteği',
+                    'Hata bildirimi ve iyileştirme',
+                  ].map(item => (
+                    <div key={item} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '14px', color: '#334155', fontWeight: '800' }}>
+                      ✅ {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <form onSubmit={destekTalebiGonder} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '22px', padding: '22px', boxShadow: '0 20px 45px -30px rgba(15,23,42,0.25)' }}>
+                <h3 style={{ margin: '0 0 14px', color: '#1e293b' }}>Talep Gönder</h3>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <input type="text" placeholder="Ad Soyad" value={destekAdSoyad} onChange={e => setDestekAdSoyad(e.target.value)} style={styles.authInput} />
+                  <input type="text" placeholder="Firma / İşletme Adı *" value={destekFirmaAdi} onChange={e => setDestekFirmaAdi(e.target.value)} style={styles.authInput} />
+                  <input type="email" placeholder="E-posta *" value={destekEmail} onChange={e => setDestekEmail(e.target.value)} style={styles.authInput} />
+                  <input type="tel" placeholder="Telefon" value={destekTelefon} onChange={e => setDestekTelefon(e.target.value)} style={styles.authInput} />
+                  <select value={destekTalepTipi} onChange={e => setDestekTalepTipi(e.target.value)} style={styles.authInput}>
+                    <option>Geliştirme Talebi</option>
+                    <option>Destek Talebi</option>
+                    <option>Hata Bildirimi</option>
+                    <option>Fiş / Yazıcı Talebi</option>
+                    <option>Kurulum Talebi</option>
+                  </select>
+                  <input type="text" placeholder="Konu" value={destekKonu} onChange={e => setDestekKonu(e.target.value)} style={styles.authInput} />
+                  <textarea placeholder="Talebinizi yazın *" value={destekMesaj} onChange={e => setDestekMesaj(e.target.value)} style={{ ...styles.authInput, minHeight: '120px', resize: 'vertical' }} />
+                  <button type="submit" style={styles.priceBtn}>Talebi Gönder</button>
+                </div>
+              </form>
             </div>
           </section>
 
@@ -7522,24 +7795,59 @@ function IntegraApp() {
             <form onSubmit={handleRegister} style={styles.form}>
               <input
                 type="text"
-                placeholder="Restoran / Kafe Adı"
+                placeholder="Restoran / Kafe Adı *"
                 value={restaurantName}
                 onChange={e => setRestaurantName(e.target.value)}
                 style={styles.authInput}
               />
               <input
+                type="text"
+                placeholder="Yetkili Adı Soyadı *"
+                value={kayitYetkiliAdi}
+                onChange={e => setKayitYetkiliAdi(e.target.value)}
+                style={styles.authInput}
+              />
+              <input
+                type="tel"
+                placeholder="Firma Telefonu *"
+                value={kayitTelefon}
+                onChange={e => setKayitTelefon(e.target.value)}
+                style={styles.authInput}
+              />
+              <input
+                type="text"
+                placeholder="Firma Adresi"
+                value={kayitAdres}
+                onChange={e => setKayitAdres(e.target.value)}
+                style={styles.authInput}
+              />
+              <select
+                value={kayitPaketi}
+                onChange={e => setKayitPaketi(e.target.value)}
+                style={styles.authInput}
+              >
+                <option value="Profesyonel">Profesyonel - 699 TL / ay</option>
+                <option value="Kurumsal">Kurumsal / Özel Çözüm - İletişime Geçin</option>
+              </select>
+              <input
                 type="email"
-                placeholder="Yönetici E-posta Adresi"
+                placeholder="Yönetici E-posta Adresi *"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 style={styles.authInput}
               />
               <input
                 type="password"
-                placeholder="Şifre Belirleyin"
+                placeholder="Şifre Belirleyin *"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 style={styles.authInput}
+              />
+              <textarea
+                placeholder="Başvuru notu / ihtiyaçlarınız"
+                value={kayitNotu}
+                onChange={e => setKayitNotu(e.target.value)}
+                style={{ ...styles.authInput, minHeight: '90px', resize: 'vertical' }}
               />
               <button type="submit" style={styles.authBtn}>Kayıt Başvurusunu Gönder</button>
             </form>
@@ -11553,15 +11861,96 @@ function IntegraApp() {
             {/* süper admin müşteri yönetimi ekranını gösteren kod */}
             {activeTab === 'super_admin' && (
               <div style={styles.panelCard}>
-                <h2 style={styles.pageTitle}>👑 Müşteri Yönetimi</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '18px' }}>
+                  <div>
+                    <h2 style={styles.pageTitle}>👑 Süper Admin Paneli</h2>
+                    <p style={{ color: '#64748b', marginTop: '-6px' }}>Kayıt başvuruları, firma detayları, lisanslar ve destek talepleri burada görünür.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await restoranlariSupabasedenCek();
+                      await adminBildirimleriniSupabasedenCek();
+                      await destekTalepleriniSupabasedenCek();
+                    }}
+                    style={styles.btnOrange}
+                  >
+                    🔄 Yenile
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Toplam Firma</span>
+                    <strong>{restoranlar.filter(r => r.rol === 'owner').length}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Onay Bekleyen</span>
+                    <strong>{restoranlar.filter(r => r.durum !== 'Aktif' && r.rol === 'owner').length}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Yeni Bildirim</span>
+                    <strong>{adminBildirimleri.filter(b => !b.okundu).length}</strong>
+                  </div>
+                  <div style={{ ...styles.statCard, margin: 0 }}>
+                    <span>Destek Talepleri</span>
+                    <strong>{destekTalepleri.length}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '22px' }}>
+                  <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '18px', padding: '16px' }}>
+                    <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>🔔 Son Admin Bildirimleri</h3>
+                    {adminBildirimleri.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: '13px' }}>Henüz bildirim yok.</div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: '10px', maxHeight: '280px', overflowY: 'auto' }}>
+                        {adminBildirimleri.slice(0, 8).map(b => (
+                          <div key={b.id} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '12px', padding: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
+                              <strong style={{ color: '#1e293b' }}>{b.baslik}</strong>
+                              <span style={{ fontSize: '11px', color: '#ff6b35', fontWeight: '900' }}>{b.tip}</span>
+                            </div>
+                            <div style={{ color: '#475569', fontSize: '12px', marginTop: '6px', lineHeight: 1.5 }}>{b.mesaj}</div>
+                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '6px' }}>{tarihSaatYaz(b.createdAt)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '16px' }}>
+                    <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>🛠️ Destek ve Geliştirme Talepleri</h3>
+                    {destekTalepleri.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: '13px' }}>Henüz destek talebi yok.</div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: '10px', maxHeight: '280px', overflowY: 'auto' }}>
+                        {destekTalepleri.slice(0, 8).map(t => (
+                          <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
+                              <strong style={{ color: '#1e293b' }}>{t.firmaAdi}</strong>
+                              <span style={{ fontSize: '11px', color: '#0f766e', fontWeight: '900' }}>{t.talepTipi}</span>
+                            </div>
+                            <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px' }}>{t.email}{t.telefon ? ` / ${t.telefon}` : ''}</div>
+                            <div style={{ color: '#1e293b', fontSize: '13px', marginTop: '7px', fontWeight: '800' }}>{t.konu || 'Konu yok'}</div>
+                            <div style={{ color: '#475569', fontSize: '12px', marginTop: '4px', lineHeight: 1.5 }}>{t.mesaj}</div>
+                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '6px' }}>{tarihSaatYaz(t.createdAt)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>🏢 Kayıtlı Firmalar ve Detaylar</h3>
 
                 <div style={{ overflowX: 'auto' }}>
                   <table style={styles.table}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc' }}>
-                        <th style={styles.th}>İşletme Bilgileri</th>
-                        <th style={styles.th}>Kullanıcı Tipi</th>
-                        <th style={styles.th}>Lisans Durumu</th>
+                        <th style={styles.th}>Firma Detayları</th>
+                        <th style={styles.th}>Paket / Lisans</th>
+                        <th style={styles.th}>Durum</th>
                         <th style={styles.th}>Kullanıcı Limiti</th>
                         <th style={{ ...styles.th, textAlign: 'right', paddingRight: '15px' }}>Yönetim</th>
                       </tr>
@@ -11571,19 +11960,39 @@ function IntegraApp() {
                         <tr key={r.id} style={styles.tr}>
                           <td style={styles.td}>
                             <div style={{ fontWeight: 'bold', color: '#1e293b' }}>💼 {r.ad}</div>
-                            <div style={{ fontSize: '12px', color: '#64748b' }}>{r.email}</div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                              Paket: <strong>{r.paketAdi || 'Starter'}</strong> / Aylık: <strong>{r.aylikUcret || 0} TL</strong>
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                              Son ödeme: <strong>{r.sonOdemeTarihi || '-'}</strong>
-                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b' }}>Yetkili: <strong>{r.yetkiliAdi || '-'}</strong></div>
+                            <div style={{ fontSize: '12px', color: '#64748b' }}>E-posta: <strong>{r.email || '-'}</strong></div>
+                            <div style={{ fontSize: '12px', color: '#64748b' }}>Telefon: <strong>{r.firmaTelefon || '-'}</strong></div>
+                            <button
+                              type="button"
+                              onClick={() => setAdminDetayAcikId(adminDetayAcikId === r.id ? null : r.id)}
+                              style={{ ...styles.filterBtn, marginTop: '8px' }}
+                            >
+                              {adminDetayAcikId === r.id ? 'Detayı Gizle' : 'Firma Detayı'}
+                            </button>
+
+                            {adminDetayAcikId === r.id && (
+                              <div style={{ marginTop: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', fontSize: '12px', color: '#475569', lineHeight: 1.7 }}>
+                                <div><strong>Adres:</strong> {r.firmaAdres || '-'}</div>
+                                <div><strong>Başvuru Paketi:</strong> {r.basvuruPaketi || r.paketAdi || '-'}</div>
+                                <div><strong>Kayıt Tarihi:</strong> {tarihSaatYaz(r.createdAt)}</div>
+                                <div><strong>Başvuru Notu:</strong> {r.kayitNotu || '-'}</div>
+                                <div><strong>Admin Notu:</strong> {r.adminNotu || '-'}</div>
+                              </div>
+                            )}
                           </td>
-                          <td style={styles.td}>{r.rol === 'owner' ? 'Yönetici / Sahip' : 'Garson Terminali'}</td>
+                          <td style={styles.td}>
+                            <div>Paket: <strong>{r.paketAdi || 'Profesyonel'}</strong></div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Aylık: <strong>{Number(r.aylikUcret || 0)} TL</strong></div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Son ödeme: <strong>{r.sonOdemeTarihi || '-'}</strong></div>
+                          </td>
                           <td style={styles.td}>
                             <span style={r.durum === 'Aktif' ? styles.badgeActive : styles.badgePending}>{r.durum}</span>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
                               Lisans: <strong>{r.lisansDurumu || r.durum}</strong>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                              Tip: <strong>{r.rol === 'owner' ? 'Yönetici / Sahip' : 'Personel'}</strong>
                             </div>
                           </td>
                           <td style={styles.td}>
