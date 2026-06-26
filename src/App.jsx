@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 
+// Integra POS - yazıcı yönlendirme v3: grup/ürün üzerinden 1-mutfak, 2-bar/içecek, yazdırma yok seçimi eklendi.
+
 class AppErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -133,7 +135,7 @@ function IntegraApp() {
   // menü ürün gruplarını tutan kod
   const [menuGruplari, setMenuGruplari] = useState([
     { id: 'demo-grup-1', restaurantId: 1, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-    { id: 'demo-grup-2', restaurantId: 1, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false },
+    { id: 'demo-grup-2', restaurantId: 1, ad: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true },
     { id: 'demo-grup-3', restaurantId: 1, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
   ]);
 
@@ -362,6 +364,9 @@ function IntegraApp() {
   // ürün maliyeti ve kasa gün sonu için kullanılan kod
   const [yeniUrunMaliyeti, setYeniUrunMaliyeti] = useState('');
   const [duzenlenenUrunMaliyeti, setDuzenlenenUrunMaliyeti] = useState('');
+  // ürün eklerken/düzenlerken yazıcı yönünü seçmek için kullanılan kod
+  const [yeniUrunYaziciYonlendirme, setYeniUrunYaziciYonlendirme] = useState('grup');
+  const [duzenlenenUrunYaziciYonlendirme, setDuzenlenenUrunYaziciYonlendirme] = useState('mutfak');
   const [kasaGercekTutar, setKasaGercekTutar] = useState('');
 
   // gün sonu kapatıldıktan sonra kasa bölümünde saklanacak Z raporlarını tutan kod
@@ -411,10 +416,10 @@ function IntegraApp() {
 
   const [menuUrunleri, setMenuUrunleri] = useState([
     { id: 1, restaurantId: 1, ad: 'Adana Kebap', fiyat: 280, kategori: 'Ana Yemekler', menuGrubu: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, menuNotlari: [] },
-    { id: 2, restaurantId: 1, ad: 'Ayran', fiyat: 40, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false, menuNotlari: [] },
+    { id: 2, restaurantId: 1, ad: 'Ayran', fiyat: 40, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true, menuNotlari: [] },
     { id: 3, restaurantId: 1, ad: 'Künefe', fiyat: 120, kategori: 'Tatlılar', menuGrubu: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true, menuNotlari: [] },
     { id: 4, restaurantId: 1, ad: 'Mercimek Çorbası', fiyat: 90, kategori: 'Ana Yemekler', menuGrubu: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, menuNotlari: [] },
-    { id: 5, restaurantId: 3, ad: 'Filtre Kahve', fiyat: 110, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false, menuNotlari: [] },
+    { id: 5, restaurantId: 3, ad: 'Filtre Kahve', fiyat: 110, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true, menuNotlari: [] },
   ]);
 
   const [satisGecmisi, setSatisGecmisi] = useState([
@@ -527,6 +532,61 @@ function IntegraApp() {
     return temizNo ? `${temizAdi} / No: ${temizNo}` : temizAdi;
   };
 
+  // grup ve ürün yazıcı yönlendirme seçeneklerini hazırlayan kod
+  const yaziciYonlendirmeSecenekleri = [
+    { value: 'mutfak', label: '1 - Mutfak / Yemek Yazıcısı' },
+    { value: 'bar', label: '2 - Bar / İçecek Yazıcısı' },
+    { value: 'yazdirma_yok', label: 'Yazdırma yok' },
+  ];
+
+  const yeniUrunYaziciYonlendirmeSecenekleri = [
+    { value: 'grup', label: 'Grubun yazıcı ayarını kullan' },
+    ...yaziciYonlendirmeSecenekleri,
+  ];
+
+  // mevcut departman/mutfağa gider alanlarından yazıcı yönünü okuyan kod
+  const yaziciYonlendirmeTipiBul = (kaynak = {}) => {
+    const mutfagaGitsinDegeri = kaynak?.mutfagaGitsin ?? kaynak?.mutfaga_gitsin;
+
+    if (mutfagaGitsinDegeri === false) {
+      return 'yazdirma_yok';
+    }
+
+    const departmanMetni = String(kaynak?.departman || '').toLocaleLowerCase('tr-TR');
+    const barDepartmani =
+      departmanMetni.includes('bar') ||
+      departmanMetni.includes('içecek') ||
+      departmanMetni.includes('icecek') ||
+      departmanMetni.includes('kahve') ||
+      departmanMetni.includes('çay') ||
+      departmanMetni.includes('cay');
+
+    return barDepartmani ? 'bar' : 'mutfak';
+  };
+
+  // seçilen yazıcı yönünü mevcut tablo alanlarına çeviren kod
+  const yaziciYonlendirmeAyarlariniHazirla = (tip = 'mutfak', mevcutDepartman = 'Mutfak') => {
+    const temizTip = String(tip || 'mutfak').toLocaleLowerCase('tr-TR');
+
+    if (temizTip === 'bar') {
+      return { departman: 'Bar / İçecek', mutfagaGitsin: true };
+    }
+
+    if (temizTip === 'yazdirma_yok') {
+      return { departman: mevcutDepartman || 'Mutfak', mutfagaGitsin: false };
+    }
+
+    return { departman: 'Mutfak', mutfagaGitsin: true };
+  };
+
+  // yazıcı yönlendirme seçiminin kısa etiketini oluşturan kod
+  const yaziciYonlendirmeTipiEtiketi = (tip = 'mutfak') => {
+    if (tip === 'bar') return '2 - Bar / İçecek Yazıcısı';
+    if (tip === 'yazdirma_yok') return 'Yazdırma yok';
+    if (tip === 'grup') return 'Grubun ayarı';
+    return '1 - Mutfak / Yemek Yazıcısı';
+  };
+
   // departmana göre mutfak/bar yazıcı hedefini belirleyen kod
   const yaziciHedefiBul = (departman = '', tip = 'mutfak') => {
     const ayarlar = {
@@ -573,6 +633,17 @@ function IntegraApp() {
   const yaziciHedefEtiketi = (hedef) => {
     if (!hedef) return 'Yazıcı seçilmedi';
     return `${hedef.tur}: ${yaziciEtiketiHazirla(hedef.adi, hedef.no, hedef.tur)}`;
+  };
+
+  // grup/ürün üzerinde görünen yazıcı hedef etiketini hazırlayan kod
+  const yaziciYonlendirmeHedefEtiketi = (kaynak = {}) => {
+    const tip = yaziciYonlendirmeTipiBul(kaynak);
+
+    if (tip === 'yazdirma_yok') {
+      return 'Yazdırma yok';
+    }
+
+    return yaziciHedefEtiketi(yaziciHedefiBul(tip === 'bar' ? 'Bar / İçecek' : 'Mutfak', 'mutfak'));
   };
 
   // birden fazla mutfak fişi varsa hedef yazıcıya göre gruplayan kod
@@ -1447,7 +1518,7 @@ function IntegraApp() {
           ? prev
           : [
               { id: 'varsayilan-ana-yemekler', restaurantId, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-              { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false },
+              { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true },
               { id: 'varsayilan-tatlilar', restaurantId, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
             ];
       });
@@ -1467,7 +1538,7 @@ function IntegraApp() {
       ? temizGruplar
       : [
           { id: 'varsayilan-ana-yemekler', restaurantId, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-          { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false },
+          { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true },
           { id: 'varsayilan-tatlilar', restaurantId, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
         ];
 
@@ -6495,12 +6566,17 @@ function IntegraApp() {
       return;
     }
 
+    const yeniGrupYaziciAyari = {
+      departman: yeniMenuGrupDepartmani || 'Mutfak',
+      mutfagaGitsin: yeniMenuGrupMutfagaGitsin,
+    };
+
     const yeniGrupPayload = {
       restaurant_id: mevcutRestaurantId,
       ad: grupAdi,
-      departman: yeniMenuGrupDepartmani || 'Mutfak',
+      departman: yeniGrupYaziciAyari.departman,
       kdv_orani: kdvOrani,
-      mutfaga_gitsin: yeniMenuGrupMutfagaGitsin,
+      mutfaga_gitsin: yeniGrupYaziciAyari.mutfagaGitsin,
     };
 
     const { data, error } = await supabase
@@ -6585,6 +6661,104 @@ function IntegraApp() {
         return {
           ...u,
           mutfagaGitsin: yeniDurum,
+        };
+      }
+
+      return u;
+    }));
+  };
+
+  // menü grubunun hangi yazıcıya gideceğini hızlıca ayarlayan kod
+  const menuGrubuYaziciYonlendirmesiniAyarla = async (grup, yeniYonlendirme) => {
+    if (!grup || !grup.ad) {
+      alert('Grup bulunamadı.');
+      return;
+    }
+
+    const yaziciAyari = yaziciYonlendirmeAyarlariniHazirla(yeniYonlendirme, grup.departman || 'Mutfak');
+    const grupDbdeVarMi = !String(grup.id).startsWith('varsayilan-') && !String(grup.id).startsWith('demo-') && !String(grup.id).startsWith('urun-grup-');
+    let kayitliGrupData = null;
+
+    if (grupDbdeVarMi) {
+      const { data, error } = await supabase
+        .from('menu_gruplari')
+        .update({
+          departman: yaziciAyari.departman,
+          mutfaga_gitsin: yaziciAyari.mutfagaGitsin,
+        })
+        .eq('id', grup.id)
+        .eq('restaurant_id', mevcutRestaurantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Grup yazıcı yönlendirmesi güncellenemedi:', error);
+        alert('Grup yazıcı yönlendirmesi güncellenemedi: ' + error.message);
+        return;
+      }
+
+      kayitliGrupData = data;
+    } else {
+      const { data, error } = await supabase
+        .from('menu_gruplari')
+        .insert([
+          {
+            restaurant_id: mevcutRestaurantId,
+            ad: grup.ad,
+            departman: yaziciAyari.departman,
+            kdv_orani: Number(grup.kdvOrani || 10),
+            mutfaga_gitsin: yaziciAyari.mutfagaGitsin,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Grup yazıcı yönlendirmesi kaydedilemedi:', error);
+        alert('Grup yazıcı yönlendirmesi kaydedilemedi: ' + error.message);
+        return;
+      }
+
+      kayitliGrupData = data;
+    }
+
+    const { error: urunGuncellemeError } = await supabase
+      .from('menu_urunleri')
+      .update({
+        departman: yaziciAyari.departman,
+        mutfaga_gitsin: yaziciAyari.mutfagaGitsin,
+      })
+      .eq('restaurant_id', mevcutRestaurantId)
+      .eq('menu_grubu', grup.ad);
+
+    if (urunGuncellemeError) {
+      console.error('Grup ürünlerinin yazıcı yönlendirmesi güncellenemedi:', urunGuncellemeError);
+      alert('Grup kaydedildi ama ürünlerin yazıcı yönlendirmesi güncellenemedi: ' + urunGuncellemeError.message);
+      return;
+    }
+
+    const guncelGrup = {
+      ...grup,
+      id: kayitliGrupData.id,
+      restaurantId: kayitliGrupData.restaurant_id,
+      ad: kayitliGrupData.ad,
+      departman: kayitliGrupData.departman || yaziciAyari.departman,
+      kdvOrani: Number(kayitliGrupData.kdv_orani || grup.kdvOrani || 10),
+      mutfagaGitsin: kayitliGrupData.mutfaga_gitsin !== false,
+    };
+
+    setMenuGruplari(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const kalanlar = liste.filter(g => String(g.id) !== String(grup.id) && g.ad !== grup.ad);
+      return [...kalanlar, guncelGrup];
+    });
+
+    setMenuUrunleri(prev => (Array.isArray(prev) ? prev : []).map(u => {
+      if (String(u.restaurantId) === String(mevcutRestaurantId) && (u.menuGrubu || u.kategori || 'Genel') === grup.ad) {
+        return {
+          ...u,
+          departman: guncelGrup.departman,
+          mutfagaGitsin: guncelGrup.mutfagaGitsin,
         };
       }
 
@@ -6858,6 +7032,9 @@ function IntegraApp() {
     }
 
     const urunGrubu = aktifGrup || { ad: aktifMenuGrubu || 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true };
+    const yeniUrunYaziciAyari = yeniUrunYaziciYonlendirme === 'grup'
+      ? { departman: urunGrubu.departman || 'Mutfak', mutfagaGitsin: urunGrubu.mutfagaGitsin !== false }
+      : yaziciYonlendirmeAyarlariniHazirla(yeniUrunYaziciYonlendirme, urunGrubu.departman || 'Mutfak');
 
     const { data, error } = await supabase
       .from('menu_urunleri')
@@ -6869,10 +7046,10 @@ function IntegraApp() {
           maliyet: sayiyaCevir(yeniUrunMaliyeti || 0),
           kategori: urunGrubu.ad,
           menu_grubu: urunGrubu.ad,
-          departman: urunGrubu.departman || 'Mutfak',
+          departman: yeniUrunYaziciAyari.departman,
           kdv_orani: Number(urunGrubu.kdvOrani || 10),
           menu_notlari: [],
-          mutfaga_gitsin: urunGrubu.mutfagaGitsin !== false,
+          mutfaga_gitsin: yeniUrunYaziciAyari.mutfagaGitsin,
           stok_takip: false,
           stok_adedi: 0,
           kritik_stok: 0,
@@ -6896,7 +7073,7 @@ function IntegraApp() {
       maliyet: Number(data.maliyet || 0),
       kategori: data.menu_grubu || data.kategori || urunGrubu.ad,
       menuGrubu: data.menu_grubu || data.kategori || urunGrubu.ad,
-      departman: data.departman || urunGrubu.departman || 'Mutfak',
+      departman: data.departman || yeniUrunYaziciAyari.departman || urunGrubu.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || urunGrubu.kdvOrani || 10),
       menuNotlari: Array.isArray(data.menu_notlari) ? data.menu_notlari : [],
       mutfagaGitsin: data.mutfaga_gitsin !== false,
@@ -6910,6 +7087,7 @@ function IntegraApp() {
     setYeniUrunAdi('');
     setYeniUrunFiyati('');
     setYeniUrunMaliyeti('');
+    setYeniUrunYaziciYonlendirme('grup');
   };
   // ürün düzenleme modunu başlatan kod
   const urunDuzenlemeyiBaslat = (urun) => {
@@ -6917,6 +7095,7 @@ function IntegraApp() {
     setDuzenlenenUrunAdi(urun.ad);
     setDuzenlenenUrunFiyati(String(urun.fiyat));
     setDuzenlenenUrunMaliyeti(String(urun.maliyet || 0));
+    setDuzenlenenUrunYaziciYonlendirme(yaziciYonlendirmeTipiBul(urun));
   };
 
   // ürün düzenleme modunu iptal eden kod
@@ -6925,6 +7104,7 @@ function IntegraApp() {
     setDuzenlenenUrunAdi('');
     setDuzenlenenUrunFiyati('');
     setDuzenlenenUrunMaliyeti('');
+    setDuzenlenenUrunYaziciYonlendirme('mutfak');
   };
 
   // ürün adını ve fiyatını Supabase'de güncelleyen, hazır notları koruyan kod
@@ -6935,18 +7115,23 @@ function IntegraApp() {
     }
 
     const eskiUrun = menuUrunleri.find(u => u.id === id);
+    const urunYaziciAyari = yaziciYonlendirmeAyarlariniHazirla(
+      duzenlenenUrunYaziciYonlendirme,
+      eskiUrun?.departman || aktifGrup.departman || 'Mutfak'
+    );
 
     const { data, error } = await supabase
       .from('menu_urunleri')
       .update({
         ad: duzenlenenUrunAdi,
         fiyat: Number(duzenlenenUrunFiyati),
+        maliyet: sayiyaCevir(duzenlenenUrunMaliyeti || 0),
         kategori: eskiUrun?.menuGrubu || eskiUrun?.kategori || aktifGrup.ad || 'Genel',
         menu_grubu: eskiUrun?.menuGrubu || eskiUrun?.kategori || aktifGrup.ad || 'Genel',
-        departman: eskiUrun?.departman || aktifGrup.departman || 'Mutfak',
+        departman: urunYaziciAyari.departman,
         kdv_orani: Number(eskiUrun?.kdvOrani || aktifGrup.kdvOrani || 10),
         menu_notlari: Array.isArray(eskiUrun?.menuNotlari) ? eskiUrun.menuNotlari : [],
-        mutfaga_gitsin: eskiUrun?.mutfagaGitsin !== false,
+        mutfaga_gitsin: urunYaziciAyari.mutfagaGitsin,
       })
       .eq('id', id)
       .eq('restaurant_id', mevcutRestaurantId)
@@ -11403,7 +11588,7 @@ function IntegraApp() {
                 <h2 style={styles.pageTitle}>Restoran Menü Yönetimi — Gruplu Sistem</h2>
 
                 <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
-                  Ürünleri Ana Yemekler, İçecekler, Tatlılar gibi gruplara ayırabilirsiniz. Ürünler departman, KDV ve mutfak ayarını bağlı olduğu gruptan alır.
+                  Ürünleri Ana Yemekler, İçecekler, Tatlılar gibi gruplara ayırabilirsiniz. Ürünler KDV ve yazıcı yönlendirmesini bağlı olduğu gruptan alır; gerekirse ürün bazında 1-Mutfak, 2-Bar/İçecek veya Yazdırma yok seçebilirsiniz.
                 </p>
 
                 {/* firma bilgisi ve adisyon/mutfak yazıcı ayarlarını yöneten kod */}
@@ -11608,7 +11793,7 @@ function IntegraApp() {
                   </div>
 
                   <div style={{ color: '#64748b', fontSize: '11px', marginTop: '10px', lineHeight: 1.5, fontWeight: '700' }}>
-                    Not: Tarayıcı güvenliği nedeniyle web sitesi yazıcıyı tamamen sessiz seçemez. Bu sürüm fiş penceresini hedefe göre ayırır ve başlıkta yazıcı adı/numarası gösterir. Ürün grubu departmanı Bar, İçecek, Kahve veya Çay ise bar/içecek yazıcısına; diğer mutfağa giden ürünler mutfak yazıcısına yönlendirilir. Tam otomatik cihaz seçimi için sonraki aşamada yerel yazdırma servisi eklenir.
+                    Not: Tarayıcı güvenliği nedeniyle web sitesi yazıcıyı tamamen sessiz seçemez. Bu sürüm fiş penceresini hedefe göre ayırır ve başlıkta yazıcı adı/numarası gösterir. Menü grubundan 1-Mutfak/Yemek, 2-Bar/İçecek veya Yazdırma yok seçebilirsiniz. Ürün bazında özel seçim yaparsanız grup ayarının önüne geçer. Tam otomatik cihaz seçimi için sonraki aşamada yerel yazdırma servisi eklenir.
                   </div>
                 </div>
 
@@ -11649,12 +11834,17 @@ function IntegraApp() {
                   />
 
                   <select
-                    value={yeniMenuGrupMutfagaGitsin ? 'true' : 'false'}
-                    onChange={e => setYeniMenuGrupMutfagaGitsin(e.target.value === 'true')}
-                    style={styles.input}
+                    value={yaziciYonlendirmeTipiBul({ departman: yeniMenuGrupDepartmani, mutfagaGitsin: yeniMenuGrupMutfagaGitsin })}
+                    onChange={e => {
+                      const ayar = yaziciYonlendirmeAyarlariniHazirla(e.target.value, yeniMenuGrupDepartmani);
+                      setYeniMenuGrupDepartmani(ayar.departman);
+                      setYeniMenuGrupMutfagaGitsin(ayar.mutfagaGitsin);
+                    }}
+                    style={{ ...styles.input, fontWeight: '800' }}
                   >
-                    <option value="true">👨‍🍳 Grup mutfağa gider</option>
-                    <option value="false">🚫 Grup mutfağa gitmez</option>
+                    {yaziciYonlendirmeSecenekleri.map(secenek => (
+                      <option key={secenek.value} value={secenek.value}>{secenek.label}</option>
+                    ))}
                   </select>
 
                   <button type="submit" style={styles.btnOrange}>
@@ -11722,12 +11912,17 @@ function IntegraApp() {
                       />
 
                       <select
-                        value={duzenlenenMenuGrupMutfagaGitsin ? 'true' : 'false'}
-                        onChange={e => setDuzenlenenMenuGrupMutfagaGitsin(e.target.value === 'true')}
-                        style={styles.input}
+                        value={yaziciYonlendirmeTipiBul({ departman: duzenlenenMenuGrupDepartmani, mutfagaGitsin: duzenlenenMenuGrupMutfagaGitsin })}
+                        onChange={e => {
+                          const ayar = yaziciYonlendirmeAyarlariniHazirla(e.target.value, duzenlenenMenuGrupDepartmani);
+                          setDuzenlenenMenuGrupDepartmani(ayar.departman);
+                          setDuzenlenenMenuGrupMutfagaGitsin(ayar.mutfagaGitsin);
+                        }}
+                        style={{ ...styles.input, fontWeight: '800' }}
                       >
-                        <option value="true">👨‍🍳 Mutfağa gider</option>
-                        <option value="false">🚫 Mutfağa gitmez</option>
+                        {yaziciYonlendirmeSecenekleri.map(secenek => (
+                          <option key={secenek.value} value={secenek.value}>{secenek.label}</option>
+                        ))}
                       </select>
 
                       <button
@@ -11778,12 +11973,13 @@ function IntegraApp() {
                         <strong style={{ color: '#1e293b' }}>{aktifGrup.ad}</strong>
                         <span> / Departman: <strong>{aktifGrup.departman || 'Mutfak'}</strong></span>
                         <span> / KDV: <strong>%{aktifGrup.kdvOrani || 10}</strong></span>
+                        <span> / Yazıcı: <strong>{yaziciYonlendirmeHedefEtiketi(aktifGrup)}</strong></span>
                       </div>
 
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <select
-                          value={aktifGrup.mutfagaGitsin !== false ? 'true' : 'false'}
-                          onChange={e => menuGrubuMutfakDurumunuAyarla(aktifGrup, e.target.value === 'true')}
+                          value={yaziciYonlendirmeTipiBul(aktifGrup)}
+                          onChange={e => menuGrubuYaziciYonlendirmesiniAyarla(aktifGrup, e.target.value)}
                           style={{
                             border: '1px solid #cbd5e1',
                             backgroundColor: aktifGrup.mutfagaGitsin !== false ? '#dcfce7' : '#f1f5f9',
@@ -11796,8 +11992,9 @@ function IntegraApp() {
                             outline: 'none',
                           }}
                         >
-                          <option value="true">👨‍🍳 Bu grup mutfağa gider</option>
-                          <option value="false">🚫 Bu grup mutfağa gitmez</option>
+                          {yaziciYonlendirmeSecenekleri.map(secenek => (
+                            <option key={secenek.value} value={secenek.value}>{secenek.label}</option>
+                          ))}
                         </select>
 
                         <button
@@ -11864,6 +12061,16 @@ function IntegraApp() {
                     style={styles.input}
                   />
 
+                  <select
+                    value={yeniUrunYaziciYonlendirme}
+                    onChange={e => setYeniUrunYaziciYonlendirme(e.target.value)}
+                    style={{ ...styles.input, fontWeight: '800' }}
+                  >
+                    {yeniUrunYaziciYonlendirmeSecenekleri.map(secenek => (
+                      <option key={secenek.value} value={secenek.value}>{secenek.label}</option>
+                    ))}
+                  </select>
+
                   <button type="submit" style={styles.btnOrange}>
                     {aktifGrup.ad || 'Gruba'} Ürün Ekle
                   </button>
@@ -11912,6 +12119,16 @@ function IntegraApp() {
                             style={{ ...styles.input, minWidth: '120px', width: '140px' }}
                           />
 
+                          <select
+                            value={duzenlenenUrunYaziciYonlendirme}
+                            onChange={e => setDuzenlenenUrunYaziciYonlendirme(e.target.value)}
+                            style={{ ...styles.input, minWidth: '210px', width: '230px', fontWeight: '800' }}
+                          >
+                            {yaziciYonlendirmeSecenekleri.map(secenek => (
+                              <option key={secenek.value} value={secenek.value}>{secenek.label}</option>
+                            ))}
+                          </select>
+
                           <button
                             type="button"
                             onClick={() => urunGuncelle(u.id)}
@@ -11951,7 +12168,7 @@ function IntegraApp() {
                           <div style={{ flex: 1, minWidth: '220px' }}>
                             <div style={{ fontWeight: '900', color: '#1e293b' }}>🍽️ {u.ad}</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                              Grup: <strong>{u.menuGrubu || u.kategori || 'Genel'}</strong> / Departman: <strong>{u.departman || 'Mutfak'}</strong> / KDV: <strong>%{u.kdvOrani || 10}</strong> / Yazıcı: <strong>{u.mutfagaGitsin !== false ? yaziciHedefEtiketi(yaziciHedefiBul(u.departman || 'Mutfak', 'mutfak')) : 'Yazdırma yok'}</strong>
+                              Grup: <strong>{u.menuGrubu || u.kategori || 'Genel'}</strong> / Departman: <strong>{u.departman || 'Mutfak'}</strong> / KDV: <strong>%{u.kdvOrani || 10}</strong> / Yazıcı: <strong>{yaziciYonlendirmeHedefEtiketi(u)}</strong>
                             </div>
                           </div>
 
@@ -11968,7 +12185,7 @@ function IntegraApp() {
                                 fontWeight: '900',
                               }}
                             >
-                              {u.mutfagaGitsin !== false ? '👨‍🍳 Mutfağa Gider' : '🚫 Mutfağa Gitmez'}
+                              {u.mutfagaGitsin !== false ? '🖨️ Fiş Oluşturur' : '🚫 Fiş Oluşturmaz'}
                             </span>
 
                             {/* ürünü başka gruba taşıyan kod */}
