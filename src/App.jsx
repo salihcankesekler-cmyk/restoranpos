@@ -3848,7 +3848,7 @@ Toplam Ciro: {toplam}
       }).join('\r\n')
       : termalTextSatiri('Ödeme', `${toplamTutar} TL`);
 
-    const urunlerText = urunlerText;
+    const urunlerText = fisUrunSatirlariTextHazirla(masa?.siparisler || []);
     const varsayilanText = [
       termalTextOrtala(ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS'),
       termalTextOrtala(baslik),
@@ -4133,7 +4133,8 @@ Toplam Ciro: {toplam}
       icerikText: adisyonFisiTextHazirla(masa, odemeler, 'HESAP FİŞİ'),
     });
 
-    yazdirHtml(fisHtml, `${adisyonYaziciAdi} - Fiş`);
+    // Printer Agent kuyruğa düşen fişi doğrudan adisyon yazıcısına basar.
+    // Tarayıcı önizlemesi açılmasın diye burada yazdirHtml çağrısı yapılmaz.
   };
 
   // hesap alınmadan önce açık adisyon fişi yazdıran kod
@@ -4216,7 +4217,8 @@ Toplam Ciro: {toplam}
       icerikText: adisyonFisiTextHazirla(masa, [], 'ADİSYON FİŞİ'),
     });
 
-    yazdirHtml(adisyonHtml, `${adisyonYaziciAdi} - Hesap Öncesi Adisyon`);
+    // Printer Agent kuyruğa düşen açık adisyonu doğrudan adisyon yazıcısına basar.
+    // Tarayıcı önizlemesi açılmasın diye burada yazdirHtml çağrısı yapılmaz.
   };
 
   // seçili rapor periyodu için gün sonu / rapor çıktısı oluşturan kod
