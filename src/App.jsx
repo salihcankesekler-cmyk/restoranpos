@@ -195,7 +195,11 @@ function IntegraApp() {
       vergiBilgisi: '',
       fisAltNotu: 'Bizi tercih ettiğiniz için teşekkür ederiz.',
       adisyonYaziciAdi: 'Adisyon Yazıcısı',
+      adisyonYaziciNo: '',
       mutfakYaziciAdi: 'Mutfak Yazıcısı',
+      mutfakYaziciNo: '',
+      barYaziciAdi: 'Bar / İçecek Yazıcısı',
+      barYaziciNo: '',
       mutfakFisYazdirmaModu: 'sor',
     };
   }
@@ -478,7 +482,11 @@ function IntegraApp() {
       vergiBilgisi: kayit.vergiBilgisi ?? kayit.vergi_bilgisi ?? '',
       fisAltNotu: kayit.fisAltNotu ?? kayit.fis_alt_notu ?? 'Bizi tercih ettiğiniz için teşekkür ederiz.',
       adisyonYaziciAdi: kayit.adisyonYaziciAdi ?? kayit.adisyon_yazici_adi ?? 'Adisyon Yazıcısı',
+      adisyonYaziciNo: kayit.adisyonYaziciNo ?? kayit.adisyon_yazici_no ?? '',
       mutfakYaziciAdi: kayit.mutfakYaziciAdi ?? kayit.mutfak_yazici_adi ?? 'Mutfak Yazıcısı',
+      mutfakYaziciNo: kayit.mutfakYaziciNo ?? kayit.mutfak_yazici_no ?? '',
+      barYaziciAdi: kayit.barYaziciAdi ?? kayit.bar_yazici_adi ?? 'Bar / İçecek Yazıcısı',
+      barYaziciNo: kayit.barYaziciNo ?? kayit.bar_yazici_no ?? '',
       mutfakFisYazdirmaModu: kayit.mutfakFisYazdirmaModu ?? kayit.mutfak_fis_yazdirma_modu ?? 'sor',
     };
   };
@@ -510,6 +518,86 @@ function IntegraApp() {
   const fisAltNotHtml = (varsayilanMetin = 'Bizi tercih ettiğiniz için teşekkür ederiz.') => {
     const notMetni = String(fisAyarlari?.fisAltNotu || varsayilanMetin || '').trim();
     return notMetni ? `<div class="thanks">${htmlGuvenli(notMetni)}</div>` : '';
+  };
+
+  // yazıcı adını ve numarasını tek satırda göstermek için hazırlayan kod
+  const yaziciEtiketiHazirla = (adi, no, varsayilanAdi = 'Yazıcı') => {
+    const temizAdi = String(adi || varsayilanAdi || 'Yazıcı').trim();
+    const temizNo = String(no || '').trim();
+    return temizNo ? `${temizAdi} / No: ${temizNo}` : temizAdi;
+  };
+
+  // departmana göre mutfak/bar yazıcı hedefini belirleyen kod
+  const yaziciHedefiBul = (departman = '', tip = 'mutfak') => {
+    const ayarlar = {
+      ...varsayilanFisAyarlari(user?.restaurant || ''),
+      ...fisAyarlari,
+    };
+
+    if (tip === 'adisyon') {
+      return {
+        tur: 'Adisyon',
+        adi: ayarlar.adisyonYaziciAdi || 'Adisyon Yazıcısı',
+        no: ayarlar.adisyonYaziciNo || '',
+        departman: 'Adisyon',
+      };
+    }
+
+    const departmanMetni = String(departman || '').toLocaleLowerCase('tr-TR');
+    const barDepartmani =
+      departmanMetni.includes('bar') ||
+      departmanMetni.includes('içecek') ||
+      departmanMetni.includes('icecek') ||
+      departmanMetni.includes('kahve') ||
+      departmanMetni.includes('çay') ||
+      departmanMetni.includes('cay');
+
+    if (barDepartmani) {
+      return {
+        tur: 'Bar / İçecek',
+        adi: ayarlar.barYaziciAdi || ayarlar.mutfakYaziciAdi || 'Bar / İçecek Yazıcısı',
+        no: ayarlar.barYaziciNo || ayarlar.mutfakYaziciNo || '',
+        departman: departman || 'Bar',
+      };
+    }
+
+    return {
+      tur: 'Mutfak',
+      adi: ayarlar.mutfakYaziciAdi || 'Mutfak Yazıcısı',
+      no: ayarlar.mutfakYaziciNo || '',
+      departman: departman || 'Mutfak',
+    };
+  };
+
+  // yazıcı hedefini kullanıcıya okunur metne çeviren kod
+  const yaziciHedefEtiketi = (hedef) => {
+    if (!hedef) return 'Yazıcı seçilmedi';
+    return `${hedef.tur}: ${yaziciEtiketiHazirla(hedef.adi, hedef.no, hedef.tur)}`;
+  };
+
+  // birden fazla mutfak fişi varsa hedef yazıcıya göre gruplayan kod
+  const mutfakFisleriniYaziciyaGoreGrupla = (fisler = []) => {
+    const gruplar = {};
+
+    (Array.isArray(fisler) ? fisler : []).filter(Boolean).forEach(fis => {
+      const hedef = yaziciHedefiBul(fis.departman || 'Mutfak', 'mutfak');
+      const key = `${hedef.tur}|${hedef.adi}|${hedef.no}`;
+
+      if (!gruplar[key]) {
+        gruplar[key] = { key, hedef, fisler: [] };
+      }
+
+      gruplar[key].fisler.push(fis);
+    });
+
+    return Object.values(gruplar);
+  };
+
+  // mutfak fişi modalında hangi yazıcılara gideceğini özetleyen kod
+  const mutfakFisYaziciOzeti = (fisler = []) => {
+    const gruplar = mutfakFisleriniYaziciyaGoreGrupla(fisler);
+    if (gruplar.length === 0) return yaziciHedefEtiketi(yaziciHedefiBul('Mutfak', 'mutfak'));
+    return gruplar.map(grup => `${yaziciHedefEtiketi(grup.hedef)} (${grup.fisler.length} fiş)`).join(' • ');
   };
 
   // sipariş satırlarının brüt toplamını hesaplayan kod
@@ -1453,7 +1541,11 @@ function IntegraApp() {
       vergiBilgisi: String(fisAyarlari?.vergiBilgisi || '').trim(),
       fisAltNotu: String(fisAyarlari?.fisAltNotu || '').trim(),
       adisyonYaziciAdi: String(fisAyarlari?.adisyonYaziciAdi || 'Adisyon Yazıcısı').trim(),
+      adisyonYaziciNo: String(fisAyarlari?.adisyonYaziciNo || '').trim(),
       mutfakYaziciAdi: String(fisAyarlari?.mutfakYaziciAdi || 'Mutfak Yazıcısı').trim(),
+      mutfakYaziciNo: String(fisAyarlari?.mutfakYaziciNo || '').trim(),
+      barYaziciAdi: String(fisAyarlari?.barYaziciAdi || 'Bar / İçecek Yazıcısı').trim(),
+      barYaziciNo: String(fisAyarlari?.barYaziciNo || '').trim(),
       mutfakFisYazdirmaModu: fisAyarlari?.mutfakFisYazdirmaModu || 'sor',
     };
 
@@ -1472,7 +1564,11 @@ function IntegraApp() {
           vergi_bilgisi: temizAyarlar.vergiBilgisi,
           fis_alt_notu: temizAyarlar.fisAltNotu,
           adisyon_yazici_adi: temizAyarlar.adisyonYaziciAdi,
+          adisyon_yazici_no: temizAyarlar.adisyonYaziciNo,
           mutfak_yazici_adi: temizAyarlar.mutfakYaziciAdi,
+          mutfak_yazici_no: temizAyarlar.mutfakYaziciNo,
+          bar_yazici_adi: temizAyarlar.barYaziciAdi,
+          bar_yazici_no: temizAyarlar.barYaziciNo,
           mutfak_fis_yazdirma_modu: temizAyarlar.mutfakFisYazdirmaModu,
           updated_at: new Date().toISOString(),
         },
@@ -2968,12 +3064,13 @@ function IntegraApp() {
           <strong>${htmlGuvenli(fis.urunAdi || fis.ad || '-')}</strong>
           ${fis.notMetni ? `<div class="note">Not: ${htmlGuvenli(fis.notMetni)}</div>` : ''}
           ${fis.departman ? `<div class="muted">Departman: ${htmlGuvenli(fis.departman)}</div>` : ''}
+          <div class="muted">Yazıcı Hedefi: ${htmlGuvenli(yaziciHedefEtiketi(yaziciHedefiBul(fis.departman || 'Mutfak', 'mutfak')))}</div>
         </div>
       </div>
     `).join('');
   };
 
-  // mutfak ekranındaki siparişi termal mutfak fişi olarak yazdıran kod
+  // mutfak ekranındaki siparişi hedef yazıcıya göre ayrı termal fiş pencerelerine bölen kod
   const mutfakFisiYazdir = (fislerInput = [], baslik = 'Mutfak Fişi') => {
     const fisler = (Array.isArray(fislerInput) ? fislerInput : [fislerInput]).filter(Boolean);
 
@@ -2982,12 +3079,34 @@ function IntegraApp() {
       return;
     }
 
-    const ilkFis = fisler[0] || {};
+    const gruplar = mutfakFisleriniYaziciyaGoreGrupla(fisler);
+
+    if (gruplar.length > 1) {
+      gruplar.forEach(grup => {
+        mutfakFisiPenceresiYazdir(grup.fisler, `${baslik} - ${grup.hedef.tur}`, grup.hedef);
+      });
+      return;
+    }
+
+    mutfakFisiPenceresiYazdir(fisler, baslik, gruplar[0]?.hedef || yaziciHedefiBul(fisler[0]?.departman || 'Mutfak', 'mutfak'));
+  };
+
+  // hedef yazıcı bilgisiyle tek mutfak/bar fişi penceresi hazırlayan kod
+  const mutfakFisiPenceresiYazdir = (fisler = [], baslik = 'Mutfak Fişi', yaziciHedefi = null) => {
+    const temizFisler = (Array.isArray(fisler) ? fisler : [fisler]).filter(Boolean);
+
+    if (temizFisler.length === 0) {
+      alert('Yazdırılacak mutfak fişi bulunamadı.');
+      return;
+    }
+
+    const ilkFis = temizFisler[0] || {};
+    const hedef = yaziciHedefi || yaziciHedefiBul(ilkFis.departman || 'Mutfak', 'mutfak');
     const tarihSaat = new Date().toLocaleString('tr-TR');
     const masaAdi = ilkFis.masaAdi || 'Mutfak';
     const garsonAdi = ilkFis.garsonAdi || '-';
-    const yaziciAdi = fisAyarlari?.mutfakYaziciAdi || 'Mutfak Yazıcısı';
-    const urunSatirlari = mutfakFisSatirlariHazirla(fisler);
+    const yaziciAdi = yaziciEtiketiHazirla(hedef.adi, hedef.no, hedef.tur || 'Mutfak Yazıcısı');
+    const urunSatirlari = mutfakFisSatirlariHazirla(temizFisler);
 
     const html = `
       <!doctype html>
@@ -3016,6 +3135,7 @@ function IntegraApp() {
           <div class="receipt">
             ${fisBaslikHtml(baslik)}
             <div class="line"></div>
+            <div class="row"><span>Hedef</span><strong>${htmlGuvenli(hedef.tur || 'Mutfak')}</strong></div>
             <div class="row"><span>Yazıcı</span><strong>${htmlGuvenli(yaziciAdi)}</strong></div>
             <div class="row"><span>Masa/Sipariş</span><strong>${htmlGuvenli(masaAdi)}</strong></div>
             <div class="row"><span>Garson</span><strong>${htmlGuvenli(garsonAdi)}</strong></div>
@@ -3094,13 +3214,15 @@ function IntegraApp() {
 
     const urunSatirlari = fisUrunSatirlariHazirla(masa.siparisler || []);
     const tarihSaat = new Date().toLocaleString('tr-TR');
+    const adisyonYaziciHedefi = yaziciHedefiBul('Adisyon', 'adisyon');
+    const adisyonYaziciAdi = yaziciEtiketiHazirla(adisyonYaziciHedefi.adi, adisyonYaziciHedefi.no, 'Adisyon Yazıcısı');
 
     const fisHtml = `
     <!doctype html>
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>Fiş</title>
+        <title>${htmlGuvenli(adisyonYaziciAdi)} - Fiş</title>
         <style>
           @page { size: 80mm auto; margin: 4mm; }
           body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
@@ -3120,6 +3242,7 @@ function IntegraApp() {
         <div class="receipt">
           ${fisBaslikHtml('Adisyon Fişi')}
           <div class="line"></div>
+          <div class="row"><span>Yazıcı</span><strong>${htmlGuvenli(adisyonYaziciAdi)}</strong></div>
           <div class="row"><span>Masa</span><strong>${htmlGuvenli(masa.ad)}</strong></div>
           ${masa.musteriAdi ? `<div class="row"><span>Müşteri</span><strong>${htmlGuvenli(masa.musteriAdi)}</strong></div>` : ''}
           <div class="row"><span>Tarih</span><strong>${tarihSaat}</strong></div>
@@ -3143,7 +3266,7 @@ function IntegraApp() {
     </html>
   `;
 
-    yazdirHtml(fisHtml, 'Fiş');
+    yazdirHtml(fisHtml, `${adisyonYaziciAdi} - Fiş`);
   };
 
   // hesap alınmadan önce açık adisyon fişi yazdıran kod
@@ -3163,13 +3286,15 @@ function IntegraApp() {
     const kalan = kalanTutar(masa);
     const urunSatirlari = fisUrunSatirlariHazirla(masa.siparisler || []);
     const tarihSaat = new Date().toLocaleString('tr-TR');
+    const adisyonYaziciHedefi = yaziciHedefiBul('Adisyon', 'adisyon');
+    const adisyonYaziciAdi = yaziciEtiketiHazirla(adisyonYaziciHedefi.adi, adisyonYaziciHedefi.no, 'Adisyon Yazıcısı');
 
     const adisyonHtml = `
       <!doctype html>
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Hesap Öncesi Adisyon</title>
+          <title>${htmlGuvenli(adisyonYaziciAdi)} - Hesap Öncesi Adisyon</title>
           <style>
             @page { size: 80mm auto; margin: 4mm; }
             body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
@@ -3189,6 +3314,7 @@ function IntegraApp() {
           <div class="receipt">
             ${fisBaslikHtml('Hesap Öncesi Adisyon')}
             <div class="line"></div>
+            <div class="row"><span>Yazıcı</span><strong>${htmlGuvenli(adisyonYaziciAdi)}</strong></div>
             <div class="row"><span>Masa</span><strong>${htmlGuvenli(masa.ad)}</strong></div>
             ${masa.musteriAdi ? `<div class="row"><span>Müşteri</span><strong>${htmlGuvenli(masa.musteriAdi)}</strong></div>` : ''}
             <div class="row"><span>Açılış</span><strong>${saatYaz(masa.adisyonAcilisSaati)}</strong></div>
@@ -3213,7 +3339,7 @@ function IntegraApp() {
       </html>
     `;
 
-    yazdirHtml(adisyonHtml, 'Hesap Öncesi Adisyon');
+    yazdirHtml(adisyonHtml, `${adisyonYaziciAdi} - Hesap Öncesi Adisyon`);
   };
 
   // seçili rapor periyodu için gün sonu / rapor çıktısı oluşturan kod
@@ -7804,7 +7930,7 @@ function IntegraApp() {
             </h3>
 
             <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: '14px', lineHeight: '1.6' }}>
-              Bu sipariş mutfak ekranına düştü. İstersen aynı anda <strong>{fisAyarlari?.mutfakYaziciAdi || 'Mutfak Yazıcısı'}</strong> için fiş penceresi açılır.
+              Bu sipariş mutfak ekranına düştü. Yazıcı hedefi: <strong>{mutfakFisYaziciOzeti(mutfakFisSorModal.fisler || [])}</strong>.
             </p>
 
             <div
@@ -7826,6 +7952,10 @@ function IntegraApp() {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Sipariş:</span>
                 <strong>{mutfakFisSorModal.fisler?.[0]?.masaAdi || '-'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', gap: '10px' }}>
+                <span>Yönlendirme:</span>
+                <strong style={{ textAlign: 'right' }}>{mutfakFisYaziciOzeti(mutfakFisSorModal.fisler || [])}</strong>
               </div>
             </div>
 
@@ -11301,7 +11431,7 @@ function IntegraApp() {
                         🖨️ Fiş Dizaynı ve Yazıcı Ayarları
                       </div>
                       <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700', lineHeight: 1.5 }}>
-                        Firma adı fişin üstünde görünür. Adisyon ve mutfak için ayrı yazıcı adı tanımlayabilirsiniz.
+                        Firma adı fişin üstünde görünür. Adisyon, mutfak ve bar/içecek için ayrı yazıcı adı veya numarası tanımlayabilirsiniz.
                       </div>
                     </div>
 
@@ -11391,9 +11521,41 @@ function IntegraApp() {
 
                     <input
                       type="text"
+                      placeholder="Adisyon yazıcı no / Windows adı"
+                      value={fisAyarlari.adisyonYaziciNo}
+                      onChange={e => fisAyariGuncelle('adisyonYaziciNo', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
                       placeholder="Mutfak yazıcı adı"
                       value={fisAyarlari.mutfakYaziciAdi}
                       onChange={e => fisAyariGuncelle('mutfakYaziciAdi', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Mutfak yazıcı no / Windows adı"
+                      value={fisAyarlari.mutfakYaziciNo}
+                      onChange={e => fisAyariGuncelle('mutfakYaziciNo', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Bar / içecek yazıcı adı"
+                      value={fisAyarlari.barYaziciAdi}
+                      onChange={e => fisAyariGuncelle('barYaziciAdi', e.target.value)}
+                      style={styles.input}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Bar / içecek yazıcı no / Windows adı"
+                      value={fisAyarlari.barYaziciNo}
+                      onChange={e => fisAyariGuncelle('barYaziciNo', e.target.value)}
                       style={styles.input}
                     />
 
@@ -11426,7 +11588,10 @@ function IntegraApp() {
 
                     <button
                       type="button"
-                      onClick={() => mutfakFisiYazdir([{ masaAdi: 'Test Masa', urunAdi: 'Test Ürün', adet: 1, notMetni: 'Soğansız', departman: 'Mutfak', garsonAdi: user?.waiterName || user?.restaurant || 'Test' }])}
+                      onClick={() => mutfakFisiYazdir([
+                        { masaAdi: 'Test Masa', urunAdi: 'Test Ana Yemek', adet: 1, notMetni: 'Soğansız', departman: 'Mutfak', garsonAdi: user?.waiterName || user?.restaurant || 'Test' },
+                        { masaAdi: 'Test Masa', urunAdi: 'Test İçecek', adet: 1, notMetni: 'Buzsuz', departman: 'Bar', garsonAdi: user?.waiterName || user?.restaurant || 'Test' },
+                      ])}
                       style={{
                         border: 'none',
                         backgroundColor: '#10b981',
@@ -11443,7 +11608,7 @@ function IntegraApp() {
                   </div>
 
                   <div style={{ color: '#64748b', fontSize: '11px', marginTop: '10px', lineHeight: 1.5, fontWeight: '700' }}>
-                    Not: Tarayıcı güvenliği nedeniyle web sitesinden yazıcıyı sessizce seçmek mümkün değildir. Bu ayar fiş başlığını ve yazdırma akışını düzenler; tam otomatik adisyon/mutfak yazıcısı seçimi için sonraki aşamada yerel yazdırma servisi eklenir.
+                    Not: Tarayıcı güvenliği nedeniyle web sitesi yazıcıyı tamamen sessiz seçemez. Bu sürüm fiş penceresini hedefe göre ayırır ve başlıkta yazıcı adı/numarası gösterir. Ürün grubu departmanı Bar, İçecek, Kahve veya Çay ise bar/içecek yazıcısına; diğer mutfağa giden ürünler mutfak yazıcısına yönlendirilir. Tam otomatik cihaz seçimi için sonraki aşamada yerel yazdırma servisi eklenir.
                   </div>
                 </div>
 
@@ -11786,7 +11951,7 @@ function IntegraApp() {
                           <div style={{ flex: 1, minWidth: '220px' }}>
                             <div style={{ fontWeight: '900', color: '#1e293b' }}>🍽️ {u.ad}</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                              Grup: <strong>{u.menuGrubu || u.kategori || 'Genel'}</strong> / Departman: <strong>{u.departman || 'Mutfak'}</strong> / KDV: <strong>%{u.kdvOrani || 10}</strong>
+                              Grup: <strong>{u.menuGrubu || u.kategori || 'Genel'}</strong> / Departman: <strong>{u.departman || 'Mutfak'}</strong> / KDV: <strong>%{u.kdvOrani || 10}</strong> / Yazıcı: <strong>{u.mutfagaGitsin !== false ? yaziciHedefEtiketi(yaziciHedefiBul(u.departman || 'Mutfak', 'mutfak')) : 'Yazdırma yok'}</strong>
                             </div>
                           </div>
 
