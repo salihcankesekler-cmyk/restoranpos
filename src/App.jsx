@@ -57,7 +57,7 @@ function IntegraApp() {
   const kayitliActiveTab = localStorage.getItem('integra_activeTab');
   const kayitliScreen = localStorage.getItem('integra_screen');
 
-  const izinliScreens = ['landing', 'login', 'register', 'dashboard'];
+  const izinliScreens = ['landing', 'login', 'register', 'forgot_password', 'dashboard'];
 
   const baslangicScreen =
     kayitliScreen === 'dashboard' && kayitliUser
@@ -86,6 +86,10 @@ function IntegraApp() {
   // auth
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [sifremiUnuttumEmail, setSifremiUnuttumEmail] = useState('');
+  const [sifremiUnuttumTelefon, setSifremiUnuttumTelefon] = useState('');
+  const [sifremiUnuttumYeniSifre, setSifremiUnuttumYeniSifre] = useState('');
+  const [sifremiUnuttumYeniSifreTekrar, setSifremiUnuttumYeniSifreTekrar] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
   const [kayitYetkiliAdi, setKayitYetkiliAdi] = useState('');
   const [kayitTelefon, setKayitTelefon] = useState('');
@@ -440,6 +444,11 @@ function IntegraApp() {
   const sayiyaCevir = (deger) => {
     const sayi = Number(String(deger || '').replace(',', '.'));
     return Number.isFinite(sayi) ? sayi : 0;
+  };
+
+  // şifre sıfırlamada telefonları sadece rakam olarak karşılaştıran kod
+  const telefonRakamlari = (deger) => {
+    return String(deger || '').replace(/\D/g, '');
   };
 
   // fiş ayarı formundaki alanları güncelleyen kod
@@ -1618,6 +1627,114 @@ function IntegraApp() {
     } catch (err) {
       console.error('Giriş sonrası veri çekme hatası:', err);
     }
+  };
+  // şifremi unuttum ekranında e-posta ve kayıtlı telefonla yeni şifre oluşturan kod
+  const handleSifremiUnuttum = async (e) => {
+    e.preventDefault();
+
+    const temizEmail = String(sifremiUnuttumEmail || '').trim().toLowerCase();
+    const girilenTelefon = telefonRakamlari(sifremiUnuttumTelefon);
+    const yeniSifre = String(sifremiUnuttumYeniSifre || '').trim();
+    const yeniSifreTekrar = String(sifremiUnuttumYeniSifreTekrar || '').trim();
+
+    if (!temizEmail || !girilenTelefon || !yeniSifre || !yeniSifreTekrar) {
+      alert('Lütfen e-posta, kayıtlı telefon ve yeni şifre alanlarını doldurun.');
+      return;
+    }
+
+    if (yeniSifre.length < 6) {
+      alert('Yeni şifre en az 6 karakter olmalı.');
+      return;
+    }
+
+    if (yeniSifre !== yeniSifreTekrar) {
+      alert('Yeni şifreler birbiriyle aynı değil.');
+      return;
+    }
+
+    if (temizEmail === 'admin@integra.com') {
+      alert('Süper admin şifresi güvenlik için bu ekrandan değiştirilemez.');
+      return;
+    }
+
+    const { data: hesap, error: hesapError } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('email', temizEmail)
+      .maybeSingle();
+
+    if (hesapError) {
+      console.error('Şifre sıfırlama hesap sorgusu hatası:', hesapError);
+      alert('Hesap kontrol edilemedi: ' + hesapError.message);
+      return;
+    }
+
+    if (!hesap) {
+      alert('Bu e-posta ve telefon bilgisiyle eşleşen hesap bulunamadı.');
+      return;
+    }
+
+    let telefonEslesiyor = false;
+    let personelKaydi = null;
+    const hesapTelefonu = telefonRakamlari(hesap.firma_telefon || hesap.telefon || hesap.phone || '');
+
+    if (hesapTelefonu && hesapTelefonu === girilenTelefon) {
+      telefonEslesiyor = true;
+    }
+
+    // personel/garson hesabında telefon bilgisi personeller tablosunda olabilir
+    if (!telefonEslesiyor && hesap.rol === 'waiter') {
+      const { data: personel, error: personelError } = await supabase
+        .from('personeller')
+        .select('*')
+        .eq('email', temizEmail)
+        .maybeSingle();
+
+      if (!personelError && personel) {
+        const personelTelefonu = telefonRakamlari(personel.telefon || personel.firma_telefon || '');
+
+        if (personelTelefonu && personelTelefonu === girilenTelefon) {
+          telefonEslesiyor = true;
+          personelKaydi = personel;
+        }
+      }
+    }
+
+    if (!telefonEslesiyor) {
+      alert('Bu e-posta ve telefon bilgisiyle eşleşen hesap bulunamadı.');
+      return;
+    }
+
+    const { error: sifreGuncellemeError } = await supabase
+      .from('restaurants')
+      .update({ password: yeniSifre })
+      .eq('id', hesap.id);
+
+    if (sifreGuncellemeError) {
+      console.error('Şifre güncelleme hatası:', sifreGuncellemeError);
+      alert('Şifre güncellenemedi: ' + sifreGuncellemeError.message);
+      return;
+    }
+
+    if (personelKaydi?.id) {
+      const { error: personelSifreError } = await supabase
+        .from('personeller')
+        .update({ sifre: yeniSifre })
+        .eq('id', personelKaydi.id);
+
+      if (personelSifreError) {
+        console.warn('Personel şifresi güncellenemedi:', personelSifreError.message);
+      }
+    }
+
+    setEmail(temizEmail);
+    setPassword('');
+    setSifremiUnuttumEmail('');
+    setSifremiUnuttumTelefon('');
+    setSifremiUnuttumYeniSifre('');
+    setSifremiUnuttumYeniSifreTekrar('');
+    setScreen('login');
+    alert('Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.');
   };
   // mutfak fişlerini Supabase'den çeken kod
   const mutfakFisleriniSupabasedenCek = async (restaurantId) => {
@@ -8287,6 +8404,17 @@ function IntegraApp() {
                 onChange={e => setPassword(e.target.value)}
                 style={styles.authInput}
               />
+              <div style={{ textAlign: 'right', marginTop: '-4px', marginBottom: '2px' }}>
+                <span
+                  onClick={() => {
+                    setSifremiUnuttumEmail(email);
+                    setScreen('forgot_password');
+                  }}
+                  style={{ ...styles.authLink, fontSize: '13px' }}
+                >
+                  Şifremi Unuttum
+                </span>
+              </div>
               <button type="submit" style={styles.authBtnOrange}>Sisteme Giriş Yap</button>
             </form>
 
@@ -8301,6 +8429,68 @@ function IntegraApp() {
               </span>
             </p>
 
+          </div>
+        </div>
+      )}
+
+
+      {/* şifremi unuttum ekranını gösteren kod */}
+      {screen === 'forgot_password' && (
+        <div style={styles.authBg}>
+          <div style={styles.authCard}>
+            <div
+              onClick={() => setScreen('landing')}
+              style={{ ...styles.logoContainer, cursor: 'pointer', marginBottom: '15px', justifyContent: 'center' }}
+            >
+              <span style={styles.orangeDot}>●</span>
+              <strong style={{ color: '#1e293b' }}>integra</strong>
+            </div>
+
+            <h3 style={styles.authTitle}>Şifremi Unuttum</h3>
+
+            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '13px', lineHeight: '1.6', margin: '0 0 16px' }}>
+              E-posta adresinizi ve kayıtlı telefon numaranızı girerek yeni şifre belirleyin.
+            </p>
+
+            <form onSubmit={handleSifremiUnuttum} style={styles.form}>
+              <input
+                type="email"
+                placeholder="E-posta Adresi"
+                value={sifremiUnuttumEmail}
+                onChange={e => setSifremiUnuttumEmail(e.target.value)}
+                style={styles.authInput}
+              />
+              <input
+                type="tel"
+                placeholder="Kayıtlı Telefon"
+                value={sifremiUnuttumTelefon}
+                onChange={e => setSifremiUnuttumTelefon(e.target.value)}
+                style={styles.authInput}
+              />
+              <input
+                type="password"
+                placeholder="Yeni Şifre"
+                value={sifremiUnuttumYeniSifre}
+                onChange={e => setSifremiUnuttumYeniSifre(e.target.value)}
+                style={styles.authInput}
+              />
+              <input
+                type="password"
+                placeholder="Yeni Şifre Tekrar"
+                value={sifremiUnuttumYeniSifreTekrar}
+                onChange={e => setSifremiUnuttumYeniSifreTekrar(e.target.value)}
+                style={styles.authInput}
+              />
+              <button type="submit" style={styles.authBtnOrange}>Şifreyi Güncelle</button>
+            </form>
+
+            <button onClick={() => setScreen('login')} style={styles.cancelReturnBtn}>
+              ← Giriş Ekranına Dön
+            </button>
+
+            <p style={styles.authFooter}>
+              Telefon bilgisine ulaşamıyorsanız işletme yöneticinizden veya destek ekibinden yardım isteyin.
+            </p>
           </div>
         </div>
       )}
