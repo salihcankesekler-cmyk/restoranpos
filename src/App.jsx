@@ -9377,6 +9377,7 @@ function IntegraApp() {
                           cursor: 'pointer',
                           fontWeight: '900',
                           fontSize: '12px',
+                          flex: '0 0 auto',
                         }}
                       >
                         {bolum}
@@ -9794,17 +9795,17 @@ function IntegraApp() {
                           </div>
 
                           <div
-                            style={{
-                              display: 'flex',
-                              gap: '7px',
-                              flexWrap: isMobile ? 'nowrap' : 'wrap',
-                              maxHeight: isMobile ? 'none' : '96px',
-                              overflowX: isMobile ? 'auto' : 'visible',
-                              overflowY: isMobile ? 'hidden' : 'auto',
-                              paddingBottom: '2px',
-                              paddingRight: '2px',
-                              WebkitOverflowScrolling: 'touch',
-                            }}
+                            style={isMobile
+                              ? { ...styles.yatayKaydirmaSekmeleri, gap: '7px', paddingBottom: '2px', paddingRight: '2px' }
+                              : {
+                                display: 'flex',
+                                gap: '7px',
+                                flexWrap: 'wrap',
+                                maxHeight: '96px',
+                                overflowY: 'auto',
+                                paddingBottom: '2px',
+                                paddingRight: '2px',
+                              }}
                           >
                             {aktifMenuGruplari.length === 0 ? (
                               <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
@@ -9829,6 +9830,7 @@ function IntegraApp() {
                                     fontWeight: '900',
                                     fontSize: '12px',
                                     whiteSpace: 'nowrap',
+                                    flex: '0 0 auto',
                                   }}
                                 >
                                   {grup.ad}
@@ -10863,15 +10865,17 @@ function IntegraApp() {
                     </div>
 
                     <div
-                      style={{
-                        display: 'flex',
-                        gap: '7px',
-                        flexWrap: 'wrap',
-                        maxHeight: '96px',
-                        overflowY: 'auto',
-                        paddingBottom: '2px',
-                        paddingRight: '2px',
-                      }}
+                      style={isMobile
+                        ? { ...styles.yatayKaydirmaSekmeleri, gap: '7px', paddingBottom: '2px', paddingRight: '2px' }
+                        : {
+                          display: 'flex',
+                          gap: '7px',
+                          flexWrap: 'wrap',
+                          maxHeight: '96px',
+                          overflowY: 'auto',
+                          paddingBottom: '2px',
+                          paddingRight: '2px',
+                        }}
                     >
                       {aktifMenuGruplari.length === 0 ? (
                         <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
@@ -10897,6 +10901,7 @@ function IntegraApp() {
                               fontWeight: '900',
                               fontSize: '12px',
                               whiteSpace: 'nowrap',
+                              flex: '0 0 auto',
                             }}
                           >
                             {grup.ad}
@@ -11533,7 +11538,7 @@ function IntegraApp() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr', gap: '18px' }}>
                   <div>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    <div style={isMobile ? { ...styles.yatayKaydirmaSekmeleri, marginBottom: '12px' } : { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
                       {aktifMenuGruplari.map(grup => (
                         <button
                           key={grup.ad}
@@ -11548,6 +11553,7 @@ function IntegraApp() {
                             cursor: 'pointer',
                             fontWeight: '900',
                             fontSize: '12px',
+                            flex: '0 0 auto',
                           }}
                         >
                           {grup.ad}
@@ -12179,7 +12185,7 @@ function IntegraApp() {
                 </form>
 
                 {/* menü gruplarını sekme olarak gösteren kod */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', maxHeight: '112px', overflowY: 'auto', paddingRight: '4px', marginBottom: '16px' }}>
+                <div style={isMobile ? { ...styles.yatayKaydirmaSekmeleri, marginBottom: '16px' } : { display: 'flex', gap: '8px', flexWrap: 'wrap', maxHeight: '112px', overflowY: 'auto', paddingRight: '4px', marginBottom: '16px' }}>
                   {aktifMenuGruplari.map(grup => (
                     <button
                       key={grup.ad}
@@ -12194,6 +12200,7 @@ function IntegraApp() {
                         cursor: 'pointer',
                         fontWeight: '900',
                         fontSize: '12px',
+                        flex: '0 0 auto',
                       }}
                     >
                       {grup.ad}
@@ -14837,7 +14844,11 @@ const styles = {
     overflowX: 'auto',
     overflowY: 'hidden',
     WebkitOverflowScrolling: 'touch',
+    touchAction: 'pan-x',
+    overscrollBehaviorX: 'contain',
+    scrollbarWidth: 'thin',
     paddingBottom: '4px',
+    paddingRight: '4px',
     maxWidth: '100%',
   },
 
