@@ -371,6 +371,9 @@ function IntegraApp() {
   const [kuryeAdiInputs, setKuryeAdiInputs] = useState({});
 
   const [selectedMasaId, setSelectedMasaId] = useState(null);
+  // mobilde masaya tıklanınca tam ekran adisyon panelini açıp kapatan kod
+  const [mobilAdisyonAcik, setMobilAdisyonAcik] = useState(false);
+  const [mobilAdisyonSekmesi, setMobilAdisyonSekmesi] = useState('urun');
   // masa aktarma modunu açıp kapatan kod
   const [masaAktarmaModu, setMasaAktarmaModu] = useState(false);
 
@@ -7932,6 +7935,28 @@ function IntegraApp() {
     setAdisyonToplamIndirimTutari(activeMasa?.adisyonIndirimTutari ? String(activeMasa.adisyonIndirimTutari) : '');
   }, [activeMasa?.id, activeMasa?.adisyonIndirimYuzde, activeMasa?.adisyonIndirimTutari]);
 
+  // mobil tam ekran adisyon açıkken sayfa arka planının kaymasını engelleyen kod
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
+    const oncekiOverflow = document.body.style.overflow;
+
+    if (activeTab === 'masalar' && isMobile && mobilAdisyonAcik) {
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.body.style.overflow = oncekiOverflow;
+    };
+  }, [activeTab, isMobile, mobilAdisyonAcik]);
+
+  // masaüstüne geçilince mobil adisyon panelini kapatan kod
+  useEffect(() => {
+    if (!isMobile && mobilAdisyonAcik) {
+      setMobilAdisyonAcik(false);
+    }
+  }, [isMobile, mobilAdisyonAcik]);
+
   // menü grupları değişince adisyon ve paket servis ürün seçim grubunu güvenli tutan kod
   useEffect(() => {
     if (!Array.isArray(aktifMenuGruplari) || aktifMenuGruplari.length === 0) return;
@@ -9325,12 +9350,14 @@ function IntegraApp() {
 
                   {/* masa bölümlerini üstte sekme olarak gösteren kod */}
                   <div
-                    style={{
-                      display: 'flex',
-                      gap: '8px',
-                      flexWrap: 'wrap',
-                      marginBottom: '16px',
-                    }}
+                    style={isMobile
+                      ? { ...styles.yatayKaydirmaSekmeleri, marginBottom: '16px' }
+                      : {
+                        display: 'flex',
+                        gap: '8px',
+                        flexWrap: 'wrap',
+                        marginBottom: '16px',
+                      }}
                   >
                     {masaBolumleriListesi.map(bolum => (
                       <button
@@ -9339,6 +9366,7 @@ function IntegraApp() {
                         onClick={() => {
                           setAktifMasaBolumu(bolum);
                           setSelectedMasaId(null);
+                          setMobilAdisyonAcik(false);
                         }}
                         style={{
                           border: 'none',
@@ -9404,6 +9432,11 @@ function IntegraApp() {
 
                               setSelectedMasaId(m.id);
                               setAktifMasaBolumu(m.bolum || aktifMasaBolumu || 'Salon');
+
+                              if (isMobile) {
+                                setMobilAdisyonSekmesi('urun');
+                                setMobilAdisyonAcik(true);
+                              }
                             }}
                             style={{
                               ...styles.mesaCard,
@@ -9515,11 +9548,55 @@ function IntegraApp() {
                 </div>
 
                 {/* sağ tarafta ürün ekleme ve adisyon panelini gösteren kod */}
-                <div style={isMobile ? styles.adisyonPanelMobile : styles.adisyonPanel}>
-                  <h3 style={styles.panelTitle}>
-                    🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'} Canlı Fişi
-                  </h3>
+                {(!isMobile || (mobilAdisyonAcik && activeMasa)) && (
+                <div style={isMobile ? styles.mobilAdisyonTamEkran : styles.adisyonPanel}>
+                  {isMobile ? (
+                    <>
+                      <div style={styles.mobilAdisyonUstBar}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={styles.mobilAdisyonMasaAdi}>🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'}</div>
+                          <div style={styles.mobilAdisyonOzetSatiri}>
+                            <span>Toplam: <strong>{activeMasa?.tutar || 0} TL</strong></span>
+                            <span>KDV: <strong>{aktifMasaKdvOzeti.kdvToplam} TL</strong></span>
+                            <span>Kalan: <strong>{activeMasa ? kalanTutar(activeMasa) : 0} TL</strong></span>
+                          </div>
+                        </div>
 
+                        <button
+                          type="button"
+                          onClick={() => setMobilAdisyonAcik(false)}
+                          style={styles.mobilAdisyonKapatBtn}
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <div style={styles.mobilAdisyonSekmeKutusu}>
+                        <button
+                          type="button"
+                          onClick={() => setMobilAdisyonSekmesi('urun')}
+                          style={mobilAdisyonSekmesi === 'urun' ? styles.mobilAdisyonSekmeAktif : styles.mobilAdisyonSekme}
+                        >
+                          Ürün Ekle
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setMobilAdisyonSekmesi('fis')}
+                          style={mobilAdisyonSekmesi === 'fis' ? styles.mobilAdisyonSekmeAktif : styles.mobilAdisyonSekme}
+                        >
+                          Adisyon / Fiş
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <h3 style={styles.panelTitle}>
+                      🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'} Canlı Fişi
+                    </h3>
+                  )}
+
+                  {(!isMobile || mobilAdisyonSekmesi === 'fis') && (
+                    <>
                   {/* masa birleştirme komutunu masa aktarma üstünde gösteren kod */}
                   {activeMasa?.dolu && (
                     <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px', padding: '8px', marginBottom: '10px' }}>
@@ -9668,8 +9745,12 @@ function IntegraApp() {
                     </div>
                   )}
 
+                    </>
+                  )}
+
                   {activeMasa && (
                     <>
+                      {(!isMobile || mobilAdisyonSekmesi === 'urun') && (
                       <div style={styles.addOrderBox}>
                         {/* adisyon ekranında ürünleri grup butonları ve ürün kartlarıyla seçen kod */}
                         <div
@@ -9716,11 +9797,13 @@ function IntegraApp() {
                             style={{
                               display: 'flex',
                               gap: '7px',
-                              flexWrap: 'wrap',
-                              maxHeight: '96px',
-                              overflowY: 'auto',
+                              flexWrap: isMobile ? 'nowrap' : 'wrap',
+                              maxHeight: isMobile ? 'none' : '96px',
+                              overflowX: isMobile ? 'auto' : 'visible',
+                              overflowY: isMobile ? 'hidden' : 'auto',
                               paddingBottom: '2px',
                               paddingRight: '2px',
+                              WebkitOverflowScrolling: 'touch',
                             }}
                           >
                             {aktifMenuGruplari.length === 0 ? (
@@ -9904,6 +9987,8 @@ function IntegraApp() {
                           }}
                         />
 
+                        {!isMobile && (
+                          <>
                         {/* satışta fiyat değiştirme alanını gösteren kod */}
                         <input
                           type="number"
@@ -9968,6 +10053,9 @@ function IntegraApp() {
                           </div>
                         )}
 
+                          </>
+                        )}
+
                         <button
                           type="button"
                           onClick={masayaSeciliUrunuEkle}
@@ -9976,7 +10064,10 @@ function IntegraApp() {
                           Ekle
                         </button>
                       </div>
+                      )}
 
+                      {(!isMobile || mobilAdisyonSekmesi === 'fis') && (
+                        <>
                       <div style={styles.receiptContainer}>
                         {(!activeMasa.siparisler || activeMasa.siparisler.length === 0) ? (
                           <div style={styles.emptyReceipt}>Bu masada aktif sipariş yok.</div>
@@ -10329,9 +10420,12 @@ function IntegraApp() {
                           </div>
                         )}
                       </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
+                )}
               </div>
             )}
             {/* son kapatılan adisyonun fişini manuel yazdıran kod */}
@@ -14734,6 +14828,117 @@ const styles = {
     border: '1px solid #e2e8f0',
     boxSizing: 'border-box',
     boxShadow: '0 18px 40px -28px rgba(15,23,42,0.16)',
+  },
+
+  yatayKaydirmaSekmeleri: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'nowrap',
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    WebkitOverflowScrolling: 'touch',
+    paddingBottom: '4px',
+    maxWidth: '100%',
+  },
+
+  mobilAdisyonTamEkran: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 9999,
+    width: '100vw',
+    height: '100dvh',
+    maxWidth: '100vw',
+    backgroundColor: '#fff',
+    padding: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    border: 'none',
+    borderRadius: 0,
+    boxSizing: 'border-box',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+  },
+
+  mobilAdisyonUstBar: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    padding: '8px 0 10px',
+    backgroundColor: '#fff',
+    borderBottom: '1px solid #e2e8f0',
+    marginBottom: '10px',
+  },
+
+  mobilAdisyonMasaAdi: {
+    fontSize: '17px',
+    fontWeight: '900',
+    color: '#1e293b',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+
+  mobilAdisyonOzetSatiri: {
+    display: 'flex',
+    gap: '8px',
+    overflowX: 'auto',
+    whiteSpace: 'nowrap',
+    WebkitOverflowScrolling: 'touch',
+    color: '#475569',
+    fontSize: '12px',
+    fontWeight: '800',
+    marginTop: '5px',
+    paddingBottom: '2px',
+  },
+
+  mobilAdisyonKapatBtn: {
+    width: '38px',
+    height: '38px',
+    border: 'none',
+    borderRadius: '999px',
+    backgroundColor: '#fee2e2',
+    color: '#b91c1c',
+    cursor: 'pointer',
+    fontSize: '18px',
+    fontWeight: '900',
+    flex: '0 0 38px',
+  },
+
+  mobilAdisyonSekmeKutusu: {
+    position: 'sticky',
+    top: '62px',
+    zIndex: 2,
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '8px',
+    backgroundColor: '#fff',
+    paddingBottom: '10px',
+    marginBottom: '10px',
+  },
+
+  mobilAdisyonSekme: {
+    border: '1px solid #e2e8f0',
+    backgroundColor: '#f8fafc',
+    color: '#475569',
+    padding: '11px 10px',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontWeight: '900',
+    fontSize: '13px',
+  },
+
+  mobilAdisyonSekmeAktif: {
+    border: '1px solid #ff6b35',
+    backgroundColor: '#ff6b35',
+    color: '#fff',
+    padding: '11px 10px',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontWeight: '900',
+    fontSize: '13px',
   },
 
   panelTitle: {
