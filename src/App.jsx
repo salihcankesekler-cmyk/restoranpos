@@ -204,6 +204,127 @@ function IntegraApp() {
     };
   }
 
+
+  // kalıcı yazıcı sistemi için varsayılan Windows yazıcı adlarını oluşturan kod
+  function varsayilanYaziciAyarlari() {
+    return {
+      adisyonYaziciAdi: 'adisyon',
+      mutfakYaziciAdi: 'mutfak',
+      barYaziciAdi: 'bar',
+      barYoksaMutfagaGonder: true,
+      adisyonFisiAktif: true,
+      odemeFisiAktif: true,
+      mutfakFisiAktif: true,
+      iptalFisiAktif: true,
+      paketFisiAktif: true,
+      zRaporuAktif: true,
+    };
+  }
+
+  // kalıcı fiş şablonları için varsayılan metinleri oluşturan kod
+  function varsayilanFisSablonlari() {
+    return [
+      {
+        fisTipi: 'adisyon',
+        baslik: 'ADİSYON FİŞİ',
+        aktif: true,
+        sablonText: `{firma_adi}
+{fis_baslik}
+Masa: {masa_adi}
+Garson: {garson_adi}
+Tarih: {tarih}
+
+{urunler}
+
+Ara Toplam: {ara_toplam}
+İndirim: {indirim}
+KDV: {kdv}
+Toplam: {toplam}
+
+{alt_not}`,
+      },
+      {
+        fisTipi: 'odeme',
+        baslik: 'ÖDEME FİŞİ',
+        aktif: true,
+        sablonText: `{firma_adi}
+{fis_baslik}
+Masa: {masa_adi}
+Ödeme: {odeme_tipi}
+Tarih: {tarih}
+
+{urunler}
+
+Toplam: {toplam}
+Ödenen: {odenen}
+Kalan: {kalan}
+Para Üstü: {para_ustu}
+
+{alt_not}`,
+      },
+      {
+        fisTipi: 'mutfak',
+        baslik: 'MUTFAK FİŞİ',
+        aktif: true,
+        sablonText: `{fis_baslik}
+Masa: {masa_adi}
+Departman: {departman}
+Garson: {garson_adi}
+Tarih: {tarih}
+
+{urunler}
+
+Not: {not}`,
+      },
+      {
+        fisTipi: 'iptal',
+        baslik: 'İPTAL FİŞİ',
+        aktif: true,
+        sablonText: `*** İPTAL ***
+Masa: {masa_adi}
+Departman: {departman}
+Garson: {garson_adi}
+Tarih: {tarih}
+
+{urunler}
+
+Sebep: {iptal_sebebi}`,
+      },
+      {
+        fisTipi: 'paket',
+        baslik: 'PAKET SERVİS FİŞİ',
+        aktif: true,
+        sablonText: `{firma_adi}
+{fis_baslik}
+Müşteri: {musteri_adi}
+Telefon: {telefon}
+Adres: {adres}
+Tarih: {tarih}
+
+{urunler}
+
+Toplam: {toplam}
+
+{alt_not}`,
+      },
+      {
+        fisTipi: 'z_raporu',
+        baslik: 'GÜN SONU Z RAPORU',
+        aktif: true,
+        sablonText: `{firma_adi}
+{fis_baslik}
+Tarih: {tarih}
+
+Nakit: {nakit}
+Kart: {kart}
+Cari: {cari}
+Toplam Ciro: {toplam}
+
+{alt_not}`,
+      },
+    ];
+  }
+
   // her restoran için fiş ayarlarını ayrı tarayıcı kaydında tutan kod
   function fisAyarlariLocalKey(restaurantId) {
     return `integra_fis_yazici_ayarlari_${restaurantId || 'genel'}`;
@@ -229,6 +350,13 @@ function IntegraApp() {
       return varsayilan;
     }
   });
+
+  // kalıcı yazıcı kurallarını tutan kod
+  const [yaziciAyarlari, setYaziciAyarlari] = useState(() => varsayilanYaziciAyarlari());
+
+  // kalıcı fiş şablonlarını tutan kod
+  const [fisSablonlari, setFisSablonlari] = useState(() => varsayilanFisSablonlari());
+  const [aktifFisSablonTipi, setAktifFisSablonTipi] = useState('adisyon');
 
   // fiş ayarları kaydedilirken butonu kilitleyen kod
   const [fisAyarlariKaydediliyor, setFisAyarlariKaydediliyor] = useState(false);
@@ -581,6 +709,80 @@ function IntegraApp() {
       ...prev,
       [alan]: deger,
     }));
+  };
+
+
+  // kalıcı yazıcı ayarlarını güncelleyen kod
+  const yaziciAyariGuncelle = (alan, deger) => {
+    setYaziciAyarlari(prev => ({
+      ...prev,
+      [alan]: deger,
+    }));
+  };
+
+  // fiş tipi isimlerini ekranda okunur hale getiren kod
+  const fisTipiEtiketi = (tip) => {
+    const etiketler = {
+      adisyon: 'Adisyon',
+      odeme: 'Ödeme',
+      mutfak: 'Mutfak',
+      iptal: 'İptal',
+      paket: 'Paket',
+      z_raporu: 'Z Raporu',
+    };
+    return etiketler[tip] || tip;
+  };
+
+  // seçili fiş şablonunu bulan kod
+  const fisSablonuBul = (fisTipi) => {
+    const varsayilan = varsayilanFisSablonlari().find(s => s.fisTipi === fisTipi) || varsayilanFisSablonlari()[0];
+    const kayitli = (Array.isArray(fisSablonlari) ? fisSablonlari : []).find(s => s.fisTipi === fisTipi);
+    return { ...varsayilan, ...(kayitli || {}) };
+  };
+
+  // fiş şablon alanlarını güncelleyen kod
+  const fisSablonuGuncelle = (fisTipi, alan, deger) => {
+    setFisSablonlari(prev => {
+      const liste = Array.isArray(prev) && prev.length > 0 ? prev : varsayilanFisSablonlari();
+      const varMi = liste.some(s => s.fisTipi === fisTipi);
+      const yeniListe = varMi
+        ? liste.map(s => s.fisTipi === fisTipi ? { ...s, [alan]: deger } : s)
+        : [...liste, { ...fisSablonuBul(fisTipi), [alan]: deger }];
+      return yeniListe;
+    });
+  };
+
+  // yazdırma kuyruğuna iş eklenip eklenmeyeceğini belirleyen kod
+  const fisKuyruguAktifMi = (fisTipi = 'adisyon', yaziciTipi = 'adisyon') => {
+    const tip = String(fisTipi || '').toLocaleLowerCase('tr-TR');
+    const yazici = String(yaziciTipi || '').toLocaleLowerCase('tr-TR');
+
+    if (tip.includes('iptal')) return yaziciAyarlari.iptalFisiAktif !== false;
+    if (tip.includes('paket')) return yaziciAyarlari.paketFisiAktif !== false;
+    if (tip.includes('z')) return yaziciAyarlari.zRaporuAktif !== false;
+    if (tip.includes('hesap') || tip.includes('odeme') || tip.includes('ödeme')) return yaziciAyarlari.odemeFisiAktif !== false;
+    if (yazici === 'mutfak' || yazici === 'bar' || tip.includes('mutfak') || tip.includes('bar') || tip.includes('hazirlama')) return yaziciAyarlari.mutfakFisiAktif !== false;
+    return yaziciAyarlari.adisyonFisiAktif !== false;
+  };
+
+  // şablon içindeki {alan} değerlerini gerçek fiş verisiyle dolduran kod
+  const sablonDegiskenleriniUygula = (sablonText = '', degiskenler = {}) => {
+    return String(sablonText || '').replace(/\{([a-zA-Z0-9_ğüşıöçĞÜŞİÖÇ]+)\}/g, (tamamı, anahtar) => {
+      const deger = degiskenler[anahtar];
+      if (deger === undefined || deger === null) return '';
+      return String(deger);
+    });
+  };
+
+  // kayıtlı fiş şablonu varsa onu, yoksa varsayılan metni kullanan kod
+  const fisSablonTextHazirla = (fisTipi, degiskenler, varsayilanText) => {
+    const sablon = fisSablonuBul(fisTipi);
+    if (!sablon || sablon.aktif === false || !String(sablon.sablonText || '').trim()) {
+      return varsayilanText;
+    }
+
+    const sonuc = sablonDegiskenleriniUygula(sablon.sablonText, degiskenler).replace(/\n/g, '\r\n');
+    return String(sonuc || '').trim() || varsayilanText;
   };
 
   // yazdırma HTML'i içinde özel karakterleri güvenli hale getiren kod
@@ -1749,6 +1951,63 @@ function IntegraApp() {
       setFisAyarlari(temizAyarlar);
       localStorage.setItem(localKey, JSON.stringify(temizAyarlar));
     }
+
+
+    // yeni kalıcı yazıcı ayarları tablosunu çeken kod
+    const { data: yeniYaziciData, error: yeniYaziciError } = await supabase
+      .from('yazici_ayarlari')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle();
+
+    if (!yeniYaziciError && yeniYaziciData) {
+      const temizYaziciAyarlari = {
+        ...varsayilanYaziciAyarlari(),
+        adisyonYaziciAdi: yeniYaziciData.adisyon_yazici_adi || 'adisyon',
+        mutfakYaziciAdi: yeniYaziciData.mutfak_yazici_adi || 'mutfak',
+        barYaziciAdi: yeniYaziciData.bar_yazici_adi || 'bar',
+        barYoksaMutfagaGonder: yeniYaziciData.bar_yoksa_mutfaga_gonder !== false,
+        adisyonFisiAktif: yeniYaziciData.adisyon_fisi_aktif !== false,
+        odemeFisiAktif: yeniYaziciData.odeme_fisi_aktif !== false,
+        mutfakFisiAktif: yeniYaziciData.mutfak_fisi_aktif !== false,
+        iptalFisiAktif: yeniYaziciData.iptal_fisi_aktif !== false,
+        paketFisiAktif: yeniYaziciData.paket_fisi_aktif !== false,
+        zRaporuAktif: yeniYaziciData.z_raporu_aktif !== false,
+      };
+
+      setYaziciAyarlari(temizYaziciAyarlari);
+      setFisAyarlari(prev => ({
+        ...prev,
+        adisyonYaziciNo: temizYaziciAyarlari.adisyonYaziciAdi,
+        mutfakYaziciNo: temizYaziciAyarlari.mutfakYaziciAdi,
+        barYaziciNo: temizYaziciAyarlari.barYaziciAdi,
+      }));
+    }
+
+    // yeni kalıcı fiş şablonları tablosunu çeken kod
+    const { data: yeniSablonData, error: yeniSablonError } = await supabase
+      .from('fis_sablonlari')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .order('id', { ascending: true });
+
+    if (!yeniSablonError && Array.isArray(yeniSablonData) && yeniSablonData.length > 0) {
+      const varsayilanlar = varsayilanFisSablonlari();
+      const temizSablonlar = varsayilanlar.map(v => {
+        const kayit = yeniSablonData.find(s => s.fis_tipi === v.fisTipi);
+        return kayit
+          ? {
+            ...v,
+            id: kayit.id,
+            baslik: kayit.baslik || v.baslik,
+            sablonText: kayit.sablon_text || v.sablonText,
+            aktif: kayit.aktif !== false,
+            ayarlar: kayit.ayarlar || {},
+          }
+          : v;
+      });
+      setFisSablonlari(temizSablonlar);
+    }
   };
 
   // fiş ve yazıcı ayarlarını Supabase'e kaydeden kod
@@ -1778,6 +2037,49 @@ function IntegraApp() {
     setFisAyarlariKaydediliyor(true);
     setFisAyarlari(temizAyarlar);
     localStorage.setItem(fisAyarlariLocalKey(mevcutRestaurantId), JSON.stringify(temizAyarlar));
+
+    // yeni kalıcı yazıcı ayarlarını Supabase'e kaydeden kod
+    const { error: yeniYaziciError } = await supabase
+      .from('yazici_ayarlari')
+      .upsert(
+        {
+          restaurant_id: mevcutRestaurantId,
+          adisyon_yazici_adi: String(yaziciAyarlari.adisyonYaziciAdi || temizAyarlar.adisyonYaziciNo || 'adisyon').trim(),
+          mutfak_yazici_adi: String(yaziciAyarlari.mutfakYaziciAdi || temizAyarlar.mutfakYaziciNo || 'mutfak').trim(),
+          bar_yazici_adi: String(yaziciAyarlari.barYaziciAdi || temizAyarlar.barYaziciNo || 'bar').trim(),
+          bar_yoksa_mutfaga_gonder: yaziciAyarlari.barYoksaMutfagaGonder !== false,
+          adisyon_fisi_aktif: yaziciAyarlari.adisyonFisiAktif !== false,
+          odeme_fisi_aktif: yaziciAyarlari.odemeFisiAktif !== false,
+          mutfak_fisi_aktif: yaziciAyarlari.mutfakFisiAktif !== false,
+          iptal_fisi_aktif: yaziciAyarlari.iptalFisiAktif !== false,
+          paket_fisi_aktif: yaziciAyarlari.paketFisiAktif !== false,
+          z_raporu_aktif: yaziciAyarlari.zRaporuAktif !== false,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'restaurant_id' }
+      );
+
+    if (yeniYaziciError) {
+      console.warn('Kalıcı yazıcı ayarları kaydedilemedi:', yeniYaziciError.message);
+    }
+
+    const sablonKayitlari = (Array.isArray(fisSablonlari) ? fisSablonlari : varsayilanFisSablonlari()).map(sablon => ({
+      restaurant_id: mevcutRestaurantId,
+      fis_tipi: sablon.fisTipi,
+      baslik: sablon.baslik || fisTipiEtiketi(sablon.fisTipi),
+      sablon_text: sablon.sablonText || '',
+      ayarlar: sablon.ayarlar || {},
+      aktif: sablon.aktif !== false,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error: yeniSablonError } = await supabase
+      .from('fis_sablonlari')
+      .upsert(sablonKayitlari, { onConflict: 'restaurant_id,fis_tipi' });
+
+    if (yeniSablonError) {
+      console.warn('Fiş şablonları kaydedilemedi:', yeniSablonError.message);
+    }
 
     const { error } = await supabase
       .from('fis_yazici_ayarlari')
@@ -3442,10 +3744,15 @@ function IntegraApp() {
   };
 
   // Windows Printer Agent için genel yazdırma kuyruğuna kayıt atan kod
-  const yazdirmaKuyrugunaEkle = async ({ yaziciTipi = 'adisyon', fisTipi = 'adisyon', baslik = 'Fiş', icerikText = '', restaurantId = mevcutRestaurantId } = {}) => {
+  const yazdirmaKuyrugunaEkle = async ({ yaziciTipi = 'adisyon', fisTipi = 'adisyon', baslik = 'Fiş', icerikText = '', restaurantId = mevcutRestaurantId, payloadJson = null, kaynakTablo = '', kaynakId = '' } = {}) => {
     const hedefRestaurantId = restaurantId || mevcutRestaurantId;
 
     if (!hedefRestaurantId || String(hedefRestaurantId) === 'super_admin') {
+      return null;
+    }
+
+    if (!fisKuyruguAktifMi(fisTipi, yaziciTipi)) {
+      console.log('Fiş kuyruğu ayar nedeniyle pasif:', fisTipi, yaziciTipi);
       return null;
     }
 
@@ -3464,6 +3771,9 @@ function IntegraApp() {
           fis_tipi: fisTipi || 'adisyon',
           baslik: baslik || 'Fiş',
           icerik_text: temizIcerik,
+          payload_json: payloadJson || null,
+          kaynak_tablo: kaynakTablo || null,
+          kaynak_id: kaynakId ? String(kaynakId) : null,
           durum: 'Bekliyor',
           yazdirildi: false,
         },
@@ -3538,7 +3848,8 @@ function IntegraApp() {
       }).join('\r\n')
       : termalTextSatiri('Ödeme', `${toplamTutar} TL`);
 
-    return [
+    const urunlerText = urunlerText;
+    const varsayilanText = [
       termalTextOrtala(ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS'),
       termalTextOrtala(baslik),
       termalTextCizgi('='),
@@ -3558,12 +3869,35 @@ function IntegraApp() {
       termalTextCizgi('='),
       ayarlar.fisAltNotu || 'Bizi tercih ettiğiniz için teşekkür ederiz.',
     ].filter(Boolean).join('\r\n');
+
+    const paraUstuToplam = (Array.isArray(odemeler) ? odemeler : []).reduce((t, o) => t + Number(o.paraUstu || 0), 0);
+    const fisTipi = String(baslik || '').toLocaleLowerCase('tr-TR').includes('hesap') ? 'odeme' : 'adisyon';
+
+    return fisSablonTextHazirla(fisTipi, {
+      firma_adi: ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS',
+      fis_baslik: baslik,
+      masa_adi: masa?.ad || '-',
+      musteri_adi: masa?.musteriAdi || '',
+      garson_adi: masa?.adisyonGarsonAdi || user?.waiterName || user?.restaurant || '',
+      tarih: new Date().toLocaleString('tr-TR'),
+      urunler: urunlerText,
+      ara_toplam: `${paraYuvarla(araToplam)} TL`,
+      indirim: toplamIndirim > 0 ? `-${paraYuvarla(toplamIndirim)} TL` : '0 TL',
+      kdv: `${kdvOzeti.kdvToplam} TL`,
+      toplam: `${toplamTutar} TL`,
+      odenen: `${odenen} TL`,
+      kalan: `${kalan} TL`,
+      para_ustu: `${paraYuvarla(paraUstuToplam)} TL`,
+      odeme_tipi: (Array.isArray(odemeler) && odemeler.length > 0) ? (odemeler.length > 1 ? 'Parçalı' : odemeler[0]?.tip || 'Ödeme') : 'Ödeme',
+      alt_not: ayarlar.fisAltNotu || 'Bizi tercih ettiğiniz için teşekkür ederiz.',
+    }, varsayilanText);
   };
 
   const mutfakSiparisFisiTextHazirla = ({ masaAdi = '-', urunAdi = '-', adet = 1, notMetni = '', departman = 'Mutfak', garsonAdi = '-', baslik = 'MUTFAK FİŞİ' } = {}) => {
     const ayarlar = { ...varsayilanFisAyarlari(user?.restaurant || ''), ...fisAyarlari };
 
-    return [
+    const urunlerText = `${Number(adet || 1)} x ${urunAdi || '-'}`;
+    const varsayilanText = [
       termalTextOrtala(ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS'),
       termalTextOrtala(baslik),
       termalTextCizgi('='),
@@ -3572,16 +3906,29 @@ function IntegraApp() {
       termalTextSatiri('Departman', departman || 'Mutfak'),
       termalTextSatiri('Garson', garsonAdi || '-'),
       termalTextCizgi('-'),
-      `${Number(adet || 1)} x ${urunAdi || '-'}`,
+      urunlerText,
       notMetni ? `NOT: ${notMetni}` : '',
       termalTextCizgi('='),
     ].filter(Boolean).join('\r\n');
+
+    return fisSablonTextHazirla('mutfak', {
+      firma_adi: ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS',
+      fis_baslik: baslik,
+      masa_adi: masaAdi || '-',
+      departman: departman || 'Mutfak',
+      garson_adi: garsonAdi || '-',
+      tarih: new Date().toLocaleString('tr-TR'),
+      urunler: urunlerText,
+      not: notMetni || '',
+      alt_not: ayarlar.fisAltNotu || '',
+    }, varsayilanText);
   };
 
   const iptalFisiTextHazirla = ({ masa, siparis, adet = 1, sebep = 'Ürün iptal edildi', departman = 'Mutfak', garsonAdi = '-' } = {}) => {
     const ayarlar = { ...varsayilanFisAyarlari(user?.restaurant || ''), ...fisAyarlari };
 
-    return [
+    const urunlerText = `İPTAL: ${Number(adet || 1)} x ${siparis?.ad || '-'}`;
+    const varsayilanText = [
       termalTextOrtala(ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS'),
       termalTextOrtala('İPTAL FİŞİ'),
       termalTextCizgi('='),
@@ -3590,11 +3937,24 @@ function IntegraApp() {
       termalTextSatiri('Departman', departman || 'Mutfak'),
       termalTextSatiri('Garson', garsonAdi || '-'),
       termalTextCizgi('-'),
-      `İPTAL: ${Number(adet || 1)} x ${siparis?.ad || '-'}`,
+      urunlerText,
       siparis?.not ? `Ürün Notu: ${siparis.not}` : '',
       sebep ? `Sebep: ${sebep}` : '',
       termalTextCizgi('='),
     ].filter(Boolean).join('\r\n');
+
+    return fisSablonTextHazirla('iptal', {
+      firma_adi: ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS',
+      fis_baslik: 'İPTAL FİŞİ',
+      masa_adi: masa?.ad || '-',
+      departman: departman || 'Mutfak',
+      garson_adi: garsonAdi || '-',
+      tarih: new Date().toLocaleString('tr-TR'),
+      urunler: urunlerText,
+      not: siparis?.not || '',
+      iptal_sebebi: sebep || '',
+      alt_not: ayarlar.fisAltNotu || '',
+    }, varsayilanText);
   };
 
   // ürün iptal edilince mutfak ekranı ve fiziksel fiş yazıcı ayarını ayrı uygulayan kod
@@ -12739,10 +13099,98 @@ function IntegraApp() {
                     >
                       Test Mutfak Fişi
                     </button>
+                  <div
+                    style={{
+                      gridColumn: isMobile ? 'auto' : '1 / -1',
+                      backgroundColor: '#fff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      padding: '12px',
+                    }}
+                  >
+                    <h4 style={{ margin: '0 0 10px', color: '#1e293b' }}>Kalıcı Yazıcı Kuralları</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(160px, 1fr))', gap: '10px' }}>
+                      <input type="text" placeholder="Windows adisyon yazıcısı: adisyon" value={yaziciAyarlari.adisyonYaziciAdi} onChange={e => yaziciAyariGuncelle('adisyonYaziciAdi', e.target.value)} style={styles.input} />
+                      <input type="text" placeholder="Windows mutfak yazıcısı: mutfak" value={yaziciAyarlari.mutfakYaziciAdi} onChange={e => yaziciAyariGuncelle('mutfakYaziciAdi', e.target.value)} style={styles.input} />
+                      <input type="text" placeholder="Windows bar yazıcısı: bar" value={yaziciAyarlari.barYaziciAdi} onChange={e => yaziciAyariGuncelle('barYaziciAdi', e.target.value)} style={styles.input} />
+
+                      {[
+                        ['adisyonFisiAktif', 'Adisyon fişi'],
+                        ['odemeFisiAktif', 'Ödeme fişi'],
+                        ['mutfakFisiAktif', 'Mutfak/bar fişi'],
+                        ['iptalFisiAktif', 'İptal fişi'],
+                        ['paketFisiAktif', 'Paket fişi'],
+                        ['zRaporuAktif', 'Z raporu'],
+                      ].map(([alan, etiket]) => (
+                        <label key={alan} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', color: '#334155', fontSize: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
+                          <input type="checkbox" checked={yaziciAyarlari[alan] !== false} onChange={e => yaziciAyariGuncelle(alan, e.target.checked)} />
+                          {etiket} aktif
+                        </label>
+                      ))}
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', color: '#334155', fontSize: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
+                        <input type="checkbox" checked={yaziciAyarlari.barYoksaMutfagaGonder !== false} onChange={e => yaziciAyariGuncelle('barYoksaMutfagaGonder', e.target.checked)} />
+                        Bar yoksa mutfağa gönder
+                      </label>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      gridColumn: isMobile ? 'auto' : '1 / -1',
+                      backgroundColor: '#fff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      padding: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '10px' }}>
+                      <h4 style={{ margin: 0, color: '#1e293b' }}>Fiş Şablonları</h4>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {varsayilanFisSablonlari().map(sablon => (
+                          <button
+                            key={sablon.fisTipi}
+                            type="button"
+                            onClick={() => setAktifFisSablonTipi(sablon.fisTipi)}
+                            style={{
+                              border: 'none',
+                              backgroundColor: aktifFisSablonTipi === sablon.fisTipi ? '#ff6b35' : '#e2e8f0',
+                              color: aktifFisSablonTipi === sablon.fisTipi ? '#fff' : '#334155',
+                              padding: '8px 10px',
+                              borderRadius: '999px',
+                              cursor: 'pointer',
+                              fontWeight: '900',
+                              fontSize: '12px',
+                            }}
+                          >
+                            {fisTipiEtiketi(sablon.fisTipi)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="Fiş başlığı"
+                      value={fisSablonuBul(aktifFisSablonTipi).baslik || ''}
+                      onChange={e => fisSablonuGuncelle(aktifFisSablonTipi, 'baslik', e.target.value)}
+                      style={{ ...styles.input, marginBottom: '8px' }}
+                    />
+
+                    <textarea
+                      value={fisSablonuBul(aktifFisSablonTipi).sablonText || ''}
+                      onChange={e => fisSablonuGuncelle(aktifFisSablonTipi, 'sablonText', e.target.value)}
+                      style={{ ...styles.input, width: '100%', minHeight: '170px', resize: 'vertical', fontFamily: 'Consolas, monospace', fontSize: '12px', lineHeight: 1.5 }}
+                    />
+
+                    <div style={{ color: '#64748b', fontSize: '11px', marginTop: '8px', lineHeight: 1.6, fontWeight: '700' }}>
+                      Kullanılabilir alanlar: {'{firma_adi}'}, {'{fis_baslik}'}, {'{masa_adi}'}, {'{garson_adi}'}, {'{tarih}'}, {'{urunler}'}, {'{toplam}'}, {'{kdv}'}, {'{indirim}'}, {'{alt_not}'}, {'{not}'}, {'{iptal_sebebi}'}.
+                    </div>
+                  </div>
                   </div>
 
                   <div style={{ color: '#64748b', fontSize: '11px', marginTop: '10px', lineHeight: 1.5, fontWeight: '700' }}>
-                    Not: Tarayıcı güvenliği nedeniyle web sitesi Windows yazıcısını sessiz şekilde zorla seçemez; Chrome son seçtiğiniz yazıcıyı hatırlar. Bu yüzden yazdırma penceresinde hedef yazıcı adı/no büyük şekilde gösterilir. Gerçek otomatik yönlendirme için sonraki aşamada bilgisayara kurulacak küçük bir yerel yazdırma servisi gerekir.
+                    Not: Windows tarafında yazıcı adları standart olarak adisyon, mutfak ve bar kalır. Bu ekrandaki kurallar ve şablonlar Supabase'de kalıcı saklanır; Printer Agent bekleyen kuyruğu basar.
                   </div>
                 </div>
 
