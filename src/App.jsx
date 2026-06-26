@@ -552,6 +552,13 @@ function IntegraApp() {
     return true;
   };
 
+  // Supabase menu_gruplari.id bigint olduğu için sadece sayısal id'ler doğrudan güncellenir.
+  // Ürünlerden otomatik oluşan gruplar urun-grup-... id alır; bunlar önce gerçek grup kaydına çevrilir.
+  const menuGrubuDbKaydiVarMi = (grup = {}) => {
+    const idMetni = String(grup?.id ?? '').trim();
+    return /^\d+$/.test(idMetni);
+  };
+
   const mutfakYaziciDurumEtiketi = (kayit = {}) => {
     const ekran = mutfakEkraniAktifMi(kayit);
     const yazici = fisYaziciAktifMi(kayit);
@@ -907,7 +914,6 @@ function IntegraApp() {
   const aktifMenuGruplari = Array.from(
     new Map(
       [
-        ...(Array.isArray(menuGruplari) ? menuGruplari.filter(g => String(g.restaurantId) === String(mevcutRestaurantId)) : []),
         ...aktifMenu.map(u => ({
           id: `urun-grup-${u.menuGrubu || u.kategori || 'Genel'}`,
           restaurantId: mevcutRestaurantId,
@@ -918,6 +924,7 @@ function IntegraApp() {
           mutfakEkraninaGitsin: mutfakEkraniAktifMi(u),
           yaziciyaGitsin: fisYaziciAktifMi(u),
         })),
+        ...(Array.isArray(menuGruplari) ? menuGruplari.filter(g => String(g.restaurantId) === String(mevcutRestaurantId)) : []),
       ].map(g => [g.ad, g])
     ).values()
   );
@@ -7160,51 +7167,92 @@ function IntegraApp() {
     }));
   };
 
-  // menü grubunun hazırlama fişi çıkıp çıkmayacağını ayarlayan kod
+  // menü grubunun mutfak ekranında görünüp görünmeyeceğini ayarlayan kod
   const menuGrubuMutfakDurumunuAyarla = async (grup, yeniDurum) => {
     if (!grup || !grup.ad) {
       alert('Grup bulunamadı.');
       return;
     }
 
-    const { data, error } = await supabase
-      .from('menu_gruplari')
-      .update({ mutfaga_gitsin: yeniDurum, mutfak_ekranina_gitsin: yeniDurum })
-      .eq('id', grup.id)
-      .eq('restaurant_id', mevcutRestaurantId)
-      .select()
-      .single();
+    let kayitliGrupData = null;
+    const mevcutYaziciDurumu = fisYaziciAktifMi(grup);
 
-    if (error) {
-      console.error('Grup mutfak durumu güncellenemedi:', error);
-      alert('Grup mutfak durumu güncellenemedi: ' + error.message);
-      return;
+    if (menuGrubuDbKaydiVarMi(grup)) {
+      const { data, error } = await supabase
+        .from('menu_gruplari')
+        .update({
+          mutfaga_gitsin: yeniDurum,
+          mutfak_ekranina_gitsin: yeniDurum,
+        })
+        .eq('id', grup.id)
+        .eq('restaurant_id', mevcutRestaurantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Grup mutfak ekranı durumu güncellenemedi:', error);
+        alert('Grup mutfak ekranı durumu güncellenemedi: ' + error.message);
+        return;
+      }
+
+      kayitliGrupData = data;
+    } else {
+      const { data, error } = await supabase
+        .from('menu_gruplari')
+        .insert([
+          {
+            restaurant_id: mevcutRestaurantId,
+            ad: grup.ad,
+            departman: grup.departman || 'Mutfak',
+            kdv_orani: Number(grup.kdvOrani || 10),
+            mutfaga_gitsin: yeniDurum,
+            mutfak_ekranina_gitsin: yeniDurum,
+            yaziciya_gitsin: mevcutYaziciDurumu,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Grup mutfak ekranı durumu kaydedilemedi:', error);
+        alert('Grup mutfak ekranı durumu kaydedilemedi: ' + error.message);
+        return;
+      }
+
+      kayitliGrupData = data;
     }
 
-    await supabase
+    const { error: urunError } = await supabase
       .from('menu_urunleri')
-      .update({ mutfaga_gitsin: yeniDurum, mutfak_ekranina_gitsin: yeniDurum })
+      .update({
+        mutfaga_gitsin: yeniDurum,
+        mutfak_ekranina_gitsin: yeniDurum,
+      })
       .eq('restaurant_id', mevcutRestaurantId)
       .eq('menu_grubu', grup.ad);
 
+    if (urunError) {
+      console.error('Grup ürün mutfak ekranı durumu güncellenemedi:', urunError);
+      alert('Grup kaydedildi ama ürünlere uygulanamadı: ' + urunError.message);
+      return;
+    }
+
     const guncelGrup = {
-      id: data.id,
-      restaurantId: data.restaurant_id,
-      ad: data.ad,
-      departman: data.departman || grup.departman || 'Mutfak',
-      kdvOrani: Number(data.kdv_orani || grup.kdvOrani || 10),
-      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
-      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
-      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
+      id: kayitliGrupData.id,
+      restaurantId: kayitliGrupData.restaurant_id,
+      ad: kayitliGrupData.ad,
+      departman: kayitliGrupData.departman || grup.departman || 'Mutfak',
+      kdvOrani: Number(kayitliGrupData.kdv_orani || grup.kdvOrani || 10),
+      mutfagaGitsin: (kayitliGrupData.mutfak_ekranina_gitsin ?? kayitliGrupData.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (kayitliGrupData.mutfak_ekranina_gitsin ?? kayitliGrupData.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (kayitliGrupData.yaziciya_gitsin ?? mevcutYaziciDurumu) !== false,
     };
 
-    setMenuGruplari(menuGruplari.map(g => {
-      if (String(g.id) === String(grup.id)) {
-        return guncelGrup;
-      }
-
-      return g;
-    }));
+    setMenuGruplari(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const kalanlar = liste.filter(g => String(g.id) !== String(grup.id) && g.ad !== grup.ad);
+      return [...kalanlar, guncelGrup];
+    });
 
     setMenuUrunleri(menuUrunleri.map(u => {
       if (String(u.restaurantId) === String(mevcutRestaurantId) && (u.menuGrubu || u.kategori || 'Genel') === grup.ad) {
@@ -7226,32 +7274,80 @@ function IntegraApp() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('menu_gruplari')
-      .update({ yaziciya_gitsin: yeniDurum })
-      .eq('id', grup.id)
-      .eq('restaurant_id', mevcutRestaurantId)
-      .select()
-      .single();
+    let kayitliGrupData = null;
+    const mevcutMutfakEkraniDurumu = mutfakEkraniAktifMi(grup);
 
-    if (error) {
-      console.error('Grup yazıcı durumu güncellenemedi:', error);
-      alert('Grup yazıcı durumu güncellenemedi: ' + error.message);
-      return;
+    if (menuGrubuDbKaydiVarMi(grup)) {
+      const { data, error } = await supabase
+        .from('menu_gruplari')
+        .update({ yaziciya_gitsin: yeniDurum })
+        .eq('id', grup.id)
+        .eq('restaurant_id', mevcutRestaurantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Grup yazıcı durumu güncellenemedi:', error);
+        alert('Grup yazıcı durumu güncellenemedi: ' + error.message);
+        return;
+      }
+
+      kayitliGrupData = data;
+    } else {
+      const { data, error } = await supabase
+        .from('menu_gruplari')
+        .insert([
+          {
+            restaurant_id: mevcutRestaurantId,
+            ad: grup.ad,
+            departman: grup.departman || 'Mutfak',
+            kdv_orani: Number(grup.kdvOrani || 10),
+            mutfaga_gitsin: mevcutMutfakEkraniDurumu,
+            mutfak_ekranina_gitsin: mevcutMutfakEkraniDurumu,
+            yaziciya_gitsin: yeniDurum,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Grup yazıcı durumu kaydedilemedi:', error);
+        alert('Grup yazıcı durumu kaydedilemedi: ' + error.message);
+        return;
+      }
+
+      kayitliGrupData = data;
     }
 
-    await supabase
+    const { error: urunError } = await supabase
       .from('menu_urunleri')
       .update({ yaziciya_gitsin: yeniDurum })
       .eq('restaurant_id', mevcutRestaurantId)
       .eq('menu_grubu', grup.ad);
 
+    if (urunError) {
+      console.error('Grup ürün yazıcı durumu güncellenemedi:', urunError);
+      alert('Grup kaydedildi ama ürünlere uygulanamadı: ' + urunError.message);
+      return;
+    }
+
     const guncelGrup = {
-      ...grup,
-      yaziciyaGitsin: (data.yaziciya_gitsin ?? yeniDurum) !== false,
+      id: kayitliGrupData.id,
+      restaurantId: kayitliGrupData.restaurant_id,
+      ad: kayitliGrupData.ad,
+      departman: kayitliGrupData.departman || grup.departman || 'Mutfak',
+      kdvOrani: Number(kayitliGrupData.kdv_orani || grup.kdvOrani || 10),
+      mutfagaGitsin: (kayitliGrupData.mutfak_ekranina_gitsin ?? kayitliGrupData.mutfaga_gitsin ?? mevcutMutfakEkraniDurumu) !== false,
+      mutfakEkraninaGitsin: (kayitliGrupData.mutfak_ekranina_gitsin ?? kayitliGrupData.mutfaga_gitsin ?? mevcutMutfakEkraniDurumu) !== false,
+      yaziciyaGitsin: (kayitliGrupData.yaziciya_gitsin ?? yeniDurum) !== false,
     };
 
-    setMenuGruplari(menuGruplari.map(g => String(g.id) === String(grup.id) ? guncelGrup : g));
+    setMenuGruplari(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const kalanlar = liste.filter(g => String(g.id) !== String(grup.id) && g.ad !== grup.ad);
+      return [...kalanlar, guncelGrup];
+    });
+
     setMenuUrunleri(menuUrunleri.map(u => {
       if (String(u.restaurantId) === String(mevcutRestaurantId) && (u.menuGrubu || u.kategori || 'Genel') === grup.ad) {
         return { ...u, yaziciyaGitsin: yeniDurum };
