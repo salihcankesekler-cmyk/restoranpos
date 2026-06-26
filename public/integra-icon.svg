@@ -1,0 +1,14 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="220" fill="#0F172A"/>
+  <rect x="182" y="154" width="660" height="660" rx="170" fill="#2563EB"/>
+  <rect x="292" y="264" width="440" height="440" rx="105" fill="white"/>
+
+  <path d="M384 372H640" stroke="#2563EB" stroke-width="70" stroke-linecap="round"/>
+  <path d="M384 512H640" stroke="#2563EB" stroke-width="70" stroke-linecap="round"/>
+  <path d="M384 652H540" stroke="#2563EB" stroke-width="70" stroke-linecap="round"/>
+
+  <circle cx="700" cy="700" r="108" fill="#22C55E"/>
+  <path d="M652 700L688 736L758 658" stroke="white" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="512" y="910" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="800" fill="white">Integra POS</text>
+</svg>
