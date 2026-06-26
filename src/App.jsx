@@ -132,9 +132,9 @@ function IntegraApp() {
 
   // menü ürün gruplarını tutan kod
   const [menuGruplari, setMenuGruplari] = useState([
-    { id: 'demo-grup-1', restaurantId: 1, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-    { id: 'demo-grup-2', restaurantId: 1, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: true },
-    { id: 'demo-grup-3', restaurantId: 1, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
+    { id: 'demo-grup-1', restaurantId: 1, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
+    { id: 'demo-grup-2', restaurantId: 1, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
+    { id: 'demo-grup-3', restaurantId: 1, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
   ]);
 
   // menü yönetiminde aktif seçili ürün grubunu tutan kod
@@ -415,11 +415,11 @@ function IntegraApp() {
   ]);
 
   const [menuUrunleri, setMenuUrunleri] = useState([
-    { id: 1, restaurantId: 1, ad: 'Adana Kebap', fiyat: 280, kategori: 'Ana Yemekler', menuGrubu: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, resimUrl: '', menuNotlari: [] },
-    { id: 2, restaurantId: 1, ad: 'Ayran', fiyat: 40, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: true, resimUrl: '', menuNotlari: [] },
-    { id: 3, restaurantId: 1, ad: 'Künefe', fiyat: 120, kategori: 'Tatlılar', menuGrubu: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true, resimUrl: '', menuNotlari: [] },
-    { id: 4, restaurantId: 1, ad: 'Mercimek Çorbası', fiyat: 90, kategori: 'Ana Yemekler', menuGrubu: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, resimUrl: '', menuNotlari: [] },
-    { id: 5, restaurantId: 3, ad: 'Filtre Kahve', fiyat: 110, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: true, resimUrl: '', menuNotlari: [] },
+    { id: 1, restaurantId: 1, ad: 'Adana Kebap', fiyat: 280, kategori: 'Ana Yemekler', menuGrubu: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true, resimUrl: '', menuNotlari: [] },
+    { id: 2, restaurantId: 1, ad: 'Ayran', fiyat: 40, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true, resimUrl: '', menuNotlari: [] },
+    { id: 3, restaurantId: 1, ad: 'Künefe', fiyat: 120, kategori: 'Tatlılar', menuGrubu: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true, resimUrl: '', menuNotlari: [] },
+    { id: 4, restaurantId: 1, ad: 'Mercimek Çorbası', fiyat: 90, kategori: 'Ana Yemekler', menuGrubu: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true, resimUrl: '', menuNotlari: [] },
+    { id: 5, restaurantId: 3, ad: 'Filtre Kahve', fiyat: 110, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true, resimUrl: '', menuNotlari: [] },
   ]);
 
   const [satisGecmisi, setSatisGecmisi] = useState([
@@ -533,6 +533,33 @@ function IntegraApp() {
     }
 
     return ham || 'Mutfak';
+  };
+
+  // mutfak ekranı ve fiziksel fiş yazıcı ayarlarını ayrı kontrol eden kod
+  const mutfakEkraniAktifMi = (kayit = {}) => {
+    if (kayit?.mutfakEkraninaGitsin !== undefined) return kayit.mutfakEkraninaGitsin !== false;
+    if (kayit?.mutfak_ekranina_gitsin !== undefined) return kayit.mutfak_ekranina_gitsin !== false;
+    if (kayit?.mutfagaGitsin !== undefined) return kayit.mutfagaGitsin !== false;
+    if (kayit?.mutfaga_gitsin !== undefined) return kayit.mutfaga_gitsin !== false;
+    return true;
+  };
+
+  const fisYaziciAktifMi = (kayit = {}) => {
+    if (kayit?.yaziciyaGitsin !== undefined) return kayit.yaziciyaGitsin !== false;
+    if (kayit?.yaziciya_gitsin !== undefined) return kayit.yaziciya_gitsin !== false;
+    if (kayit?.mutfagaGitsin !== undefined) return kayit.mutfagaGitsin !== false;
+    if (kayit?.mutfaga_gitsin !== undefined) return kayit.mutfaga_gitsin !== false;
+    return true;
+  };
+
+  const mutfakYaziciDurumEtiketi = (kayit = {}) => {
+    const ekran = mutfakEkraniAktifMi(kayit);
+    const yazici = fisYaziciAktifMi(kayit);
+
+    if (ekran && yazici) return '👨‍🍳 Ekran + 🖨️ Yazıcı';
+    if (ekran && !yazici) return '👨‍🍳 Sadece mutfak ekranı';
+    if (!ekran && yazici) return '🖨️ Sadece fiş yazıcı';
+    return '🚫 Mutfak/Yazıcı kapalı';
   };
 
   const yaziciDepartmaniSecenekleri = [
@@ -887,7 +914,9 @@ function IntegraApp() {
           ad: u.menuGrubu || u.kategori || 'Genel',
           departman: u.departman || 'Mutfak',
           kdvOrani: Number(u.kdvOrani || 10),
-          mutfagaGitsin: u.mutfagaGitsin !== false,
+          mutfagaGitsin: mutfakEkraniAktifMi(u),
+          mutfakEkraninaGitsin: mutfakEkraniAktifMi(u),
+          yaziciyaGitsin: fisYaziciAktifMi(u),
         })),
       ].map(g => [g.ad, g])
     ).values()
@@ -897,7 +926,7 @@ function IntegraApp() {
   const aktifGrup =
     aktifMenuGruplari.find(g => g.ad === aktifMenuGrubu) ||
     aktifMenuGruplari[0] ||
-    { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true };
+    { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true };
 
   // aktif seçili menü grubundaki ürünleri filtreleyen kod
   const aktifMenuGrubuUrunleri = aktifMenu.filter(u => {
@@ -908,7 +937,7 @@ function IntegraApp() {
   const aktifAdisyonGrup =
     aktifMenuGruplari.find(g => g.ad === aktifAdisyonMenuGrubu) ||
     aktifMenuGruplari[0] ||
-    { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true };
+    { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true };
 
   // adisyon ekranında seçili grup ve aramaya göre ürünleri listeleyen kod
   const adisyonUrunAramaMetni = String(adisyonUrunArama || '').toLocaleLowerCase('tr-TR').trim();
@@ -927,7 +956,7 @@ function IntegraApp() {
   const aktifPaketGrup =
     aktifMenuGruplari.find(g => g.ad === aktifPaketMenuGrubu) ||
     aktifMenuGruplari[0] ||
-    { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true };
+    { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true };
 
   // paket servis ekranında seçili grup ve aramaya göre ürünleri listeleyen kod
   const paketUrunAramaMetni = String(paketUrunArama || '').toLocaleLowerCase('tr-TR').trim();
@@ -1063,7 +1092,7 @@ function IntegraApp() {
   const aktifHizliSatisGrup =
     aktifMenuGruplari.find(g => g.ad === aktifHizliSatisMenuGrubu) ||
     aktifMenuGruplari[0] ||
-    { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true };
+    { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true };
 
   const hizliSatisUrunAramaMetni = String(hizliSatisUrunArama || '').toLocaleLowerCase('tr-TR').trim();
   const aktifHizliSatisGrubuUrunleri = aktifMenu
@@ -1606,7 +1635,9 @@ function IntegraApp() {
       departman: u.departman || 'Mutfak',
       kdvOrani: Number(u.kdv_orani || 10),
       menuNotlari: Array.isArray(u.menu_notlari) ? u.menu_notlari : [],
-      mutfagaGitsin: u.mutfaga_gitsin !== false,
+      mutfagaGitsin: (u.mutfak_ekranina_gitsin ?? u.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (u.mutfak_ekranina_gitsin ?? u.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (u.yaziciya_gitsin ?? u.mutfaga_gitsin) !== false,
       stokTakip: Boolean(u.stok_takip),
       stokAdedi: Number(u.stok_adedi || 0),
       kritikStok: Number(u.kritik_stok || 0),
@@ -1632,9 +1663,9 @@ function IntegraApp() {
         return mevcutGruplar.length > 0
           ? prev
           : [
-              { id: 'varsayilan-ana-yemekler', restaurantId, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-              { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false },
-              { id: 'varsayilan-tatlilar', restaurantId, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
+              { id: 'varsayilan-ana-yemekler', restaurantId, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
+              { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
+              { id: 'varsayilan-tatlilar', restaurantId, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
             ];
       });
       return;
@@ -1646,15 +1677,17 @@ function IntegraApp() {
       ad: g.ad,
       departman: g.departman || 'Mutfak',
       kdvOrani: Number(g.kdv_orani || 10),
-      mutfagaGitsin: g.mutfaga_gitsin !== false,
+      mutfagaGitsin: (g.mutfak_ekranina_gitsin ?? g.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (g.mutfak_ekranina_gitsin ?? g.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (g.yaziciya_gitsin ?? g.mutfaga_gitsin) !== false,
     }));
 
     const gruplar = temizGruplar.length > 0
       ? temizGruplar
       : [
-          { id: 'varsayilan-ana-yemekler', restaurantId, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-          { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false },
-          { id: 'varsayilan-tatlilar', restaurantId, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
+          { id: 'varsayilan-ana-yemekler', restaurantId, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
+          { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
+          { id: 'varsayilan-tatlilar', restaurantId, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true },
         ];
 
     setMenuGruplari(gruplar);
@@ -2863,7 +2896,9 @@ function IntegraApp() {
         menuGrubu: urun.menuGrubu || urun.kategori || 'Genel',
         departman: urun.departman || 'Mutfak',
         kdvOrani: Number(urun.kdvOrani || 10),
-        mutfagaGitsin: urun.mutfagaGitsin !== false,
+        mutfagaGitsin: mutfakEkraniAktifMi(urun),
+        mutfakEkraninaGitsin: mutfakEkraniAktifMi(urun),
+        yaziciyaGitsin: fisYaziciAktifMi(urun),
       });
     }
 
@@ -2934,13 +2969,15 @@ function IntegraApp() {
       return m;
     }));
 
-    // ürün mutfağa gönderilecek olarak işaretlendiyse mutfak fişi oluşturan kod
-    if (urun.mutfagaGitsin !== false) {
-      const garsonAdi =
-        user?.role === 'waiter'
-          ? user?.waiterName || user?.restaurant || user?.email
-          : 'İşletme Sahibi';
+    // ürünün sitedeki mutfak ekranı ve fiziksel fiş yazıcı ayarını ayrı uygulayan kod
+    const mutfakEkraninaGitsin = mutfakEkraniAktifMi(urun);
+    const fizikiYaziciyaGitsin = fisYaziciAktifMi(urun);
+    const garsonAdi =
+      user?.role === 'waiter'
+        ? user?.waiterName || user?.restaurant || user?.email
+        : 'İşletme Sahibi';
 
+    if (mutfakEkraninaGitsin) {
       const { data: mutfakData, error: mutfakError } = await supabase
         .from('mutfak_fisleri')
         .insert([
@@ -2954,6 +2991,7 @@ function IntegraApp() {
             departman: urun.departman || 'Mutfak',
             garson_adi: garsonAdi,
             durum: 'Bekliyor',
+            yazdirildi: !fizikiYaziciyaGitsin,
           },
         ])
         .select()
@@ -2982,12 +3020,30 @@ function IntegraApp() {
           ...(Array.isArray(prev) ? prev : []),
         ]);
 
-        mutfakFisYazdirmaKontrolEt([yeniMutfakFisi]);
+        if (fizikiYaziciyaGitsin) {
+          mutfakFisYazdirmaKontrolEt([yeniMutfakFisi]);
+        }
 
         if (typeof mutfakFisleriniSupabasedenCek === 'function') {
           await mutfakFisleriniSupabasedenCek(mevcutRestaurantId);
         }
       }
+    } else if (fizikiYaziciyaGitsin) {
+      const yaziciTipi = yaziciDepartmaniniNormalizeEt(urun.departman || 'Mutfak') === 'Bar' ? 'bar' : 'mutfak';
+      await yazdirmaKuyrugunaEkle({
+        yaziciTipi,
+        fisTipi: 'hazirlama',
+        baslik: yaziciTipi === 'bar' ? 'Bar Fişi' : 'Mutfak Fişi',
+        icerikText: mutfakSiparisFisiTextHazirla({
+          masaAdi: masa.ad,
+          urunAdi: urun.ad,
+          adet,
+          notMetni: notMetni || '',
+          departman: urun.departman || 'Mutfak',
+          garsonAdi,
+          baslik: yaziciTipi === 'bar' ? 'BAR FİŞİ' : 'MUTFAK FİŞİ',
+        }),
+      });
     }
 
     setSeciliUrunId('');
@@ -3497,6 +3553,24 @@ function IntegraApp() {
     ].filter(Boolean).join('\r\n');
   };
 
+  const mutfakSiparisFisiTextHazirla = ({ masaAdi = '-', urunAdi = '-', adet = 1, notMetni = '', departman = 'Mutfak', garsonAdi = '-', baslik = 'MUTFAK FİŞİ' } = {}) => {
+    const ayarlar = { ...varsayilanFisAyarlari(user?.restaurant || ''), ...fisAyarlari };
+
+    return [
+      termalTextOrtala(ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS'),
+      termalTextOrtala(baslik),
+      termalTextCizgi('='),
+      termalTextSatiri('Tarih', new Date().toLocaleString('tr-TR')),
+      termalTextSatiri('Masa', masaAdi || '-'),
+      termalTextSatiri('Departman', departman || 'Mutfak'),
+      termalTextSatiri('Garson', garsonAdi || '-'),
+      termalTextCizgi('-'),
+      `${Number(adet || 1)} x ${urunAdi || '-'}`,
+      notMetni ? `NOT: ${notMetni}` : '',
+      termalTextCizgi('='),
+    ].filter(Boolean).join('\r\n');
+  };
+
   const iptalFisiTextHazirla = ({ masa, siparis, adet = 1, sebep = 'Ürün iptal edildi', departman = 'Mutfak', garsonAdi = '-' } = {}) => {
     const ayarlar = { ...varsayilanFisAyarlari(user?.restaurant || ''), ...fisAyarlari };
 
@@ -3516,9 +3590,12 @@ function IntegraApp() {
     ].filter(Boolean).join('\r\n');
   };
 
-  // ürün iptal edilince hem mutfak ekranına düşüren hem yazıcı kuyruğuna iptal fişi atan kod
+  // ürün iptal edilince mutfak ekranı ve fiziksel fiş yazıcı ayarını ayrı uygulayan kod
   const iptalFisiniMutfakEkraninaVeYaziciyaGonder = async (masa, siparis, adet = 1, sebep = 'Ürün iptal edildi') => {
-    if (!masa || !siparis || siparis.mutfagaGitsin === false) {
+    const mutfakEkraninaGitsin = mutfakEkraniAktifMi(siparis);
+    const fizikiYaziciyaGitsin = fisYaziciAktifMi(siparis);
+
+    if (!masa || !siparis || (!mutfakEkraninaGitsin && !fizikiYaziciyaGitsin)) {
       return;
     }
 
@@ -3532,55 +3609,60 @@ function IntegraApp() {
       siparis.not ? `Ürün Notu: ${siparis.not}` : '',
     ].filter(Boolean).join(' | ');
 
-    const { data, error } = await supabase
-      .from('mutfak_fisleri')
-      .insert([
-        {
-          restaurant_id: mevcutRestaurantId,
-          masa_id: masa.id,
-          masa_adi: masa.ad,
-          urun_adi: siparis.ad,
-          adet: Number(adet || 1),
-          not_metni: notMetni,
-          departman,
-          garson_adi: garsonAdi,
-          durum: 'İptal',
-        },
-      ])
-      .select()
-      .single();
+    if (mutfakEkraninaGitsin) {
+      const { data, error } = await supabase
+        .from('mutfak_fisleri')
+        .insert([
+          {
+            restaurant_id: mevcutRestaurantId,
+            masa_id: masa.id,
+            masa_adi: masa.ad,
+            urun_adi: siparis.ad,
+            adet: Number(adet || 1),
+            not_metni: notMetni,
+            departman,
+            garson_adi: garsonAdi,
+            durum: 'İptal',
+            yazdirildi: !fizikiYaziciyaGitsin,
+          },
+        ])
+        .select()
+        .single();
 
-    if (error) {
-      console.error('İptal fişi mutfak ekranına düşürülemedi:', error);
-    } else {
-      const yeniIptalFisi = {
-        id: data.id,
-        restaurantId: data.restaurant_id,
-        masaId: data.masa_id,
-        masaAdi: data.masa_adi,
-        urunAdi: data.urun_adi,
-        adet: Number(data.adet || 1),
-        notMetni: data.not_metni || '',
-        departman: data.departman || departman,
-        garsonAdi: data.garson_adi || garsonAdi,
-        durum: data.durum || 'İptal',
-        createdAt: data.created_at,
-      };
+      if (error) {
+        console.error('İptal fişi mutfak ekranına düşürülemedi:', error);
+      } else {
+        const yeniIptalFisi = {
+          id: data.id,
+          restaurantId: data.restaurant_id,
+          masaId: data.masa_id,
+          masaAdi: data.masa_adi,
+          urunAdi: data.urun_adi,
+          adet: Number(data.adet || 1),
+          notMetni: data.not_metni || '',
+          departman: data.departman || departman,
+          garsonAdi: data.garson_adi || garsonAdi,
+          durum: data.durum || 'İptal',
+          createdAt: data.created_at,
+        };
 
-      setMutfakFisleri(prev => [
-        yeniIptalFisi,
-        ...(Array.isArray(prev) ? prev : []),
-      ]);
+        setMutfakFisleri(prev => [
+          yeniIptalFisi,
+          ...(Array.isArray(prev) ? prev : []),
+        ]);
+      }
     }
 
-    const yaziciTipi = yaziciDepartmaniniNormalizeEt(departman) === 'Bar' ? 'bar' : 'mutfak';
+    if (fizikiYaziciyaGitsin) {
+      const yaziciTipi = yaziciDepartmaniniNormalizeEt(departman) === 'Bar' ? 'bar' : 'mutfak';
 
-    await yazdirmaKuyrugunaEkle({
-      yaziciTipi,
-      fisTipi: 'iptal',
-      baslik: 'İptal Fişi',
-      icerikText: iptalFisiTextHazirla({ masa, siparis, adet, sebep, departman, garsonAdi }),
-    });
+      await yazdirmaKuyrugunaEkle({
+        yaziciTipi,
+        fisTipi: 'iptal',
+        baslik: 'İptal Fişi',
+        icerikText: iptalFisiTextHazirla({ masa, siparis, adet, sebep, departman, garsonAdi }),
+      });
+    }
   };
 
   // kapatılan adisyon için termal fiş yazdırma penceresi oluşturan kod
@@ -4429,7 +4511,9 @@ function IntegraApp() {
         menuGrubu: urun.menuGrubu || urun.kategori || 'Genel',
         departman: urun.departman || 'Mutfak',
         kdvOrani: Number(urun.kdvOrani || 10),
-        mutfagaGitsin: urun.mutfagaGitsin !== false,
+        mutfagaGitsin: mutfakEkraniAktifMi(urun),
+        mutfakEkraninaGitsin: mutfakEkraniAktifMi(urun),
+        yaziciyaGitsin: fisYaziciAktifMi(urun),
       });
     }
 
@@ -4538,7 +4622,7 @@ function IntegraApp() {
     const paketMutfakKayitlari = paketUrunler
       .filter(paketUrun => {
         const menuUrunu = aktifMenu.find(u => String(u.id) === String(paketUrun.urunId));
-        return paketUrun.mutfagaGitsin !== false && menuUrunu?.mutfagaGitsin !== false;
+        return mutfakEkraniAktifMi(paketUrun) && mutfakEkraniAktifMi(menuUrunu);
       })
       .map(paketUrun => {
         const menuUrunu = aktifMenu.find(u => String(u.id) === String(paketUrun.urunId));
@@ -4560,6 +4644,7 @@ function IntegraApp() {
           departman: paketUrun.departman || menuUrunu?.departman || 'Mutfak',
           garson_adi: seciliKurye?.ad || 'Paket Servis',
           durum: 'Bekliyor',
+          yazdirildi: !(fisYaziciAktifMi(paketUrun) && fisYaziciAktifMi(menuUrunu)),
         };
       });
 
@@ -5532,7 +5617,9 @@ function IntegraApp() {
           menuGrubu: urun.menuGrubu || urun.kategori || 'Genel',
           departman: urun.departman || 'Hızlı Satış',
           kdvOrani: Number(urun.kdvOrani || 10),
-          mutfagaGitsin: urun.mutfagaGitsin !== false,
+          mutfagaGitsin: mutfakEkraniAktifMi(urun),
+          mutfakEkraninaGitsin: mutfakEkraniAktifMi(urun),
+          yaziciyaGitsin: fisYaziciAktifMi(urun),
           menuNotlari: Array.isArray(urun.menuNotlari) ? urun.menuNotlari : [],
         });
       }
@@ -5714,7 +5801,7 @@ function IntegraApp() {
     const hizliSatisMutfakKayitlari = hizliSatisUrunler
       .filter(hizliUrun => {
         const menuUrunu = aktifMenu.find(u => String(u.id) === String(hizliUrun.urunId));
-        return hizliUrun.mutfagaGitsin !== false && menuUrunu?.mutfagaGitsin !== false;
+        return mutfakEkraniAktifMi(hizliUrun) && mutfakEkraniAktifMi(menuUrunu);
       })
       .map(hizliUrun => {
         const menuUrunu = aktifMenu.find(u => String(u.id) === String(hizliUrun.urunId));
@@ -5734,6 +5821,7 @@ function IntegraApp() {
           departman: hizliUrun.departman || menuUrunu?.departman || 'Mutfak',
           garson_adi: user?.waiterName || user?.restaurant || user?.email || 'Kasiyer',
           durum: 'Bekliyor',
+          yazdirildi: !(fisYaziciAktifMi(hizliUrun) && fisYaziciAktifMi(menuUrunu)),
         };
       });
 
@@ -6937,6 +7025,8 @@ function IntegraApp() {
       departman: yeniMenuGrupDepartmani || 'Mutfak',
       kdv_orani: kdvOrani,
       mutfaga_gitsin: yeniMenuGrupMutfagaGitsin,
+        mutfak_ekranina_gitsin: yeniMenuGrupMutfagaGitsin,
+        yaziciya_gitsin: yeniMenuGrupMutfagaGitsin,
     };
 
     const { data, error } = await supabase
@@ -6957,7 +7047,9 @@ function IntegraApp() {
       ad: data.ad,
       departman: data.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || 10),
-      mutfagaGitsin: data.mutfaga_gitsin !== false,
+      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
       stokTakip: Boolean(data.stok_takip),
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
@@ -6987,7 +7079,7 @@ function IntegraApp() {
     if (grupDbdeVarMi) {
       const { data, error } = await supabase
         .from('menu_gruplari')
-        .update({ departman: temizDepartman, mutfaga_gitsin: true })
+        .update({ departman: temizDepartman, yaziciya_gitsin: true })
         .eq('id', grup.id)
         .eq('restaurant_id', mevcutRestaurantId)
         .select()
@@ -7009,7 +7101,9 @@ function IntegraApp() {
             ad: grup.ad,
             departman: temizDepartman,
             kdv_orani: Number(grup.kdvOrani || 10),
-            mutfaga_gitsin: true,
+            mutfaga_gitsin: mutfakEkraniAktifMi(grup),
+            mutfak_ekranina_gitsin: mutfakEkraniAktifMi(grup),
+            yaziciya_gitsin: true,
           },
         ])
         .select()
@@ -7026,7 +7120,7 @@ function IntegraApp() {
 
     const { error: urunError } = await supabase
       .from('menu_urunleri')
-      .update({ departman: temizDepartman, mutfaga_gitsin: true })
+      .update({ departman: temizDepartman, yaziciya_gitsin: true })
       .eq('restaurant_id', mevcutRestaurantId)
       .eq('menu_grubu', grup.ad);
 
@@ -7042,7 +7136,9 @@ function IntegraApp() {
       ad: kayitliGrup.ad,
       departman: kayitliGrup.departman || temizDepartman,
       kdvOrani: Number(kayitliGrup.kdv_orani || grup.kdvOrani || 10),
-      mutfagaGitsin: true,
+      mutfagaGitsin: mutfakEkraniAktifMi(kayitliGrup),
+      mutfakEkraninaGitsin: mutfakEkraniAktifMi(kayitliGrup),
+      yaziciyaGitsin: true,
     };
 
     setMenuGruplari(prev => {
@@ -7056,7 +7152,7 @@ function IntegraApp() {
         return {
           ...u,
           departman: temizDepartman,
-          mutfagaGitsin: true,
+          yaziciyaGitsin: true,
         };
       }
 
@@ -7073,7 +7169,7 @@ function IntegraApp() {
 
     const { data, error } = await supabase
       .from('menu_gruplari')
-      .update({ mutfaga_gitsin: yeniDurum })
+      .update({ mutfaga_gitsin: yeniDurum, mutfak_ekranina_gitsin: yeniDurum })
       .eq('id', grup.id)
       .eq('restaurant_id', mevcutRestaurantId)
       .select()
@@ -7087,7 +7183,7 @@ function IntegraApp() {
 
     await supabase
       .from('menu_urunleri')
-      .update({ mutfaga_gitsin: yeniDurum })
+      .update({ mutfaga_gitsin: yeniDurum, mutfak_ekranina_gitsin: yeniDurum })
       .eq('restaurant_id', mevcutRestaurantId)
       .eq('menu_grubu', grup.ad);
 
@@ -7097,7 +7193,9 @@ function IntegraApp() {
       ad: data.ad,
       departman: data.departman || grup.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || grup.kdvOrani || 10),
-      mutfagaGitsin: data.mutfaga_gitsin !== false,
+      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
     };
 
     setMenuGruplari(menuGruplari.map(g => {
@@ -7113,9 +7211,51 @@ function IntegraApp() {
         return {
           ...u,
           mutfagaGitsin: yeniDurum,
+          mutfakEkraninaGitsin: yeniDurum,
         };
       }
 
+      return u;
+    }));
+  };
+
+  // menü grubunun fiziksel fiş yazıcıya gidip gitmeyeceğini ayarlayan kod
+  const menuGrubuYaziciDurumunuAyarla = async (grup, yeniDurum) => {
+    if (!grup || !grup.ad) {
+      alert('Grup bulunamadı.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('menu_gruplari')
+      .update({ yaziciya_gitsin: yeniDurum })
+      .eq('id', grup.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Grup yazıcı durumu güncellenemedi:', error);
+      alert('Grup yazıcı durumu güncellenemedi: ' + error.message);
+      return;
+    }
+
+    await supabase
+      .from('menu_urunleri')
+      .update({ yaziciya_gitsin: yeniDurum })
+      .eq('restaurant_id', mevcutRestaurantId)
+      .eq('menu_grubu', grup.ad);
+
+    const guncelGrup = {
+      ...grup,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? yeniDurum) !== false,
+    };
+
+    setMenuGruplari(menuGruplari.map(g => String(g.id) === String(grup.id) ? guncelGrup : g));
+    setMenuUrunleri(menuUrunleri.map(u => {
+      if (String(u.restaurantId) === String(mevcutRestaurantId) && (u.menuGrubu || u.kategori || 'Genel') === grup.ad) {
+        return { ...u, yaziciyaGitsin: yeniDurum };
+      }
       return u;
     }));
   };
@@ -7182,6 +7322,8 @@ function IntegraApp() {
           departman: yeniDepartman,
           kdv_orani: yeniKdv,
           mutfaga_gitsin: duzenlenenMenuGrupMutfagaGitsin,
+          mutfak_ekranina_gitsin: duzenlenenMenuGrupMutfagaGitsin,
+          yaziciya_gitsin: duzenlenenMenuGrupMutfagaGitsin,
         })
         .eq('id', grup.id)
         .eq('restaurant_id', mevcutRestaurantId)
@@ -7205,6 +7347,8 @@ function IntegraApp() {
             departman: yeniDepartman,
             kdv_orani: yeniKdv,
             mutfaga_gitsin: duzenlenenMenuGrupMutfagaGitsin,
+          mutfak_ekranina_gitsin: duzenlenenMenuGrupMutfagaGitsin,
+          yaziciya_gitsin: duzenlenenMenuGrupMutfagaGitsin,
           },
         ])
         .select()
@@ -7227,6 +7371,8 @@ function IntegraApp() {
         departman: yeniDepartman,
         kdv_orani: yeniKdv,
         mutfaga_gitsin: duzenlenenMenuGrupMutfagaGitsin,
+          mutfak_ekranina_gitsin: duzenlenenMenuGrupMutfagaGitsin,
+          yaziciya_gitsin: duzenlenenMenuGrupMutfagaGitsin,
       })
       .eq('restaurant_id', mevcutRestaurantId)
       .eq('menu_grubu', eskiGrupAdi);
@@ -7243,7 +7389,9 @@ function IntegraApp() {
       ad: kayitliGrupData.ad,
       departman: kayitliGrupData.departman || yeniDepartman,
       kdvOrani: Number(kayitliGrupData.kdv_orani || yeniKdv),
-      mutfagaGitsin: kayitliGrupData.mutfaga_gitsin !== false,
+      mutfagaGitsin: (kayitliGrupData.mutfak_ekranina_gitsin ?? kayitliGrupData.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (kayitliGrupData.mutfak_ekranina_gitsin ?? kayitliGrupData.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (kayitliGrupData.yaziciya_gitsin ?? kayitliGrupData.mutfaga_gitsin) !== false,
     };
 
     setMenuGruplari(prev => {
@@ -7260,7 +7408,9 @@ function IntegraApp() {
           menuGrubu: guncelGrup.ad,
           departman: guncelGrup.departman,
           kdvOrani: guncelGrup.kdvOrani,
-          mutfagaGitsin: guncelGrup.mutfagaGitsin,
+          mutfagaGitsin: mutfakEkraniAktifMi(guncelGrup),
+          mutfakEkraninaGitsin: mutfakEkraniAktifMi(guncelGrup),
+          yaziciyaGitsin: fisYaziciAktifMi(guncelGrup),
         };
       }
 
@@ -7336,7 +7486,9 @@ function IntegraApp() {
         menu_grubu: hedefGrup.ad,
         departman: hedefGrup.departman || 'Mutfak',
         kdv_orani: Number(hedefGrup.kdvOrani || 10),
-        mutfaga_gitsin: hedefGrup.mutfagaGitsin !== false,
+        mutfaga_gitsin: mutfakEkraniAktifMi(hedefGrup),
+        mutfak_ekranina_gitsin: mutfakEkraniAktifMi(hedefGrup),
+        yaziciya_gitsin: fisYaziciAktifMi(hedefGrup),
       })
       .eq('id', urun.id)
       .eq('restaurant_id', mevcutRestaurantId)
@@ -7360,7 +7512,9 @@ function IntegraApp() {
       departman: data.departman || hedefGrup.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || hedefGrup.kdvOrani || 10),
       menuNotlari: Array.isArray(data.menu_notlari) ? data.menu_notlari : [],
-      mutfagaGitsin: data.mutfaga_gitsin !== false,
+      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
       stokTakip: Boolean(data.stok_takip),
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
@@ -7401,7 +7555,9 @@ function IntegraApp() {
           departman: urunGrubu.departman || 'Mutfak',
           kdv_orani: Number(urunGrubu.kdvOrani || 10),
           menu_notlari: [],
-          mutfaga_gitsin: urunGrubu.mutfagaGitsin !== false,
+          mutfaga_gitsin: mutfakEkraniAktifMi(urunGrubu),
+          mutfak_ekranina_gitsin: mutfakEkraniAktifMi(urunGrubu),
+          yaziciya_gitsin: fisYaziciAktifMi(urunGrubu),
           stok_takip: false,
           stok_adedi: 0,
           kritik_stok: 0,
@@ -7429,7 +7585,9 @@ function IntegraApp() {
       departman: data.departman || urunGrubu.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || urunGrubu.kdvOrani || 10),
       menuNotlari: Array.isArray(data.menu_notlari) ? data.menu_notlari : [],
-      mutfagaGitsin: data.mutfaga_gitsin !== false,
+      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
       stokTakip: Boolean(data.stok_takip),
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
@@ -7485,7 +7643,9 @@ function IntegraApp() {
         departman: eskiUrun?.departman || aktifGrup.departman || 'Mutfak',
         kdv_orani: Number(eskiUrun?.kdvOrani || aktifGrup.kdvOrani || 10),
         menu_notlari: Array.isArray(eskiUrun?.menuNotlari) ? eskiUrun.menuNotlari : [],
-        mutfaga_gitsin: eskiUrun?.mutfagaGitsin !== false,
+        mutfaga_gitsin: mutfakEkraniAktifMi(eskiUrun),
+        mutfak_ekranina_gitsin: mutfakEkraniAktifMi(eskiUrun),
+        yaziciya_gitsin: fisYaziciAktifMi(eskiUrun),
       })
       .eq('id', id)
       .eq('restaurant_id', mevcutRestaurantId)
@@ -7509,7 +7669,9 @@ function IntegraApp() {
       departman: data.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || 10),
       menuNotlari: Array.isArray(data.menu_notlari) ? data.menu_notlari : [],
-      mutfagaGitsin: data.mutfaga_gitsin !== false,
+      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
       stokTakip: Boolean(data.stok_takip),
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
@@ -7583,7 +7745,9 @@ function IntegraApp() {
       .from('menu_urunleri')
       .update({
         menu_notlari: guncelNotlar,
-        mutfaga_gitsin: urun.mutfagaGitsin !== false,
+        mutfaga_gitsin: mutfakEkraniAktifMi(urun),
+        mutfak_ekranina_gitsin: mutfakEkraniAktifMi(urun),
+        yaziciya_gitsin: fisYaziciAktifMi(urun),
       })
       .eq('id', urun.id)
       .eq('restaurant_id', mevcutRestaurantId)
@@ -7607,7 +7771,9 @@ function IntegraApp() {
       departman: data.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || 10),
       menuNotlari: Array.isArray(data.menu_notlari) ? data.menu_notlari : [],
-      mutfagaGitsin: data.mutfaga_gitsin !== false,
+      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
       stokTakip: Boolean(data.stok_takip),
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
@@ -7639,7 +7805,9 @@ function IntegraApp() {
       .from('menu_urunleri')
       .update({
         menu_notlari: guncelNotlar,
-        mutfaga_gitsin: urun.mutfagaGitsin !== false,
+        mutfaga_gitsin: mutfakEkraniAktifMi(urun),
+        mutfak_ekranina_gitsin: mutfakEkraniAktifMi(urun),
+        yaziciya_gitsin: fisYaziciAktifMi(urun),
       })
       .eq('id', urun.id)
       .eq('restaurant_id', mevcutRestaurantId)
@@ -7663,7 +7831,9 @@ function IntegraApp() {
       departman: data.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || 10),
       menuNotlari: Array.isArray(data.menu_notlari) ? data.menu_notlari : [],
-      mutfagaGitsin: data.mutfaga_gitsin !== false,
+      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
       stokTakip: Boolean(data.stok_takip),
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
@@ -7693,7 +7863,7 @@ function IntegraApp() {
       .from('menu_urunleri')
       .update({
         departman: temizDepartman,
-        mutfaga_gitsin: true,
+        yaziciya_gitsin: true,
       })
       .eq('id', urun.id)
       .eq('restaurant_id', mevcutRestaurantId)
@@ -7711,7 +7881,7 @@ function IntegraApp() {
         return {
           ...u,
           departman: data.departman || temizDepartman,
-          mutfagaGitsin: data.mutfaga_gitsin !== false,
+          yaziciyaGitsin: (data.yaziciya_gitsin ?? true) !== false,
         };
       }
 
@@ -7730,6 +7900,7 @@ function IntegraApp() {
       .from('menu_urunleri')
       .update({
         mutfaga_gitsin: yeniDurum,
+        mutfak_ekranina_gitsin: yeniDurum,
       })
       .eq('id', urun.id)
       .eq('restaurant_id', mevcutRestaurantId)
@@ -7753,7 +7924,9 @@ function IntegraApp() {
       departman: data.departman || 'Mutfak',
       kdvOrani: Number(data.kdv_orani || 10),
       menuNotlari: Array.isArray(data.menu_notlari) ? data.menu_notlari : [],
-      mutfagaGitsin: data.mutfaga_gitsin !== false,
+      mutfagaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      mutfakEkraninaGitsin: (data.mutfak_ekranina_gitsin ?? data.mutfaga_gitsin) !== false,
+      yaziciyaGitsin: (data.yaziciya_gitsin ?? data.mutfaga_gitsin) !== false,
       stokTakip: Boolean(data.stok_takip),
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
@@ -7769,6 +7942,38 @@ function IntegraApp() {
       return u;
     }));
   };
+  // ürünün fiziksel fiş yazıcıya gidip gitmeyeceğini ayarlayan kod
+  const urunFisYaziciDurumunuAyarla = async (urun, yeniDurum) => {
+    if (!urun || !urun.id) {
+      alert('Ürün bulunamadı.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('menu_urunleri')
+      .update({ yaziciya_gitsin: yeniDurum })
+      .eq('id', urun.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Ürün fiş yazıcı durumu güncellenemedi:', error);
+      alert('Ürün fiş yazıcı durumu güncellenemedi: ' + error.message);
+      return;
+    }
+
+    setMenuUrunleri(menuUrunleri.map(u => {
+      if (u.id === urun.id) {
+        return {
+          ...u,
+          yaziciyaGitsin: (data.yaziciya_gitsin ?? yeniDurum) !== false,
+        };
+      }
+      return u;
+    }));
+  };
+
   // seçili rapor tipine göre satışları filtreleyen kod
   const raporSatislariniFiltrele = () => {
     const bugunStr = new Date().toISOString().split('T')[0];
@@ -10711,7 +10916,7 @@ function IntegraApp() {
                                 onClick={() => odemeAl('Nakit')}
                                 style={{
                                   ...styles.checkoutBtn,
-                                  backgroundColor: '#10b981',
+                                  backgroundColor: fis.durum === 'İptal' ? '#ef4444' : '#10b981',
                                   flex: 1,
                                 }}
                               >
@@ -12611,17 +12816,17 @@ function IntegraApp() {
                       <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.7' }}>
                         <strong style={{ color: '#1e293b' }}>{aktifGrup.ad}</strong>
                         <span> / Departman: <strong>{aktifGrup.departman || 'Mutfak'}</strong></span>
-                        <span> / KDV: <strong>%{aktifGrup.kdvOrani || 10}</strong></span><span> / Hedef: <strong>{yaziciHedefEtiketi(yaziciHedefiBul(aktifGrup.departman || 'Mutfak', 'mutfak'))}</strong></span>
+                        <span> / KDV: <strong>%{aktifGrup.kdvOrani || 10}</strong></span><span> / Durum: <strong>{mutfakYaziciDurumEtiketi(aktifGrup)}</strong></span><span> / Hedef: <strong>{yaziciHedefEtiketi(yaziciHedefiBul(aktifGrup.departman || 'Mutfak', 'mutfak'))}</strong></span>
                       </div>
 
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <select
-                          value={aktifGrup.mutfagaGitsin !== false ? 'true' : 'false'}
+                          value={mutfakEkraniAktifMi(aktifGrup) ? 'true' : 'false'}
                           onChange={e => menuGrubuMutfakDurumunuAyarla(aktifGrup, e.target.value === 'true')}
                           style={{
                             border: '1px solid #cbd5e1',
-                            backgroundColor: aktifGrup.mutfagaGitsin !== false ? '#dcfce7' : '#f1f5f9',
-                            color: aktifGrup.mutfagaGitsin !== false ? '#15803d' : '#475569',
+                            backgroundColor: mutfakEkraniAktifMi(aktifGrup) ? '#dcfce7' : '#f1f5f9',
+                            color: mutfakEkraniAktifMi(aktifGrup) ? '#15803d' : '#475569',
                             padding: '8px 10px',
                             borderRadius: '8px',
                             cursor: 'pointer',
@@ -12630,8 +12835,27 @@ function IntegraApp() {
                             outline: 'none',
                           }}
                         >
-                          <option value="true">🖨️ Bu grup hazırlama fişi çıkarır</option>
-                          <option value="false">🚫 Bu grup fiş çıkarmaz</option>
+                          <option value="true">👨‍🍳 Mutfak ekranında görünsün</option>
+                          <option value="false">🚫 Mutfak ekranında görünmesin</option>
+                        </select>
+
+                        <select
+                          value={fisYaziciAktifMi(aktifGrup) ? 'true' : 'false'}
+                          onChange={e => menuGrubuYaziciDurumunuAyarla(aktifGrup, e.target.value === 'true')}
+                          style={{
+                            border: '1px solid #cbd5e1',
+                            backgroundColor: fisYaziciAktifMi(aktifGrup) ? '#fee2e2' : '#f1f5f9',
+                            color: fisYaziciAktifMi(aktifGrup) ? '#b91c1c' : '#475569',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '800',
+                            fontSize: '12px',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="true">🖨️ Fiş yazıcı bassın</option>
+                          <option value="false">🚫 Fiş yazıcı basmasın</option>
                         </select>
 
                         <select
@@ -12847,7 +13071,7 @@ function IntegraApp() {
                           <div style={{ flex: 1, minWidth: '220px' }}>
                             <div style={{ fontWeight: '900', color: '#1e293b' }}>{u.favori ? '⭐ ' : ''}{u.ad}</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                              Grup: <strong>{u.menuGrubu || u.kategori || 'Genel'}</strong> / Departman: <strong>{u.departman || 'Mutfak'}</strong> / KDV: <strong>%{u.kdvOrani || 10}</strong> / Yazıcı: <strong>{u.mutfagaGitsin !== false ? yaziciHedefEtiketi(yaziciHedefiBul(u.departman || 'Mutfak', 'mutfak')) : 'Yazdırma yok'}</strong>
+                              Grup: <strong>{u.menuGrubu || u.kategori || 'Genel'}</strong> / Departman: <strong>{u.departman || 'Mutfak'}</strong> / KDV: <strong>%{u.kdvOrani || 10}</strong> / Durum: <strong>{mutfakYaziciDurumEtiketi(u)}</strong> / Hedef: <strong>{fisYaziciAktifMi(u) ? yaziciHedefEtiketi(yaziciHedefiBul(u.departman || 'Mutfak', 'mutfak')) : 'Yazdırma yok'}</strong>
                             </div>
                           </div>
 
@@ -12856,16 +13080,54 @@ function IntegraApp() {
 
                             <span
                               style={{
-                                backgroundColor: u.mutfagaGitsin !== false ? '#dcfce7' : '#f1f5f9',
-                                color: u.mutfagaGitsin !== false ? '#15803d' : '#475569',
+                                backgroundColor: mutfakEkraniAktifMi(u) ? '#dcfce7' : '#f1f5f9',
+                                color: mutfakEkraniAktifMi(u) ? '#15803d' : '#475569',
                                 padding: '7px 9px',
                                 borderRadius: '999px',
                                 fontSize: '11px',
                                 fontWeight: '900',
                               }}
                             >
-                              {u.mutfagaGitsin !== false ? '🖨️ Hazırlama Fişi Çıkar' : '🚫 Fiş Çıkmaz'}
+                              {mutfakYaziciDurumEtiketi(u)}
                             </span>
+
+                            <select
+                              value={mutfakEkraniAktifMi(u) ? 'true' : 'false'}
+                              onChange={e => urunMutfakDurumunuAyarla(u, e.target.value === 'true')}
+                              style={{
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: mutfakEkraniAktifMi(u) ? '#dcfce7' : '#f1f5f9',
+                                color: mutfakEkraniAktifMi(u) ? '#15803d' : '#475569',
+                                padding: '7px 9px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '800',
+                                fontSize: '12px',
+                                outline: 'none',
+                              }}
+                            >
+                              <option value="true">👨‍🍳 Ekranda görünsün</option>
+                              <option value="false">🚫 Ekranda görünmesin</option>
+                            </select>
+
+                            <select
+                              value={fisYaziciAktifMi(u) ? 'true' : 'false'}
+                              onChange={e => urunFisYaziciDurumunuAyarla(u, e.target.value === 'true')}
+                              style={{
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: fisYaziciAktifMi(u) ? '#fee2e2' : '#f1f5f9',
+                                color: fisYaziciAktifMi(u) ? '#b91c1c' : '#475569',
+                                padding: '7px 9px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '800',
+                                fontSize: '12px',
+                                outline: 'none',
+                              }}
+                            >
+                              <option value="true">🖨️ Yazıcı bassın</option>
+                              <option value="false">🚫 Yazıcı basmasın</option>
+                            </select>
 
                             {/* ürünün hangi yazıcıya gideceğini seçen kod */}
                             <select
