@@ -9377,6 +9377,7 @@ function IntegraApp() {
                           cursor: 'pointer',
                           fontWeight: '900',
                           fontSize: '12px',
+                          flex: '0 0 auto',
                         }}
                       >
                         {bolum}
@@ -9551,52 +9552,131 @@ function IntegraApp() {
                 {(!isMobile || (mobilAdisyonAcik && activeMasa)) && (
                 <div style={isMobile ? styles.mobilAdisyonTamEkran : styles.adisyonPanel}>
                   {isMobile ? (
-                    <>
-                      <div style={styles.mobilAdisyonUstBar}>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={styles.mobilAdisyonMasaAdi}>🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'}</div>
-                          <div style={styles.mobilAdisyonOzetSatiri}>
-                            <span>Toplam: <strong>{activeMasa?.tutar || 0} TL</strong></span>
-                            <span>KDV: <strong>{aktifMasaKdvOzeti.kdvToplam} TL</strong></span>
-                            <span>Kalan: <strong>{activeMasa ? kalanTutar(activeMasa) : 0} TL</strong></span>
-                          </div>
+                    <div style={styles.mobilAdisyonUstBar}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={styles.mobilAdisyonMasaAdi}>🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'}</div>
+                        <div style={styles.mobilAdisyonOzetSatiri}>
+                          <span>Toplam: <strong>{activeMasa?.tutar || 0} TL</strong></span>
+                          <span>KDV: <strong>{aktifMasaKdvOzeti.kdvToplam} TL</strong></span>
+                          <span>Kalan: <strong>{activeMasa ? kalanTutar(activeMasa) : 0} TL</strong></span>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setMobilAdisyonAcik(false)}
-                          style={styles.mobilAdisyonKapatBtn}
-                        >
-                          ✕
-                        </button>
                       </div>
 
-                      <div style={styles.mobilAdisyonSekmeKutusu}>
-                        <button
-                          type="button"
-                          onClick={() => setMobilAdisyonSekmesi('urun')}
-                          style={mobilAdisyonSekmesi === 'urun' ? styles.mobilAdisyonSekmeAktif : styles.mobilAdisyonSekme}
-                        >
-                          Ürün Ekle
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setMobilAdisyonSekmesi('fis')}
-                          style={mobilAdisyonSekmesi === 'fis' ? styles.mobilAdisyonSekmeAktif : styles.mobilAdisyonSekme}
-                        >
-                          Adisyon / Fiş
-                        </button>
-                      </div>
-                    </>
+                      <button
+                        type="button"
+                        onClick={() => setMobilAdisyonAcik(false)}
+                        style={styles.mobilAdisyonKapatBtn}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   ) : (
-                    <h3 style={styles.panelTitle}>
-                      🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'} Canlı Fişi
-                    </h3>
+                    <div style={styles.desktopAdisyonUstBar}>
+                      <div style={{ minWidth: 0 }}>
+                        <h3 style={{ ...styles.panelTitle, marginBottom: '6px' }}>
+                          🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'} Canlı Fişi
+                        </h3>
+                        <div style={styles.desktopAdisyonOzetSatiri}>
+                          <span>Toplam: <strong>{activeMasa?.tutar || 0} TL</strong></span>
+                          <span>KDV: <strong>{aktifMasaKdvOzeti.kdvToplam} TL</strong></span>
+                          <span>Kalan: <strong>{activeMasa ? kalanTutar(activeMasa) : 0} TL</strong></span>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
-                  {(!isMobile || mobilAdisyonSekmesi === 'fis') && (
+                  <div style={isMobile ? styles.mobilAdisyonSekmeKutusu : styles.desktopAdisyonSekmeKutusu}>
+                    <button
+                      type="button"
+                      onClick={() => setMobilAdisyonSekmesi('urun')}
+                      style={mobilAdisyonSekmesi === 'urun' ? styles.mobilAdisyonSekmeAktif : styles.mobilAdisyonSekme}
+                    >
+                      Ürün Ekle
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMobilAdisyonSekmesi('fis')}
+                      style={mobilAdisyonSekmesi === 'fis' ? styles.mobilAdisyonSekmeAktif : styles.mobilAdisyonSekme}
+                    >
+                      Adisyon / Fiş
+                    </button>
+                  </div>
+
+                  {mobilAdisyonSekmesi === 'fis' && (
                     <>
+                  {activeMasa?.dolu && (
+                    <div style={styles.hizliHesapKutusu}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '8px' }}>
+                        <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '900' }}>⚡ Hızlı Hesap Al</div>
+                        <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>
+                          Ödenen: {odemeToplami(activeMasa)} TL / Kalan: {kalanTutar(activeMasa)} TL
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: '8px', alignItems: 'center' }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            backgroundColor: '#fff',
+                            border: '1px solid #fed7aa',
+                            borderRadius: '10px',
+                            padding: '8px',
+                          }}
+                        >
+                          <span style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', whiteSpace: 'nowrap' }}>Alınan:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={odemeTutariInput}
+                            onChange={e => setOdemeTutariInput(e.target.value)}
+                            placeholder={`${kalanTutar(activeMasa)} TL`}
+                            style={{
+                              flex: 1,
+                              border: 'none',
+                              outline: 'none',
+                              backgroundColor: 'transparent',
+                              fontSize: '15px',
+                              fontWeight: '900',
+                              color: '#1e293b',
+                              minWidth: '90px',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setOdemeTutariInput(String(kalanTutar(activeMasa)))}
+                            style={{
+                              border: 'none',
+                              backgroundColor: '#fed7aa',
+                              color: '#9a3412',
+                              borderRadius: '8px',
+                              padding: '7px 9px',
+                              cursor: 'pointer',
+                              fontSize: '11px',
+                              fontWeight: '900',
+                            }}
+                          >
+                            Tümü
+                          </button>
+                        </div>
+
+                        <button type="button" onClick={() => odemeAl('Nakit')} style={{ ...styles.checkoutBtn, backgroundColor: '#10b981', width: isMobile ? '100%' : 'auto', padding: '11px 14px' }}>
+                          💵 Nakit Al
+                        </button>
+                        <button type="button" onClick={() => odemeAl('Kredi Kartı')} style={{ ...styles.checkoutBtn, backgroundColor: '#2563eb', width: isMobile ? '100%' : 'auto', padding: '11px 14px' }}>
+                          💳 Kart Al
+                        </button>
+                      </div>
+
+                      {paraUstuTutari > 0 && (
+                        <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: '10px', padding: '8px 10px', fontSize: '13px', fontWeight: '900', marginTop: '8px' }}>
+                          Para üstü: {paraUstuTutari} TL
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {/* masa birleştirme komutunu masa aktarma üstünde gösteren kod */}
                   {activeMasa?.dolu && (
                     <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px', padding: '8px', marginBottom: '10px' }}>
@@ -9750,7 +9830,7 @@ function IntegraApp() {
 
                   {activeMasa && (
                     <>
-                      {(!isMobile || mobilAdisyonSekmesi === 'urun') && (
+                      {mobilAdisyonSekmesi === 'urun' && (
                       <div style={styles.addOrderBox}>
                         {/* adisyon ekranında ürünleri grup butonları ve ürün kartlarıyla seçen kod */}
                         <div
@@ -9785,7 +9865,8 @@ function IntegraApp() {
                               onChange={e => setAdisyonUrunArama(e.target.value)}
                               style={{
                                 ...styles.panelSelect,
-                                flex: '1 1 150px',
+                                flex: isMobile ? '1 1 100%' : '1 1 150px',
+                                width: isMobile ? '100%' : undefined,
                                 padding: '8px 10px',
                                 fontSize: '12px',
                                 backgroundColor: '#fff',
@@ -9794,17 +9875,17 @@ function IntegraApp() {
                           </div>
 
                           <div
-                            style={{
-                              display: 'flex',
-                              gap: '7px',
-                              flexWrap: isMobile ? 'nowrap' : 'wrap',
-                              maxHeight: isMobile ? 'none' : '96px',
-                              overflowX: isMobile ? 'auto' : 'visible',
-                              overflowY: isMobile ? 'hidden' : 'auto',
-                              paddingBottom: '2px',
-                              paddingRight: '2px',
-                              WebkitOverflowScrolling: 'touch',
-                            }}
+                            style={isMobile
+                              ? { ...styles.yatayKaydirmaSekmeleri, gap: '7px', paddingBottom: '2px', paddingRight: '2px' }
+                              : {
+                                display: 'flex',
+                                gap: '7px',
+                                flexWrap: 'wrap',
+                                maxHeight: '96px',
+                                overflowY: 'auto',
+                                paddingBottom: '2px',
+                                paddingRight: '2px',
+                              }}
                           >
                             {aktifMenuGruplari.length === 0 ? (
                               <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
@@ -9829,6 +9910,7 @@ function IntegraApp() {
                                     fontWeight: '900',
                                     fontSize: '12px',
                                     whiteSpace: 'nowrap',
+                                    flex: '0 0 auto',
                                   }}
                                 >
                                   {grup.ad}
@@ -10066,7 +10148,7 @@ function IntegraApp() {
                       </div>
                       )}
 
-                      {(!isMobile || mobilAdisyonSekmesi === 'fis') && (
+                      {mobilAdisyonSekmesi === 'fis' && (
                         <>
                       <div style={styles.receiptContainer}>
                         {(!activeMasa.siparisler || activeMasa.siparisler.length === 0) ? (
@@ -10855,23 +10937,25 @@ function IntegraApp() {
                         onChange={e => setPaketUrunArama(e.target.value)}
                         style={{
                           ...styles.input,
-                          flex: '1 1 180px',
-                          minWidth: '180px',
+                          flex: isMobile ? '1 1 100%' : '1 1 180px',
+                          minWidth: isMobile ? '100%' : '180px',
                           backgroundColor: '#fff',
                         }}
                       />
                     </div>
 
                     <div
-                      style={{
-                        display: 'flex',
-                        gap: '7px',
-                        flexWrap: 'wrap',
-                        maxHeight: '96px',
-                        overflowY: 'auto',
-                        paddingBottom: '2px',
-                        paddingRight: '2px',
-                      }}
+                      style={isMobile
+                        ? { ...styles.yatayKaydirmaSekmeleri, gap: '7px', paddingBottom: '2px', paddingRight: '2px' }
+                        : {
+                          display: 'flex',
+                          gap: '7px',
+                          flexWrap: 'wrap',
+                          maxHeight: '96px',
+                          overflowY: 'auto',
+                          paddingBottom: '2px',
+                          paddingRight: '2px',
+                        }}
                     >
                       {aktifMenuGruplari.length === 0 ? (
                         <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
@@ -10897,6 +10981,7 @@ function IntegraApp() {
                               fontWeight: '900',
                               fontSize: '12px',
                               whiteSpace: 'nowrap',
+                              flex: '0 0 auto',
                             }}
                           >
                             {grup.ad}
@@ -11533,7 +11618,7 @@ function IntegraApp() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr', gap: '18px' }}>
                   <div>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    <div style={isMobile ? { ...styles.yatayKaydirmaSekmeleri, marginBottom: '12px' } : { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
                       {aktifMenuGruplari.map(grup => (
                         <button
                           key={grup.ad}
@@ -11548,6 +11633,7 @@ function IntegraApp() {
                             cursor: 'pointer',
                             fontWeight: '900',
                             fontSize: '12px',
+                            flex: '0 0 auto',
                           }}
                         >
                           {grup.ad}
@@ -12179,7 +12265,7 @@ function IntegraApp() {
                 </form>
 
                 {/* menü gruplarını sekme olarak gösteren kod */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', maxHeight: '112px', overflowY: 'auto', paddingRight: '4px', marginBottom: '16px' }}>
+                <div style={isMobile ? { ...styles.yatayKaydirmaSekmeleri, marginBottom: '16px' } : { display: 'flex', gap: '8px', flexWrap: 'wrap', maxHeight: '112px', overflowY: 'auto', paddingRight: '4px', marginBottom: '16px' }}>
                   {aktifMenuGruplari.map(grup => (
                     <button
                       key={grup.ad}
@@ -12194,6 +12280,7 @@ function IntegraApp() {
                         cursor: 'pointer',
                         fontWeight: '900',
                         fontSize: '12px',
+                        flex: '0 0 auto',
                       }}
                     >
                       {grup.ad}
@@ -14833,12 +14920,15 @@ const styles = {
   yatayKaydirmaSekmeleri: {
     display: 'flex',
     gap: '8px',
-    flexWrap: 'nowrap',
-    overflowX: 'auto',
-    overflowY: 'hidden',
+    flexWrap: 'wrap',
+    overflowX: 'hidden',
+    overflowY: 'visible',
     WebkitOverflowScrolling: 'touch',
     paddingBottom: '4px',
+    paddingRight: '4px',
     maxWidth: '100%',
+    width: '100%',
+    boxSizing: 'border-box',
   },
 
   mobilAdisyonTamEkran: {
