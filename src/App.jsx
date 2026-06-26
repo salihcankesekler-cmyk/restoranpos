@@ -358,6 +358,11 @@ Toplam Ciro: {toplam}
   const [fisSablonlari, setFisSablonlari] = useState(() => varsayilanFisSablonlari());
   const [aktifFisSablonTipi, setAktifFisSablonTipi] = useState('adisyon');
 
+  // Printer Agent kurulum kodu ve indirme paneli için kullanılan kod
+  const [printerAgentKurulumu, setPrinterAgentKurulumu] = useState(null);
+  const [printerAgentKurulumYukleniyor, setPrinterAgentKurulumYukleniyor] = useState(false);
+  const [printerAgentKurulumMesaji, setPrinterAgentKurulumMesaji] = useState('');
+
   // fiş ayarları kaydedilirken butonu kilitleyen kod
   const [fisAyarlariKaydediliyor, setFisAyarlariKaydediliyor] = useState(false);
   // ödeme sonrası fiş yazdırma sorusunu ekranda modal olarak göstermek için kullanılan kod
@@ -750,6 +755,108 @@ Toplam Ciro: {toplam}
         : [...liste, { ...fisSablonuBul(fisTipi), [alan]: deger }];
       return yeniListe;
     });
+  };
+
+  // Printer Agent kurulum kodu üretirken kullanılan yardımcı kod
+  const printerAgentKurulumKoduUret = (restaurantId = mevcutRestaurantId) => {
+    const temizId = String(restaurantId || '').replace(/\D/g, '') || '0';
+    const rastgele = Math.random().toString(36).replace(/[^a-z0-9]/gi, '').slice(2, 6).toUpperCase().padEnd(4, 'X');
+    return `INT-${temizId}-${rastgele}`;
+  };
+
+  // Printer Agent kurulum kaydını Supabase'den çeken kod
+  const printerAgentKurulumunuSupabasedenCek = async (restaurantId = mevcutRestaurantId) => {
+    if (!restaurantId || String(restaurantId) === 'super_admin') return null;
+
+    setPrinterAgentKurulumYukleniyor(true);
+    setPrinterAgentKurulumMesaji('');
+
+    try {
+      const { data, error } = await supabase
+        .from('printer_agent_kurulumlari')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Printer Agent kurulum kaydı çekilemedi:', error.message);
+        setPrinterAgentKurulumMesaji('Kurulum kaydı okunamadı. Printer Agent v3.4 SQL tamir kodunun çalıştığından emin olun.');
+        return null;
+      }
+
+      setPrinterAgentKurulumu(data || null);
+      return data || null;
+    } finally {
+      setPrinterAgentKurulumYukleniyor(false);
+    }
+  };
+
+  // Printer Agent kurulum kodunu oluşturan veya yenileyen kod
+  const printerAgentKurulumKoduHazirla = async (yeniKodUret = false) => {
+    const hedefRestaurantId = mevcutRestaurantId;
+
+    if (!hedefRestaurantId || String(hedefRestaurantId) === 'super_admin') {
+      alert('Printer Agent kurulumu için aktif restoran bulunamadı.');
+      return;
+    }
+
+    setPrinterAgentKurulumYukleniyor(true);
+    setPrinterAgentKurulumMesaji('');
+
+    try {
+      if (!yeniKodUret) {
+        const mevcutKayit = await printerAgentKurulumunuSupabasedenCek(hedefRestaurantId);
+        if (mevcutKayit?.kurulum_kodu) {
+          setPrinterAgentKurulumMesaji('Mevcut kurulum kodu hazır.');
+          return;
+        }
+      }
+
+      const yeniKod = printerAgentKurulumKoduUret(hedefRestaurantId);
+
+      const { data, error } = await supabase
+        .from('printer_agent_kurulumlari')
+        .upsert(
+          {
+            restaurant_id: hedefRestaurantId,
+            kurulum_kodu: yeniKod,
+            cihaz_adi: 'Windows Printer Agent',
+            aktif: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'restaurant_id' }
+        )
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Printer Agent kurulum kodu kaydedilemedi:', error);
+        alert('Printer Agent kurulum kodu kaydedilemedi: ' + error.message);
+        return;
+      }
+
+      setPrinterAgentKurulumu(data);
+      setPrinterAgentKurulumMesaji(yeniKodUret ? 'Yeni kurulum kodu oluşturuldu.' : 'Kurulum kodu oluşturuldu.');
+    } finally {
+      setPrinterAgentKurulumYukleniyor(false);
+    }
+  };
+
+  // Printer Agent kurulum kodunu panoya kopyalayan kod
+  const printerAgentKurulumKoduKopyala = async () => {
+    const kod = String(printerAgentKurulumu?.kurulum_kodu || '').trim();
+
+    if (!kod) {
+      alert('Önce kurulum kodu oluşturun.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(kod);
+      setPrinterAgentKurulumMesaji('Kurulum kodu kopyalandı.');
+    } catch {
+      window.prompt('Kurulum kodunu kopyalayın:', kod);
+    }
   };
 
   // yazdırma kuyruğuna iş eklenip eklenmeyeceğini belirleyen kod
@@ -2219,6 +2326,10 @@ Toplam Ciro: {toplam}
 
       if (typeof fisAyarlariSupabasedenCek === 'function') {
         await fisAyarlariSupabasedenCek(aktifRestaurantId);
+      }
+
+      if (typeof printerAgentKurulumunuSupabasedenCek === 'function') {
+        await printerAgentKurulumunuSupabasedenCek(aktifRestaurantId);
       }
 
       if (typeof paketSiparisleriniSupabasedenCek === 'function') {
@@ -8974,6 +9085,10 @@ Toplam Ciro: {toplam}
           await fisAyarlariSupabasedenCek(aktifRestaurantId);
         }
 
+        if (typeof printerAgentKurulumunuSupabasedenCek === 'function') {
+          await printerAgentKurulumunuSupabasedenCek(aktifRestaurantId);
+        }
+
         if (typeof paketSiparisleriniSupabasedenCek === 'function') {
           await paketSiparisleriniSupabasedenCek(aktifRestaurantId);
         }
@@ -13193,6 +13308,171 @@ Toplam Ciro: {toplam}
 
                   <div style={{ color: '#64748b', fontSize: '11px', marginTop: '10px', lineHeight: 1.5, fontWeight: '700' }}>
                     Not: Windows tarafında yazıcı adları standart olarak adisyon, mutfak ve bar kalır. Bu ekrandaki kurallar ve şablonlar Supabase'de kalıcı saklanır; Printer Agent bekleyen kuyruğu basar.
+                  </div>
+                </div>
+
+                {/* Printer Agent kurulum kodu ve indirme panelini gösteren kod */}
+                <div
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '14px',
+                    padding: '14px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>
+                        🧩 Printer Agent Kurulumu
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700', lineHeight: 1.5 }}>
+                        Müşteri bilgisayarına kurulacak yazıcı programı için kurulum kodu üretin. Windows yazıcı adları standart: adisyon, mutfak, bar.
+                      </div>
+                    </div>
+
+                    <a
+                      href="/integra-printer-agent-kurulum.zip"
+                      download
+                      style={{
+                        textDecoration: 'none',
+                        backgroundColor: '#1e293b',
+                        color: '#fff',
+                        padding: '10px 13px',
+                        borderRadius: '10px',
+                        fontWeight: '900',
+                        fontSize: '12px',
+                      }}
+                    >
+                      ⬇️ Agent İndir
+                    </a>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: '12px', alignItems: 'stretch' }}>
+                    <div
+                      style={{
+                        backgroundColor: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '12px',
+                      }}
+                    >
+                      <div style={{ color: '#64748b', fontSize: '11px', fontWeight: '900', marginBottom: '6px' }}>
+                        Kurulum Kodu
+                      </div>
+                      <div
+                        style={{
+                          backgroundColor: '#0f172a',
+                          color: '#fff',
+                          borderRadius: '10px',
+                          padding: '14px',
+                          fontSize: isMobile ? '20px' : '24px',
+                          fontWeight: '900',
+                          letterSpacing: '1px',
+                          wordBreak: 'break-word',
+                          marginBottom: '10px',
+                        }}
+                      >
+                        {printerAgentKurulumu?.kurulum_kodu || 'Kod hazır değil'}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => printerAgentKurulumKoduHazirla(false)}
+                          disabled={printerAgentKurulumYukleniyor}
+                          style={{
+                            border: 'none',
+                            backgroundColor: printerAgentKurulumYukleniyor ? '#94a3b8' : '#10b981',
+                            color: '#fff',
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            cursor: printerAgentKurulumYukleniyor ? 'not-allowed' : 'pointer',
+                            fontWeight: '900',
+                            fontSize: '12px',
+                          }}
+                        >
+                          {printerAgentKurulumYukleniyor ? 'Hazırlanıyor...' : 'Kodu Hazırla'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={printerAgentKurulumKoduKopyala}
+                          disabled={!printerAgentKurulumu?.kurulum_kodu}
+                          style={{
+                            border: 'none',
+                            backgroundColor: printerAgentKurulumu?.kurulum_kodu ? '#ff6b35' : '#cbd5e1',
+                            color: '#fff',
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            cursor: printerAgentKurulumu?.kurulum_kodu ? 'pointer' : 'not-allowed',
+                            fontWeight: '900',
+                            fontSize: '12px',
+                          }}
+                        >
+                          Kopyala
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm('Yeni kurulum kodu üretilecek. Eski kodla kurulan Agent tekrar kurulum isteyebilir. Devam edilsin mi?')) {
+                              printerAgentKurulumKoduHazirla(true);
+                            }
+                          }}
+                          disabled={printerAgentKurulumYukleniyor}
+                          style={{
+                            border: '1px solid #e2e8f0',
+                            backgroundColor: '#fff',
+                            color: '#334155',
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            cursor: printerAgentKurulumYukleniyor ? 'not-allowed' : 'pointer',
+                            fontWeight: '900',
+                            fontSize: '12px',
+                          }}
+                        >
+                          Yeni Kod Üret
+                        </button>
+                      </div>
+
+                      {printerAgentKurulumMesaji && (
+                        <div style={{ color: '#059669', fontSize: '12px', fontWeight: '900', marginTop: '10px' }}>
+                          {printerAgentKurulumMesaji}
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        backgroundColor: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '12px',
+                        color: '#334155',
+                        fontSize: '12px',
+                        lineHeight: 1.6,
+                        fontWeight: '700',
+                      }}
+                    >
+                      <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Müşteri Kurulum Adımları</div>
+                      <div>1. ZIP dosyasını indir.</div>
+                      <div>2. ZIP’i çıkar ve <strong>musteri-kurulum.bat</strong> dosyasını çalıştır.</div>
+                      <div>3. Bu ekrandaki kurulum kodunu gir.</div>
+                      <div>4. Test fişi bas ve programı Windows başlangıcına ekle.</div>
+                      <div style={{ marginTop: '8px', color: '#64748b' }}>
+                        Agent kuyruğu REST ile dinler; adisyon, mutfak, bar ve iptal fişleri otomatik basılır.
+                      </div>
+                    </div>
                   </div>
                 </div>
 
