@@ -46,6 +46,7 @@ export default function App() {
 
 
 function IntegraApp() {
+  const INTEGRA_FIX_YAZICI_KDV_2026_06_26 = true;
   const kayitliUser = (() => {
     try {
       return JSON.parse(localStorage.getItem('integra_user') || 'null');
@@ -133,7 +134,7 @@ function IntegraApp() {
   // menü ürün gruplarını tutan kod
   const [menuGruplari, setMenuGruplari] = useState([
     { id: 'demo-grup-1', restaurantId: 1, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-    { id: 'demo-grup-2', restaurantId: 1, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false },
+    { id: 'demo-grup-2', restaurantId: 1, ad: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true },
     { id: 'demo-grup-3', restaurantId: 1, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
   ]);
 
@@ -411,10 +412,10 @@ function IntegraApp() {
 
   const [menuUrunleri, setMenuUrunleri] = useState([
     { id: 1, restaurantId: 1, ad: 'Adana Kebap', fiyat: 280, kategori: 'Ana Yemekler', menuGrubu: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, menuNotlari: [] },
-    { id: 2, restaurantId: 1, ad: 'Ayran', fiyat: 40, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false, menuNotlari: [] },
+    { id: 2, restaurantId: 1, ad: 'Ayran', fiyat: 40, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true, menuNotlari: [] },
     { id: 3, restaurantId: 1, ad: 'Künefe', fiyat: 120, kategori: 'Tatlılar', menuGrubu: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true, menuNotlari: [] },
     { id: 4, restaurantId: 1, ad: 'Mercimek Çorbası', fiyat: 90, kategori: 'Ana Yemekler', menuGrubu: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, menuNotlari: [] },
-    { id: 5, restaurantId: 3, ad: 'Filtre Kahve', fiyat: 110, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false, menuNotlari: [] },
+    { id: 5, restaurantId: 3, ad: 'Filtre Kahve', fiyat: 110, kategori: 'İçecekler', menuGrubu: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true, menuNotlari: [] },
   ]);
 
   const [satisGecmisi, setSatisGecmisi] = useState([
@@ -548,7 +549,10 @@ function IntegraApp() {
       departmanMetni.includes('bar') ||
       departmanMetni.includes('içecek') ||
       departmanMetni.includes('icecek') ||
+      departmanMetni.includes('i̇çecek') ||
       departmanMetni.includes('kahve') ||
+      departmanMetni.includes('meşrubat') ||
+      departmanMetni.includes('mesrubat') ||
       departmanMetni.includes('çay') ||
       departmanMetni.includes('cay');
 
@@ -650,6 +654,70 @@ function IntegraApp() {
     });
   };
 
+  // KDV hesaplarını fiş, satış ekranı ve raporlarda aynı mantıkla kullanan kod
+  const paraYuvarla = (deger) => {
+    return Math.round((Number(deger || 0) + Number.EPSILON) * 100) / 100;
+  };
+
+  // fiyatların KDV dahil girildiği varsayımıyla satır içindeki KDV tutarını hesaplayan kod
+  const kdvTutariHesapla = (kdvDahilTutar, kdvOrani) => {
+    const tutar = Math.max(Number(kdvDahilTutar || 0), 0);
+    const oran = Math.max(Number(kdvOrani || 0), 0);
+
+    if (!tutar || !oran) {
+      return 0;
+    }
+
+    return paraYuvarla(tutar - (tutar / (1 + oran / 100)));
+  };
+
+  // siparişleri KDV oranlarına göre özetleyen kod
+  const siparislerKdvOzetiHesapla = (siparisler = [], toplamIndirim = 0, araToplam = null) => {
+    const dagitilmisSatirlar = toplamIndirimiSatirlaraDagit(siparisler, toplamIndirim, araToplam);
+    const oranMap = {};
+    let toplamKdv = 0;
+
+    dagitilmisSatirlar.forEach(satir => {
+      const kaynak = satir.kaynak || {};
+      const kdvOrani = Number(kaynak.kdvOrani || 0);
+      const satirToplam = Number(satir.satirNetToplam || 0);
+      const kdvTutari = kdvTutariHesapla(satirToplam, kdvOrani);
+      const anahtar = String(kdvOrani);
+
+      if (!oranMap[anahtar]) {
+        oranMap[anahtar] = { kdvOrani, matrah: 0, kdvTutari: 0, toplam: 0 };
+      }
+
+      oranMap[anahtar].toplam = paraYuvarla(oranMap[anahtar].toplam + satirToplam);
+      oranMap[anahtar].kdvTutari = paraYuvarla(oranMap[anahtar].kdvTutari + kdvTutari);
+      oranMap[anahtar].matrah = paraYuvarla(oranMap[anahtar].toplam - oranMap[anahtar].kdvTutari);
+      toplamKdv = paraYuvarla(toplamKdv + kdvTutari);
+    });
+
+    return {
+      toplamKdv,
+      oranlar: Object.values(oranMap).sort((a, b) => Number(a.kdvOrani) - Number(b.kdvOrani)),
+    };
+  };
+
+  // KDV özetini termal fiş satırlarına çeviren kod
+  const kdvOzetiHtmlHazirla = (kdvOzeti) => {
+    const oranlar = Array.isArray(kdvOzeti?.oranlar) ? kdvOzeti.oranlar : [];
+
+    if (oranlar.length === 0 || Number(kdvOzeti?.toplamKdv || 0) <= 0) {
+      return '';
+    }
+
+    const oranSatirlari = oranlar.map(k => `
+      <div class="row"><span>KDV %${Number(k.kdvOrani || 0)}</span><strong>${Number(k.kdvTutari || 0)} TL</strong></div>
+    `).join('');
+
+    return `
+      ${oranSatirlari}
+      <div class="row"><span>Toplam KDV</span><strong>${Number(kdvOzeti.toplamKdv || 0)} TL</strong></div>
+    `;
+  };
+
   // ürün ekleme alanındaki fiyat, indirim ve son birim fiyatı hesaplayan kod
   const urunFiyatHesapla = (urun, hazirNotId, manuelNotFiyat, satisFiyati, indirimYuzdeDegeri, indirimTutariDegeri) => {
     if (!urun) {
@@ -693,10 +761,10 @@ function IntegraApp() {
   };
 
   // giriş yapan restorana ait menü gruplarını ve ürünlerin bağlı olduğu grupları birleştiren kod
+  // DİKKAT: ürünlerden gelen eski departman bilgisi gerçek grup ayarının üstüne yazmasın diye önce ürün grupları, sonra kayıtlı grup ayarları eklenir.
   const aktifMenuGruplari = Array.from(
     new Map(
       [
-        ...(Array.isArray(menuGruplari) ? menuGruplari.filter(g => String(g.restaurantId) === String(mevcutRestaurantId)) : []),
         ...aktifMenu.map(u => ({
           id: `urun-grup-${u.menuGrubu || u.kategori || 'Genel'}`,
           restaurantId: mevcutRestaurantId,
@@ -705,9 +773,23 @@ function IntegraApp() {
           kdvOrani: Number(u.kdvOrani || 10),
           mutfagaGitsin: u.mutfagaGitsin !== false,
         })),
+        ...(Array.isArray(menuGruplari) ? menuGruplari.filter(g => String(g.restaurantId) === String(mevcutRestaurantId)) : []),
       ].map(g => [g.ad, g])
     ).values()
   );
+
+  // ürünün bağlı olduğu grubun güncel departman, KDV ve yazıcı ayarını bulan kod
+  const urunGrupAyarlariniBul = (urun, fallbackGrup = null) => {
+    const urunGrupAdi = urun?.menuGrubu || urun?.kategori || fallbackGrup?.ad || 'Genel';
+    const grup = aktifMenuGruplari.find(g => String(g.ad) === String(urunGrupAdi)) || fallbackGrup || null;
+
+    return {
+      menuGrubu: grup?.ad || urunGrupAdi || 'Genel',
+      departman: grup?.departman || urun?.departman || 'Mutfak',
+      kdvOrani: Number(grup?.kdvOrani ?? urun?.kdvOrani ?? 10),
+      mutfagaGitsin: grup ? grup.mutfagaGitsin !== false : urun?.mutfagaGitsin !== false,
+    };
+  };
 
   // aktif menü grubunu bulan kod
   const aktifGrup =
@@ -901,6 +983,7 @@ function IntegraApp() {
   const hizliSatisYuzdeIndirimTutari = hizliSatisAraToplam * Math.min(hizliSatisIndirimYuzdeSayi, 100) / 100;
   const hizliSatisToplamIndirim = Math.min(hizliSatisAraToplam, hizliSatisYuzdeIndirimTutari + hizliSatisIndirimTutariSayi);
   const hizliSatisToplam = Math.max(hizliSatisAraToplam - hizliSatisToplamIndirim, 0);
+  const hizliSatisKdvOzeti = siparislerKdvOzetiHesapla(hizliSatisUrunler, hizliSatisToplamIndirim, hizliSatisAraToplam);
 
   const bugunStrGenel = new Date().toISOString().split('T')[0];
   const bugunkuSatislar = satisGecmisi.filter(s => {
@@ -1447,7 +1530,7 @@ function IntegraApp() {
           ? prev
           : [
               { id: 'varsayilan-ana-yemekler', restaurantId, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-              { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false },
+              { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true },
               { id: 'varsayilan-tatlilar', restaurantId, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
             ];
       });
@@ -1467,7 +1550,7 @@ function IntegraApp() {
       ? temizGruplar
       : [
           { id: 'varsayilan-ana-yemekler', restaurantId, ad: 'Ana Yemekler', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true },
-          { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar', kdvOrani: 20, mutfagaGitsin: false },
+          { id: 'varsayilan-icecekler', restaurantId, ad: 'İçecekler', departman: 'Bar / İçecek', kdvOrani: 20, mutfagaGitsin: true },
           { id: 'varsayilan-tatlilar', restaurantId, ad: 'Tatlılar', departman: 'Tatlı', kdvOrani: 10, mutfagaGitsin: true },
         ];
 
@@ -2636,6 +2719,7 @@ function IntegraApp() {
     const indirimTutari = fiyatBilgisi.indirimTutari;
     const birimFiyat = fiyatBilgisi.birimFiyat;
     const fiyatDegistirildi = fiyatBilgisi.fiyatDegistirildi;
+    const urunGrupAyari = urunGrupAyarlariniBul(urun, aktifAdisyonGrup);
 
     const mevcutSiparisler = Array.isArray(masa.siparisler)
       ? masa.siparisler
@@ -2673,10 +2757,10 @@ function IntegraApp() {
         fiyatDegistirildi: fiyatDegistirildi,
         not: notMetni,
         adet: adet,
-        menuGrubu: urun.menuGrubu || urun.kategori || 'Genel',
-        departman: urun.departman || 'Mutfak',
-        kdvOrani: Number(urun.kdvOrani || 10),
-        mutfagaGitsin: urun.mutfagaGitsin !== false,
+        menuGrubu: urunGrupAyari.menuGrubu || urun.menuGrubu || urun.kategori || 'Genel',
+        departman: urunGrupAyari.departman || urun.departman || 'Mutfak',
+        kdvOrani: Number(urunGrupAyari.kdvOrani || urun.kdvOrani || 10),
+        mutfagaGitsin: urunGrupAyari.mutfagaGitsin !== false,
       });
     }
 
@@ -2747,8 +2831,8 @@ function IntegraApp() {
       return m;
     }));
 
-    // ürün mutfağa gönderilecek olarak işaretlendiyse mutfak fişi oluşturan kod
-    if (urun.mutfagaGitsin !== false) {
+    // ürün mutfağa/bar yazıcısına gönderilecek olarak işaretlendiyse fiş oluşturan kod
+    if (urunGrupAyari.mutfagaGitsin !== false) {
       const garsonAdi =
         user?.role === 'waiter'
           ? user?.waiterName || user?.restaurant || user?.email
@@ -2764,7 +2848,7 @@ function IntegraApp() {
             urun_adi: urun.ad,
             adet: adet,
             not_metni: notMetni || '',
-            departman: urun.departman || 'Mutfak',
+            departman: urunGrupAyari.departman || urun.departman || 'Mutfak',
             garson_adi: garsonAdi,
             durum: 'Bekliyor',
           },
@@ -2784,7 +2868,7 @@ function IntegraApp() {
           urunAdi: mutfakData.urun_adi,
           adet: Number(mutfakData.adet || 1),
           notMetni: mutfakData.not_metni || '',
-          departman: mutfakData.departman || urun.departman || 'Mutfak',
+          departman: mutfakData.departman || urunGrupAyari.departman || urun.departman || 'Mutfak',
           garsonAdi: mutfakData.garson_adi || '-',
           durum: mutfakData.durum || 'Bekliyor',
           createdAt: mutfakData.created_at,
@@ -3187,6 +3271,8 @@ function IntegraApp() {
     const indirimSatiri = toplamIndirim > 0
       ? `<div class="row"><span>Toplam İndirim</span><strong>-${toplamIndirim} TL</strong></div>`
       : '';
+    const kdvOzeti = siparislerKdvOzetiHesapla(masa.siparisler || [], toplamIndirim, araToplam);
+    const kdvSatirlari = kdvOzetiHtmlHazirla(kdvOzeti);
 
     const odemeSatirlari = odemeler.length > 0
       ? odemeler.map(o => `
@@ -3250,6 +3336,7 @@ function IntegraApp() {
           ${urunSatirlari}
           <div class="line"></div>
           ${indirimSatiri}
+          ${kdvSatirlari}
           <div class="row total"><span>Toplam</span><strong>${toplamTutar} TL</strong></div>
           <div class="line"></div>
           ${odemeSatirlari}
@@ -3282,6 +3369,8 @@ function IntegraApp() {
     const indirimSatiri = toplamIndirim > 0
       ? `<div class="row"><span>Toplam İndirim</span><strong>-${toplamIndirim} TL</strong></div>`
       : '';
+    const kdvOzeti = siparislerKdvOzetiHesapla(masa.siparisler || [], toplamIndirim, araToplam);
+    const kdvSatirlari = kdvOzetiHtmlHazirla(kdvOzeti);
     const odenen = odemeToplami(masa);
     const kalan = kalanTutar(masa);
     const urunSatirlari = fisUrunSatirlariHazirla(masa.siparisler || []);
@@ -3323,6 +3412,7 @@ function IntegraApp() {
             ${urunSatirlari}
             <div class="line"></div>
             ${indirimSatiri}
+            ${kdvSatirlari}
             <div class="row total"><span>Toplam</span><strong>${toplamTutar} TL</strong></div>
             <div class="row"><span>Ödenen</span><strong>${odenen} TL</strong></div>
             <div class="row"><span>Kalan</span><strong>${kalan} TL</strong></div>
@@ -3349,6 +3439,7 @@ function IntegraApp() {
         <td>${item.ad}${item.not ? ` / ${item.not}` : ''}</td>
         <td>${item.adet}</td>
         <td>${Number(item.indirimTutari || 0)} TL</td>
+        <td>${Number(item.kdvTutari || 0)} TL</td>
         <td>${item.ciro} TL</td>
       </tr>
     `).join('');
@@ -3388,6 +3479,7 @@ function IntegraApp() {
             <div class="center"><div class="subtitle">${htmlGuvenli(raporBasligi())}</div></div>
             <div class="line"></div>
             <div class="row"><span>Toplam Ciro</span><strong>${raporData.toplamCiro} TL</strong></div>
+            <div class="row"><span>Toplam KDV</span><strong>${raporData.toplamKdv || 0} TL</strong></div>
             <div class="row"><span>Toplam İndirim</span><strong>${raporData.toplamIndirim} TL</strong></div>
             <div class="row"><span>Nakit</span><strong>${raporData.nakitToplam} TL</strong></div>
             <div class="row"><span>Kredi Kartı</span><strong>${raporData.kartToplam} TL</strong></div>
@@ -3395,8 +3487,8 @@ function IntegraApp() {
             <div class="line"></div>
             <strong>Ürün Satışları</strong>
             <table>
-              <thead><tr><th>Ürün</th><th>Adet</th><th>İnd.</th><th>Ciro</th></tr></thead>
-              <tbody>${urunSatirlari || '<tr><td colspan="4">Satış yok</td></tr>'}</tbody>
+              <thead><tr><th>Ürün</th><th>Adet</th><th>İnd.</th><th>KDV</th><th>Ciro</th></tr></thead>
+              <tbody>${urunSatirlari || '<tr><td colspan="5">Satış yok</td></tr>'}</tbody>
             </table>
             <div class="line"></div>
             <strong>Kapalı Adisyonlar</strong>
@@ -3433,6 +3525,8 @@ function IntegraApp() {
     const indirimSatiri = toplamIndirim > 0
       ? `<div class="row"><span>Toplam İndirim</span><strong>-${toplamIndirim} TL</strong></div>`
       : '';
+    const kdvOzeti = siparislerKdvOzetiHesapla(paket.urunler || [], toplamIndirim, paketAraToplamFis);
+    const kdvSatirlari = kdvOzetiHtmlHazirla(kdvOzeti);
 
     const urunSatirlari = paket.urunler.map(u => `
       <div class="item">
@@ -3493,6 +3587,7 @@ function IntegraApp() {
             <div class="line"></div>
 
             ${indirimSatiri}
+            ${kdvSatirlari}
             <div class="row total"><span>Toplam</span><strong>${toplamTutar} TL</strong></div>
 
             <div class="line"></div>
@@ -3974,6 +4069,7 @@ function IntegraApp() {
     }
 
     const urunNotu = String(paketSeciliUrunNotu || '').trim();
+    const urunGrupAyari = urunGrupAyarlariniBul(urun, aktifPaketGrup);
     const mevcutIndex = paketUrunler.findIndex(u => {
       return String(u.urunId) === String(urun.id) && String(u.not || '') === String(urunNotu || '');
     });
@@ -3992,10 +4088,10 @@ function IntegraApp() {
         maliyet: Number(urun.maliyet || 0),
         adet,
         not: urunNotu,
-        menuGrubu: urun.menuGrubu || urun.kategori || 'Genel',
-        departman: urun.departman || 'Mutfak',
-        kdvOrani: Number(urun.kdvOrani || 10),
-        mutfagaGitsin: urun.mutfagaGitsin !== false,
+        menuGrubu: urunGrupAyari.menuGrubu || urun.menuGrubu || urun.kategori || 'Genel',
+        departman: urunGrupAyari.departman || urun.departman || 'Mutfak',
+        kdvOrani: Number(urunGrupAyari.kdvOrani || urun.kdvOrani || 10),
+        mutfagaGitsin: urunGrupAyari.mutfagaGitsin !== false,
       });
     }
 
@@ -5074,6 +5170,8 @@ function IntegraApp() {
   const hizliSatisUrunEkle = (urun) => {
     if (!urun) return;
 
+    const urunGrupAyari = urunGrupAyarlariniBul(urun, aktifHizliSatisGrup);
+
     setHizliSatisUrunler(prev => {
       const liste = Array.isArray(prev) ? [...prev] : [];
       const index = liste.findIndex(x => String(x.urunId) === String(urun.id) && !x.ikram && !x.not);
@@ -5095,10 +5193,10 @@ function IntegraApp() {
           adet: 1,
           not: '',
           ikram: false,
-          menuGrubu: urun.menuGrubu || urun.kategori || 'Genel',
-          departman: urun.departman || 'Hızlı Satış',
-          kdvOrani: Number(urun.kdvOrani || 10),
-          mutfagaGitsin: urun.mutfagaGitsin !== false,
+          menuGrubu: urunGrupAyari.menuGrubu || urun.menuGrubu || urun.kategori || 'Genel',
+          departman: urunGrupAyari.departman || urun.departman || 'Hızlı Satış',
+          kdvOrani: Number(urunGrupAyari.kdvOrani || urun.kdvOrani || 10),
+          mutfagaGitsin: urunGrupAyari.mutfagaGitsin !== false,
           menuNotlari: Array.isArray(urun.menuNotlari) ? urun.menuNotlari : [],
         });
       }
@@ -7284,18 +7382,22 @@ function IntegraApp() {
     const urunOzetMap = {};
     let toplamCiro = 0;
     let toplamIndirim = 0;
+    let toplamKdv = 0;
 
     filtrelenmisSatislar.forEach(s => {
       const notEki = s.not ? ` / Not: ${s.not}` : '';
       const urunAnahtari = `${s.ad}${notEki}`;
       const toplamUrunTutari = Number(s.fiyat || 0) * Number(s.adet || 1);
+      const satirKdvTutari = kdvTutariHesapla(toplamUrunTutari, Number(s.kdvOrani || 0));
       toplamCiro += toplamUrunTutari;
       toplamIndirim += Number(s.indirimTutari || 0) * Number(s.adet || 1);
+      toplamKdv += satirKdvTutari;
 
       if (urunOzetMap[urunAnahtari]) {
         urunOzetMap[urunAnahtari].adet += Number(s.adet || 1);
-        urunOzetMap[urunAnahtari].ciro += toplamUrunTutari;
-        urunOzetMap[urunAnahtari].indirimTutari += Number(s.indirimTutari || 0) * Number(s.adet || 1);
+        urunOzetMap[urunAnahtari].ciro = paraYuvarla(urunOzetMap[urunAnahtari].ciro + toplamUrunTutari);
+        urunOzetMap[urunAnahtari].indirimTutari = paraYuvarla(urunOzetMap[urunAnahtari].indirimTutari + Number(s.indirimTutari || 0) * Number(s.adet || 1));
+        urunOzetMap[urunAnahtari].kdvTutari = paraYuvarla(Number(urunOzetMap[urunAnahtari].kdvTutari || 0) + satirKdvTutari);
       } else {
         urunOzetMap[urunAnahtari] = {
           ad: s.ad,
@@ -7306,6 +7408,7 @@ function IntegraApp() {
           adet: Number(s.adet || 1),
           ciro: toplamUrunTutari,
           indirimTutari: Number(s.indirimTutari || 0) * Number(s.adet || 1),
+          kdvTutari: satirKdvTutari,
           fiyat: Number(s.fiyat || 0),
         };
       }
@@ -7416,6 +7519,7 @@ function IntegraApp() {
       paketToplam,
       toplamCiro,
       toplamIndirim,
+      toplamKdv: paraYuvarla(toplamKdv),
       nakitToplam,
       kartToplam,
       digerOdemeToplam,
@@ -7553,6 +7657,9 @@ function IntegraApp() {
   const adisyonIndirimOnizleme = activeMasa
     ? toplamIndirimHesapla(aktifMasaAraToplam, adisyonToplamIndirimYuzde, adisyonToplamIndirimTutari)
     : toplamIndirimHesapla(0, 0, 0);
+  const aktifMasaKdvOzeti = activeMasa
+    ? siparislerKdvOzetiHesapla(activeMasa.siparisler || [], aktifMasaIndirimOzeti.toplamIndirim, aktifMasaIndirimOzeti.brutToplam)
+    : siparislerKdvOzetiHesapla([]);
 
   // ödeme alanında girilen paraya göre para üstünü hesaplayan kod
   const odemeGirisTutari = sayiyaCevir(odemeTutariInput);
@@ -7591,6 +7698,7 @@ function IntegraApp() {
     liste: [],
     toplamCiro: 0,
     toplamIndirim: 0,
+    toplamKdv: 0,
     nakitToplam: 0,
     kartToplam: 0,
     digerOdemeToplam: 0,
@@ -9334,7 +9442,8 @@ function IntegraApp() {
                             style={{
                               display: 'flex',
                               gap: '7px',
-                              overflowX: 'auto',
+                              flexWrap: 'wrap',
+                              overflowX: 'visible',
                               paddingBottom: '2px',
                             }}
                           >
@@ -9397,6 +9506,7 @@ function IntegraApp() {
                             >
                               {aktifAdisyonGrubuUrunleri.map(u => {
                                 const seciliMi = String(seciliUrunId) === String(u.id);
+                                const urunGrupAyari = urunGrupAyarlariniBul(u, aktifAdisyonGrup);
 
                                 return (
                                   <button
@@ -9423,7 +9533,7 @@ function IntegraApp() {
                                     </div>
 
                                     <div style={{ color: '#64748b', fontWeight: '700', fontSize: '10px', marginTop: '4px' }}>
-                                      {u.departman || aktifAdisyonGrup.departman || 'Mutfak'}
+                                      {urunGrupAyari.departman || 'Mutfak'} / KDV %{urunGrupAyari.kdvOrani || 0}
                                     </div>
                                   </button>
                                 );
@@ -9443,7 +9553,7 @@ function IntegraApp() {
                                 fontWeight: '900',
                               }}
                             >
-                              Seçili ürün: {seciliMenuUrunu.ad} / {seciliMenuUrunu.fiyat} TL
+                              Seçili ürün: {seciliMenuUrunu.ad} / {seciliMenuUrunu.fiyat} TL / Yazıcı: {urunGrupAyarlariniBul(seciliMenuUrunu, aktifAdisyonGrup).mutfagaGitsin !== false ? yaziciHedefEtiketi(yaziciHedefiBul(urunGrupAyarlariniBul(seciliMenuUrunu, aktifAdisyonGrup).departman, 'mutfak')) : 'Yazdırma yok'}
                             </div>
                           )}
                         </div>
@@ -9704,6 +9814,13 @@ function IntegraApp() {
                             {activeMasa.tutar} TL
                           </span>
                         </div>
+
+                        {activeMasa.dolu && Number(aktifMasaKdvOzeti.toplamKdv || 0) > 0 && (
+                          <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '10px', padding: '8px 10px', fontSize: '12px', fontWeight: '900', marginBottom: '10px' }}>
+                            KDV Toplamı: {aktifMasaKdvOzeti.toplamKdv} TL
+                            {aktifMasaKdvOzeti.oranlar.length > 0 ? ` / ${aktifMasaKdvOzeti.oranlar.map(k => `%${k.kdvOrani}: ${k.kdvTutari} TL`).join(' • ')}` : ''}
+                          </div>
+                        )}
 
                         {activeMasa.dolu && (Number(activeMasa.adisyonIndirimYuzde || 0) > 0 || Number(activeMasa.adisyonIndirimTutari || 0) > 0) && (
                           <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: '10px', padding: '8px 10px', fontSize: '12px', fontWeight: '900', marginBottom: '10px' }}>
@@ -10377,7 +10494,8 @@ function IntegraApp() {
                       style={{
                         display: 'flex',
                         gap: '7px',
-                        overflowX: 'auto',
+                        flexWrap: 'wrap',
+                        overflowX: 'visible',
                         paddingBottom: '2px',
                       }}
                     >
@@ -11178,6 +11296,12 @@ function IntegraApp() {
                       </div>
                     )}
 
+                    {Number(hizliSatisKdvOzeti.toplamKdv || 0) > 0 && (
+                      <div style={{ color: '#1d4ed8', fontWeight: '900', fontSize: '13px', marginTop: '8px' }}>
+                        KDV Toplamı: {hizliSatisKdvOzeti.toplamKdv} TL
+                      </div>
+                    )}
+
                     <div style={{ ...styles.totalRow, marginTop: '12px' }}>
                       <span>Toplam:</span>
                       <strong style={{ color: '#ff6b35', fontSize: '22px' }}>{hizliSatisToplam} TL</strong>
@@ -11608,7 +11732,7 @@ function IntegraApp() {
                   </div>
 
                   <div style={{ color: '#64748b', fontSize: '11px', marginTop: '10px', lineHeight: 1.5, fontWeight: '700' }}>
-                    Not: Tarayıcı güvenliği nedeniyle web sitesi yazıcıyı tamamen sessiz seçemez. Bu sürüm fiş penceresini hedefe göre ayırır ve başlıkta yazıcı adı/numarası gösterir. Ürün grubu departmanı Bar, İçecek, Kahve veya Çay ise bar/içecek yazıcısına; diğer mutfağa giden ürünler mutfak yazıcısına yönlendirilir. Tam otomatik cihaz seçimi için sonraki aşamada yerel yazdırma servisi eklenir.
+                    Not: Tarayıcı güvenliği nedeniyle web sitesi yazıcıyı tamamen sessiz seçemez. Bu sürüm fiş penceresini hedefe göre ayırır ve başlıkta yazıcı adı/numarası gösterir. Yemek gruplarında departmanı Mutfak, içecek gruplarında departmanı Bar / İçecek yapın; grup ayarı ürünlerin önüne geçer. Tam otomatik cihaz seçimi için sonraki aşamada yerel yazdırma servisi eklenir.
                   </div>
                 </div>
 
@@ -12480,6 +12604,11 @@ function IntegraApp() {
                   </div>
 
                   <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Toplam KDV</div>
+                    <div style={{ ...styles.statsValue, color: '#1d4ed8' }}>{raporData.toplamKdv || 0} TL</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
                     <div style={styles.statsTitle}>Nakit Tahsilat</div>
                     <div style={{ ...styles.statsValue, color: '#10b981' }}>{raporData.nakitToplam} TL</div>
                   </div>
@@ -12565,6 +12694,7 @@ function IntegraApp() {
                               <th style={styles.th}>Birim Fiyatı</th>
                               <th style={styles.th}>Toplam Satış Adeti</th>
                               <th style={styles.th}>Toplam Ciro</th>
+                              <th style={styles.th}>KDV</th>
                               <th style={styles.th}>İndirim</th>
                             </tr>
                           </thead>
@@ -12577,6 +12707,7 @@ function IntegraApp() {
                                 <td style={styles.td}>{item.fiyat} TL</td>
                                 <td style={{ ...styles.td, color: '#ff6b35', fontWeight: 'bold' }}>{item.adet} Adet</td>
                                 <td style={{ ...styles.td, fontWeight: 'bold' }}>{item.ciro} TL</td>
+                                <td style={{ ...styles.td, color: '#1d4ed8', fontWeight: 'bold' }}>{Number(item.kdvTutari || 0)} TL</td>
                                 <td style={{ ...styles.td, color: '#ef4444', fontWeight: 'bold' }}>{Number(item.indirimTutari || 0)} TL</td>
                               </tr>
                             ))}
