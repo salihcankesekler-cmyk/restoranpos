@@ -11012,7 +11012,7 @@ function IntegraApp() {
                                 onClick={() => odemeAl('Nakit')}
                                 style={{
                                   ...styles.checkoutBtn,
-                                  backgroundColor: fis.durum === 'İptal' ? '#ef4444' : '#10b981',
+                                  backgroundColor: '#10b981',
                                   flex: 1,
                                 }}
                               >
