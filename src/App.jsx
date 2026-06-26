@@ -9786,7 +9786,8 @@ function IntegraApp() {
                               onChange={e => setAdisyonUrunArama(e.target.value)}
                               style={{
                                 ...styles.panelSelect,
-                                flex: '1 1 150px',
+                                flex: isMobile ? '1 1 100%' : '1 1 150px',
+                                width: isMobile ? '100%' : undefined,
                                 padding: '8px 10px',
                                 fontSize: '12px',
                                 backgroundColor: '#fff',
@@ -10857,8 +10858,8 @@ function IntegraApp() {
                         onChange={e => setPaketUrunArama(e.target.value)}
                         style={{
                           ...styles.input,
-                          flex: '1 1 180px',
-                          minWidth: '180px',
+                          flex: isMobile ? '1 1 100%' : '1 1 180px',
+                          minWidth: isMobile ? '100%' : '180px',
                           backgroundColor: '#fff',
                         }}
                       />
@@ -14840,16 +14841,15 @@ const styles = {
   yatayKaydirmaSekmeleri: {
     display: 'flex',
     gap: '8px',
-    flexWrap: 'nowrap',
-    overflowX: 'auto',
-    overflowY: 'hidden',
+    flexWrap: 'wrap',
+    overflowX: 'hidden',
+    overflowY: 'visible',
     WebkitOverflowScrolling: 'touch',
-    touchAction: 'pan-x',
-    overscrollBehaviorX: 'contain',
-    scrollbarWidth: 'thin',
     paddingBottom: '4px',
     paddingRight: '4px',
     maxWidth: '100%',
+    width: '100%',
+    boxSizing: 'border-box',
   },
 
   mobilAdisyonTamEkran: {
