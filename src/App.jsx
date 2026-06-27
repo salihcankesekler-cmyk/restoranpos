@@ -127,6 +127,9 @@ function IntegraApp() {
 
   // form states
   const [yeniMasaAdi, setYeniMasaAdi] = useState('');
+  const [topluMasaOnEk, setTopluMasaOnEk] = useState('Masa');
+  const [topluMasaBaslangicNo, setTopluMasaBaslangicNo] = useState(1);
+  const [topluMasaAdet, setTopluMasaAdet] = useState(5);
   const [yeniUrunAdi, setYeniUrunAdi] = useState('');
   const [yeniUrunFiyati, setYeniUrunFiyati] = useState('');
 
@@ -405,6 +408,7 @@ Toplam Ciro: {toplam}
 
   // paket serviste seçilen ürüne özel notu tutan kod
   const [paketSeciliUrunNotu, setPaketSeciliUrunNotu] = useState('');
+  const [paketSeciliHazirNotId, setPaketSeciliHazirNotId] = useState('');
 
   // paket servis siparişinde seçilen kurye/personel bilgisini tutan kod
   const [paketSeciliKuryePersonelId, setPaketSeciliKuryePersonelId] = useState('');
@@ -446,8 +450,10 @@ Toplam Ciro: {toplam}
   const [kasaHareketTutari, setKasaHareketTutari] = useState('');
   const [kasaHareketAciklama, setKasaHareketAciklama] = useState('');
 
-  // masa birleştirme ve adisyon bölme alanlarını tutan kod
+  // masa birleştirme ve seçili ürün ödeme alanlarını tutan kod
   const [birlestirilecekMasaId, setBirlestirilecekMasaId] = useState('');
+  const [masaBirlestirmeModu, setMasaBirlestirmeModu] = useState(false);
+  const [birlestirilenKaynakMasaId, setBirlestirilenKaynakMasaId] = useState(null);
   const [bolunecekSiparisIndexleri, setBolunecekSiparisIndexleri] = useState([]);
 
   // stok düzenleme alanlarını tutan kod
@@ -464,6 +470,8 @@ Toplam Ciro: {toplam}
   const [hizliSatisAlinanTutar, setHizliSatisAlinanTutar] = useState('');
   const [hizliSatisIndirimYuzde, setHizliSatisIndirimYuzde] = useState('');
   const [hizliSatisIndirimTutari, setHizliSatisIndirimTutari] = useState('');
+  const [hizliSatisCariMusteriId, setHizliSatisCariMusteriId] = useState('');
+  const [hizliSatisCariArama, setHizliSatisCariArama] = useState('');
 
   // gider takibi için kullanılan kod
   const [giderler, setGiderler] = useState([]);
@@ -1393,6 +1401,15 @@ Toplam Ciro: {toplam}
     .filter(c => {
       const arananAlan = `${c.ad || ''} ${c.telefon || ''} ${c.notMetni || ''}`.toLocaleLowerCase('tr-TR');
       return !cariAdisyonAramaMetni || arananAlan.includes(cariAdisyonAramaMetni);
+    })
+    .slice(0, 8);
+
+  // hızlı satışta cariye yazma alanında müşterileri arama metnine göre filtreleyen kod
+  const hizliSatisCariAramaMetni = String(hizliSatisCariArama || '').toLocaleLowerCase('tr-TR').trim();
+  const filtreliHizliSatisCariMusterileri = cariMusteriler
+    .filter(c => {
+      const arananAlan = `${c.ad || ''} ${c.telefon || ''} ${c.notMetni || ''}`.toLocaleLowerCase('tr-TR');
+      return !hizliSatisCariAramaMetni || arananAlan.includes(hizliSatisCariAramaMetni);
     })
     .slice(0, 8);
 
@@ -2678,6 +2695,21 @@ Toplam Ciro: {toplam}
     setCariAdisyonArama(`${cari.ad || ''}${cari.telefon ? ` - ${cari.telefon}` : ''}`);
   };
 
+  // hızlı satışta cariye yazılacak müşteriyi seçen kod
+  const hizliSatisCariMusterisiSec = (musteriId) => {
+    setHizliSatisCariMusteriId(musteriId);
+
+    if (!musteriId) {
+      setHizliSatisCariArama('');
+      return;
+    }
+
+    const cari = cariMusteriler.find(c => String(c.id) === String(musteriId));
+    if (!cari) return;
+
+    setHizliSatisCariArama(`${cari.ad || ''}${cari.telefon ? ` - ${cari.telefon}` : ''}`);
+  };
+
   // paket servis müşterisini kaydeden veya mevcut kaydı güncelleyen kod
   const paketMusterisiniKaydetVeyaGuncelle = async () => {
     if (!paketMusteriKaydedilsin) {
@@ -3252,9 +3284,9 @@ Toplam Ciro: {toplam}
       urun,
       seciliUrunHazirNotId,
       seciliUrunEkstraFiyat,
-      seciliUrunSatisFiyati,
-      seciliUrunIndirimYuzde,
-      seciliUrunIndirimTutari
+      '',
+      '',
+      ''
     );
 
     const ekstraFiyat = fiyatBilgisi.ekstraFiyat;
@@ -3568,6 +3600,96 @@ Toplam Ciro: {toplam}
       1,
       'Adisyondan ürün iptal edildi'
     );
+  };
+
+  // adisyondaki seçili ürünün satış fiyatını değiştiren kod
+  const adisyonUrunFiyatiDegistir = async (siparisIndex) => {
+    const masa = activeMasa;
+
+    if (!masa || !Array.isArray(masa.siparisler)) {
+      alert('Fiyatı değiştirilecek adisyon bulunamadı.');
+      return;
+    }
+
+    const hedefSiparis = masa.siparisler[siparisIndex];
+
+    if (!hedefSiparis) {
+      alert('Ürün satırı bulunamadı.');
+      return;
+    }
+
+    if (hedefSiparis.ikram) {
+      alert('İkram ürünün fiyatı değiştirilemez.');
+      return;
+    }
+
+    const mevcutFiyat = Number(hedefSiparis.fiyat || 0);
+    const girilen = window.prompt(`${hedefSiparis.ad} için yeni birim satış fiyatını girin:`, String(mevcutFiyat));
+
+    if (girilen === null) return;
+
+    const yeniFiyat = sayiyaCevir(girilen);
+
+    if (!Number.isFinite(yeniFiyat) || yeniFiyat < 0) {
+      alert('Geçerli bir satış fiyatı girin.');
+      return;
+    }
+
+    const listeFiyati = Number(hedefSiparis.listeFiyati || hedefSiparis.normalFiyat || hedefSiparis.fiyat || yeniFiyat || 0);
+    const yeniSiparisler = masa.siparisler.map((s, index) => {
+      if (index !== siparisIndex) return s;
+
+      return {
+        ...s,
+        fiyat: yeniFiyat,
+        satisFiyati: yeniFiyat,
+        indirimTutari: Math.max(listeFiyati - yeniFiyat, 0),
+        indirimYuzde: listeFiyati > 0 && yeniFiyat < listeFiyati ? Math.round(((listeFiyati - yeniFiyat) / listeFiyati) * 10000) / 100 : 0,
+        fiyatDegistirildi: Math.abs(yeniFiyat - listeFiyati) > 0.001,
+      };
+    });
+
+    const yeniAraToplam = siparislerAraToplamHesapla(yeniSiparisler);
+    const genelIndirimOzeti = toplamIndirimHesapla(
+      yeniAraToplam,
+      masa.adisyonIndirimYuzde || 0,
+      masa.adisyonIndirimTutari || 0
+    );
+
+    const { data, error } = await supabase
+      .from('masalar')
+      .update({
+        tutar: genelIndirimOzeti.netToplam,
+        brut_tutar: genelIndirimOzeti.brutToplam,
+        adisyon_indirim_yuzde: genelIndirimOzeti.indirimYuzde,
+        adisyon_indirim_tutari: genelIndirimOzeti.tlIndirimTutari,
+        siparisler: yeniSiparisler,
+      })
+      .eq('id', masa.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Ürün fiyatı değiştirilemedi:', error);
+      alert('Ürün fiyatı değiştirilemedi: ' + error.message);
+      return;
+    }
+
+    const guncelMasa = {
+      ...masa,
+      id: data.id,
+      restaurantId: data.restaurant_id,
+      tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
+      siparisler: Array.isArray(data.siparisler) ? data.siparisler : yeniSiparisler,
+      odemeler: Array.isArray(data.odemeler) ? data.odemeler : masa.odemeler || [],
+      bolum: data.bolum || masa.bolum || aktifMasaBolumu || 'Salon',
+    };
+
+    setMasalar(masalar.map(m => String(m.id) === String(guncelMasa.id) ? guncelMasa : m));
   };
 
   // adisyonda seçili satırdan 1 ürünü ikram eden kod
@@ -4591,6 +4713,11 @@ Toplam Ciro: {toplam}
       return;
     }
 
+    if (Array.isArray(bolunecekSiparisIndexleri) && bolunecekSiparisIndexleri.length > 0) {
+      await bolunmusAdisyonOdemeAl(odemeTipi);
+      return;
+    }
+
     const kalan = kalanTutar(masa);
 
     if (kalan <= 0) {
@@ -4969,9 +5096,16 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const urunNotu = String(paketSeciliUrunNotu || '').trim();
+    const paketHazirNotlar = Array.isArray(urun.menuNotlari) ? urun.menuNotlari : [];
+    const seciliPaketHazirNot = paketHazirNotlar.find(n => String(n.id) === String(paketSeciliHazirNotId));
+    const urunNotu = seciliPaketHazirNot
+      ? String(seciliPaketHazirNot.ad || '').trim()
+      : String(paketSeciliUrunNotu || '').trim();
+    const paketNotEkstraFiyat = seciliPaketHazirNot ? Math.max(Number(seciliPaketHazirNot.fiyat || 0), 0) : 0;
+    const paketBirimFiyat = Number(urun.fiyat || 0) + paketNotEkstraFiyat;
+
     const mevcutIndex = paketUrunler.findIndex(u => {
-      return String(u.urunId) === String(urun.id) && String(u.not || '') === String(urunNotu || '');
+      return String(u.urunId) === String(urun.id) && String(u.not || '') === String(urunNotu || '') && Number(u.ekstraUcret || 0) === Number(paketNotEkstraFiyat || 0);
     });
     const yeniListe = [...paketUrunler];
 
@@ -4984,7 +5118,11 @@ Toplam Ciro: {toplam}
       yeniListe.push({
         urunId: urun.id,
         ad: urun.ad,
-        fiyat: Number(urun.fiyat || 0),
+        fiyat: paketBirimFiyat,
+        normalFiyat: Number(urun.fiyat || 0),
+        listeFiyati: paketBirimFiyat,
+        satisFiyati: paketBirimFiyat,
+        ekstraUcret: paketNotEkstraFiyat,
         maliyet: Number(urun.maliyet || 0),
         adet,
         not: urunNotu,
@@ -5000,6 +5138,7 @@ Toplam Ciro: {toplam}
     setPaketUrunler(yeniListe);
     setPaketSeciliUrunId('');
     setPaketSeciliAdet(1);
+    setPaketSeciliHazirNotId('');
     setPaketSeciliUrunNotu('');
   };
 
@@ -5175,6 +5314,7 @@ Toplam Ciro: {toplam}
     setPaketToplamIndirimTutari('');
     setPaketSeciliUrunId('');
     setPaketSeciliAdet(1);
+    setPaketSeciliHazirNotId('');
     setPaketSeciliUrunNotu('');
     setPaketSeciliKuryePersonelId('');
     setPaketUrunArama('');
@@ -6161,6 +6301,33 @@ Toplam Ciro: {toplam}
     });
   };
 
+  // hızlı satışta ürünün satış fiyatını geçici değiştiren kod
+  const hizliSatisUrunFiyatiDegistir = (index) => {
+    setHizliSatisUrunler(prev => {
+      const liste = Array.isArray(prev) ? [...prev] : [];
+      const urun = liste[index];
+      if (!urun) return liste;
+
+      const mevcutFiyat = Number(urun.fiyat || 0);
+      const girilen = window.prompt(`${urun.ad} için yeni birim satış fiyatı`, String(mevcutFiyat));
+      if (girilen === null) return liste;
+
+      const yeniFiyat = sayiyaCevir(girilen);
+      if (!Number.isFinite(yeniFiyat) || yeniFiyat < 0) {
+        alert('Geçerli bir fiyat girin.');
+        return liste;
+      }
+
+      liste[index] = {
+        ...urun,
+        fiyat: paraYuvarla(yeniFiyat),
+        fiyatDegistirildi: true,
+      };
+
+      return liste;
+    });
+  };
+
   // hızlı satışta seçili satırdan 1 ürünü ikram eden kod
   const hizliSatisBirUrunIkramEt = (index) => {
     setHizliSatisUrunler(prev => {
@@ -6194,32 +6361,84 @@ Toplam Ciro: {toplam}
     });
   };
 
+  // hızlı satış sepetini satış kapatmadan adisyon yazıcısına gönderen kod
+  const hizliSatisAdisyonYazdir = () => {
+    if (!Array.isArray(hizliSatisUrunler) || hizliSatisUrunler.length === 0) {
+      alert('Adisyon yazdırmak için hızlı satış sepetine ürün ekleyin.');
+      return;
+    }
+
+    const toplamIndirim = Number(hizliSatisToplamIndirim || 0);
+
+    const hizliSatisFiseGidenUrunler = hizliSatisUrunler.map(u => {
+      const adet = Math.max(Number(u.adet || 1), 1);
+      const satirBrut = Number(u.fiyat || 0) * adet;
+      const satirPayi = hizliSatisAraToplam > 0 ? satirBrut / hizliSatisAraToplam : 0;
+      const satirIndirim = Math.min(satirBrut, toplamIndirim * satirPayi);
+      const satirNetToplam = Math.max(satirBrut - satirIndirim, 0);
+      const netBirimFiyat = adet > 0 ? satirNetToplam / adet : 0;
+
+      return {
+        ...u,
+        fiyat: Number(netBirimFiyat || 0),
+        normalFiyat: Number(u.normalFiyat || u.fiyat || 0),
+        listeFiyati: Number(u.fiyat || 0),
+        indirimYuzde: hizliSatisIndirimYuzdeSayi,
+        indirimTutari: Number(satirIndirim || 0) / adet,
+      };
+    });
+
+    adisyonFisiYazdir({
+      ad: 'Hızlı Satış / Gel-Al',
+      musteriAdi: hizliSatisMusteriAdi,
+      tutar: Number(hizliSatisToplam || 0),
+      siparisler: hizliSatisFiseGidenUrunler,
+      odemeler: [],
+      adisyonAcilisSaati: new Date().toISOString(),
+    });
+  };
+
   // hızlı satışı kapatıp raporlara işleyen kod
-  const hizliSatisKapat = async () => {
+  const hizliSatisKapat = async (odemeTipiOverride = null, cariOverride = null) => {
     if (!Array.isArray(hizliSatisUrunler) || hizliSatisUrunler.length === 0) {
       alert('Hızlı satış için ürün seçin.');
       return;
     }
 
     const tutar = Number(hizliSatisToplam || 0);
-    const alinanTutar = sayiyaCevir(hizliSatisAlinanTutar || tutar);
+    const aktifOdemeTipi = odemeTipiOverride || hizliSatisOdemeTipi || 'Nakit';
+    const cariMusteri = aktifOdemeTipi === 'Cari'
+      ? (cariOverride || cariMusteriler.find(c => String(c.id) === String(hizliSatisCariMusteriId)))
+      : null;
+    const hizliSatisMusteriAdi = aktifOdemeTipi === 'Cari' && cariMusteri?.ad ? cariMusteri.ad : 'Gel-Al';
+    const alinanTutar = aktifOdemeTipi === 'Cari' ? 0 : sayiyaCevir(hizliSatisAlinanTutar || tutar);
     const toplamIndirim = Number(hizliSatisToplamIndirim || 0);
 
-    if (hizliSatisOdemeTipi === 'Kredi Kartı' && alinanTutar !== tutar) {
+    if (aktifOdemeTipi === 'Cari' && !cariMusteri) {
+      alert('Cariye yazmak için müşteri seçin.');
+      return;
+    }
+
+    if (aktifOdemeTipi === 'Kredi Kartı' && alinanTutar !== tutar) {
       alert('Kart ödemesinde alınan tutar toplamla aynı olmalı.');
       return;
     }
 
-    if (hizliSatisOdemeTipi === 'Nakit' && alinanTutar < tutar) {
+    if (aktifOdemeTipi === 'Nakit' && alinanTutar < tutar) {
       alert('Nakit alınan tutar toplamdan az olamaz.');
       return;
     }
 
-    const paraUstu = hizliSatisOdemeTipi === 'Nakit' ? Math.max(alinanTutar - tutar, 0) : 0;
+    if (aktifOdemeTipi === 'Cari') {
+      const cariKaydi = await cariHareketEkle(cariMusteri, 'Borç', tutar, 'Hızlı satış / Gel-Al cariye yazıldı');
+      if (!cariKaydi) return;
+    }
+
+    const paraUstu = aktifOdemeTipi === 'Nakit' ? Math.max(alinanTutar - tutar, 0) : 0;
     const bugun = new Date().toISOString().split('T')[0];
     const kapanisSaati = new Date().toISOString();
     const adisyonId = `hizli-${Date.now()}`;
-    const odemeler = [{ tip: hizliSatisOdemeTipi, tutar, alinanTutar, paraUstu, indirimTutari: toplamIndirim, tarih: kapanisSaati }];
+    const odemeler = [{ tip: aktifOdemeTipi, tutar, alinanTutar, paraUstu, indirimTutari: toplamIndirim, tarih: kapanisSaati }];
 
     const hizliSatisSatirHesapla = (u) => {
       const satirBrut = Number(u.fiyat || 0) * Number(u.adet || 1);
@@ -6236,13 +6455,13 @@ Toplam Ciro: {toplam}
       restaurant_id: mevcutRestaurantId,
       masa_id: null,
       masa_adi: 'Hızlı Satış',
-      musteri_adi: 'Gel-Al',
+      musteri_adi: hizliSatisMusteriAdi,
       adisyon_id: adisyonId,
       ad: u.ad,
       fiyat: Number(satir.netBirimFiyat || 0),
       adet: Number(u.adet || 1),
       tarih: bugun,
-      odeme_tipi: hizliSatisOdemeTipi,
+      odeme_tipi: aktifOdemeTipi,
       odemeler,
       adisyon_acilis_saati: kapanisSaati,
       adisyon_kapanis_saati: kapanisSaati,
@@ -6253,7 +6472,7 @@ Toplam Ciro: {toplam}
       satis_fiyati: Number(satir.netBirimFiyat || 0),
       indirim_yuzde: hizliSatisIndirimYuzdeSayi,
       indirim_tutari: Number(satir.satirIndirim || 0) / Math.max(Number(u.adet || 1), 1),
-      fiyat_degistirildi: Number(satir.satirIndirim || 0) > 0 || Boolean(u.ikram),
+      fiyat_degistirildi: Boolean(u.fiyatDegistirildi) || Number(satir.satirIndirim || 0) > 0 || Boolean(u.ikram),
       ikram: Boolean(u.ikram),
       menu_grubu: u.menuGrubu || 'Genel',
       departman: u.departman || 'Hızlı Satış',
@@ -6347,13 +6566,13 @@ Toplam Ciro: {toplam}
         restaurantId: mevcutRestaurantId,
         masaId: null,
         masaAdi: 'Hızlı Satış',
-        musteriAdi: 'Gel-Al',
+        musteriAdi: hizliSatisMusteriAdi,
         adisyonId,
         ad: u.ad,
         fiyat: Number(satir.netBirimFiyat || 0),
         adet: Number(u.adet || 1),
         tarih: bugun,
-        odemeTipi: hizliSatisOdemeTipi,
+        odemeTipi: aktifOdemeTipi,
         odemeler,
         siparisTipi: 'Hızlı Satış',
         adisyonAcilisSaati: kapanisSaati,
@@ -6366,6 +6585,7 @@ Toplam Ciro: {toplam}
         indirimYuzde: hizliSatisIndirimYuzdeSayi,
         indirimTutari: Number(satir.satirIndirim || 0) / Math.max(Number(u.adet || 1), 1),
         ikram: Boolean(u.ikram),
+        fiyatDegistirildi: Boolean(u.fiyatDegistirildi),
       });
       }),
     ]);
@@ -6383,20 +6603,22 @@ Toplam Ciro: {toplam}
     });
 
     setSonFisBilgisi({
-      masa: { ad: 'Hızlı Satış', tutar, siparisler: hizliSatisFiseGidenUrunler },
+      masa: { ad: 'Hızlı Satış', musteriAdi: hizliSatisMusteriAdi, tutar, siparisler: hizliSatisFiseGidenUrunler },
       odemeler,
     });
 
     if (fisYazdirmaModu === 'yazdir') {
-      fisYazdir({ ad: 'Hızlı Satış', tutar, siparisler: hizliSatisFiseGidenUrunler }, odemeler);
+      fisYazdir({ ad: 'Hızlı Satış', musteriAdi: hizliSatisMusteriAdi, tutar, siparisler: hizliSatisFiseGidenUrunler }, odemeler);
     } else if (fisYazdirmaModu === 'sor') {
-      setFisSorModal({ masa: { ad: 'Hızlı Satış', tutar, siparisler: hizliSatisFiseGidenUrunler }, odemeler });
+      setFisSorModal({ masa: { ad: 'Hızlı Satış', musteriAdi: hizliSatisMusteriAdi, tutar, siparisler: hizliSatisFiseGidenUrunler }, odemeler });
     }
 
     setHizliSatisUrunler([]);
     setHizliSatisAlinanTutar('');
     setHizliSatisIndirimYuzde('');
     setHizliSatisIndirimTutari('');
+    setHizliSatisCariMusteriId('');
+    setHizliSatisCariArama('');
   };
 
   // gider kaydı ekleyen kod
@@ -6822,6 +7044,8 @@ Toplam Ciro: {toplam}
       return;
     }
 
+    setMasaBirlestirmeModu(false);
+    setBirlestirilenKaynakMasaId(null);
     setMasaAktarmaModu(true);
     setAktarilanKaynakMasaId(activeMasa.id);
     setAktarimMesaji(`${activeMasa.ad} aktarılıyor. Aktarmak istediğiniz boş masaya tıklayın.`);
@@ -6832,6 +7056,157 @@ Toplam Ciro: {toplam}
     setMasaAktarmaModu(false);
     setAktarilanKaynakMasaId(null);
     setAktarimMesaji('');
+  };
+
+  // masa birleştirme modunu başlatan kod
+  const masaBirlestirmeBaslat = () => {
+    if (!activeMasa || !activeMasa.dolu || !activeMasa.siparisler || activeMasa.siparisler.length === 0) {
+      setAktarimMesaji('Birleştirilecek dolu bir kaynak masa seçin.');
+      return;
+    }
+
+    setMasaAktarmaModu(false);
+    setAktarilanKaynakMasaId(null);
+    setMasaBirlestirmeModu(true);
+    setBirlestirilenKaynakMasaId(activeMasa.id);
+    setAktarimMesaji(`${activeMasa.ad} birleştiriliyor. Birleşeceği dolu masaya tıklayın.`);
+  };
+
+  // masa birleştirme modunu iptal eden kod
+  const masaBirlestirmeIptalEt = () => {
+    setMasaBirlestirmeModu(false);
+    setBirlestirilenKaynakMasaId(null);
+    setAktarimMesaji('');
+  };
+
+  // dolu masaya tıklayınca adisyonları birleştiren kod
+  const masaBirlestirTikla = async (hedefMasa) => {
+    if (!masaBirlestirmeModu || !birlestirilenKaynakMasaId) {
+      setSelectedMasaId(hedefMasa.id);
+      setAktifMasaBolumu(hedefMasa.bolum || 'Salon');
+      return;
+    }
+
+    const kaynakMasa = tumRestoranMasalari.find(m => String(m.id) === String(birlestirilenKaynakMasaId));
+
+    if (!kaynakMasa) {
+      setAktarimMesaji('Kaynak masa bulunamadı.');
+      masaBirlestirmeIptalEt();
+      return;
+    }
+
+    if (String(kaynakMasa.id) === String(hedefMasa.id)) {
+      setAktarimMesaji('Aynı masaya birleştirme yapılamaz. Dolu bir hedef masa seçin.');
+      return;
+    }
+
+    if (!hedefMasa.dolu || !hedefMasa.siparisler || hedefMasa.siparisler.length === 0) {
+      setAktarimMesaji('Masa birleştirme için hedef masa dolu olmalı.');
+      return;
+    }
+
+    const yeniSiparisler = [...(hedefMasa.siparisler || []), ...(kaynakMasa.siparisler || [])];
+    const yeniOdemeler = [...(hedefMasa.odemeler || []), ...(kaynakMasa.odemeler || [])];
+    const yeniAraToplam = siparislerAraToplamHesapla(yeniSiparisler);
+    const hedefIndirimOzeti = toplamIndirimHesapla(
+      yeniAraToplam,
+      hedefMasa.adisyonIndirimYuzde || 0,
+      hedefMasa.adisyonIndirimTutari || 0
+    );
+
+    const { data: hedefData, error: hedefError } = await supabase
+      .from('masalar')
+      .update({
+        dolu: true,
+        tutar: hedefIndirimOzeti.netToplam,
+        brut_tutar: hedefIndirimOzeti.brutToplam,
+        adisyon_indirim_yuzde: hedefIndirimOzeti.indirimYuzde,
+        adisyon_indirim_tutari: hedefIndirimOzeti.tlIndirimTutari,
+        siparisler: yeniSiparisler,
+        odemeler: yeniOdemeler,
+        adisyon_acilis_saati: hedefMasa.adisyonAcilisSaati || kaynakMasa.adisyonAcilisSaati || new Date().toISOString(),
+        adisyon_garson_adi: hedefMasa.adisyonGarsonAdi || kaynakMasa.adisyonGarsonAdi || '',
+        musteri_adi: hedefMasa.musteriAdi || kaynakMasa.musteriAdi || '',
+      })
+      .eq('id', hedefMasa.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (hedefError) {
+      console.error('Masa birleştirme hedef hatası:', hedefError);
+      setAktarimMesaji('Masa birleştirilemedi: ' + hedefError.message);
+      return;
+    }
+
+    const { data: kaynakData, error: kaynakError } = await supabase
+      .from('masalar')
+      .update({
+        dolu: false,
+        tutar: 0,
+        brut_tutar: 0,
+        adisyon_indirim_yuzde: 0,
+        adisyon_indirim_tutari: 0,
+        siparisler: [],
+        odemeler: [],
+        adisyon_acilis_saati: null,
+        adisyon_garson_adi: null,
+        musteri_adi: null,
+      })
+      .eq('id', kaynakMasa.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (kaynakError) {
+      console.error('Kaynak masa boşaltılamadı:', kaynakError);
+      setAktarimMesaji('Hedef masa birleştirildi ama eski masa boşaltılamadı: ' + kaynakError.message);
+      return;
+    }
+
+    const guncelHedefMasa = {
+      id: hedefData.id,
+      restaurantId: hedefData.restaurant_id,
+      ad: hedefData.ad,
+      dolu: hedefData.dolu || false,
+      tutar: Number(hedefData.tutar || 0),
+      brutTutar: Number(hedefData.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(hedefData.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(hedefData.adisyon_indirim_tutari || 0),
+      siparisler: Array.isArray(hedefData.siparisler) ? hedefData.siparisler : [],
+      odemeler: Array.isArray(hedefData.odemeler) ? hedefData.odemeler : [],
+      adisyonAcilisSaati: hedefData.adisyon_acilis_saati || null,
+      adisyonGarsonAdi: hedefData.adisyon_garson_adi || '',
+      musteriAdi: hedefData.musteri_adi || hedefMasa.musteriAdi || '',
+      bolum: hedefData.bolum || hedefMasa.bolum || 'Salon',
+    };
+
+    const guncelKaynakMasa = {
+      id: kaynakData.id,
+      restaurantId: kaynakData.restaurant_id,
+      ad: kaynakData.ad,
+      dolu: kaynakData.dolu || false,
+      tutar: Number(kaynakData.tutar || 0),
+      brutTutar: Number(kaynakData.brut_tutar || 0),
+      siparisler: Array.isArray(kaynakData.siparisler) ? kaynakData.siparisler : [],
+      odemeler: Array.isArray(kaynakData.odemeler) ? kaynakData.odemeler : [],
+      adisyonAcilisSaati: kaynakData.adisyon_acilis_saati || null,
+      adisyonGarsonAdi: kaynakData.adisyon_garson_adi || '',
+      musteriAdi: kaynakData.musteri_adi || '',
+      bolum: kaynakData.bolum || kaynakMasa.bolum || 'Salon',
+    };
+
+    setMasalar(masalar.map(m => {
+      if (m.id === guncelHedefMasa.id) return guncelHedefMasa;
+      if (m.id === guncelKaynakMasa.id) return guncelKaynakMasa;
+      return m;
+    }));
+
+    setSelectedMasaId(guncelHedefMasa.id);
+    setAktifMasaBolumu(guncelHedefMasa.bolum || 'Salon');
+    setMasaBirlestirmeModu(false);
+    setBirlestirilenKaynakMasaId(null);
+    setAktarimMesaji(`${kaynakMasa.ad} → ${hedefMasa.ad} birleştirildi.`);
   };
 
   // boş masaya tıklayınca adisyonu direkt aktaran kod
@@ -7009,6 +7384,64 @@ Toplam Ciro: {toplam}
     setYeniMasaAdi('');
     setSelectedMasaId(yeniMasa.id);
 
+  };
+
+  // seçili bölüme birden fazla masayı toplu ekleyen kod
+  const topluMasaEkle = async (e) => {
+    e.preventDefault();
+
+    const adet = Math.max(Number(topluMasaAdet || 0), 0);
+    const baslangicNo = Math.max(Number(topluMasaBaslangicNo || 1), 1);
+    const onEk = String(topluMasaOnEk || 'Masa').trim() || 'Masa';
+
+    if (!adet || adet <= 0) {
+      alert('Toplu masa eklemek için geçerli adet girin.');
+      return;
+    }
+
+    if (adet > 100) {
+      alert('Tek seferde en fazla 100 masa ekleyebilirsiniz.');
+      return;
+    }
+
+    const kayitlar = Array.from({ length: adet }).map((_, index) => ({
+      restaurant_id: mevcutRestaurantId,
+      ad: `${onEk} ${baslangicNo + index}`,
+      bolum: aktifMasaBolumu || 'Salon',
+      dolu: false,
+      tutar: 0,
+      siparisler: [],
+      odemeler: [],
+    }));
+
+    const { data, error } = await supabase
+      .from('masalar')
+      .insert(kayitlar)
+      .select();
+
+    if (error) {
+      console.error('Toplu masa ekleme hatası:', error);
+      alert('Toplu masa eklenemedi: ' + error.message);
+      return;
+    }
+
+    const yeniMasalar = (Array.isArray(data) ? data : []).map(m => ({
+      id: m.id,
+      restaurantId: m.restaurant_id,
+      ad: m.ad,
+      dolu: m.dolu || false,
+      tutar: Number(m.tutar || 0),
+      brutTutar: Number(m.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(m.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(m.adisyon_indirim_tutari || 0),
+      siparisler: Array.isArray(m.siparisler) ? m.siparisler : [],
+      odemeler: Array.isArray(m.odemeler) ? m.odemeler : [],
+      adisyonAcilisSaati: m.adisyon_acilis_saati || null,
+      bolum: m.bolum || aktifMasaBolumu || 'Salon',
+    }));
+
+    setMasalar([...masalar, ...yeniMasalar]);
+    if (yeniMasalar[0]) setSelectedMasaId(yeniMasalar[0].id);
   };
 
   // masa adı düzenleme modunu başlatan kod
@@ -8910,6 +9343,8 @@ Toplam Ciro: {toplam}
     if (!urun) return;
 
     setPaketSeciliUrunId(String(urun.id));
+    setPaketSeciliHazirNotId('');
+    setPaketSeciliUrunNotu('');
   };
 
   // açık masa/adisyon toplam indirim özetini hazırlayan kod
@@ -10353,6 +10788,36 @@ Toplam Ciro: {toplam}
                             + Masa
                           </button>
                         </form>
+
+                        <form onSubmit={topluMasaEkle} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <input
+                            type="text"
+                            placeholder="Ön ek"
+                            value={topluMasaOnEk}
+                            onChange={e => setTopluMasaOnEk(e.target.value)}
+                            style={{ ...styles.tableInputMini, width: '85px' }}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Başlangıç"
+                            value={topluMasaBaslangicNo}
+                            onChange={e => setTopluMasaBaslangicNo(e.target.value)}
+                            style={{ ...styles.tableInputMini, width: '80px' }}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            placeholder="Adet"
+                            value={topluMasaAdet}
+                            onChange={e => setTopluMasaAdet(e.target.value)}
+                            style={{ ...styles.tableInputMini, width: '70px' }}
+                          />
+                          <button type="submit" style={styles.addBtnMini}>
+                            + Toplu
+                          </button>
+                        </form>
                       </div>
                     )}
                   </div>
@@ -10397,9 +10862,9 @@ Toplam Ciro: {toplam}
                   {aktarimMesaji && (
                     <div
                       style={{
-                        backgroundColor: masaAktarmaModu ? '#eef2ff' : '#f0fdf4',
-                        color: masaAktarmaModu ? '#3730a3' : '#15803d',
-                        border: masaAktarmaModu ? '1px solid #c7d2fe' : '1px solid #bbf7d0',
+                        backgroundColor: (masaAktarmaModu || masaBirlestirmeModu) ? '#eef2ff' : '#f0fdf4',
+                        color: (masaAktarmaModu || masaBirlestirmeModu) ? '#3730a3' : '#15803d',
+                        border: (masaAktarmaModu || masaBirlestirmeModu) ? '1px solid #c7d2fe' : '1px solid #bbf7d0',
                         padding: '10px 12px',
                         borderRadius: '12px',
                         fontSize: '13px',
@@ -10420,14 +10885,20 @@ Toplam Ciro: {toplam}
                     <div style={isMobile ? styles.mesaGridMobile : styles.mesaGrid}>
                       {aktifMasalar.map(m => {
                         const kaynakMasaMi =
-                          masaAktarmaModu && String(m.id) === String(aktarilanKaynakMasaId);
+                          (masaAktarmaModu && String(m.id) === String(aktarilanKaynakMasaId)) ||
+                          (masaBirlestirmeModu && String(m.id) === String(birlestirilenKaynakMasaId));
 
                         const hedefOlabilirMi =
-                          masaAktarmaModu &&
-                          !kaynakMasaMi &&
-                          !m.dolu &&
-                          Number(m.tutar || 0) === 0 &&
-                          (!m.siparisler || m.siparisler.length === 0);
+                          (masaAktarmaModu &&
+                            !kaynakMasaMi &&
+                            !m.dolu &&
+                            Number(m.tutar || 0) === 0 &&
+                            (!m.siparisler || m.siparisler.length === 0)) ||
+                          (masaBirlestirmeModu &&
+                            !kaynakMasaMi &&
+                            m.dolu &&
+                            Array.isArray(m.siparisler) &&
+                            m.siparisler.length > 0);
 
                         const aktifRezervasyon = aktifRezervasyonBul(m.id);
 
@@ -10437,6 +10908,11 @@ Toplam Ciro: {toplam}
                             onClick={() => {
                               if (masaAktarmaModu) {
                                 masaAktarTikla(m);
+                                return;
+                              }
+
+                              if (masaBirlestirmeModu) {
+                                masaBirlestirTikla(m);
                                 return;
                               }
 
@@ -10564,11 +11040,6 @@ Toplam Ciro: {toplam}
                     <div style={styles.mobilAdisyonUstBar}>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={styles.mobilAdisyonMasaAdi}>🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'}</div>
-                        <div style={styles.mobilAdisyonOzetSatiri}>
-                          <span>Toplam: <strong>{activeMasa?.tutar || 0} TL</strong></span>
-                          <span>KDV: <strong>{aktifMasaKdvOzeti.kdvToplam} TL</strong></span>
-                          <span>Kalan: <strong>{activeMasa ? kalanTutar(activeMasa) : 0} TL</strong></span>
-                        </div>
                       </div>
 
                       <button
@@ -10582,14 +11053,9 @@ Toplam Ciro: {toplam}
                   ) : (
                     <div style={styles.desktopAdisyonUstBar}>
                       <div style={{ minWidth: 0 }}>
-                        <h3 style={{ ...styles.panelTitle, marginBottom: '6px' }}>
+                        <h3 style={{ ...styles.panelTitle, marginBottom: '0' }}>
                           🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'} Canlı Fişi
                         </h3>
-                        <div style={styles.desktopAdisyonOzetSatiri}>
-                          <span>Toplam: <strong>{activeMasa?.tutar || 0} TL</strong></span>
-                          <span>KDV: <strong>{aktifMasaKdvOzeti.kdvToplam} TL</strong></span>
-                          <span>Kalan: <strong>{activeMasa ? kalanTutar(activeMasa) : 0} TL</strong></span>
-                        </div>
                       </div>
                     </div>
                   )}
@@ -10605,237 +11071,193 @@ Toplam Ciro: {toplam}
 
                     <button
                       type="button"
-                      onClick={() => setMobilAdisyonSekmesi('fis')}
-                      style={mobilAdisyonSekmesi === 'fis' ? styles.mobilAdisyonSekmeAktif : styles.mobilAdisyonSekme}
+                      onClick={() => setMobilAdisyonSekmesi('adisyon')}
+                      style={mobilAdisyonSekmesi === 'adisyon' ? styles.mobilAdisyonSekmeAktif : styles.mobilAdisyonSekme}
                     >
                       Adisyon / Fiş
                     </button>
                   </div>
 
-                  {mobilAdisyonSekmesi === 'fis' && (
+                  {mobilAdisyonSekmesi === 'adisyon' && (
                     <>
-                  {activeMasa?.dolu && (
-                    <div style={styles.hizliHesapKutusu}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '8px' }}>
-                        <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '900' }}>⚡ Hızlı Hesap Al</div>
-                        <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>
-                          Ödenen: {odemeToplami(activeMasa)} TL / Kalan: {kalanTutar(activeMasa)} TL
-                        </div>
-                      </div>
+                      {activeMasa?.dolu && (
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                          {!masaAktarmaModu ? (
+                            <button
+                              type="button"
+                              onClick={masaAktarmaBaslat}
+                              style={{ ...styles.checkoutBtn, backgroundColor: '#6366f1', padding: '10px 12px', fontSize: '12px' }}
+                            >
+                              🔁 Masa Aktar
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={masaAktarmaIptalEt}
+                              style={{ ...styles.checkoutBtn, backgroundColor: '#ef4444', padding: '10px 12px', fontSize: '12px' }}
+                            >
+                              Aktarmadan Vazgeç
+                            </button>
+                          )}
 
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: '8px', alignItems: 'center' }}>
+                          {!masaBirlestirmeModu ? (
+                            <button
+                              type="button"
+                              onClick={masaBirlestirmeBaslat}
+                              style={{ ...styles.checkoutBtn, backgroundColor: '#f59e0b', padding: '10px 12px', fontSize: '12px' }}
+                            >
+                              🔗 Masa Birleştir
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={masaBirlestirmeIptalEt}
+                              style={{ ...styles.checkoutBtn, backgroundColor: '#ef4444', padding: '10px 12px', fontSize: '12px' }}
+                            >
+                              Birleştirmeden Vazgeç
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {activeMasa?.dolu && (
                         <div
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            backgroundColor: '#fff',
-                            border: '1px solid #fed7aa',
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0',
                             borderRadius: '10px',
                             padding: '8px',
+                            marginBottom: '10px',
+                            fontSize: '12px',
+                            color: '#475569',
+                            fontWeight: '700',
                           }}
                         >
-                          <span style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', whiteSpace: 'nowrap' }}>Alınan:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={odemeTutariInput}
-                            onChange={e => setOdemeTutariInput(e.target.value)}
-                            placeholder={`${kalanTutar(activeMasa)} TL`}
-                            style={{
-                              flex: 1,
-                              border: 'none',
-                              outline: 'none',
-                              backgroundColor: 'transparent',
-                              fontSize: '15px',
-                              fontWeight: '900',
-                              color: '#1e293b',
-                              minWidth: '90px',
-                            }}
-                          />
+                          <div>Açılış Saati: <strong>{saatYaz(activeMasa.adisyonAcilisSaati)}</strong></div>
+                          <div>Garson: <strong>{activeMasa.adisyonGarsonAdi || '-'}</strong></div>
+                        </div>
+                      )}
+
+                      {activeMasa && (
+                        <div
+                          style={{
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '10px',
+                            padding: '8px',
+                            marginBottom: '10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                          }}
+                        >
+                          <details style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px' }}>
+                            <summary style={{ fontSize: '12px', color: '#475569', fontWeight: '900', cursor: 'pointer' }}>
+                              📒 Cari / Veresiye {cariAdisyonMusteriId ? '— Seçili' : ''}
+                            </summary>
+
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', marginTop: '8px' }}>
+                              <div style={{ flex: 1 }}>
+                                <input
+                                  type="text"
+                                  placeholder="Cari müşteri ara..."
+                                  value={cariAdisyonArama}
+                                  onChange={e => {
+                                    setCariAdisyonArama(e.target.value);
+                                    setCariAdisyonMusteriId('');
+                                  }}
+                                  style={{ ...styles.panelSelect, padding: '8px', fontSize: '12px', width: '100%', boxSizing: 'border-box' }}
+                                />
+
+                                {cariAdisyonMusteriId && (
+                                  <div style={{ color: '#7c3aed', fontSize: '11px', padding: '6px 2px', fontWeight: '900' }}>
+                                    Seçili cari: {cariAdisyonArama}
+                                  </div>
+                                )}
+
+                                {cariAdisyonArama && !cariAdisyonMusteriId && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px', maxHeight: '120px', overflowY: 'auto' }}>
+                                    {filtreliCariAdisyonMusterileri.length === 0 ? (
+                                      <div style={{ color: '#94a3b8', fontSize: '11px', padding: '6px' }}>Eşleşen cari yok.</div>
+                                    ) : (
+                                      filtreliCariAdisyonMusterileri.map(c => (
+                                        <button
+                                          key={c.id}
+                                          type="button"
+                                          onClick={() => cariAdisyonMusterisiSec(String(c.id))}
+                                          style={{
+                                            border: '1px solid #e2e8f0',
+                                            backgroundColor: '#fff',
+                                            color: '#334155',
+                                            padding: '7px 8px',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            textAlign: 'left',
+                                            fontWeight: '800',
+                                            fontSize: '11px',
+                                          }}
+                                        >
+                                          {c.ad} {c.telefon ? ` / ${c.telefon}` : ''} — {Number(c.bakiye || 0)} TL
+                                        </button>
+                                      ))
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <button type="button" onClick={aktifAdisyonuCariyeYaz} style={{ ...styles.checkoutBtn, backgroundColor: '#7c3aed', padding: '9px', fontSize: '12px', width: 'auto' }}>Cari'ye Yaz</button>
+                            </div>
+                          </details>
+
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                              type="text"
+                              placeholder="Müşteri adı"
+                              value={musteriAdiInput}
+                              onChange={e => setMusteriAdiInput(e.target.value)}
+                              style={{ ...styles.panelSelect, flex: 1, padding: '8px', fontSize: '12px' }}
+                            />
+
+                            <button
+                              type="button"
+                              onClick={masaMusteriAdiKaydet}
+                              style={{
+                                border: 'none',
+                                backgroundColor: '#1e293b',
+                                color: '#fff',
+                                padding: '8px 10px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '900',
+                                fontSize: '12px',
+                              }}
+                            >
+                              Kaydet
+                            </button>
+                          </div>
+
                           <button
                             type="button"
-                            onClick={() => setOdemeTutariInput(String(kalanTutar(activeMasa)))}
+                            onClick={() => adisyonFisiYazdir(activeMasa)}
                             style={{
+                              width: '100%',
                               border: 'none',
-                              backgroundColor: '#fed7aa',
-                              color: '#9a3412',
+                              backgroundColor: '#0f766e',
+                              color: '#fff',
+                              padding: '9px 11px',
                               borderRadius: '8px',
-                              padding: '7px 9px',
                               cursor: 'pointer',
-                              fontSize: '11px',
                               fontWeight: '900',
+                              fontSize: '12px',
                             }}
                           >
-                            Tümü
+                            🧾 Hesap Öncesi Adisyon Yazdır
                           </button>
                         </div>
-
-                        <button type="button" onClick={() => odemeAl('Nakit')} style={{ ...styles.checkoutBtn, backgroundColor: '#10b981', width: isMobile ? '100%' : 'auto', padding: '11px 14px' }}>
-                          💵 Nakit Al
-                        </button>
-                        <button type="button" onClick={() => odemeAl('Kredi Kartı')} style={{ ...styles.checkoutBtn, backgroundColor: '#2563eb', width: isMobile ? '100%' : 'auto', padding: '11px 14px' }}>
-                          💳 Kart Al
-                        </button>
-                      </div>
-
-                      {paraUstuTutari > 0 && (
-                        <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: '10px', padding: '8px 10px', fontSize: '13px', fontWeight: '900', marginTop: '8px' }}>
-                          Para üstü: {paraUstuTutari} TL
-                        </div>
                       )}
-                    </div>
-                  )}
-                  {/* masa birleştirme komutunu masa aktarma üstünde gösteren kod */}
-                  {activeMasa?.dolu && (
-                    <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px', padding: '8px', marginBottom: '10px' }}>
-                      <div style={{ fontSize: '12px', color: '#9a3412', fontWeight: '900', marginBottom: '6px' }}>Masa Birleştir</div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <select value={birlestirilecekMasaId} onChange={e => setBirlestirilecekMasaId(e.target.value)} style={{ ...styles.panelSelect, padding: '8px', fontSize: '12px' }}>
-                          <option value="">Birleşecek dolu masayı seç...</option>
-                          {tumRestoranMasalari
-                            .filter(m => m.id !== activeMasa.id && m.dolu && m.siparisler && m.siparisler.length > 0)
-                            .map(m => (
-                              <option key={m.id} value={String(m.id)}>{m.bolum || 'Salon'} / {m.ad} / {m.tutar} TL</option>
-                            ))}
-                        </select>
-                        <button type="button" onClick={masaBirlestir} style={{ ...styles.checkoutBtn, backgroundColor: '#f59e0b', padding: '9px', fontSize: '12px', width: 'auto' }}>Birleştir</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* masa aktarma modunu başlatan sağ panel butonu */}
-                  {activeMasa?.dolu && (
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                      {!masaAktarmaModu ? (
-                        <button
-                          type="button"
-                          onClick={masaAktarmaBaslat}
-                          style={{
-                            flex: 1,
-                            border: 'none',
-                            backgroundColor: '#6366f1',
-                            color: '#fff',
-                            padding: '10px 12px',
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            fontWeight: '900',
-                            fontSize: '13px',
-                          }}
-                        >
-                          🔁 Masa Aktar
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={masaAktarmaIptalEt}
-                          style={{
-                            flex: 1,
-                            border: 'none',
-                            backgroundColor: '#ef4444',
-                            color: '#fff',
-                            padding: '10px 12px',
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            fontWeight: '900',
-                            fontSize: '13px',
-                          }}
-                        >
-                          Aktarmadan Vazgeç
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* açık adisyonun açılış saatini gösteren kod */}
-                  {activeMasa?.dolu && (
-                    <div
-                      style={{
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '10px',
-                        padding: '8px',
-                        marginBottom: '10px',
-                        fontSize: '12px',
-                        color: '#475569',
-                        fontWeight: '700',
-                      }}
-                    >
-                      <div>
-                        Açılış Saati: <strong>{saatYaz(activeMasa.adisyonAcilisSaati)}</strong>
-                      </div>
-
-                      <div>
-                        Garson: <strong>{activeMasa.adisyonGarsonAdi || '-'}</strong>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* seçili masaya müşteri adı verme ve hesap öncesi adisyon yazdırma kodu */}
-                  {activeMasa && (
-                    <div
-                      style={{
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '10px',
-                        padding: '8px',
-                        marginBottom: '10px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                        <input
-                          type="text"
-                          placeholder="Müşteri adı"
-                          value={musteriAdiInput}
-                          onChange={e => setMusteriAdiInput(e.target.value)}
-                          style={{
-                            ...styles.panelSelect,
-                            flex: 1,
-                            padding: '8px',
-                            fontSize: '12px',
-                          }}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={masaMusteriAdiKaydet}
-                          style={{
-                            border: 'none',
-                            backgroundColor: '#1e293b',
-                            color: '#fff',
-                            padding: '8px 10px',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontWeight: '900',
-                            fontSize: '12px',
-                          }}
-                        >
-                          Kaydet
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => adisyonFisiYazdir(activeMasa)}
-                        style={{
-                          width: '100%',
-                          border: 'none',
-                          backgroundColor: '#0f766e',
-                          color: '#fff',
-                          padding: '9px 11px',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontWeight: '900',
-                          fontSize: '12px',
-                        }}
-                      >
-                        🧾 Hesap Öncesi Adisyon Yazdır
-                      </button>
-                    </div>
-                  )}
-
                     </>
                   )}
+
 
                   {activeMasa && (
                     <>
@@ -11078,75 +11500,6 @@ Toplam Ciro: {toplam}
                           }}
                         />
 
-                        {!isMobile && (
-                          <>
-                        {/* satışta fiyat değiştirme alanını gösteren kod */}
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="Satış fiyatı"
-                          value={seciliUrunSatisFiyati}
-                          onChange={e => setSeciliUrunSatisFiyati(e.target.value)}
-                          style={{
-                            ...styles.panelSelect,
-                            minWidth: '115px',
-                            flex: '1 1 115px',
-                          }}
-                        />
-
-                        {/* yüzde indirim alanını gösteren kod */}
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="İndirim %"
-                          value={seciliUrunIndirimYuzde}
-                          onChange={e => setSeciliUrunIndirimYuzde(e.target.value)}
-                          style={{
-                            ...styles.panelSelect,
-                            width: '95px',
-                            flex: '0 0 95px',
-                          }}
-                        />
-
-                        {/* tutar indirim alanını gösteren kod */}
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="İndirim TL"
-                          value={seciliUrunIndirimTutari}
-                          onChange={e => setSeciliUrunIndirimTutari(e.target.value)}
-                          style={{
-                            ...styles.panelSelect,
-                            width: '105px',
-                            flex: '0 0 105px',
-                          }}
-                        />
-
-                        {seciliMenuUrunu && (
-                          <div
-                            style={{
-                              flex: '1 1 100%',
-                              backgroundColor: '#f8fafc',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '10px',
-                              padding: '8px 10px',
-                              fontSize: '12px',
-                              color: '#475569',
-                              fontWeight: '700',
-                              lineHeight: '1.6',
-                            }}
-                          >
-                            <div>Liste: <strong>{seciliUrunFiyatBilgisi.listeFiyati} TL</strong></div>
-                            <div>Satış: <strong>{seciliUrunFiyatBilgisi.satisFiyati} TL</strong></div>
-                            <div>İndirim: <strong>{seciliUrunFiyatBilgisi.indirimTutari} TL</strong></div>
-                            <div>Son Birim: <strong style={{ color: '#ff6b35' }}>{seciliUrunFiyatBilgisi.birimFiyat} TL</strong></div>
-                          </div>
-                        )}
-
-                          </>
-                        )}
-
                         <button
                           type="button"
                           onClick={masayaSeciliUrunuEkle}
@@ -11157,8 +11510,7 @@ Toplam Ciro: {toplam}
                       </div>
                       )}
 
-                      {mobilAdisyonSekmesi === 'fis' && (
-                        <>
+                      {mobilAdisyonSekmesi === 'adisyon' && (
                       <div style={styles.receiptContainer}>
                         {(!activeMasa.siparisler || activeMasa.siparisler.length === 0) ? (
                           <div style={styles.emptyReceipt}>Bu masada aktif sipariş yok.</div>
@@ -11239,6 +11591,29 @@ Toplam Ciro: {toplam}
                                   type="button"
                                   onClick={e => {
                                     e.stopPropagation();
+                                    adisyonUrunFiyatiDegistir(idx);
+                                  }}
+                                  style={{
+                                    border: 'none',
+                                    backgroundColor: '#0ea5e9',
+                                    color: '#fff',
+                                    borderRadius: '8px',
+                                    padding: '6px 8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '900',
+                                    fontSize: '11px',
+                                  }}
+                                  title="Bu satırın satış fiyatını değiştir"
+                                >
+                                  💸 Fiyat
+                                </button>
+                              )}
+
+                              {!s.ikram && Number(s.fiyat || 0) > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation();
                                     adisyondaBirUrunIkramEt(idx);
                                   }}
                                   style={{
@@ -11272,7 +11647,9 @@ Toplam Ciro: {toplam}
                           ))
                         )}
                       </div>
+                      )}
 
+                      {mobilAdisyonSekmesi === 'adisyon' && (
                       <div style={styles.receiptFooter}>
                         <div style={styles.totalRow}>
                           <span>Toplam:</span>
@@ -11290,78 +11667,6 @@ Toplam Ciro: {toplam}
                         {activeMasa.dolu && activeMasa.siparisler && activeMasa.siparisler.length > 0 && (
                           <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '10px', padding: '8px 10px', fontSize: '12px', fontWeight: '900', marginBottom: '10px' }}>
                             KDV Matrahı: {aktifMasaKdvOzeti.matrahToplam} TL / KDV Tutarı: {aktifMasaKdvOzeti.kdvToplam} TL
-                          </div>
-                        )}
-
-                        {activeMasa.dolu && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
-                            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px' }}>
-                              <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900', marginBottom: '6px' }}>
-                                Adisyon Bölme: Seçili ürün toplamı {bolunenAdisyonToplamiGetir()} TL
-                              </div>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <button type="button" onClick={() => bolunmusAdisyonOdemeAl('Nakit')} style={{ ...styles.checkoutBtn, backgroundColor: '#10b981', padding: '9px', fontSize: '12px' }}>Seçileni Nakit Kapat</button>
-                                <button type="button" onClick={() => bolunmusAdisyonOdemeAl('Kredi Kartı')} style={{ ...styles.checkoutBtn, backgroundColor: '#2563eb', padding: '9px', fontSize: '12px' }}>Seçileni Kart Kapat</button>
-                              </div>
-                            </div>
-
-                            <details style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px' }}>
-                              <summary style={{ fontSize: '12px', color: '#475569', fontWeight: '900', cursor: 'pointer' }}>
-                                📒 Cari / Veresiye {cariAdisyonMusteriId ? '— Seçili' : ''}
-                              </summary>
-
-                              <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', marginTop: '8px' }}>
-                                <div style={{ flex: 1 }}>
-                                  <input
-                                    type="text"
-                                    placeholder="Cari müşteri ara..."
-                                    value={cariAdisyonArama}
-                                    onChange={e => {
-                                      setCariAdisyonArama(e.target.value);
-                                      setCariAdisyonMusteriId('');
-                                    }}
-                                    style={{ ...styles.panelSelect, padding: '8px', fontSize: '12px', width: '100%', boxSizing: 'border-box' }}
-                                  />
-
-                                  {cariAdisyonMusteriId && (
-                                    <div style={{ color: '#7c3aed', fontSize: '11px', padding: '6px 2px', fontWeight: '900' }}>
-                                      Seçili cari: {cariAdisyonArama}
-                                    </div>
-                                  )}
-
-                                  {cariAdisyonArama && !cariAdisyonMusteriId && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px', maxHeight: '120px', overflowY: 'auto' }}>
-                                      {filtreliCariAdisyonMusterileri.length === 0 ? (
-                                        <div style={{ color: '#94a3b8', fontSize: '11px', padding: '6px' }}>Eşleşen cari yok.</div>
-                                      ) : (
-                                        filtreliCariAdisyonMusterileri.map(c => (
-                                          <button
-                                            key={c.id}
-                                            type="button"
-                                            onClick={() => cariAdisyonMusterisiSec(String(c.id))}
-                                            style={{
-                                              border: '1px solid #e2e8f0',
-                                              backgroundColor: '#fff',
-                                              color: '#334155',
-                                              padding: '7px 8px',
-                                              borderRadius: '8px',
-                                              cursor: 'pointer',
-                                              textAlign: 'left',
-                                              fontWeight: '800',
-                                              fontSize: '11px',
-                                            }}
-                                          >
-                                            {c.ad} {c.telefon ? ` / ${c.telefon}` : ''} — {Number(c.bakiye || 0)} TL
-                                          </button>
-                                        ))
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-
-                                <button type="button" onClick={aktifAdisyonuCariyeYaz} style={{ ...styles.checkoutBtn, backgroundColor: '#7c3aed', padding: '9px', fontSize: '12px', width: 'auto' }}>Cari'ye Yaz</button>
-                              </div>
-                            </details>
                           </div>
                         )}
 
@@ -11511,7 +11816,6 @@ Toplam Ciro: {toplam}
                           </div>
                         )}
                       </div>
-                        </>
                       )}
                     </>
                   )}
@@ -11979,6 +12283,8 @@ Toplam Ciro: {toplam}
                               setAktifPaketMenuGrubu(grup.ad);
                               setPaketUrunArama('');
                               setPaketSeciliUrunId('');
+                              setPaketSeciliHazirNotId('');
+                              setPaketSeciliUrunNotu('');
                             }}
                             style={{
                               border: 'none',
@@ -12095,11 +12401,32 @@ Toplam Ciro: {toplam}
                         style={{ ...styles.input, width: '90px', minWidth: '90px' }}
                       />
 
+                      {paketSeciliMenuUrunu && Array.isArray(paketSeciliMenuUrunu.menuNotlari) && paketSeciliMenuUrunu.menuNotlari.length > 0 && (
+                        <select
+                          value={paketSeciliHazirNotId}
+                          onChange={e => {
+                            setPaketSeciliHazirNotId(e.target.value);
+                            setPaketSeciliUrunNotu('');
+                          }}
+                          style={{ ...styles.input, flex: '1 1 220px', minWidth: '220px' }}
+                        >
+                          <option value="">Standart / seçenek yok</option>
+                          {paketSeciliMenuUrunu.menuNotlari.map(n => (
+                            <option key={n.id} value={String(n.id)}>
+                              {n.ad} {Number(n.fiyat || 0) > 0 ? `(+${n.fiyat} TL)` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
                       <input
                         type="text"
-                        placeholder="Ürün notu (örn: acısız, bol sos)"
+                        placeholder="Manuel ürün notu (örn: acısız, bol sos)"
                         value={paketSeciliUrunNotu}
-                        onChange={e => setPaketSeciliUrunNotu(e.target.value)}
+                        onChange={e => {
+                          setPaketSeciliUrunNotu(e.target.value);
+                          setPaketSeciliHazirNotId('');
+                        }}
                         style={{ ...styles.input, flex: '1 1 220px', minWidth: '220px' }}
                       />
 
@@ -12742,12 +13069,21 @@ Toplam Ciro: {toplam}
                                 Hazır not ekstra: +{u.ekstraUcret} TL / adet
                               </div>
                             )}
+
+                            {u.fiyatDegistirildi && (
+                              <div style={{ fontSize: '11px', color: '#0f766e', fontWeight: '900', marginTop: '4px' }}>
+                                Satış fiyatı değiştirildi: {u.fiyat} TL / adet
+                              </div>
+                            )}
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             <strong>{Number(u.fiyat || 0) * Number(u.adet || 1)} TL</strong>
                             {!u.ikram && Number(u.fiyat || 0) > 0 && (
                               <button type="button" onClick={() => hizliSatisBirUrunIkramEt(index)} style={{ ...styles.deleteItemBtn, color: '#f59e0b', fontWeight: '900' }}>🎁</button>
+                            )}
+                            {!u.ikram && (
+                              <button type="button" onClick={() => hizliSatisUrunFiyatiDegistir(index)} style={{ ...styles.deleteItemBtn, color: '#0f766e', fontWeight: '900' }}>💸</button>
                             )}
                             <button type="button" onClick={() => hizliSatisAdetDegistir(index, -1)} style={styles.deleteItemBtn}>−</button>
                             <button type="button" onClick={() => hizliSatisAdetDegistir(index, 1)} style={styles.deleteItemBtn}>+</button>
@@ -12794,10 +13130,40 @@ Toplam Ciro: {toplam}
                       </div>
                     )}
 
-                    <select value={hizliSatisOdemeTipi} onChange={e => setHizliSatisOdemeTipi(e.target.value)} style={{ ...styles.input, width: '100%', minWidth: '100%', boxSizing: 'border-box', marginTop: '8px' }}>
-                      <option value="Nakit">Nakit</option>
-                      <option value="Kredi Kartı">Kredi Kartı</option>
-                    </select>
+                    <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px' }}>
+                      <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Cari / Veresiye</div>
+                      <input
+                        type="text"
+                        placeholder="Cari müşteri ara..."
+                        value={hizliSatisCariArama}
+                        onChange={e => {
+                          setHizliSatisCariArama(e.target.value);
+                          setHizliSatisCariMusteriId('');
+                        }}
+                        style={{ ...styles.input, width: '100%', minWidth: '100%', boxSizing: 'border-box' }}
+                      />
+
+                      {hizliSatisCariArama && !hizliSatisCariMusteriId && (
+                        <div style={{ marginTop: '6px', display: 'grid', gap: '6px', maxHeight: '170px', overflowY: 'auto' }}>
+                          {filtreliHizliSatisCariMusterileri.length === 0 ? (
+                            <div style={{ color: '#94a3b8', fontSize: '12px' }}>Cari müşteri bulunamadı.</div>
+                          ) : (
+                            filtreliHizliSatisCariMusterileri.map(cari => (
+                              <button
+                                key={cari.id}
+                                type="button"
+                                onClick={() => hizliSatisCariMusterisiSec(cari.id)}
+                                style={{ border: '1px solid #e2e8f0', borderRadius: '10px', backgroundColor: '#f8fafc', padding: '8px 10px', textAlign: 'left', cursor: 'pointer' }}
+                              >
+                                <strong>{cari.ad}</strong>
+                                {cari.telefon ? <span style={{ color: '#64748b' }}> • {cari.telefon}</span> : null}
+                                <span style={{ color: '#ef4444', fontWeight: '900', float: 'right' }}>{Number(cari.bakiye || 0)} TL</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     <input
                       type="number"
@@ -12807,15 +13173,33 @@ Toplam Ciro: {toplam}
                       style={{ ...styles.input, width: '100%', minWidth: '100%', boxSizing: 'border-box', marginTop: '8px' }}
                     />
 
-                    {hizliSatisOdemeTipi === 'Nakit' && Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0) > 0 && (
+                    {Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0) > 0 && (
                       <div style={{ color: '#10b981', fontWeight: '900', fontSize: '13px', marginTop: '8px' }}>
                         Para üstü: {Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0)} TL
                       </div>
                     )}
 
-                    <button type="button" onClick={hizliSatisKapat} style={{ ...styles.checkoutBtn, marginTop: '10px' }}>
-                      Satışı Kapat
-                    </button>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px', marginTop: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={hizliSatisAdisyonYazdir}
+                        style={{ ...styles.checkoutBtn, backgroundColor: '#0f766e', marginTop: 0 }}
+                      >
+                        🧾 Adisyon
+                      </button>
+
+                      <button type="button" onClick={() => hizliSatisKapat('Nakit')} style={{ ...styles.checkoutBtn, marginTop: 0 }}>
+                        💵 Nakit Al
+                      </button>
+
+                      <button type="button" onClick={() => hizliSatisKapat('Kredi Kartı')} style={{ ...styles.checkoutBtn, backgroundColor: '#2563eb', marginTop: 0 }}>
+                        💳 Kredi Kartı
+                      </button>
+
+                      <button type="button" onClick={() => hizliSatisKapat('Cari')} style={{ ...styles.checkoutBtn, backgroundColor: '#7c3aed', marginTop: 0 }}>
+                        📒 Cariye Yaz
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -16321,10 +16705,17 @@ const styles = {
     top: '62px',
     zIndex: 2,
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: '1fr 1fr 1fr',
     gap: '8px',
     backgroundColor: '#fff',
     paddingBottom: '10px',
+    marginBottom: '10px',
+  },
+
+  desktopAdisyonSekmeKutusu: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr 1fr',
+    gap: '8px',
     marginBottom: '10px',
   },
 
