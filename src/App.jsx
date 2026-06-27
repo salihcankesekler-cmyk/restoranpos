@@ -10178,20 +10178,20 @@ Toplam Ciro: {toplam}
             }}
           >
             <div style={styles.heroContent}>
-              <span style={styles.heroBadge}>🚀 Restoran, kafe ve paket servis için bulut POS</span>
-              <h1 style={styles.heroTitle}>Masa, mutfak, ödeme ve raporlar tek ekranda.</h1>
+              <span style={styles.heroBadge}>🎁 21 gün ücretsiz deneme • Windows yazıcı agent • Mobil uyumlu POS</span>
+              <h1 style={styles.heroTitle}>Restoranınızı tek ekrandan yöneten modern POS sistemi.</h1>
               <p style={styles.heroSubtitle}>
-                Integra POS; garson siparişinden mutfak ekranına, parçalı ödemeden gün sonu raporuna kadar
-                işletmenizin günlük akışını hızlandıran web tabanlı adisyon sistemidir.
+                Integra POS; masa adisyonu, hızlı satış, paket servis, mutfak/bar yazıcıları, cari/veresiye, stok-reçete ve gün sonu raporlarını tek panelde toplar.
               </p>
 
               <div style={styles.heroActionGroup}>
-                <button onClick={() => setScreen('register')} style={styles.heroMainBtn}>Ücretsiz Demo Başvurusu</button>
+                <button onClick={() => setScreen('register')} style={styles.heroMainBtn}>21 Gün Ücretsiz Dene</button>
                 <button onClick={() => setScreen('login')} style={styles.heroSecondaryBtn}>Giriş Paneli</button>
+                <a href="tel:05325014277" style={styles.heroPhoneBtn}>📞 Hemen Ara</a>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '22px' }}>
-                {['Tablet uyumlu', 'Mutfak ekranı', 'Gün sonu raporu', 'KDV & departman', 'Para üstü'].map(item => (
+                {['21 gün ücretsiz', 'Printer Agent', 'Android APK', 'Mutfak & Bar', 'Cari / Veresiye', 'Stok & Reçete'].map(item => (
                   <span
                     key={item}
                     style={{
@@ -10215,12 +10215,12 @@ Toplam Ciro: {toplam}
                   <div style={styles.heroStatLabel}>Bulut erişim</div>
                 </div>
                 <div style={styles.heroStatCard}>
-                  <div style={styles.heroStatValue}>0 kurulum</div>
-                  <div style={styles.heroStatLabel}>Tarayıcıdan kullanım</div>
+                  <div style={styles.heroStatValue}>21 gün</div>
+                  <div style={styles.heroStatLabel}>Ücretsiz deneme</div>
                 </div>
                 <div style={styles.heroStatCard}>
-                  <div style={styles.heroStatValue}>Anlık</div>
-                  <div style={styles.heroStatLabel}>Masa ve ciro takibi</div>
+                  <div style={styles.heroStatValue}>3 yazıcı</div>
+                  <div style={styles.heroStatLabel}>Adisyon / mutfak / bar</div>
                 </div>
               </div>
             </div>
@@ -10231,12 +10231,12 @@ Toplam Ciro: {toplam}
                   <span style={{ color: '#ef4444' }}>●</span>
                   <span style={{ color: '#f59e0b' }}>●</span>
                   <span style={{ color: '#10b981' }}>●</span>
-                  Canlı İşletme Paneli
+                  Canlı Integra POS Paneli
                 </div>
 
                 <div style={{ padding: '18px' }}>
                   <div style={styles.mockupTopRow}>
-                    <div style={styles.mockupBadge}>Salon / Bahçe / Teras</div>
+                    <div style={styles.mockupBadge}>Salon / Bahçe / Teras • Canlı</div>
                     <div style={styles.mockupMuted}>Anlık durum</div>
                   </div>
 
@@ -10265,7 +10265,7 @@ Toplam Ciro: {toplam}
                   </div>
 
                   <div style={styles.mockupReceipt}>
-                    <div style={styles.mockupReceiptTitle}>🧾 Aktif Adisyon</div>
+                    <div style={styles.mockupReceiptTitle}>🧾 Aktif Adisyon • Yazıcı Kuyruğu Hazır</div>
                     <div style={styles.mockupReceiptRow}>
                       <span>2x Lahmacun <small style={{ color: '#64748b' }}>(Acılı)</small></span>
                       <strong>240 TL</strong>
@@ -10286,6 +10286,24 @@ Toplam Ciro: {toplam}
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* PREMIUM GÜVEN ŞERİDİ */}
+          <section style={styles.trustStripSection}>
+            {[
+              ['🖨️', 'Sessiz yazdırma', 'Adisyon, mutfak ve bar yazıcıları Windows Agent ile otomatik çalışır.'],
+              ['📱', 'Mobil / APK', 'Telefon ve tablet kullanımına uygun hızlı adisyon ekranları.'],
+              ['📊', 'Canlı rapor', 'Kasa, KDV, kâr, cari ve gün sonu verileri anlık takip edilir.'],
+              ['🛵', 'Paket servis', 'Müşteri, kurye, paket fişi ve cari/veresiye akışı tek panelde.'],
+            ].map(([icon, title, text]) => (
+              <div key={title} style={styles.trustPillCard}>
+                <div style={styles.trustPillIcon}>{icon}</div>
+                <div>
+                  <strong style={styles.trustPillTitle}>{title}</strong>
+                  <p style={styles.trustPillText}>{text}</p>
+                </div>
+              </div>
+            ))}
           </section>
 
           {/* KİMLER İÇİN */}
@@ -10612,6 +10630,15 @@ Toplam Ciro: {toplam}
               </button>
             </div>
           </section>
+
+          <div style={styles.landingFloatingCta}>
+            <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>Integra POS</div>
+            <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>21 gün ücretsiz deneyin</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" onClick={() => setScreen('register')} style={styles.floatingCtaPrimary}>Dene</button>
+              <a href="tel:05325014277" style={styles.floatingCtaSecondary}>Ara</a>
+            </div>
+          </div>
 
           {/* FOOTER */}
           <footer id="hakkimizda" style={styles.footerSection}>
@@ -16179,22 +16206,24 @@ const styles = {
     minHeight: '100vh',
     margin: 0,
     padding: 0,
-    backgroundColor: '#ffffff',
+    background: 'radial-gradient(circle at top left, rgba(255,107,53,0.16), transparent 34%), radial-gradient(circle at 80% 8%, rgba(30,41,59,0.12), transparent 32%), #ffffff',
+    color: '#0f172a',
   },
 
   navbar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '16px 4%',
-    borderBottom: '1px solid #e2e8f0',
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    padding: '14px 4%',
+    borderBottom: '1px solid rgba(226,232,240,0.86)',
+    backgroundColor: 'rgba(255,255,255,0.88)',
     position: 'sticky',
     top: 0,
     zIndex: 20,
-    backdropFilter: 'blur(8px)',
+    backdropFilter: 'blur(18px)',
     gap: '16px',
     flexWrap: 'wrap',
+    boxShadow: '0 18px 40px -34px rgba(15,23,42,0.35)',
   },
 
   logoContainer: {
@@ -16235,14 +16264,14 @@ const styles = {
 
   navbarRegisterBtn: {
     border: 'none',
-    padding: '10px 18px',
-    borderRadius: '10px',
-    backgroundColor: '#ff6b35',
+    padding: '11px 18px',
+    borderRadius: '999px',
+    background: 'linear-gradient(135deg, #ff7a3d, #f97316 55%, #ea580c)',
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '900',
     cursor: 'pointer',
     fontSize: '14px',
-    boxShadow: '0 12px 30px -12px rgba(255,107,53,0.55)',
+    boxShadow: '0 16px 34px -16px rgba(249,115,22,0.85)',
   },
 
   heroSection: {
@@ -16253,6 +16282,7 @@ const styles = {
     maxWidth: '1280px',
     margin: '0 auto',
     padding: '72px 4% 64px',
+    position: 'relative',
   },
 
   heroContent: {
@@ -16260,14 +16290,17 @@ const styles = {
   },
 
   heroBadge: {
-    display: 'inline-block',
-    backgroundColor: '#fff7ed',
-    color: '#ea580c',
-    padding: '8px 14px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    background: 'linear-gradient(135deg, #fff7ed, #ffffff)',
+    color: '#c2410c',
+    padding: '9px 15px',
     borderRadius: '999px',
     fontSize: '13px',
-    fontWeight: '800',
+    fontWeight: '900',
     border: '1px solid #fed7aa',
+    boxShadow: '0 14px 32px -26px rgba(234,88,12,0.75)',
   },
 
   heroTitle: {
@@ -16296,25 +16329,26 @@ const styles = {
 
   heroMainBtn: {
     border: 'none',
-    backgroundColor: '#1e293b',
+    background: 'linear-gradient(135deg, #ff7a3d, #f97316 55%, #ea580c)',
     color: '#fff',
-    padding: '14px 24px',
-    borderRadius: '12px',
+    padding: '15px 25px',
+    borderRadius: '14px',
     fontSize: '15px',
-    fontWeight: '800',
+    fontWeight: '900',
     cursor: 'pointer',
-    boxShadow: '0 18px 45px -18px rgba(15,23,42,0.55)',
+    boxShadow: '0 22px 50px -20px rgba(249,115,22,0.88)',
   },
 
   heroSecondaryBtn: {
     border: '1px solid #cbd5e1',
-    backgroundColor: '#fff',
-    color: '#475569',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    color: '#1e293b',
     padding: '14px 24px',
-    borderRadius: '12px',
+    borderRadius: '14px',
     fontSize: '15px',
-    fontWeight: '800',
+    fontWeight: '900',
     cursor: 'pointer',
+    boxShadow: '0 14px 34px -28px rgba(15,23,42,0.35)',
   },
 
   heroStatsRow: {
@@ -16356,11 +16390,12 @@ const styles = {
   mockupCard: {
     width: '100%',
     maxWidth: '520px',
-    backgroundColor: '#fff',
-    borderRadius: '22px',
-    boxShadow: '0 40px 90px -40px rgba(15,23,42,0.35)',
-    border: '1px solid #e2e8f0',
+    background: 'linear-gradient(180deg, #ffffff, #f8fafc)',
+    borderRadius: '26px',
+    boxShadow: '0 45px 110px -42px rgba(15,23,42,0.55)',
+    border: '1px solid rgba(226,232,240,0.92)',
     overflow: 'hidden',
+    transform: 'rotate(-1deg)',
   },
 
   mockupHeader: {
@@ -16444,6 +16479,108 @@ const styles = {
     marginTop: '12px',
     fontWeight: '900',
     color: '#0f172a',
+  },
+
+  heroPhoneBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textDecoration: 'none',
+    border: '1px solid #cbd5e1',
+    backgroundColor: '#fff',
+    color: '#0f172a',
+    padding: '14px 20px',
+    borderRadius: '14px',
+    fontSize: '15px',
+    fontWeight: '900',
+    boxShadow: '0 14px 34px -28px rgba(15,23,42,0.35)',
+  },
+
+  trustStripSection: {
+    maxWidth: '1240px',
+    margin: '-22px auto 0',
+    padding: '0 4% 72px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '14px',
+  },
+
+  trustPillCard: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'flex-start',
+    background: 'rgba(255,255,255,0.92)',
+    border: '1px solid rgba(226,232,240,0.95)',
+    borderRadius: '18px',
+    padding: '16px',
+    boxShadow: '0 22px 55px -38px rgba(15,23,42,0.32)',
+    backdropFilter: 'blur(12px)',
+  },
+
+  trustPillIcon: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#fff7ed',
+    border: '1px solid #fed7aa',
+    fontSize: '20px',
+    flex: '0 0 38px',
+  },
+
+  trustPillTitle: {
+    display: 'block',
+    color: '#0f172a',
+    fontSize: '14px',
+    fontWeight: '900',
+    marginBottom: '4px',
+  },
+
+  trustPillText: {
+    color: '#64748b',
+    fontSize: '12px',
+    lineHeight: 1.55,
+    margin: 0,
+    fontWeight: '600',
+  },
+
+  landingFloatingCta: {
+    position: 'fixed',
+    right: '18px',
+    bottom: '18px',
+    zIndex: 50,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    border: '1px solid #e2e8f0',
+    borderRadius: '18px',
+    padding: '12px',
+    boxShadow: '0 26px 62px -30px rgba(15,23,42,0.55)',
+    backdropFilter: 'blur(12px)',
+  },
+
+  floatingCtaPrimary: {
+    border: 'none',
+    background: 'linear-gradient(135deg, #ff7a3d, #f97316 55%, #ea580c)',
+    color: '#fff',
+    borderRadius: '11px',
+    padding: '9px 12px',
+    fontSize: '12px',
+    fontWeight: '900',
+    cursor: 'pointer',
+  },
+
+  floatingCtaSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    textDecoration: 'none',
+    border: '1px solid #cbd5e1',
+    backgroundColor: '#fff',
+    color: '#0f172a',
+    borderRadius: '11px',
+    padding: '9px 12px',
+    fontSize: '12px',
+    fontWeight: '900',
   },
 
   featuresSection: {
@@ -16791,7 +16928,7 @@ const styles = {
     minHeight: '100vh',
     margin: 0,
     padding: 0,
-    background: '#f8fafc',
+    background: 'radial-gradient(circle at 22% 0%, rgba(255,107,53,0.10), transparent 30%), linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
   },
 
   dashboardLayoutMobile: {
@@ -16801,19 +16938,20 @@ const styles = {
     minHeight: '100vh',
     margin: 0,
     padding: 0,
-    background: '#f8fafc',
+    background: 'linear-gradient(180deg, #f8fafc, #eef2ff)',
     overflowX: 'hidden',
   },
 
   sidebar: {
     width: '270px',
     minWidth: '270px',
-    backgroundColor: '#1e293b',
+    background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 58%, #111827 100%)',
     color: '#fff',
     display: 'flex',
     flexDirection: 'column',
     padding: '22px',
     boxSizing: 'border-box',
+    boxShadow: '22px 0 55px -45px rgba(15,23,42,0.75)',
   },
 
   sidebarMobile: {
@@ -16822,7 +16960,7 @@ const styles = {
     maxHeight: '48vh',
     overflowY: 'auto',
     overflowX: 'hidden',
-    backgroundColor: '#1e293b',
+    background: 'linear-gradient(135deg, #0f172a, #1e293b)',
     color: '#fff',
     display: 'flex',
     flexDirection: 'column',
@@ -16900,7 +17038,7 @@ const styles = {
 
   mainContent: {
     flex: 1,
-    padding: '26px',
+    padding: '28px',
     overflowY: 'auto',
     boxSizing: 'border-box',
     minWidth: 0,
@@ -16983,13 +17121,14 @@ const styles = {
   },
 
   mesaCard: {
-    backgroundColor: '#fff',
+    background: 'linear-gradient(180deg, #ffffff, #fbfdff)',
     padding: '22px 16px',
-    borderRadius: '16px',
-    border: '2px solid transparent',
+    borderRadius: '20px',
+    border: '1px solid rgba(226,232,240,0.95)',
     cursor: 'pointer',
-    boxShadow: '0 15px 30px -24px rgba(15,23,42,0.15)',
+    boxShadow: '0 20px 45px -32px rgba(15,23,42,0.32)',
     textAlign: 'center',
+    transition: 'transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease',
   },
 
   mesaStatusText: {
@@ -16999,16 +17138,16 @@ const styles = {
   },
 
   adisyonPanel: {
-    width: '380px',
-    minWidth: '380px',
-    backgroundColor: '#fff',
-    borderRadius: '18px',
+    width: '390px',
+    minWidth: '390px',
+    background: 'linear-gradient(180deg, #ffffff, #fbfdff)',
+    borderRadius: '22px',
     padding: '16px',
     display: 'flex',
     flexDirection: 'column',
-    border: '1px solid #e2e8f0',
+    border: '1px solid rgba(226,232,240,0.95)',
     boxSizing: 'border-box',
-    boxShadow: '0 18px 40px -28px rgba(15,23,42,0.16)',
+    boxShadow: '0 28px 58px -38px rgba(15,23,42,0.42)',
   },
 
   adisyonPanelMobile: {
@@ -17244,12 +17383,12 @@ const styles = {
   },
 
   panelCard: {
-    backgroundColor: '#fff',
+    background: 'linear-gradient(180deg, #ffffff, #fbfdff)',
     padding: '22px',
-    borderRadius: '18px',
-    boxShadow: '0 18px 40px -28px rgba(15,23,42,0.16)',
+    borderRadius: '22px',
+    boxShadow: '0 24px 54px -38px rgba(15,23,42,0.34)',
     boxSizing: 'border-box',
-    border: '1px solid #e2e8f0',
+    border: '1px solid rgba(226,232,240,0.95)',
   },
 
   inlineForm: {
@@ -17260,23 +17399,26 @@ const styles = {
   },
 
   input: {
-    padding: '11px 12px',
-    borderRadius: '8px',
+    padding: '12px 13px',
+    borderRadius: '12px',
     border: '1px solid #cbd5e1',
     outline: 'none',
     fontSize: '13px',
     minWidth: '180px',
+    backgroundColor: '#fff',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
   },
 
   btnOrange: {
-    backgroundColor: '#ff6b35',
+    background: 'linear-gradient(135deg, #ff7a3d, #f97316 55%, #ea580c)',
     color: '#fff',
     border: 'none',
-    padding: '11px 16px',
-    borderRadius: '8px',
+    padding: '12px 16px',
+    borderRadius: '12px',
     cursor: 'pointer',
-    fontWeight: '800',
+    fontWeight: '900',
     fontSize: '13px',
+    boxShadow: '0 15px 30px -20px rgba(249,115,22,0.8)',
   },
 
   dataRow: {
