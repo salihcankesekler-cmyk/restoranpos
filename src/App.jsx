@@ -461,6 +461,19 @@ Toplam Ciro: {toplam}
   const [stokDuzenlemeAdedi, setStokDuzenlemeAdedi] = useState('');
   const [stokDuzenlemeKritik, setStokDuzenlemeKritik] = useState('');
 
+  // hammadde stok ve ürün reçetesi alanlarını tutan kod
+  const [stokMalzemeleri, setStokMalzemeleri] = useState([]);
+  const [urunReceteleri, setUrunReceteleri] = useState([]);
+  const [yeniStokMalzemeAdi, setYeniStokMalzemeAdi] = useState('');
+  const [yeniStokMalzemeBirim, setYeniStokMalzemeBirim] = useState('kg');
+  const [yeniStokMalzemeMiktar, setYeniStokMalzemeMiktar] = useState('');
+  const [yeniStokMalzemeKritik, setYeniStokMalzemeKritik] = useState('');
+  const [yeniStokMalzemeMaliyet, setYeniStokMalzemeMaliyet] = useState('');
+  const [stokMalzemeEklenecekMiktarlar, setStokMalzemeEklenecekMiktarlar] = useState({});
+  const [receteAyarlananUrunId, setReceteAyarlananUrunId] = useState('');
+  const [receteMalzemeId, setReceteMalzemeId] = useState('');
+  const [receteMiktar, setReceteMiktar] = useState('');
+
 
   // hızlı satış / gel-al ekranı için kullanılan kod
   const [hizliSatisUrunler, setHizliSatisUrunler] = useState([]);
@@ -1449,6 +1462,32 @@ Toplam Ciro: {toplam}
   const hizliSatisToplam = Math.max(hizliSatisAraToplam - hizliSatisToplamIndirim, 0);
   const hizliSatisKdvOzeti = siparislerKdvOzetiHesapla(hizliSatisUrunler, hizliSatisToplam);
 
+  // ürün reçetesinden veya ürün kartından birim maliyet hesaplayan kod
+  const urunBirimMaliyetiBul = (kayit = {}) => {
+    const urunId = kayit.urunId || kayit.urun_id || kayit.id;
+    const urunAdi = kayit.ad || kayit.urun_adi || '';
+    const urun = aktifMenu.find(u => String(u.id) === String(urunId)) ||
+      aktifMenu.find(u => String(u.ad || '') === String(urunAdi || ''));
+    const hedefUrunId = urun?.id || urunId;
+    const receteSatirlari = (Array.isArray(urunReceteleri) ? urunReceteleri : []).filter(r => String(r.urunId) === String(hedefUrunId));
+    const receteMaliyeti = receteSatirlari.reduce((toplam, r) => {
+      const malzeme = stokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
+      return toplam + Number(r.miktar || 0) * Number(malzeme?.birimMaliyet || 0);
+    }, 0);
+
+    if (receteMaliyeti > 0) return paraYuvarla(receteMaliyeti);
+    return paraYuvarla(Number(kayit.maliyet ?? urun?.maliyet ?? 0));
+  };
+
+  const urunReceteMaliyetiHesapla = (urunId) => {
+    return paraYuvarla((Array.isArray(urunReceteleri) ? urunReceteleri : [])
+      .filter(r => String(r.urunId) === String(urunId))
+      .reduce((toplam, r) => {
+        const malzeme = stokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
+        return toplam + Number(r.miktar || 0) * Number(malzeme?.birimMaliyet || 0);
+      }, 0));
+  };
+
   const bugunStrGenel = new Date().toISOString().split('T')[0];
   const bugunkuSatislar = satisGecmisi.filter(s => {
     return s.restaurantId === mevcutRestaurantId && String(s.tarih || '') === bugunStrGenel && !s.gunSonuKapandi;
@@ -1458,12 +1497,20 @@ Toplam Ciro: {toplam}
     return toplam + Number(s.fiyat || 0) * Number(s.adet || 1);
   }, 0);
 
-  const bugunkuMaliyet = bugunkuSatislar.reduce((toplam, s) => {
-    const menuUrunu = menuUrunleri.find(u => {
-      return u.restaurantId === mevcutRestaurantId && String(u.ad || '') === String(s.ad || '');
-    });
-    return toplam + Number(menuUrunu?.maliyet || 0) * Number(s.adet || 1);
-  }, 0);
+  const bugunkuMaliyet = paraYuvarla(bugunkuSatislar.reduce((toplam, s) => {
+    const kayitliToplamMaliyet = Number(s.toplamMaliyet ?? s.toplam_maliyet ?? 0);
+    if (kayitliToplamMaliyet > 0) return toplam + kayitliToplamMaliyet;
+
+    const birimMaliyet = Number(s.maliyet ?? 0) > 0 ? Number(s.maliyet || 0) : urunBirimMaliyetiBul(s);
+    return toplam + birimMaliyet * Number(s.adet || 1);
+  }, 0));
+
+  const bugunkuKdvToplami = satisKayitlariKdvOzetiHesapla(bugunkuSatislar).kdvToplam;
+  const bugunkuIndirimToplami = paraYuvarla(bugunkuSatislar.reduce((toplam, s) => toplam + Number(s.indirimTutari || s.indirim_tutari || 0) * Number(s.adet || 1), 0));
+  const bugunkuCariSatis = paraYuvarla(bugunkuSatislar.filter(s => String(s.odemeTipi || s.odeme_tipi || '').toLocaleLowerCase('tr-TR').includes('cari')).reduce((t, s) => t + Number(s.fiyat || 0) * Number(s.adet || 1), 0));
+  const bugunkuPaketSatis = paraYuvarla(bugunkuSatislar.filter(s => String(s.siparisTipi || s.siparis_tipi || '').toLocaleLowerCase('tr-TR').includes('paket')).reduce((t, s) => t + Number(s.fiyat || 0) * Number(s.adet || 1), 0));
+  const bugunkuHizliSatis = paraYuvarla(bugunkuSatislar.filter(s => String(s.siparisTipi || s.siparis_tipi || '').toLocaleLowerCase('tr-TR').includes('hızlı') || String(s.siparisTipi || s.siparis_tipi || '').toLocaleLowerCase('tr-TR').includes('hizli')).reduce((t, s) => t + Number(s.fiyat || 0) * Number(s.adet || 1), 0));
+  const bugunkuMasaSatis = paraYuvarla(Math.max(bugunkuCiro - bugunkuPaketSatis - bugunkuHizliSatis, 0));
 
   const bugunkuGiderToplami = giderler.reduce((toplam, g) => {
     return toplam + (!g.gunSonuKapandi ? Number(g.tutar || 0) : 0);
@@ -1942,6 +1989,56 @@ Toplam Ciro: {toplam}
     }
   };
 
+  // hammadde stoklarını Supabase'den çeken kod
+  const stokMalzemeleriniSupabasedenCek = async (restaurantId) => {
+    const { data, error } = await supabase
+      .from('stok_malzemeleri')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .order('ad', { ascending: true });
+
+    if (error) {
+      console.warn('Hammadde stokları çekilemedi:', error.message);
+      setStokMalzemeleri([]);
+      return;
+    }
+
+    setStokMalzemeleri((Array.isArray(data) ? data : []).map(m => ({
+      id: m.id,
+      restaurantId: m.restaurant_id,
+      ad: m.ad || '',
+      birim: m.birim || 'adet',
+      stokMiktari: Number(m.stok_miktari || 0),
+      kritikMiktar: Number(m.kritik_miktar || 0),
+      birimMaliyet: Number(m.birim_maliyet || 0),
+      createdAt: m.created_at,
+    })));
+  };
+
+  // ürün reçetelerini Supabase'den çeken kod
+  const urunReceteleriniSupabasedenCek = async (restaurantId) => {
+    const { data, error } = await supabase
+      .from('urun_receteleri')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .order('id', { ascending: true });
+
+    if (error) {
+      console.warn('Ürün reçeteleri çekilemedi:', error.message);
+      setUrunReceteleri([]);
+      return;
+    }
+
+    setUrunReceteleri((Array.isArray(data) ? data : []).map(r => ({
+      id: r.id,
+      restaurantId: r.restaurant_id,
+      urunId: r.urun_id,
+      malzemeId: r.malzeme_id,
+      miktar: Number(r.miktar || 0),
+      createdAt: r.created_at,
+    })));
+  };
+
   // giriş yapan restoranın menü ürünlerini Supabase'den çeken kod
   const menuUrunleriniSupabasedenCek = async (restaurantId) => {
     const { data, error } = await supabase
@@ -2340,6 +2437,8 @@ Toplam Ciro: {toplam}
       await masalariSupabasedenCek(aktifRestaurantId);
       await menuGruplariniSupabasedenCek(aktifRestaurantId);
       await menuUrunleriniSupabasedenCek(aktifRestaurantId);
+      if (typeof stokMalzemeleriniSupabasedenCek === 'function') await stokMalzemeleriniSupabasedenCek(aktifRestaurantId);
+      if (typeof urunReceteleriniSupabasedenCek === 'function') await urunReceteleriniSupabasedenCek(aktifRestaurantId);
 
       if (typeof fisAyarlariSupabasedenCek === 'function') {
         await fisAyarlariSupabasedenCek(aktifRestaurantId);
@@ -2554,6 +2653,8 @@ Toplam Ciro: {toplam}
       indirimTutari: Number(s.indirim_tutari || 0),
       fiyatDegistirildi: Boolean(s.fiyat_degistirildi),
       ikram: Boolean(s.ikram),
+      maliyet: Number(s.maliyet || 0),
+      toplamMaliyet: Number(s.toplam_maliyet || 0),
       menuGrubu: s.menu_grubu || 'Genel',
       departman: s.departman || 'Mutfak',
       kdvOrani: Number(s.kdv_orani || 10),
@@ -5038,20 +5139,21 @@ Toplam Ciro: {toplam}
 
   // stok takibi açık ürünlerin satış sonrası stoktan düşmesini sağlayan kod
   const stokDusur = async (siparisler = []) => {
-    const stokGuncellenecekler = (Array.isArray(siparisler) ? siparisler : [])
+    const satilanSiparisler = Array.isArray(siparisler) ? siparisler : [];
+
+    const stokGuncellenecekler = satilanSiparisler
       .map(s => {
         const urun = menuUrunleri.find(u => String(u.id) === String(s.urunId));
         return { siparis: s, urun };
       })
       .filter(x => x.urun && x.urun.stokTakip);
 
-    if (stokGuncellenecekler.length === 0) return;
-
     const yeniMenu = [...menuUrunleri];
 
     for (const { siparis, urun } of stokGuncellenecekler) {
       const mevcutStok = Number(urun.stokAdedi || 0);
-      const yeniStok = mevcutStok - Number(siparis.adet || 1);
+      const dusulecekAdet = Number(siparis.adet || 1);
+      const yeniStok = mevcutStok - dusulecekAdet;
 
       const { error } = await supabase
         .from('menu_urunleri')
@@ -5072,7 +5174,60 @@ Toplam Ciro: {toplam}
       }
     }
 
-    setMenuUrunleri(yeniMenu);
+    if (stokGuncellenecekler.length > 0) {
+      setMenuUrunleri(yeniMenu);
+    }
+
+    // Ürün reçetesi tanımlıysa hammaddeleri de otomatik stoktan düşüren kod
+    const receteHareketleri = [];
+    const malzemeGuncellemeleri = {};
+
+    satilanSiparisler.forEach(siparis => {
+      const receteSatirlari = (Array.isArray(urunReceteleri) ? urunReceteleri : [])
+        .filter(r => String(r.urunId) === String(siparis.urunId));
+
+      receteSatirlari.forEach(r => {
+        const adet = Number(siparis.adet || 1);
+        const dusulecekMiktar = Number(r.miktar || 0) * adet;
+        if (!dusulecekMiktar || dusulecekMiktar <= 0) return;
+
+        malzemeGuncellemeleri[r.malzemeId] = Number(malzemeGuncellemeleri[r.malzemeId] || 0) + dusulecekMiktar;
+        const malzeme = stokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
+        receteHareketleri.push({
+          restaurant_id: mevcutRestaurantId,
+          malzeme_id: r.malzemeId,
+          urun_id: siparis.urunId || null,
+          tip: 'Çıkış',
+          miktar: dusulecekMiktar,
+          aciklama: `${siparis.ad || 'Ürün'} satışı reçete düşümü`,
+        });
+      });
+    });
+
+    if (Object.keys(malzemeGuncellemeleri).length === 0) return;
+
+    const yeniMalzemeler = stokMalzemeleri.map(m => {
+      const dusulecek = Number(malzemeGuncellemeleri[m.id] || 0);
+      return dusulecek > 0 ? { ...m, stokMiktari: paraYuvarla(Number(m.stokMiktari || 0) - dusulecek) } : m;
+    });
+
+    for (const malzeme of yeniMalzemeler) {
+      if (!malzemeGuncellemeleri[malzeme.id]) continue;
+      const { error } = await supabase
+        .from('stok_malzemeleri')
+        .update({ stok_miktari: malzeme.stokMiktari })
+        .eq('id', malzeme.id)
+        .eq('restaurant_id', mevcutRestaurantId);
+
+      if (error) console.error('Reçete hammadde stok düşme hatası:', error);
+    }
+
+    if (receteHareketleri.length > 0) {
+      const { error } = await supabase.from('stok_hareketleri').insert(receteHareketleri);
+      if (error) console.warn('Stok hareketleri kaydedilemedi:', error.message);
+    }
+
+    setStokMalzemeleri(yeniMalzemeler);
   };
 
   // paket servise ürün notuyla ürün ekleyen kod
@@ -6209,6 +6364,152 @@ Toplam Ciro: {toplam}
   };
 
 
+  // hammadde stok kartı ekleyen kod
+  const stokMalzemeEkle = async (e) => {
+    e.preventDefault();
+
+    const ad = String(yeniStokMalzemeAdi || '').trim();
+    if (!ad) {
+      alert('Hammadde adı girin.');
+      return;
+    }
+
+    const kayit = {
+      restaurant_id: mevcutRestaurantId,
+      ad,
+      birim: yeniStokMalzemeBirim || 'adet',
+      stok_miktari: sayiyaCevir(yeniStokMalzemeMiktar),
+      kritik_miktar: sayiyaCevir(yeniStokMalzemeKritik),
+      birim_maliyet: sayiyaCevir(yeniStokMalzemeMaliyet),
+    };
+
+    const { data, error } = await supabase
+      .from('stok_malzemeleri')
+      .insert([kayit])
+      .select()
+      .single();
+
+    if (error) {
+      alert('Hammadde eklenemedi: ' + error.message);
+      return;
+    }
+
+    setStokMalzemeleri([{
+      id: data.id,
+      restaurantId: data.restaurant_id,
+      ad: data.ad,
+      birim: data.birim || 'adet',
+      stokMiktari: Number(data.stok_miktari || 0),
+      kritikMiktar: Number(data.kritik_miktar || 0),
+      birimMaliyet: Number(data.birim_maliyet || 0),
+      createdAt: data.created_at,
+    }, ...stokMalzemeleri]);
+
+    setYeniStokMalzemeAdi('');
+    setYeniStokMalzemeMiktar('');
+    setYeniStokMalzemeKritik('');
+    setYeniStokMalzemeMaliyet('');
+  };
+
+  // hammadde stoğuna giriş yapan kod
+  const stokMalzemeStokEkle = async (malzeme) => {
+    const eklenecek = sayiyaCevir(stokMalzemeEklenecekMiktarlar[malzeme.id]);
+    if (!eklenecek || eklenecek <= 0) {
+      alert('Eklenecek miktar girin.');
+      return;
+    }
+
+    const yeniStok = paraYuvarla(Number(malzeme.stokMiktari || 0) + eklenecek);
+
+    const { data, error } = await supabase
+      .from('stok_malzemeleri')
+      .update({ stok_miktari: yeniStok })
+      .eq('id', malzeme.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (error) {
+      alert('Hammadde stoğu güncellenemedi: ' + error.message);
+      return;
+    }
+
+    await supabase.from('stok_hareketleri').insert([{
+      restaurant_id: mevcutRestaurantId,
+      malzeme_id: malzeme.id,
+      tip: 'Giriş',
+      miktar: eklenecek,
+      aciklama: 'Manuel stok girişi',
+    }]);
+
+    setStokMalzemeleri(stokMalzemeleri.map(m => String(m.id) === String(malzeme.id) ? {
+      ...m,
+      stokMiktari: Number(data.stok_miktari || yeniStok),
+    } : m));
+
+    setStokMalzemeEklenecekMiktarlar(prev => ({ ...prev, [malzeme.id]: '' }));
+  };
+
+  // ürün reçetesine hammadde satırı ekleyen kod
+  const urunReceteSatiriEkle = async () => {
+    if (!receteAyarlananUrunId || !receteMalzemeId) {
+      alert('Ürün ve hammadde seçin.');
+      return;
+    }
+
+    const miktar = sayiyaCevir(receteMiktar);
+    if (!miktar || miktar <= 0) {
+      alert('Reçete miktarı girin.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('urun_receteleri')
+      .insert([{
+        restaurant_id: mevcutRestaurantId,
+        urun_id: receteAyarlananUrunId,
+        malzeme_id: receteMalzemeId,
+        miktar,
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      alert('Reçete satırı eklenemedi: ' + error.message);
+      return;
+    }
+
+    setUrunReceteleri([...urunReceteleri, {
+      id: data.id,
+      restaurantId: data.restaurant_id,
+      urunId: data.urun_id,
+      malzemeId: data.malzeme_id,
+      miktar: Number(data.miktar || 0),
+      createdAt: data.created_at,
+    }]);
+
+    setReceteMalzemeId('');
+    setReceteMiktar('');
+  };
+
+  // ürün reçetesinden hammadde satırı silen kod
+  const urunReceteSatiriSil = async (receteId) => {
+    if (!window.confirm('Bu reçete satırı silinsin mi?')) return;
+
+    const { error } = await supabase
+      .from('urun_receteleri')
+      .delete()
+      .eq('id', receteId)
+      .eq('restaurant_id', mevcutRestaurantId);
+
+    if (error) {
+      alert('Reçete satırı silinemedi: ' + error.message);
+      return;
+    }
+
+    setUrunReceteleri(urunReceteleri.filter(r => r.id !== receteId));
+  };
+
   // hızlı satış ürününü sepete ekleyen kod
   const hizliSatisUrunEkle = (urun) => {
     if (!urun) return;
@@ -6972,6 +7273,11 @@ Toplam Ciro: {toplam}
         <div class="line"></div>
         <div class="row"><span>Tarih</span><strong>${yazTarih}</strong></div>
         <div class="row"><span>Toplam Ciro</span><strong>${yazCiro} TL</strong></div>
+        <div class="row"><span>Masa Satış</span><strong>${bugunkuMasaSatis} TL</strong></div>
+        <div class="row"><span>Paket Servis</span><strong>${bugunkuPaketSatis} TL</strong></div>
+        <div class="row"><span>Hızlı Satış</span><strong>${bugunkuHizliSatis} TL</strong></div>
+        <div class="row"><span>Cari Satış</span><strong>${bugunkuCariSatis} TL</strong></div>
+        <div class="row"><span>İndirim</span><strong>${bugunkuIndirimToplami} TL</strong></div>
         <div class="row"><span>KDV Toplamı</span><strong>${yazKdv} TL</strong></div>
         <div class="row"><span>Nakit Satış</span><strong>${yazNakit} TL</strong></div>
         <div class="row"><span>Kart Satış</span><strong>${yazKart} TL</strong></div>
@@ -9515,6 +9821,8 @@ Toplam Ciro: {toplam}
         await masalariSupabasedenCek(aktifRestaurantId);
         await menuGruplariniSupabasedenCek(aktifRestaurantId);
         await menuUrunleriniSupabasedenCek(aktifRestaurantId);
+        if (typeof stokMalzemeleriniSupabasedenCek === 'function') await stokMalzemeleriniSupabasedenCek(aktifRestaurantId);
+        if (typeof urunReceteleriniSupabasedenCek === 'function') await urunReceteleriniSupabasedenCek(aktifRestaurantId);
 
         if (typeof fisAyarlariSupabasedenCek === 'function') {
           await fisAyarlariSupabasedenCek(aktifRestaurantId);
@@ -12753,6 +13061,21 @@ Toplam Ciro: {toplam}
                       <button type="button" onClick={() => cariTahsilatAl(cari)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>
                         Tahsilat Al
                       </button>
+                      <details style={{ width: '100%', marginTop: '8px', backgroundColor: '#f8fafc', borderRadius: '12px', padding: '10px' }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#1e293b' }}>Ekstre / Hareket Geçmişi</summary>
+                        {Array.isArray(cari.hareketler) && cari.hareketler.length > 0 ? (
+                          <div style={{ display: 'grid', gap: '6px', marginTop: '10px' }}>
+                            {cari.hareketler.slice(0, 20).map(h => (
+                              <div key={h.id || `${h.tarih}-${h.tutar}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', fontSize: '12px' }}>
+                                <span>{String(h.tarih || '').slice(0, 16).replace('T', ' ')} — {h.tip} — {h.aciklama}</span>
+                                <strong style={{ color: h.tip === 'Borç' ? '#ef4444' : '#10b981' }}>{h.tutar} TL</strong>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ color: '#94a3b8', marginTop: '8px', fontSize: '12px' }}>Bu caride henüz hareket yok.</div>
+                        )}
+                      </details>
                     </div>
                   ))
                 )}
@@ -12764,8 +13087,78 @@ Toplam Ciro: {toplam}
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>📦 Stok Takibi</h2>
                 <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
-                  Stok takibi açık ürünlerde satış ve paket sipariş sonrası stok otomatik düşer.
+                  Stok takibi açık ürünlerde satış ve paket sipariş sonrası stok otomatik düşer. Reçete tanımlarsanız satışta hammaddeler de düşer ve maliyet/kâr raporu daha doğru hesaplanır.
                 </p>
+
+                <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>🥦 Hammadde Stokları</h3>
+                  <form onSubmit={stokMalzemeEkle} style={styles.inlineForm}>
+                    <input type="text" placeholder="Hammadde adı" value={yeniStokMalzemeAdi} onChange={e => setYeniStokMalzemeAdi(e.target.value)} style={styles.input} />
+                    <input type="text" placeholder="Birim kg / lt / adet" value={yeniStokMalzemeBirim} onChange={e => setYeniStokMalzemeBirim(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
+                    <input type="number" placeholder="Mevcut stok" value={yeniStokMalzemeMiktar} onChange={e => setYeniStokMalzemeMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
+                    <input type="number" placeholder="Kritik" value={yeniStokMalzemeKritik} onChange={e => setYeniStokMalzemeKritik(e.target.value)} style={{ ...styles.input, maxWidth: '120px' }} />
+                    <input type="number" placeholder="Birim maliyet" value={yeniStokMalzemeMaliyet} onChange={e => setYeniStokMalzemeMaliyet(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
+                    <button type="submit" style={styles.btnOrange}>Hammadde Ekle</button>
+                  </form>
+
+                  {stokMalzemeleri.length === 0 ? (
+                    <div style={{ color: '#94a3b8', padding: '12px' }}>Henüz hammadde stok kartı yok.</div>
+                  ) : stokMalzemeleri.map(m => (
+                    <div key={m.id} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1 }}>
+                        <strong>{m.ad}</strong>
+                        <div style={{ color: '#64748b', fontSize: '12px' }}>Birim: {m.birim} / Maliyet: {m.birimMaliyet} TL</div>
+                      </div>
+                      <span style={Number(m.stokMiktari || 0) <= Number(m.kritikMiktar || 0) ? styles.badgePending : styles.badgeActive}>
+                        Stok: {m.stokMiktari} {m.birim}
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="Stok ekle"
+                        value={stokMalzemeEklenecekMiktarlar[m.id] || ''}
+                        onChange={e => setStokMalzemeEklenecekMiktarlar(prev => ({ ...prev, [m.id]: e.target.value }))}
+                        style={{ ...styles.input, width: '120px', minWidth: '120px' }}
+                      />
+                      <button type="button" onClick={() => stokMalzemeStokEkle(m)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>+ Ekle</button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>🧾 Ürün Reçetesi</h3>
+                  <div style={styles.inlineForm}>
+                    <select value={receteAyarlananUrunId} onChange={e => setReceteAyarlananUrunId(e.target.value)} style={styles.input}>
+                      <option value="">Reçete ürünü seç</option>
+                      {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad}</option>)}
+                    </select>
+                    <select value={receteMalzemeId} onChange={e => setReceteMalzemeId(e.target.value)} style={styles.input}>
+                      <option value="">Hammadde seç</option>
+                      {stokMalzemeleri.map(m => <option key={m.id} value={m.id}>{m.ad} ({m.birim})</option>)}
+                    </select>
+                    <input type="number" placeholder="1 üründe kullanılan miktar" value={receteMiktar} onChange={e => setReceteMiktar(e.target.value)} style={styles.input} />
+                    <button type="button" onClick={urunReceteSatiriEkle} style={styles.btnOrange}>Reçeteye Ekle</button>
+                  </div>
+
+                  {receteAyarlananUrunId && (
+                    <div style={{ marginTop: '12px' }}>
+                      <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>
+                        Reçete Maliyeti: {urunReceteMaliyetiHesapla(receteAyarlananUrunId)} TL / ürün
+                      </div>
+                      {urunReceteleri.filter(r => String(r.urunId) === String(receteAyarlananUrunId)).length === 0 ? (
+                        <div style={{ color: '#94a3b8', padding: '10px' }}>Bu ürün için reçete satırı yok.</div>
+                      ) : urunReceteleri.filter(r => String(r.urunId) === String(receteAyarlananUrunId)).map(r => {
+                        const malzeme = stokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
+                        return (
+                          <div key={r.id} style={styles.dataRow}>
+                            <span>{malzeme?.ad || 'Hammadde'} — {r.miktar} {malzeme?.birim || ''}</span>
+                            <strong>{paraYuvarla(Number(r.miktar || 0) * Number(malzeme?.birimMaliyet || 0))} TL</strong>
+                            <button type="button" onClick={() => urunReceteSatiriSil(r.id)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Sil</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                 {aktifMenu.length === 0 ? (
                   <div style={{ color: '#94a3b8', padding: '20px' }}>Stok takip edilecek ürün yok.</div>
@@ -12833,6 +13226,18 @@ Toplam Ciro: {toplam}
                     <div style={styles.statsValue}>
                       {kasaHareketleri.filter(k => k.tip === 'Açılış' || k.tip === 'Giriş').reduce((t, k) => t + Number(k.tutar || 0), 0) - kasaHareketleri.filter(k => k.tip === 'Çıkış').reduce((t, k) => t + Number(k.tutar || 0), 0)} TL
                     </div>
+                  </div>
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Cari Satış</div>
+                    <div style={styles.statsValue}>{bugunkuCariSatis} TL</div>
+                  </div>
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Paket / Hızlı Satış</div>
+                    <div style={styles.statsValue}>{bugunkuPaketSatis} TL / {bugunkuHizliSatis} TL</div>
+                  </div>
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>İndirim / KDV</div>
+                    <div style={styles.statsValue}>{bugunkuIndirimToplami} TL / {bugunkuKdvToplami} TL</div>
                   </div>
                 </div>
 
