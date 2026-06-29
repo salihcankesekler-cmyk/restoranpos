@@ -573,6 +573,11 @@ Toplam Ciro: {toplam}
   // ürün reçetesini tek tek kaydetmek yerine önce listeye toplayıp toplu kaydetmek için kullanılan kod
   const [receteTaslakKalemleri, setReceteTaslakKalemleri] = useState([]);
 
+  // reçeteli ürünleri manuel üretmek veya satışta otomatik üretmek için kullanılan kod
+  const [uretimMiktari, setUretimMiktari] = useState('1');
+  const [uretimNotu, setUretimNotu] = useState('');
+  const [uretimMesaji, setUretimMesaji] = useState('');
+
 
   // hızlı satış / gel-al ekranı için kullanılan kod
   const [hizliSatisUrunler, setHizliSatisUrunler] = useState([]);
@@ -3335,6 +3340,42 @@ Toplam Ciro: {toplam}
     };
   };
 
+  // reçeteli ürünlerin üretim modunu standart hale getiren kod
+  const urunUretimModuBul = (urun = {}) => {
+    const mod = String(urun?.uretimModu || urun?.uretim_modu || 'manuel').trim();
+    return mod === 'satisla_uretim' ? 'satisla_uretim' : 'manuel';
+  };
+
+  const urunUretimModuEtiketi = (urun = {}) => {
+    return urunUretimModuBul(urun) === 'satisla_uretim' ? 'Satışta satıldıkça üret' : 'Manuel üret / stoka al';
+  };
+
+  const urunSatistaUretilecekMi = (urun = {}) => {
+    if (!urun?.id) return false;
+    return urunUretimModuBul(urun) === 'satisla_uretim' && receteSatirlariBul(urun.id).length > 0;
+  };
+
+  const urunUretimGereklilikleriHesapla = (urunId, adet = 1) => {
+    const uretilecekAdet = Math.max(0, sayiyaCevir(adet));
+    return receteSatirlariBul(urunId).map(satir => {
+      const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(satir.malzemeId));
+      const birimMiktar = receteSatiriFireliMiktar(satir);
+      const gerekliMiktar = paraYuvarla(birimMiktar * uretilecekAdet);
+      const mevcutStok = Number(malzeme?.stokMiktari || 0);
+      const yeterli = mevcutStok >= gerekliMiktar;
+      return {
+        satir,
+        malzeme,
+        birimMiktar,
+        gerekliMiktar,
+        mevcutStok,
+        yeterli,
+        eksikMiktar: yeterli ? 0 : paraYuvarla(gerekliMiktar - mevcutStok),
+        maliyet: paraYuvarla(gerekliMiktar * Number(malzeme?.birimMaliyet || 0)),
+      };
+    });
+  };
+
   // ürün reçetesinden veya ürün kartından birim maliyet hesaplayan kod
   const urunBirimMaliyetiBul = (kayit = {}) => {
     const urunId = kayit.urunId || kayit.urun_id || kayit.id;
@@ -3944,6 +3985,8 @@ Toplam Ciro: {toplam}
       favori: Boolean(u.favori),
       qrMenudeGorunsun: (u.qr_menude_gorunsun ?? u.qrMenudeGorunsun ?? true) !== false,
       satistaAktif: (u.satista_aktif ?? u.satistaAktif ?? u.aktif ?? true) !== false,
+      uretimModu: u.uretim_modu || u.uretimModu || 'manuel',
+      uretimNotu: u.uretim_notu || u.uretimNotu || '',
       resimUrl: u.resim_url || u.resimUrl || '',
     }));
 
@@ -7040,14 +7083,14 @@ Toplam Ciro: {toplam}
         const urun = menuUrunleri.find(u => String(u.id) === String(s.urunId));
         return { siparis: s, urun };
       })
-      .filter(x => x.urun && x.urun.stokTakip);
+      .filter(x => x.urun && x.urun.stokTakip && !urunSatistaUretilecekMi(x.urun));
 
     const yeniMenu = [...menuUrunleri];
 
     for (const { siparis, urun } of stokGuncellenecekler) {
       const mevcutStok = Number(urun.stokAdedi || 0);
       const dusulecekAdet = Number(siparis.adet || 1);
-      const yeniStok = mevcutStok - dusulecekAdet;
+      const yeniStok = Math.max(0, mevcutStok - dusulecekAdet);
 
       const { error } = await supabase
         .from('menu_urunleri')
@@ -7077,6 +7120,9 @@ Toplam Ciro: {toplam}
     const malzemeGuncellemeleri = {};
 
     satilanSiparisler.forEach(siparis => {
+      const satilanUrun = menuUrunleri.find(u => String(u.id) === String(siparis.urunId));
+      if (!urunSatistaUretilecekMi(satilanUrun)) return;
+
       const receteSatirlari = (Array.isArray(urunReceteleri) ? urunReceteleri : [])
         .filter(r => String(r.urunId) === String(siparis.urunId));
 
@@ -7093,7 +7139,7 @@ Toplam Ciro: {toplam}
           urun_id: siparis.urunId || null,
           tip: 'Çıkış',
           miktar: dusulecekMiktar,
-          aciklama: `${siparis.ad || 'Ürün'} satışı reçete düşümü`,
+          aciklama: `${siparis.ad || 'Ürün'} satışı otomatik üretim hammadde düşümü`,
         });
       });
     });
@@ -8593,7 +8639,148 @@ Toplam Ciro: {toplam}
     setUrunReceteleri(yeniReceteListesi);
     setReceteTaslakKalemleri([]);
     islemLoguEkle('Reçete', `${kalemler.length} hammadde ürüne toplu reçete olarak kaydedildi.`);
-    alert('Reçete kaydedildi. Bu ürün satıldığında listedeki tüm hammaddeler belirtilen miktarda stoktan düşecek.');
+    alert('Reçete kaydedildi. Bu ürün artık üretime hazır. Manuel üretimde önce ürün üretip stoğa alırsın; satışta satıldıkça üret modunda satış anında hammaddeler düşer.');
+  };
+
+  const receteliUrunUretimModunuGuncelle = async (urunId, yeniMod) => {
+    const urun = aktifMenu.find(u => String(u.id) === String(urunId));
+    if (!urun) {
+      alert('Üretim modu güncellenecek ürün bulunamadı.');
+      return;
+    }
+
+    const temizMod = yeniMod === 'satisla_uretim' ? 'satisla_uretim' : 'manuel';
+
+    const { error } = await supabase
+      .from('menu_urunleri')
+      .update({
+        uretim_modu: temizMod,
+        stok_takip: true,
+        uretim_notu: uretimNotu || null,
+      })
+      .eq('id', urun.id)
+      .eq('restaurant_id', mevcutRestaurantId);
+
+    if (error) {
+      alert('Üretim modu güncellenemedi. Supabase SQL kolonlarını eklediğinden emin ol: ' + error.message);
+      return;
+    }
+
+    setMenuUrunleri(menuUrunleri.map(u => String(u.id) === String(urun.id) ? {
+      ...u,
+      uretimModu: temizMod,
+      uretimNotu: uretimNotu || u.uretimNotu || '',
+      stokTakip: true,
+    } : u));
+
+    setUretimMesaji(`Üretim modu güncellendi: ${temizMod === 'satisla_uretim' ? 'Satışta satıldıkça üret' : 'Manuel üret / stoka al'}`);
+    islemLoguEkle('Üretim Modu', `${urun.ad} üretim modu güncellendi.`);
+  };
+
+  const receteliUrunuManuelUret = async () => {
+    if (!receteAyarlananUrunId) {
+      alert('Üretim için önce reçeteli ürün seçin.');
+      return;
+    }
+
+    const urun = aktifMenu.find(u => String(u.id) === String(receteAyarlananUrunId));
+    if (!urun) {
+      alert('Üretilecek ürün bulunamadı.');
+      return;
+    }
+
+    const miktar = Math.max(0, sayiyaCevir(uretimMiktari));
+    if (!miktar || miktar <= 0) {
+      alert('Üretilecek adet/porsiyon miktarı girin.');
+      return;
+    }
+
+    const gerekliler = urunUretimGereklilikleriHesapla(urun.id, miktar);
+    if (gerekliler.length === 0) {
+      alert('Bu ürünün reçetesi yok. Önce ürünü oluşturan hammaddeleri reçeteye ekleyin.');
+      return;
+    }
+
+    const eksikler = gerekliler.filter(g => !g.yeterli);
+    if (eksikler.length > 0) {
+      alert('Üretim yapılamaz. Eksik hammaddeler:\n' + eksikler.map(g => `${g.malzeme?.ad || 'Hammadde'}: ${g.eksikMiktar} ${g.malzeme?.birim || ''} eksik`).join('\n'));
+      return;
+    }
+
+    const yeniMalzemeler = stokMalzemeleri.map(m => {
+      const gereken = gerekliler.find(g => String(g.malzeme?.id) === String(m.id));
+      if (!gereken) return m;
+      return { ...m, stokMiktari: paraYuvarla(Number(m.stokMiktari || 0) - gereken.gerekliMiktar) };
+    });
+
+    const mevcutUrunStok = Number(urun.stokAdedi || 0);
+    const yeniUrunStok = paraYuvarla(mevcutUrunStok + miktar);
+
+    for (const gereken of gerekliler) {
+      const malzeme = yeniMalzemeler.find(m => String(m.id) === String(gereken.malzeme?.id));
+      const { error } = await supabase
+        .from('stok_malzemeleri')
+        .update({ stok_miktari: malzeme?.stokMiktari ?? 0 })
+        .eq('id', gereken.malzeme.id)
+        .eq('restaurant_id', mevcutRestaurantId);
+
+      if (error) {
+        alert(`${gereken.malzeme?.ad || 'Hammadde'} stoktan düşülemedi: ${error.message}`);
+        return;
+      }
+    }
+
+    const { error: urunError } = await supabase
+      .from('menu_urunleri')
+      .update({
+        stok_adedi: yeniUrunStok,
+        stok_takip: true,
+        uretim_modu: 'manuel',
+        uretim_notu: uretimNotu || null,
+      })
+      .eq('id', urun.id)
+      .eq('restaurant_id', mevcutRestaurantId);
+
+    if (urunError) {
+      alert('Ürün stoğu üretim sonrası güncellenemedi: ' + urunError.message);
+      return;
+    }
+
+    const hareketler = [
+      ...gerekliler.map(g => ({
+        restaurant_id: mevcutRestaurantId,
+        malzeme_id: g.malzeme?.id || null,
+        urun_id: urun.id,
+        tip: 'Üretim Çıkış',
+        miktar: g.gerekliMiktar,
+        aciklama: `${urun.ad} manuel üretimi için hammadde düşümü`,
+      })),
+      {
+        restaurant_id: mevcutRestaurantId,
+        malzeme_id: null,
+        urun_id: urun.id,
+        tip: 'Üretim Giriş',
+        miktar,
+        aciklama: `${urun.ad} manuel üretildi ve ürün stoğuna alındı${uretimNotu ? ` - ${uretimNotu}` : ''}`,
+      },
+    ];
+
+    const { error: hareketError } = await supabase.from('stok_hareketleri').insert(hareketler);
+    if (hareketError) console.warn('Üretim stok hareketleri kaydedilemedi:', hareketError.message);
+
+    setStokMalzemeleri(yeniMalzemeler);
+    setMenuUrunleri(menuUrunleri.map(u => String(u.id) === String(urun.id) ? {
+      ...u,
+      stokAdedi: yeniUrunStok,
+      stokTakip: true,
+      uretimModu: 'manuel',
+      uretimNotu: uretimNotu || u.uretimNotu || '',
+    } : u));
+
+    setUretimMesaji(`${urun.ad} için ${miktar} adet/porsiyon üretildi. Ürün stoğu ${yeniUrunStok} oldu.`);
+    setUretimMiktari('1');
+    setUretimNotu('');
+    islemLoguEkle('Üretim', `${urun.ad} manuel üretildi. Miktar: ${miktar}`);
   };
 
   const urunReceteSatiriDuzenlemeyeAl = (satir) => {
@@ -12741,7 +12928,7 @@ Toplam Ciro: {toplam}
                     <div>
                       <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Gelişmiş Ürün Reçetesi</h3>
                       <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
-                        Her ürünün kaç gram/kg/adet hammadde kullandığını tanımlayın. Sistem satışta fireli miktarı stoktan düşer, maliyet ve kârı otomatik hesaplar.
+                        Her ürünün kaç gram/kg/adet hammadde kullandığını tanımlayın. Sistem üretim moduna göre çalışır: manuel üretimde önce ürünü üretip stoğa alırsın, satışta satıldıkça üret modunda hammaddeler satış anında düşer.
                       </p>
                     </div>
                     <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px', minWidth: '220px' }}>
@@ -12755,9 +12942,9 @@ Toplam Ciro: {toplam}
                     <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
                       <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>1) Ürün seç ve reçete satırı ekle</div>
                       <div style={styles.inlineForm}>
-                        <select value={receteAyarlananUrunId} onChange={e => { setReceteAyarlananUrunId(e.target.value); setReceteTaslakKalemleri([]); }} style={styles.input}>
+                        <select value={receteAyarlananUrunId} onChange={e => { setReceteAyarlananUrunId(e.target.value); setReceteTaslakKalemleri([]); setUretimMesaji(''); }} style={styles.input}>
                           <option value="">Reçete ürünü seç</option>
-                          {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad} — Satış {u.fiyat} TL</option>)}
+                          {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad} — Satış {u.fiyat} TL / Stok {Number(u.stokAdedi || 0)} / {urunUretimModuEtiketi(u)}</option>)}
                         </select>
                         <select value={receteMalzemeId} onChange={e => setReceteMalzemeId(e.target.value)} style={styles.input}>
                           <option value="">Hammadde seç</option>
@@ -12769,7 +12956,7 @@ Toplam Ciro: {toplam}
                         <button type="button" onClick={receteTaslakKalemiEkle} style={styles.btnOrange}>Reçete Listesine Ekle</button>
                       </div>
                       <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '8px' }}>
-                        Mantık: Ürün satılınca reçetedeki <strong>tüm hammaddeler</strong> aynı anda düşer. Örnek: Kek = 0.20 kg un + 2 adet yumurta + 0.10 kg şeker. Hepsini listeye ekleyip tek seferde kaydedin.
+                        Mantık: Ürün birden fazla hammaddeden oluşur. Örnek: Kek = 0.20 kg un + 2 adet yumurta + 0.10 kg şeker. Manuel üretimde bu hammaddeler üretim yapınca düşer; satışta satıldıkça üret modunda satış anında düşer.
                       </div>
 
                       {receteTaslakKalemleri.length > 0 ? (
@@ -12815,6 +13002,66 @@ Toplam Ciro: {toplam}
                       </div>
                     </div>
                   </div>
+
+                  {receteAyarlananUrunId ? (() => {
+                    const seciliUrun = aktifMenu.find(u => String(u.id) === String(receteAyarlananUrunId));
+                    const uretimAdedi = Math.max(1, sayiyaCevir(uretimMiktari) || 1);
+                    const gerekliler = urunUretimGereklilikleriHesapla(receteAyarlananUrunId, uretimAdedi);
+                    const eksikVar = gerekliler.some(g => !g.yeterli);
+                    return (
+                      <div style={{ marginTop: '14px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '16px', padding: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          <div>
+                            <h3 style={{ margin: '0 0 6px', color: '#065f46', fontSize: '16px' }}>🏭 Üretim Modu ve Ürün Stoğu</h3>
+                            <p style={{ margin: 0, color: '#047857', fontSize: '12px', lineHeight: 1.5 }}>
+                              Manuel üretimde hammaddeler üretim yaptığında düşer ve ürün stoğu artar. Satışta satıldıkça üret modunda ürün stoğu beklemez; satış anında reçetedeki hammaddeler düşer.
+                            </p>
+                          </div>
+                          <div style={{ backgroundColor: '#fff', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', minWidth: '170px' }}>
+                            <div style={{ color: '#047857', fontSize: '11px', fontWeight: '900' }}>Ürün Stoğu</div>
+                            <div style={{ color: '#0f172a', fontSize: '22px', fontWeight: '900' }}>{Number(seciliUrun?.stokAdedi || 0)}</div>
+                            <div style={{ color: '#64748b', fontSize: '11px' }}>{urunUretimModuEtiketi(seciliUrun)}</div>
+                          </div>
+                        </div>
+
+                        {uretimMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#d1fae5', border: '1px solid #86efac', color: '#047857', borderRadius: '12px', padding: '9px 11px', fontSize: '12px', fontWeight: '800' }}>{uretimMesaji}</div> : null}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                          <div style={{ backgroundColor: '#fff', border: '1px solid #a7f3d0', borderRadius: '14px', padding: '10px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#047857', marginBottom: '8px' }}>Üretim şekli</div>
+                            <select value={urunUretimModuBul(seciliUrun)} onChange={e => receteliUrunUretimModunuGuncelle(receteAyarlananUrunId, e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
+                              <option value="manuel">Manuel üret / ürün stoğuna al</option>
+                              <option value="satisla_uretim">Satışta satıldıkça üret</option>
+                            </select>
+                            <input type="text" placeholder="Üretim notu / hazırlık bilgisi" value={uretimNotu} onChange={e => setUretimNotu(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff', marginTop: '8px' }} />
+                            <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '8px' }}>
+                              Tavsiye: Kek, hamur, çorba gibi önceden hazırlanan ürünlerde manuel üretim; anlık hazırlanan kumpir/tost gibi ürünlerde satışta satıldıkça üret kullanılabilir.
+                            </div>
+                          </div>
+
+                          <div style={{ backgroundColor: '#fff', border: '1px solid #a7f3d0', borderRadius: '14px', padding: '10px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#047857', marginBottom: '8px' }}>Manuel üretim yap</div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <input type="number" step="0.001" placeholder="Üretilecek adet" value={uretimMiktari} onChange={e => setUretimMiktari(e.target.value)} style={{ ...styles.input, maxWidth: '160px', backgroundColor: '#fff' }} />
+                              <button type="button" onClick={receteliUrunuManuelUret} disabled={gerekliler.length === 0 || eksikVar} style={{ ...styles.btnOrange, backgroundColor: eksikVar ? '#94a3b8' : '#10b981', cursor: eksikVar ? 'not-allowed' : 'pointer' }}>Üret ve Ürün Stoğuna Al</button>
+                            </div>
+                            {gerekliler.length === 0 ? (
+                              <div style={{ color: '#b45309', fontSize: '12px', marginTop: '8px', fontWeight: '800' }}>Önce bu ürün için reçete kaydedin.</div>
+                            ) : (
+                              <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {gerekliler.map(g => (
+                                  <div key={g.satir.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', backgroundColor: g.yeterli ? '#f0fdf4' : '#fef2f2', border: g.yeterli ? '1px solid #bbf7d0' : '1px solid #fecaca', borderRadius: '10px', padding: '7px 9px', fontSize: '12px', color: '#334155' }}>
+                                    <span><strong>{g.malzeme?.ad || 'Hammadde'}</strong> gerekli: {g.gerekliMiktar} {g.malzeme?.birim || ''}</span>
+                                    <span>Stok: {g.mevcutStok} {g.malzeme?.birim || ''}{g.yeterli ? '' : ` / Eksik ${g.eksikMiktar}`}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })() : null}
 
                   {receteAyarlananUrunId ? (() => {
                     const analiz = urunReceteAnaliziHesapla(receteAyarlananUrunId);
