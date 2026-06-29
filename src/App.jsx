@@ -176,6 +176,7 @@ function IntegraApp() {
   const [qrMenuRestoran, setQrMenuRestoran] = useState(null);
   const [qrMenuPublicUrunleri, setQrMenuPublicUrunleri] = useState([]);
   const [qrMenuPublicGruplari, setQrMenuPublicGruplari] = useState([]);
+  const [qrMenuPublicMasalar, setQrMenuPublicMasalar] = useState([]);
   const [qrMenuAyarlari, setQrMenuAyarlari] = useState(() => {
     try {
       const kayit = localStorage.getItem('integra_qr_menu_ayarlari');
@@ -2257,7 +2258,7 @@ Toplam Ciro: {toplam}
     setQrMenuHatasi('');
 
     try {
-      const [restoranSonuc, grupSonuc, urunSonuc] = await Promise.all([
+      const [restoranSonuc, grupSonuc, urunSonuc, masaSonuc] = await Promise.all([
         supabase
           .from('restaurants')
           .select('*')
@@ -2273,11 +2274,17 @@ Toplam Ciro: {toplam}
           .select('*')
           .eq('restaurant_id', restaurantId)
           .order('id', { ascending: true }),
+        supabase
+          .from('masalar')
+          .select('id, restaurant_id, ad, bolum')
+          .eq('restaurant_id', restaurantId)
+          .order('id', { ascending: true }),
       ]);
 
       if (restoranSonuc.error) throw restoranSonuc.error;
       if (grupSonuc.error) throw grupSonuc.error;
       if (urunSonuc.error) throw urunSonuc.error;
+      if (masaSonuc.error) throw masaSonuc.error;
 
       const restoran = restoranSonuc.data
         ? restoranSatiriniHazirla(restoranSonuc.data)
@@ -2309,9 +2316,17 @@ Toplam Ciro: {toplam}
         favori: Boolean(u.favori),
       }));
 
+      const temizMasalar = (Array.isArray(masaSonuc.data) ? masaSonuc.data : []).map(m => ({
+        id: m.id,
+        restaurantId: m.restaurant_id,
+        ad: m.ad || `Masa ${m.id}`,
+        bolum: m.bolum || 'Salon',
+      }));
+
       setQrMenuRestoran(restoran);
       setQrMenuPublicGruplari(temizGruplar);
       setQrMenuPublicUrunleri(temizUrunler);
+      setQrMenuPublicMasalar(temizMasalar);
     } catch (err) {
       console.error('QR menü verisi çekilemedi:', err);
       setQrMenuHatasi('QR menü şu anda yüklenemedi. Lütfen işletmeden destek isteyin.');
@@ -2369,26 +2384,322 @@ Toplam Ciro: {toplam}
     return kayit;
   };
 
-  const servisTalebiEkle = (tip, masaNo = '', notMetni = '', kaynak = 'Panel') => {
+  const servisTalebiSupabaseSatiriniHazirla = (satir = {}) => {
+    const payload = satir.payload || satir.raw_payload || {};
+    const siparisUrunleri = satir.siparis_urunleri || satir.siparisUrunleri || payload.urunler || [];
+    const masaAdi = satir.masa_adi || satir.masa_no || payload.masaAdi || payload.masaNo || '';
+
+    return {
+      id: satir.id,
+      restaurantId: satir.restaurant_id || satir.restaurantId || mevcutRestaurantId,
+      tip: satir.talep_tipi || satir.tip || payload.tip || 'Servis Talebi',
+      masaId: satir.masa_id || satir.masaId || payload.masaId || '',
+      masaNo: satir.masa_no || masaAdi || '',
+      masaAdi: masaAdi || '',
+      notMetni: satir.not_metni || satir.mesaj || satir.notMetni || payload.notMetni || '',
+      kaynak: satir.kaynak || satir.source || payload.kaynak || 'QR Menü',
+      durum: satir.durum || 'Açık',
+      siparisUrunleri: Array.isArray(siparisUrunleri) ? siparisUrunleri : [],
+      toplam: Number(satir.toplam || payload.toplam || 0),
+      musteriAdi: satir.musteri_adi || payload.musteriAdi || '',
+      payload,
+      createdAt: satir.created_at || satir.createdAt || new Date().toISOString(),
+      kapandiAt: satir.tamamlanma_zamani || satir.kapandiAt || null,
+    };
+  };
+
+  const servisTalepleriniSupabasedenCek = async (restaurantId = mevcutRestaurantId) => {
+    if (!restaurantId || String(restaurantId) === 'super_admin') return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('servis_talepleri')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.warn('Servis talepleri çekilemedi:', error.message);
+        return [];
+      }
+
+      const temizListe = (Array.isArray(data) ? data : []).map(servisTalebiSupabaseSatiriniHazirla);
+      setServisTalepleri(prev => {
+        const lokalListe = (Array.isArray(prev) ? prev : []).filter(t => String(t.restaurantId || '') !== String(restaurantId || '') || String(t.id || '').startsWith('srv-') || String(t.id || '').startsWith('qr-'));
+        const lokalTekil = lokalListe.filter(lokal => !temizListe.some(uzak => String(uzak.id) === String(lokal.id)));
+        return [...temizListe, ...lokalTekil];
+      });
+      return temizListe;
+    } catch (err) {
+      console.warn('Servis talepleri okunamadı:', err?.message || err);
+      return [];
+    }
+  };
+
+  const servisTalebiEkle = (tip, masaNo = '', notMetni = '', kaynak = 'Panel', ekstra = {}) => {
     const kayit = {
       id: `srv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       restaurantId: mevcutRestaurantId || qrMenuLinkRestaurantId,
       tip,
+      masaId: ekstra.masaId || '',
       masaNo: String(masaNo || '').trim(),
+      masaAdi: ekstra.masaAdi || String(masaNo || '').trim(),
       notMetni: String(notMetni || '').trim(),
       kaynak,
       durum: 'Açık',
+      siparisUrunleri: Array.isArray(ekstra.siparisUrunleri) ? ekstra.siparisUrunleri : [],
+      toplam: Number(ekstra.toplam || 0),
+      musteriAdi: ekstra.musteriAdi || '',
+      payload: ekstra.payload || {},
       createdAt: new Date().toISOString(),
     };
 
     setServisTalepleri(prev => [kayit, ...(Array.isArray(prev) ? prev : [])]);
-    islemLoguEkle('Servis Talebi', `${kayit.masaNo ? `${kayit.masaNo} - ` : ''}${tip}`);
+
+    supabase.from('servis_talepleri').insert([{
+      restaurant_id: kayit.restaurantId,
+      talep_tipi: kayit.tip,
+      masa_id: kayit.masaId || null,
+      masa_adi: kayit.masaAdi || kayit.masaNo || '',
+      masa_no: kayit.masaNo || kayit.masaAdi || '',
+      mesaj: kayit.notMetni,
+      not_metni: kayit.notMetni,
+      kaynak: kayit.kaynak,
+      durum: kayit.durum,
+      siparis_urunleri: kayit.siparisUrunleri,
+      toplam: kayit.toplam,
+      musteri_adi: kayit.musteriAdi,
+      payload: kayit.payload,
+    }]).then(({ data, error }) => {
+      if (error) {
+        console.warn('Servis talebi Supabase kaydı atlandı:', error.message);
+      }
+    });
+
+    islemLoguEkle('Servis Talebi', `${kayit.masaAdi || kayit.masaNo ? `${kayit.masaAdi || kayit.masaNo} - ` : ''}${tip}`);
     return kayit;
   };
 
-  const servisTalebiniKapat = (talepId) => {
+  const servisTalebiniKapat = async (talepId) => {
     setServisTalepleri(prev => (Array.isArray(prev) ? prev : []).map(t => String(t.id) === String(talepId) ? { ...t, durum: 'Kapandı', kapandiAt: new Date().toISOString() } : t));
+
+    if (/^\d+$/.test(String(talepId || ''))) {
+      try {
+        await supabase
+          .from('servis_talepleri')
+          .update({ durum: 'Kapandı', tamamlanma_zamani: new Date().toISOString() })
+          .eq('id', talepId);
+      } catch (err) {
+        console.warn('Servis talebi Supabase kapatma atlandı:', err?.message || err);
+      }
+    }
+
     islemLoguEkle('Servis Talebi', 'Servis talebi kapatıldı.');
+  };
+
+  const qrSiparisTalebiniMasayaAktar = async (talep) => {
+    const urunler = Array.isArray(talep?.siparisUrunleri) ? talep.siparisUrunleri : [];
+
+    if (urunler.length === 0) {
+      alert('Bu talepte aktarılacak QR sipariş ürünü yok.');
+      return;
+    }
+
+    const hedefMasa = tumRestoranMasalari.find(m => {
+      return String(m.id) === String(talep.masaId || '')
+        || String(m.ad || '').toLocaleLowerCase('tr-TR') === String(talep.masaAdi || talep.masaNo || '').toLocaleLowerCase('tr-TR')
+        || String(m.ad || '').toLocaleLowerCase('tr-TR') === `masa ${String(talep.masaNo || '').trim()}`.toLocaleLowerCase('tr-TR');
+    });
+
+    if (!hedefMasa) {
+      alert('Siparişin aktarılacağı masa bulunamadı. QR menüde masa seçimini kontrol edin.');
+      return;
+    }
+
+    const mevcutSiparisler = Array.isArray(hedefMasa.siparisler) ? hedefMasa.siparisler : [];
+    const yeniSiparisler = [...mevcutSiparisler];
+
+    urunler.forEach(satir => {
+      const urun = aktifMenu.find(u => String(u.id) === String(satir.urunId || satir.id || '')) || satir;
+      const adet = Number(satir.adet || 1);
+      const notMetni = String(satir.not || satir.notMetni || talep.notMetni || '').trim();
+      const birimFiyat = Number(satir.fiyat || urun.fiyat || 0);
+      const mevcutIndex = yeniSiparisler.findIndex(s => {
+        return String(s.urunId || '') === String(urun.id || satir.urunId || '')
+          && String(s.ad || '') === String(urun.ad || satir.ad || '')
+          && String(s.not || '') === String(notMetni || '')
+          && Number(s.fiyat || 0) === birimFiyat;
+      });
+
+      if (mevcutIndex > -1) {
+        yeniSiparisler[mevcutIndex] = {
+          ...yeniSiparisler[mevcutIndex],
+          adet: Number(yeniSiparisler[mevcutIndex].adet || 0) + adet,
+        };
+      } else {
+        yeniSiparisler.push({
+          urunId: urun.id || satir.urunId,
+          ad: urun.ad || satir.ad || 'Ürün',
+          fiyat: birimFiyat,
+          normalFiyat: Number(satir.normalFiyat || satir.fiyat || urun.fiyat || 0),
+          listeFiyati: Number(satir.listeFiyati || satir.fiyat || urun.fiyat || 0),
+          satisFiyati: Number(satir.satisFiyati || satir.fiyat || urun.fiyat || 0),
+          ekstraUcret: Number(satir.ekstraUcret || 0),
+          indirimYuzde: Number(satir.indirimYuzde || 0),
+          indirimTutari: Number(satir.indirimTutari || 0),
+          fiyatDegistirildi: Boolean(satir.fiyatDegistirildi),
+          not: notMetni,
+          adet,
+          resimUrl: urunGosterimResmi(urun),
+          menuGrubu: urun.menuGrubu || urun.kategori || satir.menuGrubu || 'Genel',
+          departman: urun.departman || satir.departman || 'Mutfak',
+          kdvOrani: Number(urun.kdvOrani || satir.kdvOrani || 10),
+          mutfagaGitsin: mutfakEkraniAktifMi(urun),
+          mutfakEkraninaGitsin: mutfakEkraniAktifMi(urun),
+          yaziciyaGitsin: fisYaziciAktifMi(urun),
+          kaynak: 'QR Menü',
+        });
+      }
+    });
+
+    const yeniAraToplam = siparislerAraToplamHesapla(yeniSiparisler);
+    const genelIndirimOzeti = toplamIndirimHesapla(
+      yeniAraToplam,
+      hedefMasa.adisyonIndirimYuzde || 0,
+      hedefMasa.adisyonIndirimTutari || 0
+    );
+    const yeniTutar = genelIndirimOzeti.netToplam;
+    const adisyonAcilisSaati = hedefMasa.adisyonAcilisSaati || new Date().toISOString();
+    const adisyonGarsonAdi = hedefMasa.adisyonGarsonAdi || (user?.role === 'waiter' ? user?.waiterName || user?.restaurant || user?.email : 'İşletme Sahibi');
+
+    const { data, error } = await supabase
+      .from('masalar')
+      .update({
+        dolu: true,
+        tutar: yeniTutar,
+        brut_tutar: genelIndirimOzeti.brutToplam,
+        adisyon_indirim_yuzde: genelIndirimOzeti.indirimYuzde,
+        adisyon_indirim_tutari: genelIndirimOzeti.tlIndirimTutari,
+        siparisler: yeniSiparisler,
+        adisyon_acilis_saati: adisyonAcilisSaati,
+        adisyon_garson_adi: adisyonGarsonAdi,
+      })
+      .eq('id', hedefMasa.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('QR sipariş masaya aktarılamadı:', error);
+      alert('QR sipariş masaya aktarılamadı: ' + error.message);
+      return;
+    }
+
+    const guncelMasa = {
+      id: data.id,
+      restaurantId: data.restaurant_id,
+      ad: data.ad,
+      dolu: data.dolu || false,
+      tutar: Number(data.tutar || 0),
+      brutTutar: Number(data.brut_tutar || 0),
+      adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+      adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
+      siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
+      odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
+      adisyonAcilisSaati: data.adisyon_acilis_saati || adisyonAcilisSaati,
+      adisyonGarsonAdi: data.adisyon_garson_adi || adisyonGarsonAdi || '',
+      musteriAdi: data.musteri_adi || hedefMasa.musteriAdi || '',
+      bolum: data.bolum || hedefMasa.bolum || aktifMasaBolumu || 'Salon',
+    };
+
+    setMasalar(prev => (Array.isArray(prev) ? prev : []).map(m => String(m.id) === String(guncelMasa.id) ? guncelMasa : m));
+    setSelectedMasaId(guncelMasa.id);
+
+    const yeniFisler = [];
+    for (const satir of urunler) {
+      const urun = aktifMenu.find(u => String(u.id) === String(satir.urunId || satir.id || '')) || satir;
+      const adet = Number(satir.adet || 1);
+      const notMetni = String(satir.not || satir.notMetni || talep.notMetni || '').trim();
+      const mutfakEkraninaGitsin = mutfakEkraniAktifMi(urun);
+      const fizikiYaziciyaGitsin = fisYaziciAktifMi(urun);
+      const departman = urun.departman || satir.departman || 'Mutfak';
+
+      if (mutfakEkraninaGitsin) {
+        try {
+          const { data: mutfakData, error: mutfakError } = await supabase
+            .from('mutfak_fisleri')
+            .insert([{
+              restaurant_id: mevcutRestaurantId,
+              masa_id: hedefMasa.id,
+              masa_adi: hedefMasa.ad,
+              urun_adi: urun.ad || satir.ad || 'Ürün',
+              adet,
+              not_metni: notMetni,
+              departman,
+              garson_adi: adisyonGarsonAdi,
+              durum: 'Bekliyor',
+              yazdirildi: !fizikiYaziciyaGitsin,
+            }])
+            .select()
+            .single();
+
+          if (!mutfakError && mutfakData) {
+            yeniFisler.push({
+              id: mutfakData.id,
+              restaurantId: mutfakData.restaurant_id,
+              masaId: mutfakData.masa_id,
+              masaAdi: mutfakData.masa_adi,
+              urunAdi: mutfakData.urun_adi,
+              adet: Number(mutfakData.adet || 1),
+              notMetni: mutfakData.not_metni || '',
+              departman: mutfakData.departman || departman,
+              garsonAdi: mutfakData.garson_adi || adisyonGarsonAdi,
+              durum: mutfakData.durum || 'Bekliyor',
+              createdAt: mutfakData.created_at,
+            });
+          }
+        } catch (err) {
+          console.warn('QR sipariş mutfak fişi oluşturulamadı:', err?.message || err);
+        }
+      } else if (fizikiYaziciyaGitsin) {
+        const yaziciTipi = yaziciDepartmaniniNormalizeEt(departman) === 'Bar' ? 'bar' : 'mutfak';
+        await yazdirmaKuyrugunaEkle({
+          yaziciTipi,
+          fisTipi: 'hazirlama',
+          baslik: yaziciTipi === 'bar' ? 'Bar Fişi' : 'Mutfak Fişi',
+          icerikText: mutfakSiparisFisiTextHazirla({
+            masaAdi: hedefMasa.ad,
+            urunAdi: urun.ad || satir.ad || 'Ürün',
+            adet,
+            notMetni,
+            departman,
+            garsonAdi: adisyonGarsonAdi,
+            baslik: yaziciTipi === 'bar' ? 'BAR FİŞİ' : 'MUTFAK FİŞİ',
+          }),
+        });
+      }
+    }
+
+    if (yeniFisler.length > 0) {
+      setMutfakFisleri(prev => [...yeniFisler, ...(Array.isArray(prev) ? prev : [])]);
+      mutfakFisYazdirmaKontrolEt(yeniFisler);
+    }
+
+    setServisTalepleri(prev => (Array.isArray(prev) ? prev : []).map(t => String(t.id) === String(talep.id) ? { ...t, durum: 'Masaya Aktarıldı', kapandiAt: new Date().toISOString() } : t));
+
+    if (/^\d+$/.test(String(talep.id || ''))) {
+      try {
+        await supabase
+          .from('servis_talepleri')
+          .update({ durum: 'Masaya Aktarıldı', tamamlanma_zamani: new Date().toISOString() })
+          .eq('id', talep.id);
+      } catch (err) {
+        console.warn('QR sipariş talebi durumu güncellenemedi:', err?.message || err);
+      }
+    }
+
+    islemLoguEkle('QR Sipariş', `${hedefMasa.ad} için QR sipariş masaya aktarıldı.`);
+    alert(`${hedefMasa.ad} için QR sipariş masaya aktarıldı.`);
   };
 
   const whatsappLinkiHazirla = (telefon = '', mesaj = '') => {
@@ -12364,36 +12675,63 @@ Toplam Ciro: {toplam}
 
   const qrSepetToplam = (Array.isArray(qrSepet) ? qrSepet : []).reduce((toplam, u) => toplam + Number(u.fiyat || 0) * Number(u.adet || 1), 0);
 
+  const qrSeciliMasaBilgisi = () => {
+    const seciliDeger = String(qrSiparisMasaNo || '').trim();
+    const masa = (Array.isArray(qrMenuPublicMasalar) ? qrMenuPublicMasalar : []).find(m => {
+      return String(m.id) === seciliDeger || String(m.ad || '').toLocaleLowerCase('tr-TR') === seciliDeger.toLocaleLowerCase('tr-TR');
+    });
+
+    return masa || {
+      id: '',
+      ad: seciliDeger,
+      bolum: '',
+    };
+  };
+
   const qrServisTalebiGonder = async (tip) => {
     if (publicAyarlariMasaZorunluMu() && !String(qrSiparisMasaNo || '').trim()) {
-      alert('Lütfen masa numaranızı yazın.');
+      alert('Lütfen masa seçin.');
       return;
     }
 
+    const seciliMasa = qrSeciliMasaBilgisi();
     const kayit = {
       restaurantId: qrMenuLinkRestaurantId,
       tip,
-      masaNo: String(qrSiparisMasaNo || '').trim(),
+      masaId: seciliMasa.id || null,
+      masaNo: seciliMasa.ad || String(qrSiparisMasaNo || '').trim(),
+      masaAdi: seciliMasa.ad || String(qrSiparisMasaNo || '').trim(),
       notMetni: qrSiparisNotu,
       kaynak: 'QR Menü',
       durum: 'Açık',
+      siparisUrunleri: [],
+      toplam: 0,
       createdAt: new Date().toISOString(),
     };
 
     try {
-      await supabase.from('servis_talepleri').insert([{
+      const { data, error } = await supabase.from('servis_talepleri').insert([{
         restaurant_id: kayit.restaurantId,
-        tip: kayit.tip,
+        talep_tipi: kayit.tip,
+        masa_id: kayit.masaId,
+        masa_adi: kayit.masaAdi,
         masa_no: kayit.masaNo,
+        mesaj: kayit.notMetni,
         not_metni: kayit.notMetni,
         kaynak: kayit.kaynak,
         durum: kayit.durum,
-      }]);
+        siparis_urunleri: [],
+        toplam: 0,
+        payload: kayit,
+      }]).select().single();
+
+      if (error) throw error;
+      setServisTalepleri(prev => [servisTalebiSupabaseSatiriniHazirla(data), ...(Array.isArray(prev) ? prev : [])]);
     } catch (err) {
       console.warn('QR servis talebi Supabase kaydı atlandı:', err?.message || err);
+      setServisTalepleri(prev => [{ id: `qr-srv-${Date.now()}`, ...kayit }, ...(Array.isArray(prev) ? prev : [])]);
     }
 
-    setServisTalepleri(prev => [{ id: `qr-srv-${Date.now()}`, ...kayit }, ...(Array.isArray(prev) ? prev : [])]);
     setQrServisMesaji(`${tip} talebiniz işletmeye iletildi.`);
   };
 
@@ -12410,50 +12748,56 @@ Toplam Ciro: {toplam}
     }
 
     if (publicAyarlariMasaZorunluMu() && !String(qrSiparisMasaNo || '').trim()) {
-      alert('Lütfen masa numaranızı yazın.');
+      alert('Lütfen masa seçin.');
       return;
     }
 
-    const siparisKaydi = {
+    const seciliMasa = qrSeciliMasaBilgisi();
+    const siparisTalebi = {
       restaurantId: qrMenuLinkRestaurantId,
-      platform: 'QR Menü',
-      platformOrderId: `QR-${Date.now()}`,
+      tip: 'QR Sipariş Onayı',
+      masaId: seciliMasa.id || null,
+      masaNo: seciliMasa.ad || String(qrSiparisMasaNo || '').trim(),
+      masaAdi: seciliMasa.ad || String(qrSiparisMasaNo || '').trim(),
       musteriAdi: qrSiparisMusteriAdi || 'QR Menü Müşterisi',
-      telefon: '',
-      adres: qrSiparisMasaNo ? `Masa: ${qrSiparisMasaNo}` : 'QR Menü',
-      urunler: qrSepet,
-      toplam: qrSepetToplam,
-      odemeTipi: 'Masada Ödenecek',
       notMetni: qrSiparisNotu,
-      durum: 'Yeni',
+      kaynak: 'QR Menü',
+      durum: 'Açık',
+      siparisUrunleri: qrSepet,
+      toplam: qrSepetToplam,
       createdAt: new Date().toISOString(),
     };
 
     setQrSiparisGonderiliyor(true);
     try {
-      await supabase.from('online_siparisler').insert([{
-        restaurant_id: siparisKaydi.restaurantId,
-        platform: siparisKaydi.platform,
-        platform_order_id: siparisKaydi.platformOrderId,
-        musteri_adi: siparisKaydi.musteriAdi,
-        telefon: siparisKaydi.telefon,
-        adres: siparisKaydi.adres,
-        urunler: siparisKaydi.urunler,
-        toplam: siparisKaydi.toplam,
-        odeme_tipi: siparisKaydi.odemeTipi,
-        durum: siparisKaydi.durum,
-        raw_payload: siparisKaydi,
-      }]);
+      const { data, error } = await supabase.from('servis_talepleri').insert([{
+        restaurant_id: siparisTalebi.restaurantId,
+        talep_tipi: siparisTalebi.tip,
+        masa_id: siparisTalebi.masaId,
+        masa_adi: siparisTalebi.masaAdi,
+        masa_no: siparisTalebi.masaNo,
+        musteri_adi: siparisTalebi.musteriAdi,
+        mesaj: siparisTalebi.notMetni,
+        not_metni: siparisTalebi.notMetni,
+        kaynak: siparisTalebi.kaynak,
+        durum: siparisTalebi.durum,
+        siparis_urunleri: siparisTalebi.siparisUrunleri,
+        toplam: siparisTalebi.toplam,
+        payload: siparisTalebi,
+      }]).select().single();
+
+      if (error) throw error;
+      setServisTalepleri(prev => [servisTalebiSupabaseSatiriniHazirla(data), ...(Array.isArray(prev) ? prev : [])]);
     } catch (err) {
-      console.warn('QR sipariş Supabase kaydı atlandı:', err?.message || err);
+      console.warn('QR sipariş servis talebi Supabase kaydı atlandı:', err?.message || err);
+      setServisTalepleri(prev => [{ id: `qr-order-${Date.now()}`, ...siparisTalebi }, ...(Array.isArray(prev) ? prev : [])]);
     } finally {
       setQrSiparisGonderiliyor(false);
     }
 
-    setOnlineSiparisler(prev => [{ id: `qr-${Date.now()}`, ...siparisKaydi }, ...(Array.isArray(prev) ? prev : [])]);
     setQrSepet([]);
     setQrSiparisNotu('');
-    setQrSiparisMesaji('Siparişiniz işletmeye gönderildi.');
+    setQrSiparisMesaji('Sipariş talebiniz garson onayına gönderildi. Garson onaylayınca masanıza aktarılacak.');
   };
 
   // adisyon ekranında ürün butonuna basılınca ürünü seçen kod
@@ -12666,6 +13010,18 @@ Toplam Ciro: {toplam}
     qrMenuyuSupabasedenCek(qrMenuLinkRestaurantId);
   }, [qrMenuMusteriModu, qrMenuLinkRestaurantId]);
 
+  // servis taleplerini panel açıkken belirli aralıklarla Supabase'den yenileyen kod
+  useEffect(() => {
+    if (!user || screen !== 'dashboard' || !mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return undefined;
+
+    servisTalepleriniSupabasedenCek(mevcutRestaurantId);
+    const zamanlayici = window.setInterval(() => {
+      servisTalepleriniSupabasedenCek(mevcutRestaurantId);
+    }, 12000);
+
+    return () => window.clearInterval(zamanlayici);
+  }, [user?.id, screen, mevcutRestaurantId]);
+
   // aktif entegrasyon platformu değişince formu kayıtlı bilgiyle dolduran kod
   useEffect(() => {
     if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return;
@@ -12768,6 +13124,10 @@ Toplam Ciro: {toplam}
           await rezervasyonlariSupabasedenCek(aktifRestaurantId);
         }
 
+        if (typeof servisTalepleriniSupabasedenCek === 'function') {
+          await servisTalepleriniSupabasedenCek(aktifRestaurantId);
+        }
+
         if (typeof satisGecmisiniSupabasedenCek === 'function') {
           await satisGecmisiniSupabasedenCek(aktifRestaurantId);
         }
@@ -12836,7 +13196,16 @@ Toplam Ciro: {toplam}
             <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '14px', boxShadow: '0 16px 45px -38px rgba(15,23,42,0.35)' }}>
               <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '10px' }}>Masa ve sipariş bilgisi</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <input type="text" placeholder="Masa no" value={qrSiparisMasaNo} onChange={e => setQrSiparisMasaNo(e.target.value)} style={{ ...styles.input, flex: '1 1 110px', minWidth: '100px' }} />
+                {Array.isArray(qrMenuPublicMasalar) && qrMenuPublicMasalar.length > 0 ? (
+                  <select value={qrSiparisMasaNo} onChange={e => setQrSiparisMasaNo(e.target.value)} style={{ ...styles.input, flex: '1 1 180px', minWidth: '160px' }}>
+                    <option value="">Masa seçin</option>
+                    {qrMenuPublicMasalar.map(masa => (
+                      <option key={masa.id} value={masa.id}>{masa.ad}{masa.bolum ? ` / ${masa.bolum}` : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" placeholder="Masa no" value={qrSiparisMasaNo} onChange={e => setQrSiparisMasaNo(e.target.value)} style={{ ...styles.input, flex: '1 1 110px', minWidth: '100px' }} />
+                )}
                 <input type="text" placeholder="Adınız (opsiyonel)" value={qrSiparisMusteriAdi} onChange={e => setQrSiparisMusteriAdi(e.target.value)} style={{ ...styles.input, flex: '2 1 180px', minWidth: '160px' }} />
                 <input type="text" placeholder="Not: acısız, az pişmiş..." value={qrSiparisNotu} onChange={e => setQrSiparisNotu(e.target.value)} style={{ ...styles.input, flex: '3 1 240px', minWidth: '180px' }} />
               </div>
@@ -12897,7 +13266,7 @@ Toplam Ciro: {toplam}
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontWeight: '900', fontSize: '15px' }}>Sepet — {qrSepet.reduce((t, u) => t + Number(u.adet || 1), 0)} ürün</div>
-                  <div style={{ color: '#cbd5e1', fontSize: '12px', marginTop: '3px' }}>{qrSepet.length === 0 ? 'Ürün seçip siparişi masaya gönderebilirsiniz.' : qrSepet.map(u => `${u.adet}x ${u.ad}`).join(' / ')}</div>
+                  <div style={{ color: '#cbd5e1', fontSize: '12px', marginTop: '3px' }}>{qrSepet.length === 0 ? 'Ürün seçip garson onayına gönderebilirsiniz.' : qrSepet.map(u => `${u.adet}x ${u.ad}`).join(' / ')}</div>
                   {qrSiparisMesaji ? <div style={{ color: '#86efac', fontSize: '12px', fontWeight: '900', marginTop: '6px' }}>{qrSiparisMesaji}</div> : null}
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -12909,7 +13278,7 @@ Toplam Ciro: {toplam}
                     </div>
                   ))}
                   <strong style={{ whiteSpace: 'nowrap' }}>{qrSepetToplam.toLocaleString('tr-TR')} TL</strong>
-                  <button type="button" disabled={qrSiparisGonderiliyor || qrSepet.length === 0} onClick={qrSiparisGonder} style={{ border: 'none', backgroundColor: '#22c55e', color: '#fff', padding: '11px 14px', borderRadius: '14px', cursor: qrSepet.length === 0 ? 'not-allowed' : 'pointer', fontWeight: '900' }}>{qrSiparisGonderiliyor ? 'Gönderiliyor...' : 'Siparişi Gönder'}</button>
+                  <button type="button" disabled={qrSiparisGonderiliyor || qrSepet.length === 0} onClick={qrSiparisGonder} style={{ border: 'none', backgroundColor: '#22c55e', color: '#fff', padding: '11px 14px', borderRadius: '14px', cursor: qrSepet.length === 0 ? 'not-allowed' : 'pointer', fontWeight: '900' }}>{qrSiparisGonderiliyor ? 'Gönderiliyor...' : 'Sipariş Talebi Gönder'}</button>
                 </div>
               </div>
             </div>
@@ -19009,15 +19378,38 @@ Toplam Ciro: {toplam}
                   <button type="button" onClick={() => servisTalebiEkle('Garson Çağır', activeMasa?.ad || '', '', 'Panel')} style={styles.btnOrange}>Test Garson Çağır</button>
                   <button type="button" onClick={() => servisTalebiEkle('Hesap İste', activeMasa?.ad || '', '', 'Panel')} style={{ ...styles.btnOrange, background: '#1e293b' }}>Test Hesap İste</button>
                 </div>
-                {aktifServisTalepleri.length === 0 ? <div style={{ color: '#94a3b8', padding: '20px' }}>Henüz servis talebi yok.</div> : aktifServisTalepleri.map(t => (
-                  <div key={t.id} style={styles.dataRow}>
-                    <span><strong>{t.tip}</strong> {t.masaNo ? `/ ${t.masaNo}` : ''} — {t.kaynak || 'QR'} / {tarihSaatYaz(t.createdAt)} {t.notMetni ? ` / ${t.notMetni}` : ''}</span>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span style={{ border: '1px solid #e2e8f0', borderRadius: '999px', padding: '5px 8px', fontSize: '12px', fontWeight: '900', color: t.durum === 'Açık' ? '#ea580c' : '#047857', backgroundColor: t.durum === 'Açık' ? '#fff7ed' : '#ecfdf5' }}>{t.durum}</span>
-                      {t.durum === 'Açık' ? <button type="button" onClick={() => servisTalebiniKapat(t.id)} style={{ ...styles.btnOrange, background: '#10b981', padding: '8px 10px', fontSize: '12px' }}>Kapat</button> : null}
+                {aktifServisTalepleri.length === 0 ? <div style={{ color: '#94a3b8', padding: '20px' }}>Henüz servis talebi yok.</div> : aktifServisTalepleri.map(t => {
+                  const qrSiparisTalebiMi = String(t.tip || '').toLocaleLowerCase('tr-TR').includes('qr sipariş');
+                  const siparisUrunleri = Array.isArray(t.siparisUrunleri) ? t.siparisUrunleri : [];
+                  return (
+                    <div key={t.id} style={{ ...styles.dataRow, alignItems: 'stretch', flexDirection: isMobile ? 'column' : 'row' }}>
+                      <div style={{ flex: 1 }}>
+                        <span><strong>{t.tip}</strong> {t.masaAdi || t.masaNo ? `/ ${t.masaAdi || t.masaNo}` : ''} — {t.kaynak || 'QR'} / {tarihSaatYaz(t.createdAt)} {t.notMetni ? ` / ${t.notMetni}` : ''}</span>
+                        {qrSiparisTalebiMi ? (
+                          <div style={{ marginTop: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px' }}>
+                            <div style={{ color: '#334155', fontSize: '12px', fontWeight: '900', marginBottom: '6px' }}>QR sipariş ürünleri — {Number(t.toplam || 0).toLocaleString('tr-TR')} TL</div>
+                            {siparisUrunleri.length === 0 ? (
+                              <div style={{ color: '#94a3b8', fontSize: '12px' }}>Ürün listesi bulunamadı.</div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                {siparisUrunleri.map((urun, index) => (
+                                  <span key={`${t.id}-${index}`} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '5px 8px', color: '#1e293b', fontSize: '12px', fontWeight: '900' }}>
+                                    {Number(urun.adet || 1)}x {urun.ad}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+                        <span style={{ border: '1px solid #e2e8f0', borderRadius: '999px', padding: '5px 8px', fontSize: '12px', fontWeight: '900', color: t.durum === 'Açık' ? '#ea580c' : '#047857', backgroundColor: t.durum === 'Açık' ? '#fff7ed' : '#ecfdf5' }}>{t.durum}</span>
+                        {qrSiparisTalebiMi && t.durum === 'Açık' ? <button type="button" onClick={() => qrSiparisTalebiniMasayaAktar(t)} style={{ ...styles.btnOrange, background: '#2563eb', padding: '8px 10px', fontSize: '12px' }}>Kabul Et ve Masaya Aktar</button> : null}
+                        {t.durum === 'Açık' ? <button type="button" onClick={() => servisTalebiniKapat(t.id)} style={{ ...styles.btnOrange, background: '#10b981', padding: '8px 10px', fontSize: '12px' }}>{qrSiparisTalebiMi ? 'Reddet/Kapat' : 'Kapat'}</button> : null}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <h3 style={{ margin: '18px 0 10px', color: '#1e293b' }}>🛡️ İşlem Logları</h3>
                 {(Array.isArray(islemLoglari) ? islemLoglari : []).filter(l => String(l.restaurantId) === String(mevcutRestaurantId)).slice(0, 12).map(l => (
                   <div key={l.id} style={{ ...styles.dataRow, backgroundColor: '#f8fafc' }}><span>{tarihSaatYaz(l.createdAt)} — <strong>{l.tip}</strong> / {l.aciklama}</span><span style={{ color: '#64748b', fontSize: '12px' }}>{l.kullanici}</span></div>
