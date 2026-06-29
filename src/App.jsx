@@ -13321,6 +13321,216 @@ Toplam Ciro: {toplam}
     return () => window.clearInterval(zamanlayici);
   }, [user?.id, screen, mevcutRestaurantId]);
 
+  // çok cihazlı canlı senkronizasyon kodu
+  // Bir telefonda/tablette yapılan ürün, masa, stok, cari veya sipariş değişikliği diğer açık panellere F5 atmadan yansır.
+  useEffect(() => {
+    if (!user || screen !== 'dashboard' || !mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return undefined;
+
+    const aktifRestaurantId = mevcutRestaurantId;
+    const yenilemeZamanlayicilari = {};
+    const sessizYenilemeAraligiMs = 30000;
+
+    const yenilemePlanla = (anahtar, yenile) => {
+      if (typeof window === 'undefined' || typeof yenile !== 'function') return;
+
+      if (yenilemeZamanlayicilari[anahtar]) {
+        window.clearTimeout(yenilemeZamanlayicilari[anahtar]);
+      }
+
+      yenilemeZamanlayicilari[anahtar] = window.setTimeout(async () => {
+        try {
+          await yenile();
+        } catch (err) {
+          console.warn(`Canlı senkronizasyon yenilemesi tamamlanamadı (${anahtar}):`, err?.message || err);
+        }
+      }, 450);
+    };
+
+    const tabloYenileyicileri = [
+      {
+        tablo: 'menu_urunleri',
+        yenile: async () => {
+          await menuUrunleriniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'menu_gruplari',
+        yenile: async () => {
+          await menuGruplariniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'masalar',
+        yenile: async () => {
+          await masalariSupabasedenCek(aktifRestaurantId);
+          await masaBolumleriniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'servis_talepleri',
+        yenile: async () => {
+          await servisTalepleriniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'paket_siparisleri',
+        yenile: async () => {
+          if (typeof paketSiparisleriniSupabasedenCek === 'function') await paketSiparisleriniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'stok_malzemeleri',
+        yenile: async () => {
+          if (typeof stokMalzemeleriniSupabasedenCek === 'function') await stokMalzemeleriniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'urun_receteleri',
+        yenile: async () => {
+          if (typeof urunReceteleriniSupabasedenCek === 'function') await urunReceteleriniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'cari_musteriler',
+        yenile: async () => {
+          if (typeof cariMusterileriSupabasedenCek === 'function') await cariMusterileriSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'kasa_hareketleri',
+        yenile: async () => {
+          if (typeof kasaHareketleriniSupabasedenCek === 'function') await kasaHareketleriniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'satis_gecmisi',
+        yenile: async () => {
+          if (typeof satisGecmisiniSupabasedenCek === 'function') await satisGecmisiniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'mutfak_fisleri',
+        yenile: async () => {
+          if (typeof mutfakFisleriniSupabasedenCek === 'function') await mutfakFisleriniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'giderler',
+        yenile: async () => {
+          if (typeof giderleriSupabasedenCek === 'function') await giderleriSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'iade_kayitlari',
+        yenile: async () => {
+          if (typeof iadeKayitlariniSupabasedenCek === 'function') await iadeKayitlariniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'rezervasyonlar',
+        yenile: async () => {
+          if (typeof rezervasyonlariSupabasedenCek === 'function') await rezervasyonlariSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'personeller',
+        yenile: async () => {
+          if (typeof personelleriSupabasedenCek === 'function') await personelleriSupabasedenCek(aktifRestaurantId);
+        },
+      },
+    ];
+
+    const kanal = supabase.channel(`integra-canli-panel-${aktifRestaurantId}`);
+
+    tabloYenileyicileri.forEach(({ tablo, yenile }) => {
+      kanal.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: tablo,
+          filter: `restaurant_id=eq.${aktifRestaurantId}`,
+        },
+        () => yenilemePlanla(tablo, yenile)
+      );
+    });
+
+    kanal.subscribe(status => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        console.warn('Canlı senkronizasyon bağlantısı tekrar kurulmayı bekliyor:', status);
+      }
+    });
+
+    // Realtime bağlantısı tarayıcı/telefon internetinden dolayı kaçırırsa sessiz yedek yenileme yapar.
+    const yedekZamanlayici = window.setInterval(() => {
+      yenilemePlanla('menu_urunleri_yedek', () => menuUrunleriniSupabasedenCek(aktifRestaurantId));
+      yenilemePlanla('menu_gruplari_yedek', () => menuGruplariniSupabasedenCek(aktifRestaurantId));
+      yenilemePlanla('masalar_yedek', async () => {
+        await masalariSupabasedenCek(aktifRestaurantId);
+        await masaBolumleriniSupabasedenCek(aktifRestaurantId);
+      });
+      yenilemePlanla('servis_talepleri_yedek', () => servisTalepleriniSupabasedenCek(aktifRestaurantId));
+      if (typeof mutfakFisleriniSupabasedenCek === 'function') yenilemePlanla('mutfak_fisleri_yedek', () => mutfakFisleriniSupabasedenCek(aktifRestaurantId));
+    }, sessizYenilemeAraligiMs);
+
+    return () => {
+      Object.values(yenilemeZamanlayicilari).forEach(zamanlayici => {
+        if (zamanlayici) window.clearTimeout(zamanlayici);
+      });
+      window.clearInterval(yedekZamanlayici);
+      supabase.removeChannel(kanal);
+    };
+  }, [user?.id, screen, mevcutRestaurantId]);
+
+  // QR menü müşteri ekranında ürün, grup ve masa değişikliklerini F5 atmadan güncelleyen kod
+  useEffect(() => {
+    if (!qrMenuMusteriModu || !qrMenuLinkRestaurantId) return undefined;
+
+    const restaurantId = qrMenuLinkRestaurantId;
+    const yenilemeZamanlayicilari = {};
+
+    const qrYenilemePlanla = (anahtar) => {
+      if (typeof window === 'undefined') return;
+
+      if (yenilemeZamanlayicilari[anahtar]) {
+        window.clearTimeout(yenilemeZamanlayicilari[anahtar]);
+      }
+
+      yenilemeZamanlayicilari[anahtar] = window.setTimeout(() => {
+        qrMenuyuSupabasedenCek(restaurantId);
+      }, 550);
+    };
+
+    const qrKanal = supabase.channel(`integra-canli-qr-menu-${restaurantId}`);
+
+    ['menu_urunleri', 'menu_gruplari', 'masalar', 'qr_menu_ayarlari'].forEach(tablo => {
+      qrKanal.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: tablo,
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => qrYenilemePlanla(tablo)
+      );
+    });
+
+    qrKanal.subscribe();
+
+    const yedekZamanlayici = window.setInterval(() => {
+      qrYenilemePlanla('qr_menu_yedek');
+    }, 45000);
+
+    return () => {
+      Object.values(yenilemeZamanlayicilari).forEach(zamanlayici => {
+        if (zamanlayici) window.clearTimeout(zamanlayici);
+      });
+      window.clearInterval(yedekZamanlayici);
+      supabase.removeChannel(qrKanal);
+    };
+  }, [qrMenuMusteriModu, qrMenuLinkRestaurantId]);
+
   // aktif entegrasyon platformu değişince formu kayıtlı bilgiyle dolduran kod
   useEffect(() => {
     if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return;
