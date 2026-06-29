@@ -570,6 +570,9 @@ Toplam Ciro: {toplam}
   const [receteDuzenlemeFireYuzde, setReceteDuzenlemeFireYuzde] = useState('');
   const [receteDuzenlemeNotu, setReceteDuzenlemeNotu] = useState('');
 
+  // ürün reçetesini tek tek kaydetmek yerine önce listeye toplayıp toplu kaydetmek için kullanılan kod
+  const [receteTaslakKalemleri, setReceteTaslakKalemleri] = useState([]);
+
 
   // hızlı satış / gel-al ekranı için kullanılan kod
   const [hizliSatisUrunler, setHizliSatisUrunler] = useState([]);
@@ -677,6 +680,7 @@ Toplam Ciro: {toplam}
     }
   });
   const [alisFisTedarikci, setAlisFisTedarikci] = useState('');
+  const [alisFisCariMusteriId, setAlisFisCariMusteriId] = useState('');
   const [alisFisBelgeNo, setAlisFisBelgeNo] = useState('');
   const [alisFisOdemeTipi, setAlisFisOdemeTipi] = useState('Nakit');
   const [alisFisNotu, setAlisFisNotu] = useState('');
@@ -2881,10 +2885,14 @@ Toplam Ciro: {toplam}
     }
 
     const toplam = paraYuvarla(kalemler.reduce((t, k) => t + Number(k.toplam || 0), 0));
+    const seciliAlisCari = (Array.isArray(cariMusteriler) ? cariMusteriler : []).find(c => String(c.id) === String(alisFisCariMusteriId));
+
     const fis = {
       id: `alis-${Date.now()}`,
       restaurantId: mevcutRestaurantId,
-      tedarikci: alisFisTedarikci || 'Tedarikçi belirtilmedi',
+      cariMusteriId: seciliAlisCari?.id || null,
+      cariMusteriAdi: seciliAlisCari?.ad || '',
+      tedarikci: alisFisTedarikci || seciliAlisCari?.ad || 'Tedarikçi belirtilmedi',
       belgeNo: alisFisBelgeNo || '',
       odemeTipi: alisFisOdemeTipi || 'Nakit',
       giderKategorisi: alisFisGiderKategorisi || 'Malzeme',
@@ -2997,9 +3005,15 @@ Toplam Ciro: {toplam}
       }
     }
 
+    if (seciliAlisCari && alisFisOdemeTipi === 'Cari / Vadeli' && toplam > 0) {
+      const cariAciklama = `Alış fişi${fis.belgeNo ? ` ${fis.belgeNo}` : ''} - ${fis.tedarikci}`;
+      await cariHareketEkle(seciliAlisCari, 'Alacak', toplam, cariAciklama);
+    }
+
     setAlisFisleri(prev => [fis, ...(Array.isArray(prev) ? prev : [])]);
     setAlisFisKalemleri([]);
     setAlisFisTedarikci('');
+    setAlisFisCariMusteriId('');
     setAlisFisBelgeNo('');
     setAlisFisNotu('');
     setAlisFisMesaji('Alış fişi kaydedildi. Seçilen hammadde ve ürün girişleri stoklara işlendi.');
@@ -8436,6 +8450,152 @@ Toplam Ciro: {toplam}
     islemLoguEkle('Reçete', 'Ürün reçetesi satırı kaydedildi.');
   };
 
+
+
+  // ürün reçetesine birden fazla hammaddeyi önce taslak listeye ekleyen kod
+  const receteTaslakKalemiEkle = () => {
+    if (!receteAyarlananUrunId) {
+      alert('Önce hangi ürünün reçetesini oluşturacağını seçin. Örn: Kek, Kumpir, Lahmacun.');
+      return;
+    }
+
+    if (!receteMalzemeId) {
+      alert('Reçeteye eklenecek hammaddeyi seçin. Örn: Un, yumurta, kaşar, patates.');
+      return;
+    }
+
+    const miktar = sayiyaCevir(receteMiktar);
+    if (!miktar || miktar <= 0) {
+      alert('Bu üründen 1 adet satıldığında kullanılacak hammadde miktarını girin. Örn: 0.200 kg un, 2 adet yumurta.');
+      return;
+    }
+
+    const secilenMalzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(receteMalzemeId));
+    if (!secilenMalzeme) {
+      alert('Seçilen hammadde bulunamadı. Önce Reçeteler > Hammadde Stokları bölümünden hammadde kartı açın.');
+      return;
+    }
+
+    const fireYuzde = Math.max(0, sayiyaCevir(receteFireYuzde));
+    const hazirlikNotu = String(receteHazirlikNotu || '').trim();
+    const yeniKalem = {
+      taslakId: `taslak-${receteMalzemeId}-${Date.now()}`,
+      malzemeId: secilenMalzeme.id,
+      malzemeAdi: secilenMalzeme.ad,
+      birim: secilenMalzeme.birim || 'adet',
+      miktar,
+      fireYuzde,
+      hazirlikNotu,
+      birimMaliyetSnapshot: Number(secilenMalzeme.birimMaliyet || 0),
+    };
+
+    setReceteTaslakKalemleri(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const ayniVarMi = liste.some(k => String(k.malzemeId) === String(yeniKalem.malzemeId));
+      if (ayniVarMi) {
+        return liste.map(k => String(k.malzemeId) === String(yeniKalem.malzemeId) ? { ...k, ...yeniKalem, taslakId: k.taslakId } : k);
+      }
+      return [...liste, yeniKalem];
+    });
+
+    setReceteMalzemeId('');
+    setReceteMiktar('');
+    setReceteFireYuzde('');
+    setReceteHazirlikNotu('');
+  };
+
+  const receteTaslakKalemiSil = (taslakId) => {
+    setReceteTaslakKalemleri(prev => (Array.isArray(prev) ? prev : []).filter(k => String(k.taslakId) !== String(taslakId)));
+  };
+
+  const receteTaslaginiTemizle = () => {
+    setReceteTaslakKalemleri([]);
+  };
+
+  // taslaktaki tüm hammaddeleri ürüne tek seferde kaydeden kod
+  const receteTaslaginiKaydet = async () => {
+    if (!receteAyarlananUrunId) {
+      alert('Reçetesi oluşturulacak ürünü seçin.');
+      return;
+    }
+
+    const kalemler = Array.isArray(receteTaslakKalemleri) ? receteTaslakKalemleri : [];
+    if (kalemler.length === 0) {
+      alert('Önce ürünü oluşturan hammaddeleri listeye ekleyin. Örn: Kek için un + yumurta + şeker.');
+      return;
+    }
+
+    let yeniReceteListesi = Array.isArray(urunReceteleri) ? [...urunReceteleri] : [];
+
+    for (const kalem of kalemler) {
+      const mevcutSatir = yeniReceteListesi
+        .filter(r => String(r.urunId) === String(receteAyarlananUrunId))
+        .find(r => String(r.malzemeId) === String(kalem.malzemeId));
+
+      const kayit = {
+        restaurant_id: mevcutRestaurantId,
+        urun_id: receteAyarlananUrunId,
+        malzeme_id: kalem.malzemeId,
+        miktar: Number(kalem.miktar || 0),
+        fire_yuzde: Number(kalem.fireYuzde || 0),
+        hazirlik_notu: kalem.hazirlikNotu || '',
+        birim_maliyet_snapshot: Number(kalem.birimMaliyetSnapshot || 0),
+      };
+
+      if (mevcutSatir) {
+        const { data, error } = await supabase
+          .from('urun_receteleri')
+          .update(kayit)
+          .eq('id', mevcutSatir.id)
+          .eq('restaurant_id', mevcutRestaurantId)
+          .select()
+          .single();
+
+        if (error) {
+          alert(`${kalem.malzemeAdi} reçeteye güncellenemedi: ${receteKolonHatasiMesaji(error)}`);
+          return;
+        }
+
+        const guncelSatir = receteSatiriniUygulamaFormatinaCevir(data, {
+          ...mevcutSatir,
+          urunId: receteAyarlananUrunId,
+          malzemeId: kalem.malzemeId,
+          miktar: kalem.miktar,
+          fireYuzde: kalem.fireYuzde,
+          hazirlikNotu: kalem.hazirlikNotu,
+          birimMaliyetSnapshot: kalem.birimMaliyetSnapshot,
+        });
+        yeniReceteListesi = yeniReceteListesi.map(r => String(r.id) === String(mevcutSatir.id) ? guncelSatir : r);
+      } else {
+        const { data, error } = await supabase
+          .from('urun_receteleri')
+          .insert([kayit])
+          .select()
+          .single();
+
+        if (error) {
+          alert(`${kalem.malzemeAdi} reçeteye eklenemedi: ${receteKolonHatasiMesaji(error)}`);
+          return;
+        }
+
+        yeniReceteListesi.push(receteSatiriniUygulamaFormatinaCevir(data, {
+          restaurantId: mevcutRestaurantId,
+          urunId: receteAyarlananUrunId,
+          malzemeId: kalem.malzemeId,
+          miktar: kalem.miktar,
+          fireYuzde: kalem.fireYuzde,
+          hazirlikNotu: kalem.hazirlikNotu,
+          birimMaliyetSnapshot: kalem.birimMaliyetSnapshot,
+        }));
+      }
+    }
+
+    setUrunReceteleri(yeniReceteListesi);
+    setReceteTaslakKalemleri([]);
+    islemLoguEkle('Reçete', `${kalemler.length} hammadde ürüne toplu reçete olarak kaydedildi.`);
+    alert('Reçete kaydedildi. Bu ürün satıldığında listedeki tüm hammaddeler belirtilen miktarda stoktan düşecek.');
+  };
+
   const urunReceteSatiriDuzenlemeyeAl = (satir) => {
     setReceteDuzenlenenSatirId(satir.id);
     setReceteDuzenlemeMiktar(String(satir.miktar || ''));
@@ -12595,7 +12755,7 @@ Toplam Ciro: {toplam}
                     <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
                       <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>1) Ürün seç ve reçete satırı ekle</div>
                       <div style={styles.inlineForm}>
-                        <select value={receteAyarlananUrunId} onChange={e => setReceteAyarlananUrunId(e.target.value)} style={styles.input}>
+                        <select value={receteAyarlananUrunId} onChange={e => { setReceteAyarlananUrunId(e.target.value); setReceteTaslakKalemleri([]); }} style={styles.input}>
                           <option value="">Reçete ürünü seç</option>
                           {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad} — Satış {u.fiyat} TL</option>)}
                         </select>
@@ -12606,11 +12766,39 @@ Toplam Ciro: {toplam}
                         <input type="number" step="0.001" placeholder="Net miktar" value={receteMiktar} onChange={e => setReceteMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '130px' }} />
                         <input type="number" step="0.01" placeholder="Fire %" value={receteFireYuzde} onChange={e => setReceteFireYuzde(e.target.value)} style={{ ...styles.input, maxWidth: '100px' }} />
                         <input type="text" placeholder="Hazırlık notu: doğranmış, pişmiş, soslu..." value={receteHazirlikNotu} onChange={e => setReceteHazirlikNotu(e.target.value)} style={{ ...styles.input, flex: '1 1 220px' }} />
-                        <button type="button" onClick={urunReceteSatiriEkle} style={styles.btnOrange}>Satırı Kaydet</button>
+                        <button type="button" onClick={receteTaslakKalemiEkle} style={styles.btnOrange}>Reçete Listesine Ekle</button>
                       </div>
                       <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '8px' }}>
-                        Örnek: 1 kumpirde 0.35 kg patates kullanılıyorsa miktar <strong>0.35</strong> yazılır. Soyma/pişirme kaybı varsa fire yüzdesi eklenir.
+                        Mantık: Ürün satılınca reçetedeki <strong>tüm hammaddeler</strong> aynı anda düşer. Örnek: Kek = 0.20 kg un + 2 adet yumurta + 0.10 kg şeker. Hepsini listeye ekleyip tek seferde kaydedin.
                       </div>
+
+                      {receteTaslakKalemleri.length > 0 ? (
+                        <div style={{ marginTop: '12px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '8px' }}>
+                            <strong style={{ color: '#9a3412' }}>Ürünü oluşturan hammaddeler ({receteTaslakKalemleri.length})</strong>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <button type="button" onClick={receteTaslaginiKaydet} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Tüm Reçeteyi Kaydet</button>
+                              <button type="button" onClick={receteTaslaginiTemizle} style={{ ...styles.btnOrange, backgroundColor: '#64748b' }}>Listeyi Temizle</button>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                            {receteTaslakKalemleri.map(k => {
+                              const fireli = paraYuvarla(Number(k.miktar || 0) * (1 + Number(k.fireYuzde || 0) / 100));
+                              const maliyet = paraYuvarla(fireli * Number(k.birimMaliyetSnapshot || 0));
+                              return (
+                                <div key={k.taslakId} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '10px', padding: '8px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.75fr 0.75fr 0.75fr auto', gap: '8px', alignItems: 'center', fontSize: '12px' }}>
+                                  <strong style={{ color: '#1e293b' }}>{k.malzemeAdi}</strong>
+                                  <span>Net: <strong>{k.miktar}</strong> {k.birim}</span>
+                                  <span>Fireli: <strong>{fireli}</strong> {k.birim}</span>
+                                  <span>Maliyet: <strong>{maliyet} TL</strong></span>
+                                  <button type="button" onClick={() => receteTaslakKalemiSil(k.taslakId)} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontWeight: '900' }}>Sil</button>
+                                  {k.hazirlikNotu ? <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1', color: '#64748b' }}>Not: {k.hazirlikNotu}</div> : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
@@ -18255,7 +18443,16 @@ Toplam Ciro: {toplam}
 
                   {alisFisMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#dbeafe', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '12px', padding: '9px 11px', fontSize: '12px', fontWeight: '800' }}>{alisFisMesaji}</div> : null}
 
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, minmax(160px, 1fr))', gap: '8px', marginTop: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(5, minmax(150px, 1fr))', gap: '8px', marginTop: '12px' }}>
+                    <select value={alisFisCariMusteriId} onChange={e => {
+                      const seciliId = e.target.value;
+                      const seciliCari = cariMusteriler.find(c => String(c.id) === String(seciliId));
+                      setAlisFisCariMusteriId(seciliId);
+                      if (seciliCari?.ad) setAlisFisTedarikci(seciliCari.ad);
+                    }} style={{ ...styles.input, backgroundColor: '#fff' }}>
+                      <option value="">Kayıtlı cari/tedarikçi seç</option>
+                      {cariMusteriler.filter(c => String(c.restaurantId) === String(mevcutRestaurantId)).map(c => <option key={c.id} value={c.id}>{c.ad} {c.bakiye ? `— Bakiye ${c.bakiye} TL` : ''}</option>)}
+                    </select>
                     <input type="text" placeholder="Tedarikçi / firma" value={alisFisTedarikci} onChange={e => setAlisFisTedarikci(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
                     <input type="text" placeholder="Fiş / fatura no" value={alisFisBelgeNo} onChange={e => setAlisFisBelgeNo(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
                     <select value={alisFisOdemeTipi} onChange={e => setAlisFisOdemeTipi(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
@@ -18297,6 +18494,9 @@ Toplam Ciro: {toplam}
                     <input type="checkbox" checked={alisFisGiderOlarakIsle} onChange={e => setAlisFisGiderOlarakIsle(e.target.checked)} />
                     Bu alış fişini giderlere de işle
                   </label>
+                  <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '6px' }}>
+                    Kayıtlı cari seçip ödeme tipini <strong>Cari / Vadeli</strong> yaparsan fiş tutarı cari ekstresine tedarikçi borcu olarak işlenir. Peşin alışlarda sadece tedarikçi adı olarak kullanılır.
+                  </div>
 
                   {alisFisKalemleri.length === 0 ? (
                     <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px dashed #bae6fd', color: '#64748b', borderRadius: '12px', padding: '12px', fontSize: '12px' }}>
@@ -18327,7 +18527,7 @@ Toplam Ciro: {toplam}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                         {alisFisleri.filter(f => String(f.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(f => (
                           <div key={f.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155' }}>
-                            <strong>{f.tedarikci}</strong> — {f.belgeNo || 'Belge no yok'} — {tarihSaatYaz(f.tarih)} — <strong>{f.toplam} TL</strong>
+                            <strong>{f.tedarikci}</strong>{f.cariMusteriAdi ? ` / Cari: ${f.cariMusteriAdi}` : ''} — {f.belgeNo || 'Belge no yok'} — {tarihSaatYaz(f.tarih)} — <strong>{f.toplam} TL</strong>
                             <div style={{ color: '#64748b', marginTop: '4px' }}>{Array.isArray(f.kalemler) ? f.kalemler.map(k => `${k.malzemeAdi}: ${k.miktar} ${k.birim}`).join(' / ') : ''}</div>
                           </div>
                         ))}
