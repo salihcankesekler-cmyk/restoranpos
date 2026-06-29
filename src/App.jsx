@@ -5474,7 +5474,7 @@ Toplam Ciro: {toplam}
           kayit_notu: kayitNotu,
           basvuru_paketi: kayitPaketi,
           paket_adi: kayitPaketi,
-          aylik_ucret: kayitPaketi === 'Profesyonel' ? 699 : 0,
+          aylik_ucret: 0,
           lisans_durumu: 'Onay Bekliyor',
           kullanici_limiti: kayitPaketi === 'Profesyonel' ? 3 : 0,
           durum: 'Onay Bekliyor',
@@ -14095,14 +14095,14 @@ Toplam Ciro: {toplam}
             <nav style={styles.landingNavLinks}>
               <a href="#moduller" style={styles.navLinkItem}>Modüller</a>
               <a href="#nasil-calisir" style={styles.navLinkItem}>Nasıl Çalışır?</a>
-              <a href="#fiyatlar" style={styles.navLinkItem}>Fiyatlar</a>
+              <a href="#fiyatlar" style={styles.navLinkItem}>Paketler</a>
               <a href="#destek" style={styles.navLinkItem}>Destek</a>
               <a href="#sss" style={styles.navLinkItem}>SSS</a>
             </nav>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <button onClick={() => setScreen('login')} style={styles.navbarLoginBtn}>Giriş Yap</button>
-              <button onClick={() => setScreen('register')} style={styles.navbarRegisterBtn}>Demo Talep Et</button>
+              <a href="#destek" style={{ ...styles.navbarRegisterBtn, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>İletişime Geç</a>
             </div>
           </header>
 
@@ -14116,20 +14116,20 @@ Toplam Ciro: {toplam}
             }}
           >
             <div style={styles.heroContent}>
-              <span style={styles.heroBadge}>🎁 21 gün ücretsiz deneme • Windows yazıcı agent • Mobil uyumlu POS</span>
-              <h1 style={styles.heroTitle}>Restoranınızı tek ekrandan yöneten modern POS sistemi.</h1>
+              <span style={styles.heroBadge}>✨ Bulut tabanlı restoran POS • QR menü • Reçete & maliyet • Mobil uyumlu</span>
+              <h1 style={styles.heroTitle}>Restoran, kafe ve paket servisi tek panelden yönetin.</h1>
               <p style={styles.heroSubtitle}>
-                Integra POS; masa adisyonu, hızlı satış, paket servis, mutfak/bar yazıcıları, cari/veresiye, stok-reçete ve gün sonu raporlarını tek panelde toplar.
+                Integra POS; masa adisyonu, QR menü siparişi, paket servis, reçete-maliyet, cari/veresiye, stok ve gün sonu raporlarını modern bir işletme panelinde toplar.
               </p>
 
               <div style={styles.heroActionGroup}>
-                <button onClick={() => setScreen('register')} style={styles.heroMainBtn}>21 Gün Ücretsiz Dene</button>
-                <button onClick={() => setScreen('login')} style={styles.heroSecondaryBtn}>Giriş Paneli</button>
+                <a href="#destek" style={{ ...styles.heroMainBtn, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>İletişime Geç</a>
+                <button onClick={() => setScreen('login')} style={styles.heroSecondaryBtn}>Müşteri Girişi</button>
                 <a href="tel:05325014277" style={styles.heroPhoneBtn}>📞 Hemen Ara</a>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '22px' }}>
-                {['21 gün ücretsiz', 'Printer Agent', 'Android APK', 'Mutfak & Bar', 'Cari / Veresiye', 'Stok & Reçete'].map(item => (
+                {['QR Menü', 'Masa Adisyon', 'Android APK', 'Mutfak & Bar', 'Cari / Veresiye', 'Stok & Reçete'].map(item => (
                   <span
                     key={item}
                     style={{
@@ -14153,12 +14153,12 @@ Toplam Ciro: {toplam}
                   <div style={styles.heroStatLabel}>Bulut erişim</div>
                 </div>
                 <div style={styles.heroStatCard}>
-                  <div style={styles.heroStatValue}>21 gün</div>
-                  <div style={styles.heroStatLabel}>Ücretsiz deneme</div>
+                  <div style={styles.heroStatValue}>QR</div>
+                  <div style={styles.heroStatLabel}>Masa siparişi</div>
                 </div>
                 <div style={styles.heroStatCard}>
-                  <div style={styles.heroStatValue}>3 yazıcı</div>
-                  <div style={styles.heroStatLabel}>Adisyon / mutfak / bar</div>
+                  <div style={styles.heroStatValue}>Kâr</div>
+                  <div style={styles.heroStatLabel}>Maliyet takibi</div>
                 </div>
               </div>
             </div>
@@ -14203,7 +14203,7 @@ Toplam Ciro: {toplam}
                   </div>
 
                   <div style={styles.mockupReceipt}>
-                    <div style={styles.mockupReceiptTitle}>🧾 Aktif Adisyon • Yazıcı Kuyruğu Hazır</div>
+                    <div style={styles.mockupReceiptTitle}>🧾 Aktif Adisyon • Reçete & Maliyet Takibi</div>
                     <div style={styles.mockupReceiptRow}>
                       <span>2x Lahmacun <small style={{ color: '#64748b' }}>(Acılı)</small></span>
                       <strong>240 TL</strong>
@@ -14229,7 +14229,7 @@ Toplam Ciro: {toplam}
           {/* PREMIUM GÜVEN ŞERİDİ */}
           <section style={styles.trustStripSection}>
             {[
-              ['🖨️', 'Sessiz yazdırma', 'Adisyon, mutfak ve bar yazıcıları Windows Agent ile otomatik çalışır.'],
+              ['🧾', 'Fiş ve mutfak akışı', 'Adisyon, mutfak, bar ve ödeme süreçleri tek panelden yönetilir.'],
               ['📱', 'Mobil / APK', 'Telefon ve tablet kullanımına uygun hızlı adisyon ekranları.'],
               ['📊', 'Canlı rapor', 'Kasa, KDV, kâr, cari ve gün sonu verileri anlık takip edilir.'],
               ['🛵', 'Paket servis', 'Müşteri, kurye, paket fişi ve cari/veresiye akışı tek panelde.'],
@@ -14242,6 +14242,34 @@ Toplam Ciro: {toplam}
                 </div>
               </div>
             ))}
+          </section>
+
+          {/* CANLI OPERASYON AKIŞI */}
+          <section style={{ padding: '72px 4%', backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ maxWidth: '1180px', margin: '0 auto' }}>
+              <div style={styles.sectionHeadWrap}>
+                <span style={styles.sectionBadge}>Canlı Operasyon</span>
+                <h2 style={styles.sectionTitle}>Siparişten rapora kadar akış tek çizgide ilerler</h2>
+                <p style={styles.sectionSubtitle}>
+                  QR menü, masa adisyonu, reçete/stok düşümü ve kâr raporu birbirine bağlı çalışır. İşletme sahibi gün sonunda sadece ciroyu değil, maliyeti ve kârlılığı da görür.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                {[
+                  ['1', 'Müşteri sipariş verir', 'Masa, QR menü, hızlı satış veya paket servis üzerinden sipariş alınır.'],
+                  ['2', 'Garson onaylar', 'QR talepleri servis ekranına düşer, garson onayıyla doğru masaya aktarılır.'],
+                  ['3', 'Stok ve reçete işler', 'Ürün reçetesine göre hammadde veya üretilmiş ürün stoğu kontrollü düşer.'],
+                  ['4', 'Kâr rapora yansır', 'Satış, maliyet, brüt kâr, cari ve kasa hareketleri raporlarda toplanır.'],
+                ].map(([no, title, text]) => (
+                  <div key={title} style={{ background: 'linear-gradient(180deg, #fff 0%, #fff7ed 100%)', border: '1px solid #fed7aa', borderRadius: '20px', padding: '22px', boxShadow: '0 18px 40px -28px rgba(15,23,42,0.22)' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#ff6b35', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', marginBottom: '14px' }}>{no}</div>
+                    <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '17px' }}>{title}</h3>
+                    <p style={{ margin: 0, color: '#64748b', lineHeight: 1.65, fontSize: '13px' }}>{text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
 
           {/* KİMLER İÇİN */}
@@ -14425,16 +14453,16 @@ Toplam Ciro: {toplam}
           {/* PRICING */}
           <section id="fiyatlar" style={styles.pricingSection}>
             <div style={styles.sectionHeadWrap}>
-              <span style={styles.sectionBadge}>Fiyatlar</span>
-              <h2 style={styles.sectionTitle}>Şeffaf ve satışa hazır fiyatlandırma</h2>
-              <p style={styles.sectionSubtitle}>Restoran, kafe ve paket servis işletmeleri için aylık lisans modeli.</p>
+              <span style={styles.sectionBadge}>Paketler</span>
+              <h2 style={styles.sectionTitle}>İşletmenize uygun paketi birlikte belirleyelim</h2>
+              <p style={styles.sectionSubtitle}>İhtiyacınız olan modüllere göre size uygun kurulumu ve lisans paketini birlikte planlayalım.</p>
             </div>
 
             <div style={{ ...styles.pricingGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
               <div style={{ ...styles.priceCard, ...styles.priceCardFeatured }}>
-                <div style={styles.pricePopularBadge}>Önerilen Paket</div>
+                <div style={styles.pricePopularBadge}>En Çok Tercih Edilen</div>
                 <div style={styles.pricePlan}>Profesyonel</div>
-                <div style={styles.priceValue}>699 TL<span style={styles.pricePeriod}>/ay</span></div>
+                <div style={styles.priceValue}>İletişime Geçin</div>
                 <ul style={styles.priceList}>
                   <li style={styles.priceListItem}>Masa, adisyon ve masa aktarma</li>
                   <li style={styles.priceListItem}>Paket servis ve hızlı satış</li>
@@ -14442,7 +14470,7 @@ Toplam Ciro: {toplam}
                   <li style={styles.priceListItem}>Gün sonu, kasa ve raporlar</li>
                   <li style={styles.priceListItem}>Personel yetkileri ve kullanıcı limiti</li>
                 </ul>
-                <button onClick={() => { setKayitPaketi('Profesyonel'); setScreen('register'); }} style={styles.priceBtn}>21 Gün Ücretsiz Dene</button>
+                <a href="#destek" style={{ ...styles.priceBtn, textDecoration: 'none', display: 'inline-flex', justifyContent: 'center' }}>İletişime Geç</a>
               </div>
 
               <div style={styles.priceCard}>
@@ -14465,7 +14493,7 @@ Toplam Ciro: {toplam}
               <div>
                 <span style={styles.sectionBadge}>Destek ve Geliştirme</span>
                 <h2 style={styles.sectionTitle}>İstek, hata ve geliştirme taleplerinizi bize gönderin.</h2>
-                <p style={styles.sectionSubtitle}>Müşterilerinizden gelen ihtiyaçlara göre sistemi büyütelim. Formdan gönderilen tüm talepler süper admin paneline düşer ve mail bildirimi denenir.</p>
+                <p style={styles.sectionSubtitle}>Müşterilerinizden gelen ihtiyaçlara göre sistemi büyütelim. Formdan gönderilen talepler ekibimize ulaşır; işletmenize uygun kurulum ve kullanım akışını birlikte planlarız.</p>
                 <div style={{ display: 'grid', gap: '12px', marginTop: '22px' }}>
                   {[
                     'Yeni özellik isteği',
@@ -14512,7 +14540,7 @@ Toplam Ciro: {toplam}
             <div style={{ maxWidth: '980px', margin: '0 auto', display: 'grid', gap: '12px' }}>
               {[
                 ['Garsonlar telefondan kullanabilir mi?', 'Evet. Sistem web tabanlı olduğu için telefon, tablet ve bilgisayar tarayıcısından kullanılabilir.'],
-                ['Fiş yazıcı bağlanır mı?', 'Tarayıcı yazdırma sistemiyle hesap öncesi adisyon, ödeme fişi ve gün sonu raporu alınabilir.'],
+                ['Fiş ve mutfak akışı var mı?', 'Adisyon, mutfak, bar, ödeme fişi ve gün sonu raporu aynı panelden yönetilebilir.'],
                 ['Mutfak ekranı ayrı çalışır mı?', 'Evet. Mutfağa gidecek ürünler notları ve adetleriyle mutfak ekranına düşer.'],
                 ['Raporlarda ödeme ayrımı var mı?', 'Nakit, kredi kartı, parçalı ödeme ve ürün bazlı satış raporları takip edilebilir.'],
                 ['Kurulum gerekiyor mu?', 'Temel kullanım için ekstra kurulum gerekmez; internet olan cihazdan giriş yapılır.'],
@@ -14571,9 +14599,9 @@ Toplam Ciro: {toplam}
 
           <div style={styles.landingFloatingCta}>
             <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>Integra POS</div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>21 gün ücretsiz deneyin</div>
+            <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>Teklif ve demo için ulaşın</div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" onClick={() => setScreen('register')} style={styles.floatingCtaPrimary}>Dene</button>
+              <a href="#destek" style={{ ...styles.floatingCtaPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>İletişim</a>
               <a href="tel:05325014277" style={styles.floatingCtaSecondary}>Ara</a>
             </div>
           </div>
@@ -14779,7 +14807,7 @@ Toplam Ciro: {toplam}
                 onChange={e => setKayitPaketi(e.target.value)}
                 style={styles.authInput}
               >
-                <option value="Profesyonel">Profesyonel - 699 TL / ay</option>
+                <option value="Profesyonel">Profesyonel - İletişime Geçin</option>
                 <option value="Kurumsal">Kurumsal / Özel Çözüm - İletişime Geçin</option>
               </select>
               <input
