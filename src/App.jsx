@@ -2775,19 +2775,50 @@ Toplam Ciro: {toplam}
     return toplam + Number(kalem.miktar || 0) * Number(kalem.birimFiyat || 0);
   }, 0);
 
+  // alış fişinde hem hammadde hem de satış ürünü seçilebilmesi için ortak liste oluşturan kod
+  const alisFisiSecilebilirKalemler = [
+    ...(Array.isArray(aktifStokMalzemeleri) ? aktifStokMalzemeleri : []).map(m => ({
+      secimId: `malzeme:${m.id}`,
+      tip: 'malzeme',
+      id: m.id,
+      ad: m.ad,
+      birim: m.birim || 'adet',
+      mevcutStok: stokMalzemeMiktari(m),
+      kritikStok: stokMalzemeKritikMiktari(m),
+      birimMaliyet: Number(m.birimMaliyet ?? m.birim_maliyet ?? 0),
+      etiket: 'Hammadde',
+    })),
+    ...(Array.isArray(aktifMenu) ? aktifMenu : []).map(u => ({
+      secimId: `urun:${u.id}`,
+      tip: 'urun',
+      id: u.id,
+      ad: u.ad,
+      birim: 'adet',
+      mevcutStok: Number(u.stokAdedi ?? u.stok_adedi ?? 0),
+      kritikStok: Number(u.kritikStok ?? u.kritik_stok ?? 0),
+      birimMaliyet: Number(u.maliyet ?? 0),
+      etiket: 'Satış Ürünü',
+    })),
+  ];
+
+  const alisFisiKalemBul = (secimId) => {
+    const temiz = String(secimId || '').trim();
+    return alisFisiSecilebilirKalemler.find(k => String(k.secimId) === temiz) || null;
+  };
+
   // hammaddeyi alış fişine hızlı seçen kod
   const alisFisineMalzemeyiSec = (malzeme) => {
     if (!malzeme) return;
-    setAlisFisMalzemeId(String(malzeme.id));
+    setAlisFisMalzemeId(`malzeme:${malzeme.id}`);
     setAlisFisBirimFiyat(String(malzeme.birimMaliyet || malzeme.birim_maliyet || ''));
     setAlisFisMesaji(`${malzeme.ad} seçildi. Miktarı girip alış fişine ekleyin.`);
   };
 
   // alış fişine kalem ekleyen kod
   const alisFisKalemiEkle = () => {
-    const malzeme = (Array.isArray(aktifStokMalzemeleri) ? aktifStokMalzemeleri : []).find(m => String(m.id) === String(alisFisMalzemeId));
-    if (!malzeme) {
-      alert('Alış fişine eklemek için malzeme seçin. Liste boşsa önce Hammadde Stokları bölümünden malzeme kartı açın.');
+    const secilenKalem = alisFisiKalemBul(alisFisMalzemeId);
+    if (!secilenKalem) {
+      alert('Alış fişine eklemek için hammadde veya satış ürünü seçin. Liste boşsa önce hammadde kartı ya da menü ürünü oluşturun.');
       return;
     }
 
@@ -2797,13 +2828,15 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const birimFiyat = sayiyaCevir(alisFisBirimFiyat || malzeme.birimMaliyet || 0);
+    const birimFiyat = sayiyaCevir(alisFisBirimFiyat || secilenKalem.birimMaliyet || 0);
     const yeniKalem = {
-      id: `${malzeme.id}-${Date.now()}`,
-      malzemeId: malzeme.id,
-      malzemeAdi: malzeme.ad,
-      birim: malzeme.birim || 'adet',
-      mevcutStok: stokMalzemeMiktari(malzeme),
+      id: `${secilenKalem.tip}-${secilenKalem.id}-${Date.now()}`,
+      kalemTipi: secilenKalem.tip,
+      malzemeId: secilenKalem.tip === 'malzeme' ? secilenKalem.id : null,
+      urunId: secilenKalem.tip === 'urun' ? secilenKalem.id : null,
+      malzemeAdi: secilenKalem.ad,
+      birim: secilenKalem.birim || 'adet',
+      mevcutStok: Number(secilenKalem.mevcutStok || 0),
       miktar,
       birimFiyat,
       toplam: paraYuvarla(miktar * birimFiyat),
@@ -2811,7 +2844,14 @@ Toplam Ciro: {toplam}
 
     setAlisFisKalemleri(prev => {
       const liste = Array.isArray(prev) ? prev : [];
-      const ayniIndex = liste.findIndex(k => String(k.malzemeId) === String(malzeme.id) && Number(k.birimFiyat || 0) === Number(birimFiyat || 0));
+      const ayniIndex = liste.findIndex(k => {
+        const ayniTip = String(k.kalemTipi || 'malzeme') === String(yeniKalem.kalemTipi);
+        const ayniKayit = yeniKalem.kalemTipi === 'urun'
+          ? String(k.urunId) === String(yeniKalem.urunId)
+          : String(k.malzemeId) === String(yeniKalem.malzemeId);
+        return ayniTip && ayniKayit && Number(k.birimFiyat || 0) === Number(birimFiyat || 0);
+      });
+
       if (ayniIndex >= 0) {
         return liste.map((k, index) => {
           if (index !== ayniIndex) return k;
@@ -2836,7 +2876,7 @@ Toplam Ciro: {toplam}
   const alisFisiniKaydetVeStogaIsle = async () => {
     const kalemler = Array.isArray(alisFisKalemleri) ? alisFisKalemleri : [];
     if (kalemler.length === 0) {
-      alert('Alış fişine en az bir malzeme ekleyin.');
+      alert('Alış fişine en az bir hammadde veya ürün ekleyin.');
       return;
     }
 
@@ -2856,18 +2896,49 @@ Toplam Ciro: {toplam}
       durum: 'Stoğa İşlendi',
     };
 
+    const guncellenenMalzemeKalemleri = [];
+    const guncellenenUrunKalemleri = [];
+
     for (const kalem of kalemler) {
+      const kalemTipi = String(kalem.kalemTipi || 'malzeme');
+
+      if (kalemTipi === 'urun') {
+        const urun = (Array.isArray(menuUrunleri) ? menuUrunleri : []).find(u => String(u.id) === String(kalem.urunId));
+        if (!urun) continue;
+
+        const yeniStok = paraYuvarla(Number(urun.stokAdedi || 0) + Number(kalem.miktar || 0));
+        const yeniMaliyet = Number(kalem.birimFiyat || 0) > 0 ? Number(kalem.birimFiyat || 0) : Number(urun.maliyet || 0);
+
+        const { data, error } = await supabase
+          .from('menu_urunleri')
+          .update({ stok_takip: true, stok_adedi: yeniStok, maliyet: yeniMaliyet })
+          .eq('id', kalem.urunId)
+          .eq('restaurant_id', mevcutRestaurantId)
+          .select()
+          .single();
+
+        if (error) {
+          alert(`${kalem.malzemeAdi} ürün stoğuna işlenemedi: ${error.message}`);
+          return;
+        }
+
+        guncellenenUrunKalemleri.push({ kalem, data, yeniStok, yeniMaliyet });
+        continue;
+      }
+
       const malzeme = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : []).find(m => String(m.id) === String(kalem.malzemeId));
       if (!malzeme) continue;
 
       const yeniStok = paraYuvarla(stokMalzemeMiktari(malzeme) + Number(kalem.miktar || 0));
       const yeniBirimMaliyet = Number(kalem.birimFiyat || 0) > 0 ? Number(kalem.birimFiyat || 0) : Number(malzeme.birimMaliyet || 0);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('stok_malzemeleri')
         .update({ stok_miktari: yeniStok, birim_maliyet: yeniBirimMaliyet })
         .eq('id', kalem.malzemeId)
-        .eq('restaurant_id', mevcutRestaurantId);
+        .eq('restaurant_id', mevcutRestaurantId)
+        .select()
+        .single();
 
       if (error) {
         alert(`${kalem.malzemeAdi} stoğa işlenemedi: ${error.message}`);
@@ -2881,17 +2952,34 @@ Toplam Ciro: {toplam}
         miktar: Number(kalem.miktar || 0),
         aciklama: `Alış fişi ${fis.belgeNo || fis.id} - ${fis.tedarikci}`,
       }]);
+
+      guncellenenMalzemeKalemleri.push({ kalem, data, yeniStok, yeniBirimMaliyet });
     }
 
-    setStokMalzemeleri(prev => (Array.isArray(prev) ? prev : []).map(m => {
-      const kalem = kalemler.find(k => String(k.malzemeId) === String(m.id));
-      if (!kalem) return m;
-      return {
-        ...m,
-        stokMiktari: paraYuvarla(stokMalzemeMiktari(m) + Number(kalem.miktar || 0)),
-        birimMaliyet: Number(kalem.birimFiyat || 0) > 0 ? Number(kalem.birimFiyat || 0) : Number(m.birimMaliyet || 0),
-      };
-    }));
+    if (guncellenenMalzemeKalemleri.length > 0) {
+      setStokMalzemeleri(prev => (Array.isArray(prev) ? prev : []).map(m => {
+        const guncel = guncellenenMalzemeKalemleri.find(k => String(k.kalem.malzemeId) === String(m.id));
+        if (!guncel) return m;
+        return {
+          ...m,
+          stokMiktari: Number(guncel.data?.stok_miktari ?? guncel.yeniStok),
+          birimMaliyet: Number(guncel.data?.birim_maliyet ?? guncel.yeniBirimMaliyet),
+        };
+      }));
+    }
+
+    if (guncellenenUrunKalemleri.length > 0) {
+      setMenuUrunleri(prev => (Array.isArray(prev) ? prev : []).map(u => {
+        const guncel = guncellenenUrunKalemleri.find(k => String(k.kalem.urunId) === String(u.id));
+        if (!guncel) return u;
+        return {
+          ...u,
+          stokTakip: true,
+          stokAdedi: Number(guncel.data?.stok_adedi ?? guncel.yeniStok),
+          maliyet: Number(guncel.data?.maliyet ?? guncel.yeniMaliyet),
+        };
+      }));
+    }
 
     if (alisFisGiderOlarakIsle && toplam > 0) {
       const bugun = new Date().toISOString().split('T')[0];
@@ -2914,7 +3002,7 @@ Toplam Ciro: {toplam}
     setAlisFisTedarikci('');
     setAlisFisBelgeNo('');
     setAlisFisNotu('');
-    setAlisFisMesaji('Alış fişi kaydedildi, ürün girişleri stoklara işlendi.');
+    setAlisFisMesaji('Alış fişi kaydedildi. Seçilen hammadde ve ürün girişleri stoklara işlendi.');
     islemLoguEkle('Alış Fişi', `Alış fişi stoğa işlendi. Toplam: ${toplam} TL`);
   };
 
@@ -16194,132 +16282,14 @@ Toplam Ciro: {toplam}
                   Stok takibi açık ürünlerde satış ve paket sipariş sonrası stok otomatik düşer. Reçete tanımlarsanız satışta hammaddeler de düşer ve maliyet/kâr raporu daha doğru hesaplanır.
                 </p>
 
-                <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>🥦 Hammadde Stokları</h3>
-                  <form onSubmit={stokMalzemeEkle} style={styles.inlineForm}>
-                    <input type="text" placeholder="Hammadde adı" value={yeniStokMalzemeAdi} onChange={e => setYeniStokMalzemeAdi(e.target.value)} style={styles.input} />
-                    <input type="text" placeholder="Birim kg / lt / adet" value={yeniStokMalzemeBirim} onChange={e => setYeniStokMalzemeBirim(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
-                    <input type="number" placeholder="Mevcut stok" value={yeniStokMalzemeMiktar} onChange={e => setYeniStokMalzemeMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
-                    <input type="number" placeholder="Kritik" value={yeniStokMalzemeKritik} onChange={e => setYeniStokMalzemeKritik(e.target.value)} style={{ ...styles.input, maxWidth: '120px' }} />
-                    <input type="number" placeholder="Birim maliyet" value={yeniStokMalzemeMaliyet} onChange={e => setYeniStokMalzemeMaliyet(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
-                    <button type="submit" style={styles.btnOrange}>Hammadde Ekle</button>
-                  </form>
-
-                  {aktifStokMalzemeleri.length === 0 ? (
-                    <div style={{ color: '#94a3b8', padding: '12px' }}>Henüz hammadde stok kartı yok. Satın alma ve reçete listesi için önce hammadde ekleyin.</div>
-                  ) : aktifStokMalzemeleri.map(m => (
-                    <div key={m.id} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1 }}>
-                        <strong>{m.ad}</strong>
-                        <div style={{ color: '#64748b', fontSize: '12px' }}>Birim: {m.birim} / Maliyet: {m.birimMaliyet} TL</div>
-                      </div>
-                      <span style={Number(m.stokMiktari || 0) <= Number(m.kritikMiktar || 0) ? styles.badgePending : styles.badgeActive}>
-                        Stok: {m.stokMiktari} {m.birim}
-                      </span>
-                      <button type="button" onClick={() => alisFisineMalzemeyiSec(m)} style={{ ...styles.btnOrange, backgroundColor: '#0ea5e9' }}>Alış Fişine Ekle</button>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ ...styles.panelCard, backgroundColor: '#ecfeff', border: '1px solid #bae6fd', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    <div>
-                      <h3 style={{ fontSize: '17px', color: '#0f172a', margin: '0 0 6px' }}>🧾 Alış Fişi / Ürün Girişi</h3>
-                      <p style={{ color: '#475569', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
-                        Stok ekleme artık buradan yapılır. Tedarikçiden alınan hammaddeleri fişe ekle, kaydettiğinde stok miktarı artar ve istersen gider kaydı da oluşur.
-                      </p>
-                    </div>
-                    <div style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '10px 12px', minWidth: '160px' }}>
-                      <div style={{ fontSize: '11px', color: '#0369a1', fontWeight: '900' }}>Fiş Toplamı</div>
-                      <div style={{ fontSize: '20px', color: '#0f172a', fontWeight: '900' }}>{paraYuvarla(alisFisToplami)} TL</div>
-                    </div>
-                  </div>
-
-                  {alisFisMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#dbeafe', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '12px', padding: '9px 11px', fontSize: '12px', fontWeight: '800' }}>{alisFisMesaji}</div> : null}
-
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, minmax(160px, 1fr))', gap: '8px', marginTop: '12px' }}>
-                    <input type="text" placeholder="Tedarikçi / firma" value={alisFisTedarikci} onChange={e => setAlisFisTedarikci(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
-                    <input type="text" placeholder="Fiş / fatura no" value={alisFisBelgeNo} onChange={e => setAlisFisBelgeNo(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
-                    <select value={alisFisOdemeTipi} onChange={e => setAlisFisOdemeTipi(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
-                      <option>Nakit</option>
-                      <option>Kart</option>
-                      <option>Cari / Vadeli</option>
-                      <option>Havale / EFT</option>
-                    </select>
-                    <select value={alisFisGiderKategorisi} onChange={e => setAlisFisGiderKategorisi(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
-                      <option>Malzeme</option>
-                      <option>Ambalaj</option>
-                      <option>Temizlik</option>
-                      <option>Bakım / Servis</option>
-                      <option>Diğer</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.3fr 0.7fr 0.7fr auto', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
-                    <select value={alisFisMalzemeId} onChange={e => {
-                      const secili = aktifStokMalzemeleri.find(m => String(m.id) === String(e.target.value));
-                      setAlisFisMalzemeId(e.target.value);
-                      setAlisFisBirimFiyat(secili?.birimMaliyet ? String(secili.birimMaliyet) : '');
-                    }} style={{ ...styles.input, backgroundColor: '#fff' }}>
-                      <option value="">Alınan hammadde / ürün seç</option>
-                      {aktifStokMalzemeleri.map(m => <option key={m.id} value={String(m.id)}>{m.ad} / Mevcut: {stokMalzemeMiktari(m)} {m.birim} / Maliyet: {m.birimMaliyet || 0} TL</option>)}
-                    </select>
-                    <input type="number" step="0.001" placeholder="Miktar" value={alisFisMiktar} onChange={e => setAlisFisMiktar(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
-                    <input type="number" step="0.01" placeholder="Birim fiyat" value={alisFisBirimFiyat} onChange={e => setAlisFisBirimFiyat(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
-                    <button type="button" onClick={alisFisKalemiEkle} style={styles.btnOrange}>Fişe Ekle</button>
-                  </div>
-
-                  <input type="text" placeholder="Alış notu / açıklama" value={alisFisNotu} onChange={e => setAlisFisNotu(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff', marginTop: '8px' }} />
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '12px', fontWeight: '900', marginTop: '8px' }}>
-                    <input type="checkbox" checked={alisFisGiderOlarakIsle} onChange={e => setAlisFisGiderOlarakIsle(e.target.checked)} />
-                    Bu alış fişini giderlere de işle
-                  </label>
-
-                  {alisFisKalemleri.length === 0 ? (
-                    <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px dashed #bae6fd', color: '#64748b', borderRadius: '12px', padding: '12px', fontSize: '12px' }}>
-                      Henüz fiş kalemi yok. Malzeme seçip miktar girerek alış fişine ekleyin. Malzeme listesi Hammadde Stokları bölümünden gelir.
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {alisFisKalemleri.map(k => (
-                        <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.55fr 0.55fr 0.55fr auto', gap: '8px', alignItems: 'center' }}>
-                          <strong style={{ color: '#0f172a' }}>{k.malzemeAdi}</strong>
-                          <span style={{ color: '#334155', fontSize: '12px', fontWeight: '800' }}>{k.miktar} {k.birim}</span>
-                          <span style={{ color: '#334155', fontSize: '12px', fontWeight: '800' }}>{k.birimFiyat} TL</span>
-                          <span style={{ color: '#0f172a', fontSize: '12px', fontWeight: '900' }}>{k.toplam} TL</span>
-                          <button type="button" onClick={() => alisFisKalemiSil(k.id)} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontWeight: '900' }}>Sil</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-                    <button type="button" onClick={alisFisiniKaydetVeStogaIsle} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Alış Fişini Kaydet ve Stoğa İşle</button>
-                    <button type="button" onClick={() => setAlisFisKalemleri([])} style={{ ...styles.btnOrange, backgroundColor: '#64748b' }}>Fişi Temizle</button>
-                  </div>
-
-                  {alisFisleri.filter(f => String(f.restaurantId) === String(mevcutRestaurantId)).length > 0 ? (
-                    <details style={{ marginTop: '12px' }}>
-                      <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#0369a1' }}>Son alış fişleri</summary>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                        {alisFisleri.filter(f => String(f.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(f => (
-                          <div key={f.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155' }}>
-                            <strong>{f.tedarikci}</strong> — {f.belgeNo || 'Belge no yok'} — {tarihSaatYaz(f.tarih)} — <strong>{f.toplam} TL</strong>
-                            <div style={{ color: '#64748b', marginTop: '4px' }}>{Array.isArray(f.kalemler) ? f.kalemler.map(k => `${k.malzemeAdi}: ${k.miktar} ${k.birim}`).join(' / ') : ''}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  ) : null}
-                </div>
-
-                <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Reçeteler ayrı sekmeye taşındı</h3>
+                <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', border: '1px solid #fed7aa', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Reçete / Hammadde / Alış işlemleri taşındı</h3>
                   <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
-                    Ürün reçeteleri artık sol menüdeki <strong>Reçeteler</strong> sekmesinden yönetilir. Stok ekranında sadece hammadde kartları, alış fişi, depo sayımı ve stok girişleri kalır.
+                    Hammadde ekleme, alış fişi, depo sayımı ve eksik malzeme siparişi artık sol menüdeki <strong>Reçeteler</strong> sekmesinden yönetilir. Bu ekranda sadece satış ürünlerinin stok takibi kalır.
                   </p>
                   <button type="button" onClick={() => setActiveTab('receteler')} style={{ ...styles.btnOrange, marginTop: '10px' }}>Reçeteler Sekmesini Aç</button>
                 </div>
+
 
                 {aktifMenu.length === 0 ? (
                   <div style={{ color: '#94a3b8', padding: '20px' }}>Stok takip edilecek ürün yok.</div>
@@ -16361,110 +16331,7 @@ Toplam Ciro: {toplam}
               </div>
             )}
 
-            {/* depo sayımı ve eksik malzeme siparişi ekranını gösteren kod */}
-            {activeTab === 'stok' && (
-              <div style={{ ...styles.panelCard, marginTop: '16px' }}>
-                <h3 style={{ margin: '0 0 8px', color: '#1e293b' }}>📋 Depo Sayımı & Eksik Malzeme Siparişi</h3>
-                <p style={{ color: '#64748b', fontSize: '13px', lineHeight: 1.55, marginTop: 0 }}>
-                  Depo sayımı artık sadece mevcut miktarı göstermez. Önce sayımı başlat, elindeki gerçek miktarı gir, sistem farkı ve maliyet etkisini hesaplasın. İstersen stokları gerçek sayıma göre güncelleyebilir veya kritik eksiklerden satın alma talebi oluşturabilirsin.
-                </p>
-
-                {satinAlmaMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{satinAlmaMesaji}</div> : null}
-
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.35fr 0.9fr', gap: '14px' }}>
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
-                      <div>
-                        <h4 style={{ margin: 0, color: '#1e293b' }}>Depo sayımı</h4>
-                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>1) Başlat 2) Gerçek sayılan miktarı gir 3) Farkları kontrol et 4) Stoka işle</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <input type="text" value={stokSayimBaslik} onChange={e => setStokSayimBaslik(e.target.value)} placeholder="Sayım adı" style={{ ...styles.input, minWidth: '170px', backgroundColor: '#fff' }} />
-                        <button type="button" onClick={stokSayimFisOlustur} style={styles.btnOrange}>Yeni Depo Sayımı Başlat</button>
-                      </div>
-                    </div>
-
-                    {aktifStokMalzemeleri.length === 0 ? (
-                      <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '12px', fontSize: '13px', fontWeight: '800' }}>
-                        Sayım yapılacak hammadde yok. Önce yukarıdaki Hammadde Stokları bölümünden Patates, Kaşar, Sosis gibi malzemeleri ekle.
-                      </div>
-                    ) : !aktifStokSayimKaydi ? (
-                      <div style={{ backgroundColor: '#fff', border: '1px dashed #cbd5e1', color: '#64748b', borderRadius: '12px', padding: '16px', fontSize: '13px' }}>
-                        Aktif depo sayımı yok. “Yeni Depo Sayımı Başlat” butonuna basınca mevcut hammadde listesi sayım tablosuna dönüşür.
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Sayım</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{aktifStokSayimOzeti.sayilan}/{aktifStokSayimOzeti.toplam}</div></div>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Eksik Kalem</div><div style={{ ...styles.statsValue, fontSize: '18px', color: '#ef4444' }}>{aktifStokSayimOzeti.eksikKalem}</div></div>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fazla Kalem</div><div style={{ ...styles.statsValue, fontSize: '18px', color: '#10b981' }}>{aktifStokSayimOzeti.fazlaKalem}</div></div>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fark Tutarı</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{aktifStokSayimOzeti.toplamFarkTutari} TL</div></div>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Durum</div><div style={{ ...styles.statsValue, fontSize: '15px' }}>{aktifStokSayimKaydi.durum}</div></div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '430px', overflowY: 'auto', paddingRight: '4px' }}>
-                          {aktifStokSayimKalemleri.map(kalem => (
-                            <div key={kalem.malzemeId} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.75fr 0.85fr 0.8fr 0.75fr', gap: '8px', alignItems: 'center' }}>
-                              <div>
-                                <strong style={{ color: '#1e293b' }}>{kalem.malzemeAdi}</strong>
-                                <div style={{ color: '#64748b', fontSize: '12px' }}>Kritik: {kalem.kritikMiktar} {kalem.birim} / Birim maliyet: {kalem.birimMaliyet} TL</div>
-                              </div>
-                              <div style={{ color: '#334155', fontSize: '12px', fontWeight: '900' }}>Sistem: {kalem.sistemMiktari} {kalem.birim}</div>
-                              <input type="number" step="0.001" value={kalem.sayilanMiktarRaw ?? ''} onChange={e => stokSayimKaleminiGuncelle(aktifStokSayimKaydi.id, kalem.malzemeId, e.target.value)} placeholder="Sayılan gerçek" style={{ ...styles.input, backgroundColor: '#fff' }} />
-                              <div style={{ fontSize: '12px', fontWeight: '900', color: !kalem.sayildi ? '#94a3b8' : Number(kalem.farkMiktar || 0) < 0 ? '#ef4444' : Number(kalem.farkMiktar || 0) > 0 ? '#10b981' : '#334155' }}>
-                                {!kalem.sayildi ? 'Henüz sayılmadı' : `Fark: ${kalem.farkMiktar} ${kalem.birim}`}
-                              </div>
-                              <div style={{ fontSize: '12px', fontWeight: '900', color: Number(kalem.farkTutar || 0) < 0 ? '#ef4444' : '#334155' }}>{kalem.sayildi ? `${kalem.farkTutar} TL` : '-'}</div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-                          <button type="button" onClick={() => stokSayimKaydiniTamamla(aktifStokSayimKaydi.id, false)} style={{ ...styles.btnOrange, backgroundColor: '#475569' }}>Sadece Kontrol Olarak Kaydet</button>
-                          <button type="button" onClick={() => stokSayimKaydiniTamamla(aktifStokSayimKaydi.id, true)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Stoku Gerçek Sayıma Göre Güncelle</button>
-                          <button type="button" onClick={() => stokSayimEksiklerindenSatinAlmaOlustur(aktifStokSayimKaydi.id)} style={{ ...styles.btnOrange, backgroundColor: '#2563eb' }}>Kritik Eksiklerden Sipariş Listesi Oluştur</button>
-                        </div>
-                      </>
-                    )}
-
-                    <details style={{ marginTop: '12px' }}>
-                      <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#334155' }}>Geçmiş depo sayımları</summary>
-                      <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {stokSayimKayitlari.filter(k => String(k.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(k => (
-                          <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155', display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-                            <span><strong>{k.baslik || 'Depo Sayımı'}</strong> — {tarihSaatYaz(k.tarih)} — {k.sayilanKalemSayisi || 0}/{k.malzemeSayisi || 0} kalem</span>
-                            <span>{k.durum} / Fark: {k.toplamFarkTutari || 0} TL</span>
-                            <button type="button" onClick={() => setAktifStokSayimId(k.id)} style={{ border: 'none', backgroundColor: '#e2e8f0', color: '#334155', borderRadius: '8px', padding: '6px 9px', cursor: 'pointer', fontWeight: '900', fontSize: '11px' }}>Aç</button>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  </div>
-
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
-                    <h4 style={{ margin: '0 0 6px', color: '#1e293b' }}>Eksik malzeme siparişi</h4>
-                    <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, marginTop: 0 }}>Bu liste Hammadde Stokları bölümüne eklediğin malzemelerden gelir. Liste boşsa önce hammadde ekle.</p>
-                    <form onSubmit={satinAlmaTalebiOlustur} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <select value={satinAlmaMalzemeId} onChange={e => setSatinAlmaMalzemeId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px', backgroundColor: '#fff' }}>
-                        <option value="">Malzeme seç</option>
-                        {aktifStokMalzemeleri.map(m => <option key={m.id} value={String(m.id)}>{m.ad} / Stok: {stokMalzemeMiktari(m)} {m.birim} / Kritik: {stokMalzemeKritikMiktari(m)}</option>)}
-                      </select>
-                      <input type="number" placeholder="Alınacak miktar" value={satinAlmaMiktar} onChange={e => setSatinAlmaMiktar(e.target.value)} style={{ ...styles.input, width: '150px', backgroundColor: '#fff' }} />
-                      <input type="text" placeholder="Tedarikçi" value={satinAlmaTedarikci} onChange={e => setSatinAlmaTedarikci(e.target.value)} style={{ ...styles.input, flex: '1 1 160px', backgroundColor: '#fff' }} />
-                      <button type="submit" style={styles.btnOrange}>Sipariş Talebi Aç</button>
-                    </form>
-
-                    {aktifStokMalzemeleri.length === 0 ? (
-                      <div style={{ marginTop: '10px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '10px', fontSize: '12px', fontWeight: '800' }}>Malzeme seçimi için önce Hammadde Stokları bölümünden malzeme ekleyin.</div>
-                    ) : null}
-
-                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {satinAlmaTalepleri.filter(t => String(t.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(t => <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: '12px', color: '#334155' }}><strong>{t.malzemeAdi}</strong> — {t.miktar} {t.birim} / {t.tedarikci}<br /><span style={{ color: '#94a3b8' }}>Mevcut: {t.mevcutStok ?? '-'} / Kritik: {t.kritikMiktar ?? '-'} / Kaynak: {t.kaynak || 'Manuel'}</span></span><select value={t.durum} onChange={e => satinAlmaDurumGuncelle(t.id, e.target.value)} style={{ ...styles.input, minWidth: '140px', backgroundColor: '#fff' }}><option>Talep Açıldı</option><option>Sipariş Verildi</option><option>Teslim Alındı</option><option>İptal</option></select></div>)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* depo sayımı ve eksik malzeme siparişi Reçeteler sekmesine taşındı. */}
 
             {/* kasa açılış kapanış ekranını gösteren kod */}
             {activeTab === 'kasa' && (
@@ -18336,6 +18203,243 @@ Toplam Ciro: {toplam}
                 <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px', lineHeight: 1.55 }}>
                   Satılan ürünlerin hangi hammaddelerden oluştuğunu buradan tanımlayın. Reçete maliyeti, fireli stok düşümü, porsiyon hesabı ve kâr oranı bu sekmede yönetilir.
                 </p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '16px', padding: '14px' }}>
+                    <h3 style={{ margin: '0 0 6px', color: '#1e293b' }}>📦 Reçete Operasyon Merkezi</h3>
+                    <p style={{ color: '#475569', fontSize: '12px', lineHeight: 1.55, margin: 0 }}>
+                      Hammadde kartları, alış fişi, depo sayımı ve eksik malzeme siparişi artık burada. Alış fişinde hem <strong>hammadde</strong> hem de <strong>satış ürünü</strong> seçebilirsin; ürün seçersen stok doğrudan ürün kartına işlenir.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>🥦 Hammadde Stokları</h3>
+                  <form onSubmit={stokMalzemeEkle} style={styles.inlineForm}>
+                    <input type="text" placeholder="Hammadde adı" value={yeniStokMalzemeAdi} onChange={e => setYeniStokMalzemeAdi(e.target.value)} style={styles.input} />
+                    <input type="text" placeholder="Birim kg / lt / adet" value={yeniStokMalzemeBirim} onChange={e => setYeniStokMalzemeBirim(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
+                    <input type="number" placeholder="Mevcut stok" value={yeniStokMalzemeMiktar} onChange={e => setYeniStokMalzemeMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
+                    <input type="number" placeholder="Kritik" value={yeniStokMalzemeKritik} onChange={e => setYeniStokMalzemeKritik(e.target.value)} style={{ ...styles.input, maxWidth: '120px' }} />
+                    <input type="number" placeholder="Birim maliyet" value={yeniStokMalzemeMaliyet} onChange={e => setYeniStokMalzemeMaliyet(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
+                    <button type="submit" style={styles.btnOrange}>Hammadde Ekle</button>
+                  </form>
+
+                  {aktifStokMalzemeleri.length === 0 ? (
+                    <div style={{ color: '#94a3b8', padding: '12px' }}>Henüz hammadde stok kartı yok. Satın alma ve reçete listesi için önce hammadde ekleyin.</div>
+                  ) : aktifStokMalzemeleri.map(m => (
+                    <div key={m.id} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1 }}>
+                        <strong>{m.ad}</strong>
+                        <div style={{ color: '#64748b', fontSize: '12px' }}>Birim: {m.birim} / Maliyet: {m.birimMaliyet} TL</div>
+                      </div>
+                      <span style={Number(m.stokMiktari || 0) <= Number(m.kritikMiktar || 0) ? styles.badgePending : styles.badgeActive}>
+                        Stok: {m.stokMiktari} {m.birim}
+                      </span>
+                      <button type="button" onClick={() => alisFisineMalzemeyiSec(m)} style={{ ...styles.btnOrange, backgroundColor: '#0ea5e9' }}>Alış Fişine Ekle</button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ ...styles.panelCard, backgroundColor: '#ecfeff', border: '1px solid #bae6fd', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <h3 style={{ fontSize: '17px', color: '#0f172a', margin: '0 0 6px' }}>🧾 Alış Fişi / Ürün Girişi</h3>
+                      <p style={{ color: '#475569', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
+                        Stok ekleme artık buradan yapılır. Tedarikçiden alınan hammaddeyi veya satış ürününü fişe ekle; kaydettiğinde seçtiğin kalemin stoğu artar ve istersen gider kaydı da oluşur.
+                      </p>
+                    </div>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '10px 12px', minWidth: '160px' }}>
+                      <div style={{ fontSize: '11px', color: '#0369a1', fontWeight: '900' }}>Fiş Toplamı</div>
+                      <div style={{ fontSize: '20px', color: '#0f172a', fontWeight: '900' }}>{paraYuvarla(alisFisToplami)} TL</div>
+                    </div>
+                  </div>
+
+                  {alisFisMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#dbeafe', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '12px', padding: '9px 11px', fontSize: '12px', fontWeight: '800' }}>{alisFisMesaji}</div> : null}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, minmax(160px, 1fr))', gap: '8px', marginTop: '12px' }}>
+                    <input type="text" placeholder="Tedarikçi / firma" value={alisFisTedarikci} onChange={e => setAlisFisTedarikci(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
+                    <input type="text" placeholder="Fiş / fatura no" value={alisFisBelgeNo} onChange={e => setAlisFisBelgeNo(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
+                    <select value={alisFisOdemeTipi} onChange={e => setAlisFisOdemeTipi(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
+                      <option>Nakit</option>
+                      <option>Kart</option>
+                      <option>Cari / Vadeli</option>
+                      <option>Havale / EFT</option>
+                    </select>
+                    <select value={alisFisGiderKategorisi} onChange={e => setAlisFisGiderKategorisi(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
+                      <option>Malzeme</option>
+                      <option>Ambalaj</option>
+                      <option>Temizlik</option>
+                      <option>Bakım / Servis</option>
+                      <option>Diğer</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.3fr 0.7fr 0.7fr auto', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
+                    <select value={alisFisMalzemeId} onChange={e => {
+                      const secili = alisFisiKalemBul(e.target.value);
+                      setAlisFisMalzemeId(e.target.value);
+                      setAlisFisBirimFiyat(secili?.birimMaliyet ? String(secili.birimMaliyet) : '');
+                    }} style={{ ...styles.input, backgroundColor: '#fff' }}>
+                      <option value="">Alınan hammadde veya satış ürünü seç</option>
+                      <optgroup label="Hammaddeler">
+                        {alisFisiSecilebilirKalemler.filter(k => k.tip === 'malzeme').map(k => <option key={k.secimId} value={k.secimId}>{k.ad} / Stok: {k.mevcutStok} {k.birim} / Maliyet: {k.birimMaliyet || 0} TL</option>)}
+                      </optgroup>
+                      <optgroup label="Satış Ürünleri">
+                        {alisFisiSecilebilirKalemler.filter(k => k.tip === 'urun').map(k => <option key={k.secimId} value={k.secimId}>{k.ad} / Ürün stoğu: {k.mevcutStok} adet / Maliyet: {k.birimMaliyet || 0} TL</option>)}
+                      </optgroup>
+                    </select>
+                    <input type="number" step="0.001" placeholder="Miktar" value={alisFisMiktar} onChange={e => setAlisFisMiktar(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
+                    <input type="number" step="0.01" placeholder="Birim fiyat" value={alisFisBirimFiyat} onChange={e => setAlisFisBirimFiyat(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
+                    <button type="button" onClick={alisFisKalemiEkle} style={styles.btnOrange}>Fişe Ekle</button>
+                  </div>
+
+                  <input type="text" placeholder="Alış notu / açıklama" value={alisFisNotu} onChange={e => setAlisFisNotu(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff', marginTop: '8px' }} />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '12px', fontWeight: '900', marginTop: '8px' }}>
+                    <input type="checkbox" checked={alisFisGiderOlarakIsle} onChange={e => setAlisFisGiderOlarakIsle(e.target.checked)} />
+                    Bu alış fişini giderlere de işle
+                  </label>
+
+                  {alisFisKalemleri.length === 0 ? (
+                    <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px dashed #bae6fd', color: '#64748b', borderRadius: '12px', padding: '12px', fontSize: '12px' }}>
+                      Henüz fiş kalemi yok. Hammadde veya satış ürünü seçip miktar girerek alış fişine ekleyin. Ürün seçersen stok ürün kartına, hammadde seçersen hammadde kartına işlenir.
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {alisFisKalemleri.map(k => (
+                        <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.55fr 0.55fr 0.55fr auto', gap: '8px', alignItems: 'center' }}>
+                          <strong style={{ color: '#0f172a' }}>{k.kalemTipi === 'urun' ? '🍔 Ürün: ' : '🥦 Hammadde: '}{k.malzemeAdi}</strong>
+                          <span style={{ color: '#334155', fontSize: '12px', fontWeight: '800' }}>{k.miktar} {k.birim}</span>
+                          <span style={{ color: '#334155', fontSize: '12px', fontWeight: '800' }}>{k.birimFiyat} TL</span>
+                          <span style={{ color: '#0f172a', fontSize: '12px', fontWeight: '900' }}>{k.toplam} TL</span>
+                          <button type="button" onClick={() => alisFisKalemiSil(k.id)} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontWeight: '900' }}>Sil</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                    <button type="button" onClick={alisFisiniKaydetVeStogaIsle} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Alış Fişini Kaydet ve Stoğa İşle</button>
+                    <button type="button" onClick={() => setAlisFisKalemleri([])} style={{ ...styles.btnOrange, backgroundColor: '#64748b' }}>Fişi Temizle</button>
+                  </div>
+
+                  {alisFisleri.filter(f => String(f.restaurantId) === String(mevcutRestaurantId)).length > 0 ? (
+                    <details style={{ marginTop: '12px' }}>
+                      <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#0369a1' }}>Son alış fişleri</summary>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                        {alisFisleri.filter(f => String(f.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(f => (
+                          <div key={f.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155' }}>
+                            <strong>{f.tedarikci}</strong> — {f.belgeNo || 'Belge no yok'} — {tarihSaatYaz(f.tarih)} — <strong>{f.toplam} TL</strong>
+                            <div style={{ color: '#64748b', marginTop: '4px' }}>{Array.isArray(f.kalemler) ? f.kalemler.map(k => `${k.malzemeAdi}: ${k.miktar} ${k.birim}`).join(' / ') : ''}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
+                </div>
+
+
+              <div style={{ ...styles.panelCard, marginTop: '16px' }}>
+                <h3 style={{ margin: '0 0 8px', color: '#1e293b' }}>📋 Depo Sayımı & Eksik Malzeme Siparişi</h3>
+                <p style={{ color: '#64748b', fontSize: '13px', lineHeight: 1.55, marginTop: 0 }}>
+                  Depo sayımı artık sadece mevcut miktarı göstermez. Önce sayımı başlat, elindeki gerçek miktarı gir, sistem farkı ve maliyet etkisini hesaplasın. İstersen stokları gerçek sayıma göre güncelleyebilir veya kritik eksiklerden satın alma talebi oluşturabilirsin.
+                </p>
+
+                {satinAlmaMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{satinAlmaMesaji}</div> : null}
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.35fr 0.9fr', gap: '14px' }}>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
+                      <div>
+                        <h4 style={{ margin: 0, color: '#1e293b' }}>Depo sayımı</h4>
+                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>1) Başlat 2) Gerçek sayılan miktarı gir 3) Farkları kontrol et 4) Stoka işle</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <input type="text" value={stokSayimBaslik} onChange={e => setStokSayimBaslik(e.target.value)} placeholder="Sayım adı" style={{ ...styles.input, minWidth: '170px', backgroundColor: '#fff' }} />
+                        <button type="button" onClick={stokSayimFisOlustur} style={styles.btnOrange}>Yeni Depo Sayımı Başlat</button>
+                      </div>
+                    </div>
+
+                    {aktifStokMalzemeleri.length === 0 ? (
+                      <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '12px', fontSize: '13px', fontWeight: '800' }}>
+                        Sayım yapılacak hammadde yok. Önce yukarıdaki Hammadde Stokları bölümünden Patates, Kaşar, Sosis gibi malzemeleri ekle.
+                      </div>
+                    ) : !aktifStokSayimKaydi ? (
+                      <div style={{ backgroundColor: '#fff', border: '1px dashed #cbd5e1', color: '#64748b', borderRadius: '12px', padding: '16px', fontSize: '13px' }}>
+                        Aktif depo sayımı yok. “Yeni Depo Sayımı Başlat” butonuna basınca mevcut hammadde listesi sayım tablosuna dönüşür.
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Sayım</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{aktifStokSayimOzeti.sayilan}/{aktifStokSayimOzeti.toplam}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Eksik Kalem</div><div style={{ ...styles.statsValue, fontSize: '18px', color: '#ef4444' }}>{aktifStokSayimOzeti.eksikKalem}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fazla Kalem</div><div style={{ ...styles.statsValue, fontSize: '18px', color: '#10b981' }}>{aktifStokSayimOzeti.fazlaKalem}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fark Tutarı</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{aktifStokSayimOzeti.toplamFarkTutari} TL</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Durum</div><div style={{ ...styles.statsValue, fontSize: '15px' }}>{aktifStokSayimKaydi.durum}</div></div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '430px', overflowY: 'auto', paddingRight: '4px' }}>
+                          {aktifStokSayimKalemleri.map(kalem => (
+                            <div key={kalem.malzemeId} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.75fr 0.85fr 0.8fr 0.75fr', gap: '8px', alignItems: 'center' }}>
+                              <div>
+                                <strong style={{ color: '#1e293b' }}>{kalem.malzemeAdi}</strong>
+                                <div style={{ color: '#64748b', fontSize: '12px' }}>Kritik: {kalem.kritikMiktar} {kalem.birim} / Birim maliyet: {kalem.birimMaliyet} TL</div>
+                              </div>
+                              <div style={{ color: '#334155', fontSize: '12px', fontWeight: '900' }}>Sistem: {kalem.sistemMiktari} {kalem.birim}</div>
+                              <input type="number" step="0.001" value={kalem.sayilanMiktarRaw ?? ''} onChange={e => stokSayimKaleminiGuncelle(aktifStokSayimKaydi.id, kalem.malzemeId, e.target.value)} placeholder="Sayılan gerçek" style={{ ...styles.input, backgroundColor: '#fff' }} />
+                              <div style={{ fontSize: '12px', fontWeight: '900', color: !kalem.sayildi ? '#94a3b8' : Number(kalem.farkMiktar || 0) < 0 ? '#ef4444' : Number(kalem.farkMiktar || 0) > 0 ? '#10b981' : '#334155' }}>
+                                {!kalem.sayildi ? 'Henüz sayılmadı' : `Fark: ${kalem.farkMiktar} ${kalem.birim}`}
+                              </div>
+                              <div style={{ fontSize: '12px', fontWeight: '900', color: Number(kalem.farkTutar || 0) < 0 ? '#ef4444' : '#334155' }}>{kalem.sayildi ? `${kalem.farkTutar} TL` : '-'}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                          <button type="button" onClick={() => stokSayimKaydiniTamamla(aktifStokSayimKaydi.id, false)} style={{ ...styles.btnOrange, backgroundColor: '#475569' }}>Sadece Kontrol Olarak Kaydet</button>
+                          <button type="button" onClick={() => stokSayimKaydiniTamamla(aktifStokSayimKaydi.id, true)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Stoku Gerçek Sayıma Göre Güncelle</button>
+                          <button type="button" onClick={() => stokSayimEksiklerindenSatinAlmaOlustur(aktifStokSayimKaydi.id)} style={{ ...styles.btnOrange, backgroundColor: '#2563eb' }}>Kritik Eksiklerden Sipariş Listesi Oluştur</button>
+                        </div>
+                      </>
+                    )}
+
+                    <details style={{ marginTop: '12px' }}>
+                      <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#334155' }}>Geçmiş depo sayımları</summary>
+                      <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {stokSayimKayitlari.filter(k => String(k.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(k => (
+                          <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155', display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <span><strong>{k.baslik || 'Depo Sayımı'}</strong> — {tarihSaatYaz(k.tarih)} — {k.sayilanKalemSayisi || 0}/{k.malzemeSayisi || 0} kalem</span>
+                            <span>{k.durum} / Fark: {k.toplamFarkTutari || 0} TL</span>
+                            <button type="button" onClick={() => setAktifStokSayimId(k.id)} style={{ border: 'none', backgroundColor: '#e2e8f0', color: '#334155', borderRadius: '8px', padding: '6px 9px', cursor: 'pointer', fontWeight: '900', fontSize: '11px' }}>Aç</button>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
+                    <h4 style={{ margin: '0 0 6px', color: '#1e293b' }}>Eksik malzeme siparişi</h4>
+                    <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, marginTop: 0 }}>Bu liste Hammadde Stokları bölümüne eklediğin malzemelerden gelir. Liste boşsa önce hammadde ekle.</p>
+                    <form onSubmit={satinAlmaTalebiOlustur} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <select value={satinAlmaMalzemeId} onChange={e => setSatinAlmaMalzemeId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px', backgroundColor: '#fff' }}>
+                        <option value="">Malzeme seç</option>
+                        {aktifStokMalzemeleri.map(m => <option key={m.id} value={String(m.id)}>{m.ad} / Stok: {stokMalzemeMiktari(m)} {m.birim} / Kritik: {stokMalzemeKritikMiktari(m)}</option>)}
+                      </select>
+                      <input type="number" placeholder="Alınacak miktar" value={satinAlmaMiktar} onChange={e => setSatinAlmaMiktar(e.target.value)} style={{ ...styles.input, width: '150px', backgroundColor: '#fff' }} />
+                      <input type="text" placeholder="Tedarikçi" value={satinAlmaTedarikci} onChange={e => setSatinAlmaTedarikci(e.target.value)} style={{ ...styles.input, flex: '1 1 160px', backgroundColor: '#fff' }} />
+                      <button type="submit" style={styles.btnOrange}>Sipariş Talebi Aç</button>
+                    </form>
+
+                    {aktifStokMalzemeleri.length === 0 ? (
+                      <div style={{ marginTop: '10px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '10px', fontSize: '12px', fontWeight: '800' }}>Malzeme seçimi için önce Hammadde Stokları bölümünden malzeme ekleyin.</div>
+                    ) : null}
+
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {satinAlmaTalepleri.filter(t => String(t.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(t => <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: '12px', color: '#334155' }}><strong>{t.malzemeAdi}</strong> — {t.miktar} {t.birim} / {t.tedarikci}<br /><span style={{ color: '#94a3b8' }}>Mevcut: {t.mevcutStok ?? '-'} / Kritik: {t.kritikMiktar ?? '-'} / Kaynak: {t.kaynak || 'Manuel'}</span></span><select value={t.durum} onChange={e => satinAlmaDurumGuncelle(t.id, e.target.value)} style={{ ...styles.input, minWidth: '140px', backgroundColor: '#fff' }}><option>Talep Açıldı</option><option>Sipariş Verildi</option><option>Teslim Alındı</option><option>İptal</option></select></div>)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
                 {receteYonetimiPaneli({ marginBottom: 0 })}
               </div>
             )}
