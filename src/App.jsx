@@ -185,6 +185,15 @@ function IntegraApp() {
     }
   });
 
+  // QR menüden sipariş, garson çağırma ve hesap isteme için kullanılan kod
+  const [qrSepet, setQrSepet] = useState([]);
+  const [qrSiparisMasaNo, setQrSiparisMasaNo] = useState('');
+  const [qrSiparisMusteriAdi, setQrSiparisMusteriAdi] = useState('');
+  const [qrSiparisNotu, setQrSiparisNotu] = useState('');
+  const [qrSiparisMesaji, setQrSiparisMesaji] = useState('');
+  const [qrSiparisGonderiliyor, setQrSiparisGonderiliyor] = useState(false);
+  const [qrServisMesaji, setQrServisMesaji] = useState('');
+
   // yeni menü grubu oluşturma alanlarını tutan kod
   const [yeniMenuGrupAdi, setYeniMenuGrupAdi] = useState('');
   const [yeniMenuGrupDepartmani, setYeniMenuGrupDepartmani] = useState('Mutfak');
@@ -581,6 +590,64 @@ Toplam Ciro: {toplam}
   // rezervasyonda kayıtlı cari müşteriyi seçmek için kullanılan kod
   const [rezervasyonCariMusteriId, setRezervasyonCariMusteriId] = useState('');
   const [rezervasyonCariArama, setRezervasyonCariArama] = useState('');
+  const [rezervasyonKaporaTutari, setRezervasyonKaporaTutari] = useState('');
+  const [rezervasyonHatirlatma, setRezervasyonHatirlatma] = useState(true);
+  const [rezervasyonTakvimGorunumu, setRezervasyonTakvimGorunumu] = useState('liste');
+
+  // QR sipariş, servis talebi, sadakat, kiosk, stok sayım ve satın alma modülleri için kullanılan kod
+  const [servisTalepleri, setServisTalepleri] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_servis_talepleri');
+      return kayit ? JSON.parse(kayit) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [sadakatMusterileri, setSadakatMusterileri] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_sadakat_musterileri');
+      return kayit ? JSON.parse(kayit) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [sadakatAdi, setSadakatAdi] = useState('');
+  const [sadakatTelefon, setSadakatTelefon] = useState('');
+  const [sadakatPuan, setSadakatPuan] = useState('');
+  const [sadakatMesaji, setSadakatMesaji] = useState('');
+  const [islemLoglari, setIslemLoglari] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_islem_loglari');
+      return kayit ? JSON.parse(kayit) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [elTerminaliModu, setElTerminaliModu] = useState(() => localStorage.getItem('integra_el_terminali_modu') === 'true');
+  const [kioskSepet, setKioskSepet] = useState([]);
+  const [kioskMusteriAdi, setKioskMusteriAdi] = useState('');
+  const [kioskSiparisNotu, setKioskSiparisNotu] = useState('');
+  const [kioskMesaji, setKioskMesaji] = useState('');
+  const [stokSayimKayitlari, setStokSayimKayitlari] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_stok_sayim_kayitlari');
+      return kayit ? JSON.parse(kayit) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [satinAlmaTalepleri, setSatinAlmaTalepleri] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_satin_alma_talepleri');
+      return kayit ? JSON.parse(kayit) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [satinAlmaMalzemeId, setSatinAlmaMalzemeId] = useState('');
+  const [satinAlmaMiktar, setSatinAlmaMiktar] = useState('');
+  const [satinAlmaTedarikci, setSatinAlmaTedarikci] = useState('');
+  const [satinAlmaMesaji, setSatinAlmaMesaji] = useState('');
 
   // ürün maliyeti, ürün görseli ve kasa gün sonu için kullanılan kod
   const [yeniUrunMaliyeti, setYeniUrunMaliyeti] = useState('');
@@ -840,6 +907,10 @@ Toplam Ciro: {toplam}
       whatsappTelefon: '',
       siparisNotu: 'Sipariş vermek için garsonumuza bilgi verebilirsiniz.',
       fiyatlariGoster: true,
+      qrSiparisAktif: true,
+      garsonCagirmaAktif: true,
+      hesapIstemeAktif: true,
+      masaNoZorunlu: true,
     };
   }
 
@@ -1517,8 +1588,8 @@ Toplam Ciro: {toplam}
 
   const filtreliOnlineSiparisler = aktifRestoranOnlineSiparisleri.filter(s => {
     const durum = String(s.durum || 'Yeni');
-    if (paketOnlineSekmesi === 'yeni') return durum === 'Yeni';
-    if (paketOnlineSekmesi === 'aktarilan') return durum === 'Paket Servise Aktarıldı';
+    if (paketOnlineSekmesi === 'yeni') return ['Yeni', 'Onaylandı', 'Hazırlanıyor'].includes(durum);
+    if (paketOnlineSekmesi === 'aktarilan') return durum === 'Paket Servise Aktarıldı' || durum === 'Teslim Edildi';
     if (paketOnlineSekmesi === 'iptal') return durum === 'İptal' || durum === 'Yok Sayıldı';
     return true;
   });
@@ -1526,7 +1597,8 @@ Toplam Ciro: {toplam}
   const onlineSiparisDurumRengi = (durum = 'Yeni') => {
     const metin = String(durum || 'Yeni');
     if (metin === 'Yeni') return { backgroundColor: '#fff7ed', color: '#ea580c', borderColor: '#fed7aa' };
-    if (metin === 'Paket Servise Aktarıldı') return { backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' };
+    if (metin === 'Onaylandı' || metin === 'Hazırlanıyor') return { backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' };
+    if (metin === 'Paket Servise Aktarıldı' || metin === 'Teslim Edildi') return { backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' };
     if (metin === 'İptal' || metin === 'Yok Sayıldı') return { backgroundColor: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' };
     return { backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' };
   };
@@ -2074,6 +2146,298 @@ Toplam Ciro: {toplam}
     }
   }
 
+
+  // QR sipariş, servis, sadakat, kiosk ve satın alma modüllerinde kullanılan yardımcı kodlar
+  const aktifServisTalepleri = (Array.isArray(servisTalepleri) ? servisTalepleri : [])
+    .filter(t => String(t.restaurantId || '') === String(mevcutRestaurantId || ''))
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const acikServisTalebiSayisi = aktifServisTalepleri.filter(t => String(t.durum || 'Açık') === 'Açık').length;
+
+  const aktifSadakatMusterileri = (Array.isArray(sadakatMusterileri) ? sadakatMusterileri : [])
+    .filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || ''))
+    .sort((a, b) => Number(b.puan || 0) - Number(a.puan || 0));
+  const sadakatToplamPuan = aktifSadakatMusterileri.reduce((toplam, m) => toplam + Number(m.puan || 0), 0);
+  const sadakatToplamZiyaret = aktifSadakatMusterileri.reduce((toplam, m) => toplam + Number(m.ziyaret || 0), 0);
+
+  const bugunkuRezervasyonlar = (Array.isArray(rezervasyonlar) ? rezervasyonlar : []).filter(r => {
+    return String(r.restaurantId || '') === String(mevcutRestaurantId || '') && String(r.rezervasyonZamani || '').slice(0, 10) === bugunRaporTarihi;
+  });
+
+  const gecikenOnlineSiparisSayisi = aktifRestoranOnlineSiparisleri.filter(s => {
+    const durum = String(s.durum || 'Yeni');
+    if (durum === 'Paket Servise Aktarıldı' || durum === 'İptal' || durum === 'Yok Sayıldı' || durum === 'Teslim Edildi') return false;
+    const dakika = (Date.now() - new Date(s.createdAt || Date.now()).getTime()) / 60000;
+    return dakika >= 15;
+  }).length;
+
+  const platformOzetleri = entegrasyonPlatformSecenekleri.map(platform => {
+    const liste = aktifRestoranOnlineSiparisleri.filter(s => String(s.platform || '') === platform);
+    return {
+      platform,
+      adet: liste.length,
+      yeni: liste.filter(s => String(s.durum || 'Yeni') === 'Yeni').length,
+      toplam: liste.reduce((t, s) => t + Number(s.toplam || 0), 0),
+    };
+  });
+
+  const islemLoguEkle = (tip, aciklama, ekstra = {}) => {
+    const kayit = {
+      id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      restaurantId: mevcutRestaurantId,
+      tip,
+      aciklama,
+      kullanici: user?.email || user?.restaurant || 'Sistem',
+      createdAt: new Date().toISOString(),
+      ...ekstra,
+    };
+
+    setIslemLoglari(prev => [kayit, ...(Array.isArray(prev) ? prev : [])].slice(0, 120));
+    return kayit;
+  };
+
+  const servisTalebiEkle = (tip, masaNo = '', notMetni = '', kaynak = 'Panel') => {
+    const kayit = {
+      id: `srv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      restaurantId: mevcutRestaurantId || qrMenuLinkRestaurantId,
+      tip,
+      masaNo: String(masaNo || '').trim(),
+      notMetni: String(notMetni || '').trim(),
+      kaynak,
+      durum: 'Açık',
+      createdAt: new Date().toISOString(),
+    };
+
+    setServisTalepleri(prev => [kayit, ...(Array.isArray(prev) ? prev : [])]);
+    islemLoguEkle('Servis Talebi', `${kayit.masaNo ? `${kayit.masaNo} - ` : ''}${tip}`);
+    return kayit;
+  };
+
+  const servisTalebiniKapat = (talepId) => {
+    setServisTalepleri(prev => (Array.isArray(prev) ? prev : []).map(t => String(t.id) === String(talepId) ? { ...t, durum: 'Kapandı', kapandiAt: new Date().toISOString() } : t));
+    islemLoguEkle('Servis Talebi', 'Servis talebi kapatıldı.');
+  };
+
+  const whatsappLinkiHazirla = (telefon = '', mesaj = '') => {
+    const temizTelefon = String(telefon || '').replace(/\D/g, '');
+    const hedefTelefon = temizTelefon.startsWith('90') ? temizTelefon : temizTelefon ? `90${temizTelefon.replace(/^0+/, '')}` : '';
+    const guvenliMesaj = encodeURIComponent(String(mesaj || ''));
+    return hedefTelefon ? `https://wa.me/${hedefTelefon}?text=${guvenliMesaj}` : `https://wa.me/?text=${guvenliMesaj}`;
+  };
+
+  const whatsappMesajiAc = (telefon, mesaj) => {
+    window.open(whatsappLinkiHazirla(telefon, mesaj), '_blank');
+  };
+
+  const sadakatMusterisiEkle = (e) => {
+    e.preventDefault();
+    if (!sadakatAdi.trim()) {
+      alert('Müşteri adı girin.');
+      return;
+    }
+
+    const puan = Math.max(Number(sadakatPuan || 0), 0);
+    const yeniMusteri = {
+      id: `sad-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      restaurantId: mevcutRestaurantId,
+      ad: sadakatAdi.trim(),
+      telefon: sadakatTelefon.trim(),
+      puan,
+      ziyaret: 1,
+      toplamHarcama: 0,
+      sonIslem: new Date().toISOString(),
+    };
+
+    setSadakatMusterileri(prev => [yeniMusteri, ...(Array.isArray(prev) ? prev : [])]);
+    setSadakatAdi('');
+    setSadakatTelefon('');
+    setSadakatPuan('');
+    setSadakatMesaji('Sadakat müşterisi eklendi.');
+    islemLoguEkle('Sadakat', `${yeniMusteri.ad} sadakat sistemine eklendi.`);
+  };
+
+  const sadakatPuanGuncelle = (musteriId, puanDegisimi, ziyaretEkle = false) => {
+    setSadakatMusterileri(prev => (Array.isArray(prev) ? prev : []).map(m => {
+      if (String(m.id) !== String(musteriId)) return m;
+      const yeniPuan = Math.max(Number(m.puan || 0) + Number(puanDegisimi || 0), 0);
+      return { ...m, puan: yeniPuan, ziyaret: Number(m.ziyaret || 0) + (ziyaretEkle ? 1 : 0), sonIslem: new Date().toISOString() };
+    }));
+    islemLoguEkle('Sadakat', `Sadakat puanı güncellendi: ${puanDegisimi > 0 ? '+' : ''}${puanDegisimi}`);
+  };
+
+  const sadakatMusterileriniCaridenAktar = () => {
+    const kaynakMusteriler = [
+      ...(Array.isArray(cariMusteriler) ? cariMusteriler : []),
+      ...(Array.isArray(paketMusterileri) ? paketMusterileri : []),
+    ].filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || ''));
+
+    let eklenen = 0;
+    setSadakatMusterileri(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const mevcutTelefonlar = new Set(liste.map(m => String(m.telefon || '').replace(/\D/g, '')).filter(Boolean));
+      const yeniKayitlar = kaynakMusteriler
+        .filter(m => String(m.ad || '').trim())
+        .filter(m => {
+          const tel = String(m.telefon || '').replace(/\D/g, '');
+          return !tel || !mevcutTelefonlar.has(tel);
+        })
+        .map(m => {
+          eklenen += 1;
+          return {
+            id: `sad-${Date.now()}-${eklenen}`,
+            restaurantId: mevcutRestaurantId,
+            ad: m.ad || m.musteriAdi || 'Müşteri',
+            telefon: m.telefon || '',
+            puan: 0,
+            ziyaret: 1,
+            toplamHarcama: Number(m.bakiye || 0),
+            sonIslem: new Date().toISOString(),
+          };
+        });
+      return [...yeniKayitlar, ...liste];
+    });
+
+    setSadakatMesaji(`${eklenen} müşteri sadakat sistemine aktarıldı.`);
+  };
+
+  const onlineSiparisSesiCal = () => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.frequency.value = 880;
+      gain.gain.value = 0.05;
+      oscillator.start();
+      setTimeout(() => {
+        oscillator.stop();
+        audioContext.close();
+      }, 180);
+    } catch {
+      // tarayıcı izin vermezse sessiz geçilir
+    }
+  };
+
+  const onlineSiparisKabulEt = (siparis) => {
+    onlineSiparisDurumuGuncelle(siparis.id, 'Onaylandı');
+    setOnlineSiparisMesaji(`${siparis.platform || 'Online'} siparişi onaylandı.`);
+    islemLoguEkle('Online Sipariş', `${siparis.platform || 'Online'} siparişi onaylandı.`);
+  };
+
+  const onlineSiparisReddet = (siparis) => {
+    if (!window.confirm('Online sipariş iptal / yok sayıldı olarak işaretlensin mi?')) return;
+    onlineSiparisDurumuGuncelle(siparis.id, 'Yok Sayıldı');
+    setOnlineSiparisMesaji(`${siparis.platform || 'Online'} siparişi yok sayıldı.`);
+    islemLoguEkle('Online Sipariş', `${siparis.platform || 'Online'} siparişi yok sayıldı.`);
+  };
+
+  const kioskSepeteEkle = (urun) => {
+    if (!urun) return;
+    setKioskSepet(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const mevcut = liste.find(s => String(s.urunId) === String(urun.id));
+      if (mevcut) {
+        return liste.map(s => String(s.urunId) === String(urun.id) ? { ...s, adet: Number(s.adet || 1) + 1 } : s);
+      }
+      return [...liste, { urunId: urun.id, ad: urun.ad, fiyat: Number(urun.fiyat || 0), adet: 1, menuGrubu: urun.menuGrubu || urun.kategori || 'Genel', departman: urun.departman || 'Mutfak' }];
+    });
+  };
+
+  const kioskSepetAdetGuncelle = (urunId, fark) => {
+    setKioskSepet(prev => (Array.isArray(prev) ? prev : [])
+      .map(s => String(s.urunId) === String(urunId) ? { ...s, adet: Number(s.adet || 1) + Number(fark || 0) } : s)
+      .filter(s => Number(s.adet || 0) > 0));
+  };
+
+  const kioskToplam = (Array.isArray(kioskSepet) ? kioskSepet : []).reduce((t, u) => t + Number(u.fiyat || 0) * Number(u.adet || 1), 0);
+
+  const kioskSiparisiniKasayaGonder = () => {
+    if (!Array.isArray(kioskSepet) || kioskSepet.length === 0) {
+      alert('Kiosk sepetine ürün ekleyin.');
+      return;
+    }
+
+    const siparis = onlineSiparisiNormalizeEt({
+      platform: 'Kiosk',
+      platformOrderId: `KIOSK-${Date.now()}`,
+      musteriAdi: kioskMusteriAdi || 'Kiosk Müşterisi',
+      telefon: '',
+      adres: 'Self Servis / Kiosk',
+      urunler: kioskSepet,
+      toplam: kioskToplam,
+      odemeTipi: 'Kasada Ödenecek',
+      notMetni: kioskSiparisNotu,
+      durum: 'Yeni',
+      createdAt: new Date().toISOString(),
+    }, 'Kiosk');
+
+    setOnlineSiparisler(prev => [siparis, ...(Array.isArray(prev) ? prev : [])]);
+    setKioskSepet([]);
+    setKioskMusteriAdi('');
+    setKioskSiparisNotu('');
+    setKioskMesaji('Kiosk siparişi online sipariş havuzuna gönderildi.');
+    onlineSiparisSesiCal();
+    islemLoguEkle('Kiosk', 'Kiosk siparişi oluşturuldu.');
+  };
+
+  const stokSayimFisOlustur = () => {
+    const kritikler = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : [])
+      .filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || ''))
+      .filter(m => Number(m.miktar || 0) <= Number(m.kritik || 0));
+
+    const kayit = {
+      id: `sayim-${Date.now()}`,
+      restaurantId: mevcutRestaurantId,
+      tarih: new Date().toISOString(),
+      malzemeSayisi: stokMalzemeleri.filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || '')).length,
+      kritikSayisi: kritikler.length,
+      durum: 'Sayım Açıldı',
+    };
+
+    setStokSayimKayitlari(prev => [kayit, ...(Array.isArray(prev) ? prev : [])]);
+    setSatinAlmaMesaji('Stok sayım fişi oluşturuldu.');
+    islemLoguEkle('Stok Sayım', 'Stok sayım fişi oluşturuldu.');
+  };
+
+  const satinAlmaTalebiOlustur = (e) => {
+    e.preventDefault();
+    const malzeme = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : []).find(m => String(m.id) === String(satinAlmaMalzemeId));
+    if (!malzeme) {
+      alert('Malzeme seçin.');
+      return;
+    }
+
+    const miktar = Number(String(satinAlmaMiktar || '').replace(',', '.'));
+    if (!miktar || miktar <= 0) {
+      alert('Geçerli miktar girin.');
+      return;
+    }
+
+    const kayit = {
+      id: `satinalma-${Date.now()}`,
+      restaurantId: mevcutRestaurantId,
+      malzemeId: malzeme.id,
+      malzemeAdi: malzeme.ad,
+      birim: malzeme.birim || 'adet',
+      miktar,
+      tedarikci: satinAlmaTedarikci || 'Tedarikçi seçilmedi',
+      durum: 'Talep Açıldı',
+      createdAt: new Date().toISOString(),
+    };
+
+    setSatinAlmaTalepleri(prev => [kayit, ...(Array.isArray(prev) ? prev : [])]);
+    setSatinAlmaMalzemeId('');
+    setSatinAlmaMiktar('');
+    setSatinAlmaTedarikci('');
+    setSatinAlmaMesaji('Satın alma talebi oluşturuldu.');
+    islemLoguEkle('Satın Alma', `${kayit.malzemeAdi} için satın alma talebi açıldı.`);
+  };
+
+  const satinAlmaDurumGuncelle = (talepId, durum) => {
+    setSatinAlmaTalepleri(prev => (Array.isArray(prev) ? prev : []).map(t => String(t.id) === String(talepId) ? { ...t, durum, updatedAt: new Date().toISOString() } : t));
+    islemLoguEkle('Satın Alma', `Satın alma durumu ${durum} yapıldı.`);
+  };
+
   // personel ekran yetkilerinde kullanılacak sekme seçeneklerini tutan kod
   const personelSekmeSecenekleri = [
     { key: 'masalar', label: '🪑 Masalar' },
@@ -2083,6 +2447,9 @@ Toplam Ciro: {toplam}
     { key: 'hizli_satis', label: '⚡ Hızlı Satış' },
     { key: 'menu', label: '🍔 Menü & Ayarlar' },
     { key: 'qr_menu', label: '📱 QR Menü' },
+    { key: 'servis_talepleri', label: '🔔 Servis Talepleri' },
+    { key: 'sadakat', label: '🎁 Sadakat' },
+    { key: 'kiosk', label: '🧍 Kiosk' },
     { key: 'raporlar', label: '📊 Raporlar' },
     { key: 'cari', label: '📒 Cari / Veresiye' },
     { key: 'stok', label: '📦 Stok' },
@@ -2098,7 +2465,7 @@ Toplam Ciro: {toplam}
     const gorevMetni = String(gorev || '').toLocaleLowerCase('tr-TR');
 
     if (gorevMetni.includes('müdür') || gorevMetni.includes('mudur')) {
-      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'qr_menu'];
+      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'qr_menu', 'servis_talepleri', 'sadakat', 'kiosk'];
     }
 
     if (gorevMetni.includes('mutfak')) {
@@ -2110,7 +2477,7 @@ Toplam Ciro: {toplam}
     }
 
     if (gorevMetni.includes('kasiyer')) {
-      return ['masalar', 'paket', 'hizli_satis', 'cari'];
+      return ['masalar', 'paket', 'hizli_satis', 'cari', 'kiosk'];
     }
 
     return ['masalar', 'menu'];
@@ -7844,6 +8211,12 @@ Toplam Ciro: {toplam}
       return;
     }
 
+    const rezervasyonNotMetni = [
+      rezervasyonNotu,
+      rezervasyonKaporaTutari ? `Kapora: ${rezervasyonKaporaTutari} TL` : '',
+      rezervasyonHatirlatma ? 'WhatsApp hatırlatma açık' : '',
+    ].filter(Boolean).join(' | ');
+
     const { data, error } = await supabase
       .from('rezervasyonlar')
       .insert([{
@@ -7856,7 +8229,7 @@ Toplam Ciro: {toplam}
         rezervasyon_bitis_zamani: rezervasyonBitisIso,
         masa_id: masa?.id || null,
         masa_adi: masa?.ad || '',
-        not_metni: rezervasyonNotu,
+        not_metni: rezervasyonNotMetni,
         durum: 'Bekliyor',
       }])
       .select()
@@ -7876,6 +8249,8 @@ Toplam Ciro: {toplam}
     setRezervasyonBitisTarihSaat('');
     setRezervasyonMasaId('');
     setRezervasyonNotu('');
+    setRezervasyonKaporaTutari('');
+    setRezervasyonHatirlatma(true);
     setRezervasyonCariMusteriId('');
     setRezervasyonCariArama('');
   };
@@ -10380,6 +10755,120 @@ Toplam Ciro: {toplam}
     seciliUrunIndirimTutari
   );
 
+
+  // QR müşteri ekranında sepete ürün ekleyen kod
+  const qrSepeteUrunEkle = (urun) => {
+    if (!urun) return;
+    setQrSepet(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const mevcut = liste.find(s => String(s.urunId) === String(urun.id));
+      if (mevcut) {
+        return liste.map(s => String(s.urunId) === String(urun.id) ? { ...s, adet: Number(s.adet || 1) + 1 } : s);
+      }
+      return [...liste, { urunId: urun.id, ad: urun.ad, fiyat: Number(urun.fiyat || 0), adet: 1, menuGrubu: urun.menuGrubu || urun.kategori || 'Genel', departman: urun.departman || 'Mutfak' }];
+    });
+  };
+
+  const qrSepetAdetGuncelle = (urunId, fark) => {
+    setQrSepet(prev => (Array.isArray(prev) ? prev : [])
+      .map(s => String(s.urunId) === String(urunId) ? { ...s, adet: Number(s.adet || 1) + Number(fark || 0) } : s)
+      .filter(s => Number(s.adet || 0) > 0));
+  };
+
+  const qrSepetToplam = (Array.isArray(qrSepet) ? qrSepet : []).reduce((toplam, u) => toplam + Number(u.fiyat || 0) * Number(u.adet || 1), 0);
+
+  const qrServisTalebiGonder = async (tip) => {
+    if (publicAyarlariMasaZorunluMu() && !String(qrSiparisMasaNo || '').trim()) {
+      alert('Lütfen masa numaranızı yazın.');
+      return;
+    }
+
+    const kayit = {
+      restaurantId: qrMenuLinkRestaurantId,
+      tip,
+      masaNo: String(qrSiparisMasaNo || '').trim(),
+      notMetni: qrSiparisNotu,
+      kaynak: 'QR Menü',
+      durum: 'Açık',
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await supabase.from('servis_talepleri').insert([{
+        restaurant_id: kayit.restaurantId,
+        tip: kayit.tip,
+        masa_no: kayit.masaNo,
+        not_metni: kayit.notMetni,
+        kaynak: kayit.kaynak,
+        durum: kayit.durum,
+      }]);
+    } catch (err) {
+      console.warn('QR servis talebi Supabase kaydı atlandı:', err?.message || err);
+    }
+
+    setServisTalepleri(prev => [{ id: `qr-srv-${Date.now()}`, ...kayit }, ...(Array.isArray(prev) ? prev : [])]);
+    setQrServisMesaji(`${tip} talebiniz işletmeye iletildi.`);
+  };
+
+  const publicAyarlariMasaZorunluMu = () => {
+    const ayarKey = String(qrMenuLinkRestaurantId || '');
+    const kayitliAyar = (qrMenuAyarlari || {})[ayarKey] || {};
+    return kayitliAyar.masaNoZorunlu !== false;
+  };
+
+  const qrSiparisGonder = async () => {
+    if (!Array.isArray(qrSepet) || qrSepet.length === 0) {
+      alert('Sepete ürün ekleyin.');
+      return;
+    }
+
+    if (publicAyarlariMasaZorunluMu() && !String(qrSiparisMasaNo || '').trim()) {
+      alert('Lütfen masa numaranızı yazın.');
+      return;
+    }
+
+    const siparisKaydi = {
+      restaurantId: qrMenuLinkRestaurantId,
+      platform: 'QR Menü',
+      platformOrderId: `QR-${Date.now()}`,
+      musteriAdi: qrSiparisMusteriAdi || 'QR Menü Müşterisi',
+      telefon: '',
+      adres: qrSiparisMasaNo ? `Masa: ${qrSiparisMasaNo}` : 'QR Menü',
+      urunler: qrSepet,
+      toplam: qrSepetToplam,
+      odemeTipi: 'Masada Ödenecek',
+      notMetni: qrSiparisNotu,
+      durum: 'Yeni',
+      createdAt: new Date().toISOString(),
+    };
+
+    setQrSiparisGonderiliyor(true);
+    try {
+      await supabase.from('online_siparisler').insert([{
+        restaurant_id: siparisKaydi.restaurantId,
+        platform: siparisKaydi.platform,
+        platform_order_id: siparisKaydi.platformOrderId,
+        musteri_adi: siparisKaydi.musteriAdi,
+        telefon: siparisKaydi.telefon,
+        adres: siparisKaydi.adres,
+        urunler: siparisKaydi.urunler,
+        toplam: siparisKaydi.toplam,
+        odeme_tipi: siparisKaydi.odemeTipi,
+        durum: siparisKaydi.durum,
+        raw_payload: siparisKaydi,
+      }]);
+    } catch (err) {
+      console.warn('QR sipariş Supabase kaydı atlandı:', err?.message || err);
+    } finally {
+      setQrSiparisGonderiliyor(false);
+    }
+
+    setOnlineSiparisler(prev => [{ id: `qr-${Date.now()}`, ...siparisKaydi }, ...(Array.isArray(prev) ? prev : [])]);
+    setQrSepet([]);
+    setQrSiparisNotu('');
+    setQrSiparisMesaji('Siparişiniz işletmeye gönderildi.');
+  };
+
   // adisyon ekranında ürün butonuna basılınca ürünü seçen kod
   const adisyondaUrunSec = (urun) => {
     if (!urun) return;
@@ -10549,6 +11038,31 @@ Toplam Ciro: {toplam}
   useEffect(() => {
     localStorage.setItem('integra_qr_menu_ayarlari', JSON.stringify(qrMenuAyarlari));
   }, [qrMenuAyarlari]);
+
+  // yeni ticari modüllerin kayıtlarını tarayıcıda yedekleyen kod
+  useEffect(() => {
+    localStorage.setItem('integra_servis_talepleri', JSON.stringify(servisTalepleri));
+  }, [servisTalepleri]);
+
+  useEffect(() => {
+    localStorage.setItem('integra_sadakat_musterileri', JSON.stringify(sadakatMusterileri));
+  }, [sadakatMusterileri]);
+
+  useEffect(() => {
+    localStorage.setItem('integra_islem_loglari', JSON.stringify(islemLoglari));
+  }, [islemLoglari]);
+
+  useEffect(() => {
+    localStorage.setItem('integra_el_terminali_modu', String(elTerminaliModu));
+  }, [elTerminaliModu]);
+
+  useEffect(() => {
+    localStorage.setItem('integra_stok_sayim_kayitlari', JSON.stringify(stokSayimKayitlari));
+  }, [stokSayimKayitlari]);
+
+  useEffect(() => {
+    localStorage.setItem('integra_satin_alma_talepleri', JSON.stringify(satinAlmaTalepleri));
+  }, [satinAlmaTalepleri]);
 
   // herkese açık QR menü linki açıldığında menü verisini yükleyen kod
   useEffect(() => {
@@ -10722,6 +11236,26 @@ Toplam Ciro: {toplam}
             ))}
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr', gap: '14px', marginBottom: '16px' }}>
+            <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '14px', boxShadow: '0 16px 45px -38px rgba(15,23,42,0.35)' }}>
+              <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '10px' }}>Masa ve sipariş bilgisi</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input type="text" placeholder="Masa no" value={qrSiparisMasaNo} onChange={e => setQrSiparisMasaNo(e.target.value)} style={{ ...styles.input, flex: '1 1 110px', minWidth: '100px' }} />
+                <input type="text" placeholder="Adınız (opsiyonel)" value={qrSiparisMusteriAdi} onChange={e => setQrSiparisMusteriAdi(e.target.value)} style={{ ...styles.input, flex: '2 1 180px', minWidth: '160px' }} />
+                <input type="text" placeholder="Not: acısız, az pişmiş..." value={qrSiparisNotu} onChange={e => setQrSiparisNotu(e.target.value)} style={{ ...styles.input, flex: '3 1 240px', minWidth: '180px' }} />
+              </div>
+              {qrServisMesaji ? <div style={{ marginTop: '8px', color: '#047857', fontWeight: '900', fontSize: '12px' }}>{qrServisMesaji}</div> : null}
+            </div>
+            <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '14px', boxShadow: '0 16px 45px -38px rgba(15,23,42,0.35)' }}>
+              <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '10px' }}>Hızlı servis</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {publicAyarlari.garsonCagirmaAktif !== false ? <button type="button" onClick={() => qrServisTalebiGonder('Garson Çağır')} style={{ ...styles.btnOrange, padding: '10px 12px', fontSize: '12px' }}>🔔 Garson Çağır</button> : null}
+                {publicAyarlari.hesapIstemeAktif !== false ? <button type="button" onClick={() => qrServisTalebiGonder('Hesap İste')} style={{ ...styles.btnOrange, background: '#1e293b', padding: '10px 12px', fontSize: '12px' }}>🧾 Hesap İste</button> : null}
+                <button type="button" onClick={() => qrServisTalebiGonder('Su İste')} style={{ ...styles.btnOrange, background: '#2563eb', padding: '10px 12px', fontSize: '12px' }}>💧 Su İste</button>
+              </div>
+            </div>
+          </div>
+
           {qrMenuYukleniyor ? (
             <div style={{ ...styles.panelCard, textAlign: 'center', color: '#64748b', fontWeight: '800' }}>Menü yükleniyor...</div>
           ) : qrMenuHatasi ? (
@@ -10750,6 +11284,9 @@ Toplam Ciro: {toplam}
                                 {urun.menuNotlari.slice(0, 4).map(not => <span key={not.id || not.ad} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '4px 7px', color: '#475569', fontSize: '11px', fontWeight: '800' }}>{not.ad}{Number(not.fiyat || 0) > 0 ? ` +${Number(not.fiyat || 0)} TL` : ''}</span>)}
                               </div>
                             ) : null}
+                            {publicAyarlari.qrSiparisAktif !== false ? (
+                              <button type="button" onClick={() => qrSepeteUrunEkle(urun)} style={{ marginTop: '10px', border: 'none', backgroundColor: publicAyarlari.temaRengi, color: '#fff', padding: '8px 10px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>Sepete Ekle</button>
+                            ) : null}
                           </div>
                         </div>
                       );
@@ -10759,6 +11296,28 @@ Toplam Ciro: {toplam}
               ))}
             </div>
           )}
+          {publicAyarlari.qrSiparisAktif !== false ? (
+            <div style={{ position: 'sticky', bottom: '12px', marginTop: '18px', backgroundColor: '#0f172a', color: '#fff', borderRadius: '22px', padding: '14px', boxShadow: '0 24px 80px -38px rgba(15,23,42,0.75)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: '900', fontSize: '15px' }}>Sepet — {qrSepet.reduce((t, u) => t + Number(u.adet || 1), 0)} ürün</div>
+                  <div style={{ color: '#cbd5e1', fontSize: '12px', marginTop: '3px' }}>{qrSepet.length === 0 ? 'Ürün seçip siparişi masaya gönderebilirsiniz.' : qrSepet.map(u => `${u.adet}x ${u.ad}`).join(' / ')}</div>
+                  {qrSiparisMesaji ? <div style={{ color: '#86efac', fontSize: '12px', fontWeight: '900', marginTop: '6px' }}>{qrSiparisMesaji}</div> : null}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {qrSepet.map(u => (
+                    <div key={u.urunId} style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '999px', padding: '5px 7px' }}>
+                      <button type="button" onClick={() => qrSepetAdetGuncelle(u.urunId, -1)} style={{ border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontWeight: '900' }}>-</button>
+                      <span style={{ fontSize: '12px', fontWeight: '900' }}>{u.adet}</span>
+                      <button type="button" onClick={() => qrSepetAdetGuncelle(u.urunId, 1)} style={{ border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontWeight: '900' }}>+</button>
+                    </div>
+                  ))}
+                  <strong style={{ whiteSpace: 'nowrap' }}>{qrSepetToplam.toLocaleString('tr-TR')} TL</strong>
+                  <button type="button" disabled={qrSiparisGonderiliyor || qrSepet.length === 0} onClick={qrSiparisGonder} style={{ border: 'none', backgroundColor: '#22c55e', color: '#fff', padding: '11px 14px', borderRadius: '14px', cursor: qrSepet.length === 0 ? 'not-allowed' : 'pointer', fontWeight: '900' }}>{qrSiparisGonderiliyor ? 'Gönderiliyor...' : 'Siparişi Gönder'}</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', fontWeight: '800', marginTop: '24px' }}>integra POS QR Menü</div>
         </div>
       </div>
@@ -11935,6 +12494,36 @@ Toplam Ciro: {toplam}
                   style={activeTab === 'qr_menu' ? styles.navItemActive : styles.navItem}
                 >
                   📱 QR Menü
+                </button>
+              )}
+
+              {tabGorunur('servis_talepleri') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('servis_talepleri')}
+                  style={activeTab === 'servis_talepleri' ? styles.navItemActive : styles.navItem}
+                >
+                  🔔 Servis Talepleri {acikServisTalebiSayisi > 0 ? `(${acikServisTalebiSayisi})` : ''}
+                </button>
+              )}
+
+              {tabGorunur('sadakat') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('sadakat')}
+                  style={activeTab === 'sadakat' ? styles.navItemActive : styles.navItem}
+                >
+                  🎁 Sadakat
+                </button>
+              )}
+
+              {tabGorunur('kiosk') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('kiosk')}
+                  style={activeTab === 'kiosk' ? styles.navItemActive : styles.navItem}
+                >
+                  🧍 Kiosk
                 </button>
               )}
 
@@ -13369,8 +13958,9 @@ Toplam Ciro: {toplam}
                             </div>
                             {String(siparis.durum || 'Yeni') === 'Yeni' ? (
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                <button type="button" onClick={() => onlineSiparisKabulEt(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#2563eb', padding: '8px 10px', fontSize: '12px' }}>Kabul Et</button>
                                 <button type="button" onClick={() => onlineSiparisiPaketServiseAktar(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#10b981', padding: '8px 10px', fontSize: '12px' }}>Paket Servise Aktar</button>
-                                <button type="button" onClick={() => onlineSiparisDurumuGuncelle(siparis.id, 'Yok Sayıldı')} style={{ ...styles.btnOrange, backgroundColor: '#ef4444', padding: '8px 10px', fontSize: '12px' }}>Yok Say</button>
+                                <button type="button" onClick={() => onlineSiparisReddet(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444', padding: '8px 10px', fontSize: '12px' }}>Reddet</button>
                               </div>
                             ) : (
                               <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '900' }}>{siparis.paketSiparisId ? `Paket ID: ${siparis.paketSiparisId}` : 'İşlem tamamlandı'}</div>
@@ -14054,6 +14644,20 @@ Toplam Ciro: {toplam}
                 <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
                   Trendyol, Getir ve Migros gibi platformların API bilgilerini burada yönetin. Siparişler Paket Servis ekranındaki Online Siparişler havuzuna düşer.
                 </p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
+                  {platformOzetleri.map(o => (
+                    <div key={o.platform} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}>
+                      <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>{o.platform}</div>
+                      <div style={{ fontSize: '22px', fontWeight: '900', color: '#0f172a' }}>{o.adet}</div>
+                      <div style={{ color: '#94a3b8', fontSize: '12px' }}>Yeni: {o.yeni} / Ciro: {o.toplam.toLocaleString('tr-TR')} TL</div>
+                    </div>
+                  ))}
+                  <div style={{ backgroundColor: gecikenOnlineSiparisSayisi > 0 ? '#fef2f2' : '#ecfdf5', border: gecikenOnlineSiparisSayisi > 0 ? '1px solid #fecaca' : '1px solid #a7f3d0', borderRadius: '16px', padding: '12px' }}>
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Geciken Sipariş</div>
+                    <div style={{ fontSize: '22px', fontWeight: '900', color: gecikenOnlineSiparisSayisi > 0 ? '#b91c1c' : '#047857' }}>{gecikenOnlineSiparisSayisi}</div>
+                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>15 dk üstü açık sipariş</div>
+                  </div>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: '16px', alignItems: 'flex-start' }}>
                   <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', margin: 0, border: '1px solid #e2e8f0' }}>
                     <h3 style={{ marginTop: 0, color: '#1e293b', fontSize: '16px' }}>Platformlar</h3>
@@ -14319,6 +14923,39 @@ Toplam Ciro: {toplam}
                     </div>
                   ))
                 )}
+              </div>
+            )}
+
+            {/* stok sayım ve satın alma ekranını gösteren kod */}
+            {activeTab === 'stok' && (
+              <div style={{ ...styles.panelCard, marginTop: '16px' }}>
+                <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>📋 Stok Sayım & Satın Alma</h3>
+                {satinAlmaMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{satinAlmaMesaji}</div> : null}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
+                    <h4 style={{ margin: '0 0 10px', color: '#1e293b' }}>Stok sayım fişi</h4>
+                    <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5 }}>Kritik stokları ve mevcut hammadde listesini sayım fişine çevirin.</p>
+                    <button type="button" onClick={stokSayimFisOlustur} style={styles.btnOrange}>Sayım Fişi Aç</button>
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {stokSayimKayitlari.filter(k => String(k.restaurantId) === String(mevcutRestaurantId)).slice(0, 4).map(k => <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155' }}>{tarihSaatYaz(k.tarih)} — {k.malzemeSayisi} kalem / Kritik: {k.kritikSayisi}</div>)}
+                    </div>
+                  </div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
+                    <h4 style={{ margin: '0 0 10px', color: '#1e293b' }}>Satın alma talebi</h4>
+                    <form onSubmit={satinAlmaTalebiOlustur} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <select value={satinAlmaMalzemeId} onChange={e => setSatinAlmaMalzemeId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px' }}>
+                        <option value="">Malzeme seç</option>
+                        {stokMalzemeleri.filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || '')).map(m => <option key={m.id} value={String(m.id)}>{m.ad} / {m.miktar} {m.birim}</option>)}
+                      </select>
+                      <input type="number" placeholder="Miktar" value={satinAlmaMiktar} onChange={e => setSatinAlmaMiktar(e.target.value)} style={{ ...styles.input, width: '120px' }} />
+                      <input type="text" placeholder="Tedarikçi" value={satinAlmaTedarikci} onChange={e => setSatinAlmaTedarikci(e.target.value)} style={{ ...styles.input, flex: '1 1 160px' }} />
+                      <button type="submit" style={styles.btnOrange}>Talep Aç</button>
+                    </form>
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {satinAlmaTalepleri.filter(t => String(t.restaurantId) === String(mevcutRestaurantId)).slice(0, 5).map(t => <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: '12px', color: '#334155' }}>{t.malzemeAdi} — {t.miktar} {t.birim} / {t.tedarikci}</span><select value={t.durum} onChange={e => satinAlmaDurumGuncelle(t.id, e.target.value)} style={{ ...styles.input, minWidth: '130px' }}><option>Talep Açıldı</option><option>Sipariş Verildi</option><option>Teslim Alındı</option><option>İptal</option></select></div>)}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -14896,8 +15533,17 @@ Toplam Ciro: {toplam}
                     {tumRestoranMasalari.filter(m => rezervasyonMasaMusaitMi(m)).map(m => <option key={m.id} value={String(m.id)}>{m.bolum || 'Salon'} / {m.ad}</option>)}
                   </select>
                   <input type="text" placeholder="Not" value={rezervasyonNotu} onChange={e => setRezervasyonNotu(e.target.value)} style={styles.input} />
+                  <input type="number" placeholder="Kapora TL" value={rezervasyonKaporaTutari} onChange={e => setRezervasyonKaporaTutari(e.target.value)} style={{ ...styles.input, width: '120px', minWidth: '120px' }} />
+                  <label style={{ ...styles.input, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#475569' }}><input type="checkbox" checked={rezervasyonHatirlatma} onChange={e => setRezervasyonHatirlatma(e.target.checked)} />WhatsApp hatırlatma</label>
                   <button type="submit" style={styles.btnOrange}>Rezervasyon Ekle</button>
                 </form>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '10px', margin: '14px 0' }}>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Bugünkü Rezervasyon</div><strong style={{ fontSize: '22px' }}>{bugunkuRezervasyonlar.length}</strong></div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Bekleyen</div><strong style={{ fontSize: '22px' }}>{rezervasyonlar.filter(r => r.durum === 'Bekliyor').length}</strong></div>
+                  <button type="button" onClick={() => setRezervasyonTakvimGorunumu(rezervasyonTakvimGorunumu === 'liste' ? 'takvim' : 'liste')} style={{ ...styles.btnOrange, background: '#1e293b' }}>{rezervasyonTakvimGorunumu === 'liste' ? 'Takvim Görünümü' : 'Liste Görünümü'}</button>
+                  <button type="button" onClick={() => whatsappMesajiAc(rezervasyonTelefon, `${restaurantName || user?.restaurant || 'Integra POS'} rezervasyon hatırlatma: ${rezervasyonTarihSaat || 'Rezervasyon saatiniz'} için sizi bekliyoruz.`)} style={{ ...styles.btnOrange, background: '#22c55e' }}>WhatsApp Hatırlat</button>
+                </div>
 
                 {rezervasyonlar.length === 0 ? (
                   <div style={{ color: '#94a3b8', padding: '20px' }}>Rezervasyon yok.</div>
@@ -14911,6 +15557,7 @@ Toplam Ciro: {toplam}
                       <select value={r.durum} onChange={e => rezervasyonDurumGuncelle(r, e.target.value)} style={{ ...styles.input, minWidth: '140px' }}>
                         <option>Bekliyor</option>
                         <option>Geldi</option>
+                        <option>Gelmedi</option>
                         <option>İptal</option>
                       </select>
                     </div>
@@ -16165,6 +16812,10 @@ Toplam Ciro: {toplam}
                     <input type="text" placeholder="WhatsApp telefon" value={aktifQrMenuAyari.whatsappTelefon} onChange={e => qrMenuAyariGuncelle('whatsappTelefon', e.target.value)} style={styles.input} />
                     <input type="text" placeholder="Alt not" value={aktifQrMenuAyari.siparisNotu} onChange={e => qrMenuAyariGuncelle('siparisNotu', e.target.value)} style={styles.input} />
                     <label style={{ ...styles.input, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#475569' }}><input type="checkbox" checked={aktifQrMenuAyari.fiyatlariGoster !== false} onChange={e => qrMenuAyariGuncelle('fiyatlariGoster', e.target.checked)} />Fiyatları QR menüde göster</label>
+                    <label style={{ ...styles.input, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#475569' }}><input type="checkbox" checked={aktifQrMenuAyari.qrSiparisAktif !== false} onChange={e => qrMenuAyariGuncelle('qrSiparisAktif', e.target.checked)} />QR menüden sipariş alınsın</label>
+                    <label style={{ ...styles.input, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#475569' }}><input type="checkbox" checked={aktifQrMenuAyari.garsonCagirmaAktif !== false} onChange={e => qrMenuAyariGuncelle('garsonCagirmaAktif', e.target.checked)} />Garson çağır butonu açık</label>
+                    <label style={{ ...styles.input, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#475569' }}><input type="checkbox" checked={aktifQrMenuAyari.hesapIstemeAktif !== false} onChange={e => qrMenuAyariGuncelle('hesapIstemeAktif', e.target.checked)} />Hesap iste butonu açık</label>
+                    <label style={{ ...styles.input, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#475569' }}><input type="checkbox" checked={aktifQrMenuAyari.masaNoZorunlu !== false} onChange={e => qrMenuAyariGuncelle('masaNoZorunlu', e.target.checked)} />Masa numarası zorunlu</label>
                   </div>
                 </div>
 
@@ -16210,9 +16861,101 @@ Toplam Ciro: {toplam}
             )}
 
             {/* personel oluşturma ve listeleme ekranını gösteren kod */}
+
+            {/* QR servis talepleri ve işlem loglarını gösteren kod */}
+            {activeTab === 'servis_talepleri' && (
+              <div style={styles.panelCard}>
+                <h2 style={styles.pageTitle}>🔔 Servis Talepleri</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>QR menüden gelen garson çağır, hesap iste ve servis taleplerini buradan yönetin.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#9a3412', fontSize: '12px', fontWeight: '800' }}>Açık Talep</div><strong style={{ fontSize: '26px', color: '#ea580c' }}>{acikServisTalebiSayisi}</strong></div>
+                  <button type="button" onClick={() => servisTalebiEkle('Garson Çağır', activeMasa?.ad || '', '', 'Panel')} style={styles.btnOrange}>Test Garson Çağır</button>
+                  <button type="button" onClick={() => servisTalebiEkle('Hesap İste', activeMasa?.ad || '', '', 'Panel')} style={{ ...styles.btnOrange, background: '#1e293b' }}>Test Hesap İste</button>
+                </div>
+                {aktifServisTalepleri.length === 0 ? <div style={{ color: '#94a3b8', padding: '20px' }}>Henüz servis talebi yok.</div> : aktifServisTalepleri.map(t => (
+                  <div key={t.id} style={styles.dataRow}>
+                    <span><strong>{t.tip}</strong> {t.masaNo ? `/ ${t.masaNo}` : ''} — {t.kaynak || 'QR'} / {tarihSaatYaz(t.createdAt)} {t.notMetni ? ` / ${t.notMetni}` : ''}</span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ border: '1px solid #e2e8f0', borderRadius: '999px', padding: '5px 8px', fontSize: '12px', fontWeight: '900', color: t.durum === 'Açık' ? '#ea580c' : '#047857', backgroundColor: t.durum === 'Açık' ? '#fff7ed' : '#ecfdf5' }}>{t.durum}</span>
+                      {t.durum === 'Açık' ? <button type="button" onClick={() => servisTalebiniKapat(t.id)} style={{ ...styles.btnOrange, background: '#10b981', padding: '8px 10px', fontSize: '12px' }}>Kapat</button> : null}
+                    </div>
+                  </div>
+                ))}
+                <h3 style={{ margin: '18px 0 10px', color: '#1e293b' }}>🛡️ İşlem Logları</h3>
+                {(Array.isArray(islemLoglari) ? islemLoglari : []).filter(l => String(l.restaurantId) === String(mevcutRestaurantId)).slice(0, 12).map(l => (
+                  <div key={l.id} style={{ ...styles.dataRow, backgroundColor: '#f8fafc' }}><span>{tarihSaatYaz(l.createdAt)} — <strong>{l.tip}</strong> / {l.aciklama}</span><span style={{ color: '#64748b', fontSize: '12px' }}>{l.kullanici}</span></div>
+                ))}
+              </div>
+            )}
+
+            {/* sadakat sistemini gösteren kod */}
+            {activeTab === 'sadakat' && (
+              <div style={styles.panelCard}>
+                <h2 style={styles.pageTitle}>🎁 Müşteri Sadakat Sistemi</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>Puan, ziyaret sayısı, kampanya ve WhatsApp iletişimini tek ekrandan yönetin.</p>
+                {sadakatMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{sadakatMesaji}</div> : null}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Sadakat Müşterisi</div><strong style={{ fontSize: '26px' }}>{aktifSadakatMusterileri.length}</strong></div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Toplam Puan</div><strong style={{ fontSize: '26px' }}>{sadakatToplamPuan}</strong></div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Toplam Ziyaret</div><strong style={{ fontSize: '26px' }}>{sadakatToplamZiyaret}</strong></div>
+                </div>
+                <form onSubmit={sadakatMusterisiEkle} style={styles.inlineForm}>
+                  <input type="text" placeholder="Müşteri adı" value={sadakatAdi} onChange={e => setSadakatAdi(e.target.value)} style={styles.input} />
+                  <input type="text" placeholder="Telefon" value={sadakatTelefon} onChange={e => setSadakatTelefon(e.target.value)} style={styles.input} />
+                  <input type="number" placeholder="Başlangıç puanı" value={sadakatPuan} onChange={e => setSadakatPuan(e.target.value)} style={{ ...styles.input, width: '150px' }} />
+                  <button type="submit" style={styles.btnOrange}>Müşteri Ekle</button>
+                  <button type="button" onClick={sadakatMusterileriniCaridenAktar} style={{ ...styles.btnOrange, background: '#1e293b' }}>Cariden Aktar</button>
+                </form>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '10px', marginTop: '14px' }}>
+                  {aktifSadakatMusterileri.length === 0 ? <div style={{ color: '#94a3b8', padding: '20px' }}>Sadakat müşterisi yok.</div> : aktifSadakatMusterileri.map(m => (
+                    <div key={m.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}><strong>{m.ad}</strong><span style={{ color: '#ea580c', fontWeight: '900' }}>{m.puan} puan</span></div>
+                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px' }}>{m.telefon || 'Telefon yok'} / {m.ziyaret || 0} ziyaret</div>
+                      <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '10px' }}>
+                        <button type="button" onClick={() => sadakatPuanGuncelle(m.id, 10, true)} style={{ ...styles.btnOrange, padding: '8px 10px', fontSize: '12px' }}>+10 Puan</button>
+                        <button type="button" onClick={() => sadakatPuanGuncelle(m.id, -10, false)} style={{ ...styles.btnOrange, background: '#ef4444', padding: '8px 10px', fontSize: '12px' }}>-10 Kullan</button>
+                        <button type="button" onClick={() => whatsappMesajiAc(m.telefon, `${user?.restaurant || 'Integra POS'} sadakat kampanyası: ${m.puan} puanınız var. Sizi tekrar bekleriz.`)} style={{ ...styles.btnOrange, background: '#22c55e', padding: '8px 10px', fontSize: '12px' }}>WhatsApp</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* kiosk self servis ekranını gösteren kod */}
+            {activeTab === 'kiosk' && (
+              <div style={styles.panelCard}>
+                <h2 style={styles.pageTitle}>🧍 Kiosk / Self Servis</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>Kumpirci, dönerci, kahveci ve fast food işletmeleri için self servis sipariş ekranı. Siparişler Online Siparişler havuzuna düşer.</p>
+                {kioskMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{kioskMesaji}</div> : null}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '14px' }}>
+                  <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '10px' }}>
+                      {aktifMenu.map(urun => <button key={urun.id} type="button" onClick={() => kioskSepeteEkle(urun)} style={{ textAlign: 'left', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px', cursor: 'pointer' }}><div style={{ fontWeight: '900', color: '#1e293b' }}>{urun.ad}</div><div style={{ color: '#ea580c', fontWeight: '900', marginTop: '6px' }}>{Number(urun.fiyat || 0).toLocaleString('tr-TR')} TL</div></button>)}
+                    </div>
+                  </div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '14px' }}>
+                    <h3 style={{ margin: '0 0 10px', color: '#1e293b' }}>Sepet</h3>
+                    <input type="text" placeholder="Müşteri adı / sıra no" value={kioskMusteriAdi} onChange={e => setKioskMusteriAdi(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', marginBottom: '8px' }} />
+                    <input type="text" placeholder="Sipariş notu" value={kioskSiparisNotu} onChange={e => setKioskSiparisNotu(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', marginBottom: '8px' }} />
+                    {kioskSepet.length === 0 ? <div style={{ color: '#94a3b8', fontSize: '13px' }}>Sepet boş.</div> : kioskSepet.map(u => <div key={u.urunId} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', marginBottom: '8px' }}><span style={{ fontSize: '13px', color: '#334155' }}>{u.ad}</span><div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><button type="button" onClick={() => kioskSepetAdetGuncelle(u.urunId, -1)}>-</button><strong>{u.adet}</strong><button type="button" onClick={() => kioskSepetAdetGuncelle(u.urunId, 1)}>+</button></div></div>)}
+                    <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}><strong>Toplam</strong><strong>{kioskToplam.toLocaleString('tr-TR')} TL</strong></div>
+                    <button type="button" onClick={kioskSiparisiniKasayaGonder} style={{ ...styles.btnOrange, width: '100%', marginTop: '12px' }}>Kasaya Gönder</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'garsonlar' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>👥 Personel Listesi</h2>
+                <div style={{ backgroundColor: elTerminaliModu ? '#ecfdf5' : '#f8fafc', border: elTerminaliModu ? '1px solid #a7f3d0' : '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div>
+                    <strong style={{ color: '#1e293b' }}>📱 Android Garson El Terminali Modu</strong>
+                    <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>Garson APK tarafında masa, ürün ekleme ve mutfak fişi akışını sadeleştirir. Yetkiler personel bazlı çalışır.</div>
+                  </div>
+                  <label style={{ display: 'flex', gap: '8px', alignItems: 'center', color: '#475569', fontWeight: '900' }}><input type="checkbox" checked={elTerminaliModu} onChange={e => setElTerminaliModu(e.target.checked)} />El terminali modu açık</label>
+                </div>
 
                 <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
                   Garson, kurye, müdür, mutfak ve kasiyer personellerinizi buradan ekleyebilirsiniz. E-posta ve şifre girilen personel sisteme giriş yapabilir; göreceği ekranları işletme sahibi belirler.
