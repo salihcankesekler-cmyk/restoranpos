@@ -95,6 +95,89 @@ function IntegraApp() {
   const [activeTab, setActiveTab] = useState(baslangicTab);
   const [reportType, setReportType] = useState('gunluk');
   const [rehberGizli, setRehberGizli] = useState(() => localStorage.getItem('integra_rehber_gizli') === '1');
+  const [bildirimler, setBildirimler] = useState([]);
+
+  // tarayıcının eski üst alert penceresi yerine modern sağ alt bildirim gösteren kod
+  const bildirimTipiniBul = (mesaj = '', verilenTip = 'info') => {
+    if (verilenTip && verilenTip !== 'info') return verilenTip;
+
+    const metin = String(mesaj || '').toLocaleLowerCase('tr-TR');
+
+    if (
+      metin.includes('hata') ||
+      metin.includes('eklenemedi') ||
+      metin.includes('kaydedilemedi') ||
+      metin.includes('güncellenemedi') ||
+      metin.includes('bulunamadı') ||
+      metin.includes('başarısız') ||
+      metin.includes('kontrol edin') ||
+      metin.includes('violates') ||
+      metin.includes('failed')
+    ) {
+      return 'error';
+    }
+
+    if (
+      metin.includes('kaydedildi') ||
+      metin.includes('güncellendi') ||
+      metin.includes('oluşturuldu') ||
+      metin.includes('aktarıldı') ||
+      metin.includes('tamamlandı') ||
+      metin.includes('kopyalandı') ||
+      metin.includes('hazır')
+    ) {
+      return 'success';
+    }
+
+    if (
+      metin.includes('emin') ||
+      metin.includes('uyarı') ||
+      metin.includes('dikkat') ||
+      metin.includes('lütfen') ||
+      metin.includes('önce')
+    ) {
+      return 'warning';
+    }
+
+    return 'info';
+  };
+
+  const bildirimGoster = (mesaj, tip = 'info', sure = 4600) => {
+    const metin = String(mesaj?.message || mesaj || 'İşlem bildirimi');
+    const bildirimTipi = bildirimTipiniBul(metin, tip);
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    setBildirimler(prev => [
+      ...prev.slice(-3),
+      { id, mesaj: metin, tip: bildirimTipi },
+    ]);
+
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        setBildirimler(prev => prev.filter(bildirim => bildirim.id !== id));
+      }, sure);
+    }
+  };
+
+  const bildirimKapat = (id) => {
+    setBildirimler(prev => prev.filter(bildirim => bildirim.id !== id));
+  };
+
+  const bildirimGorunumu = (tip = 'info') => {
+    const temalar = {
+      success: { icon: '✅', baslik: 'İşlem başarılı', renk: '#16a34a', arka: '#f0fdf4', kenar: '#bbf7d0' },
+      error: { icon: '⚠️', baslik: 'Kontrol gerekiyor', renk: '#dc2626', arka: '#fef2f2', kenar: '#fecaca' },
+      warning: { icon: '💡', baslik: 'Bilgilendirme', renk: '#f97316', arka: '#fff7ed', kenar: '#fed7aa' },
+      info: { icon: 'ℹ️', baslik: 'Bilgi', renk: '#2563eb', arka: '#eff6ff', kenar: '#bfdbfe' },
+    };
+
+    return temalar[tip] || temalar.info;
+  };
+
+  const alert = (mesaj) => {
+    bildirimGoster(mesaj);
+  };
+
 
   const kullanimRehberiniDegistir = () => {
     setRehberGizli(prev => {
@@ -13984,6 +14067,97 @@ Toplam Ciro: {toplam}
 
   return (
     <div style={styles.appViewport}>
+      <style>{`
+        @keyframes integraToastIn {
+          from { opacity: 0; transform: translateY(12px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+      {bildirimler.length > 0 ? (
+        <div
+          style={{
+            position: 'fixed',
+            right: isMobile ? '12px' : '22px',
+            bottom: isMobile ? '12px' : '22px',
+            width: isMobile ? 'calc(100% - 24px)' : '390px',
+            maxWidth: 'calc(100vw - 24px)',
+            zIndex: 30000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            pointerEvents: 'none',
+          }}
+        >
+          {bildirimler.map(bildirim => {
+            const tema = bildirimGorunumu(bildirim.tip);
+
+            return (
+              <div
+                key={bildirim.id}
+                style={{
+                  pointerEvents: 'auto',
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'flex-start',
+                  backgroundColor: '#ffffff',
+                  border: `1px solid ${tema.kenar}`,
+                  borderLeft: `5px solid ${tema.renk}`,
+                  borderRadius: '18px',
+                  padding: '13px 14px',
+                  boxShadow: '0 24px 60px -28px rgba(15,23,42,0.45)',
+                  animation: 'integraToastIn 220ms ease-out',
+                  fontFamily: 'Inter, Arial, sans-serif',
+                }}
+              >
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '14px',
+                    backgroundColor: tema.arka,
+                    color: tema.renk,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    flex: '0 0 auto',
+                  }}
+                >
+                  {tema.icon}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: '#0f172a', fontWeight: '950', fontSize: '13px', marginBottom: '3px' }}>
+                    {tema.baslik}
+                  </div>
+                  <div style={{ color: '#475569', fontWeight: '650', fontSize: '12px', lineHeight: 1.45, wordBreak: 'break-word' }}>
+                    {bildirim.mesaj}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => bildirimKapat(bildirim.id)}
+                  style={{
+                    border: 'none',
+                    backgroundColor: '#f8fafc',
+                    color: '#94a3b8',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '999px',
+                    cursor: 'pointer',
+                    fontWeight: '900',
+                    flex: '0 0 auto',
+                  }}
+                  aria-label="Bildirimi kapat"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       {/* ödeme sonrası fiş yazdırma sorusunu ortada estetik modal olarak gösteren kod */}
       {fisSorModal && (
         <div
