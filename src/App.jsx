@@ -480,6 +480,15 @@ Toplam Ciro: {toplam}
   const [onlineSiparisYukleniyor, setOnlineSiparisYukleniyor] = useState(false);
   const [onlineSiparisMesaji, setOnlineSiparisMesaji] = useState('');
   const [entegrasyonMesaji, setEntegrasyonMesaji] = useState('');
+  const [entegrasyonTestModu, setEntegrasyonTestModu] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_entegrasyon_test_modu');
+      return kayit === null ? true : kayit !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [entegrasyonTestSenaryosu, setEntegrasyonTestSenaryosu] = useState('normal');
   const [onlineSiparisler, setOnlineSiparisler] = useState(() => {
     try {
       const kayit = localStorage.getItem('integra_online_siparisler');
@@ -503,6 +512,7 @@ Toplam Ciro: {toplam}
     apiKey: '',
     apiSecret: '',
     token: '',
+    hesapTuru: 'Yemek',
     aktif: true,
   });
 
@@ -1611,6 +1621,33 @@ Toplam Ciro: {toplam}
     return { backgroundColor: '#f8fafc', color: '#334155', borderColor: '#e2e8f0' };
   };
 
+  // gerçek API bilgisi olmadan platform akışını denemek için hazır test senaryolarını oluşturan kod
+  const onlineTestSenaryolari = [
+    { key: 'normal', label: 'Normal Sipariş', aciklama: 'Online ödendi, yeni sipariş olarak düşer.' },
+    { key: 'kapida_nakit', label: 'Kapıda Nakit', aciklama: 'Kapıda nakit ödeme ve kurye notu ile gelir.' },
+    { key: 'kapida_kart', label: 'Kapıda Kart', aciklama: 'Kapıda kart ödeme olarak paket servise aktarılır.' },
+    { key: 'gecikmis', label: 'Gecikmiş Sipariş', aciklama: '20 dk önce gelmiş gibi görünür ve gecikme uyarısını test eder.' },
+    { key: 'yogun', label: 'Yoğun Saat Paketi', aciklama: 'Aynı platformdan 3 farklı test siparişi oluşturur.' },
+  ];
+
+  const onlineTestSenaryosuBul = (senaryoKey = entegrasyonTestSenaryosu) => {
+    return onlineTestSenaryolari.find(s => s.key === senaryoKey) || onlineTestSenaryolari[0];
+  };
+
+  const platformApiUyarisiMetni = (platform = aktifEntegrasyonPlatformu, baglanti = aktifPlatformBaglantisi) => {
+    const hesapTuru = String(baglanti?.hesapTuru || entegrasyonFormu?.hesapTuru || 'Yemek');
+
+    if (platform === 'Trendyol' && hesapTuru === 'Pazaryeri') {
+      return 'Bu hesap Trendyol Pazaryeri / satış mağazası hesabı olarak işaretli. Bağlantı başarılı olsa bile Trendyol Yemek siparişleri dönmeyebilir; yemek tarafı için ayrı API erişimi gerekebilir.';
+    }
+
+    if (platform === 'Getir' || platform === 'Migros') {
+      return `${platform} canlı sipariş çekimi için işletmeye özel API / iş ortağı erişimi gerekir. Erişim gelene kadar test modu ile tüm POS akışı denenebilir.`;
+    }
+
+    return 'Canlı sipariş çekimi için platformun yemek/market sipariş API erişimi gerekir. Test modu açıkken gerçek API çağrısı yapılmadan örnek sipariş oluşturulur.';
+  };
+
   // online sipariş platform seçimi yapılınca formu dolduran kod
   const entegrasyonPlatformuSec = (platform) => {
     const secilenPlatform = platform || 'Trendyol';
@@ -1625,6 +1662,7 @@ Toplam Ciro: {toplam}
       apiKey: mevcutKayit?.apiKey || '',
       apiSecret: mevcutKayit?.apiSecret || '',
       token: mevcutKayit?.token || '',
+      hesapTuru: mevcutKayit?.hesapTuru || 'Yemek',
       aktif: mevcutKayit?.aktif !== false,
     });
   };
@@ -1664,6 +1702,8 @@ Toplam Ciro: {toplam}
       apiKey: String(entegrasyonFormu.apiKey || '').trim(),
       apiSecret: String(entegrasyonFormu.apiSecret || '').trim(),
       token: String(entegrasyonFormu.token || '').trim(),
+      hesapTuru: entegrasyonFormu.hesapTuru || 'Yemek',
+      testModu: entegrasyonTestModu,
       aktif: entegrasyonFormu.aktif !== false,
       updatedAt: new Date().toISOString(),
     };
@@ -1674,7 +1714,7 @@ Toplam Ciro: {toplam}
       return [kayit, ...digerleri];
     });
 
-    setEntegrasyonMesaji(`${kayit.platform} bağlantısı kaydedildi. Sipariş çekme için Supabase Edge Function / backend adaptörü bağlandığında bu bilgiler kullanılacak.`);
+    setEntegrasyonMesaji(`${kayit.platform} bağlantısı kaydedildi. ${kayit.hesapTuru === 'Pazaryeri' ? 'Bu kayıt satış mağazası/pazaryeri hesabı olarak işaretlendi; yemek siparişleri için ayrı erişim gerekebilir.' : 'Yemek/market sipariş erişimi geldiğinde backend adaptörü bu bilgileri kullanacak.'}`);
   };
 
   const platformBaglantisiSil = (platform = aktifEntegrasyonPlatformu) => {
@@ -1691,6 +1731,7 @@ Toplam Ciro: {toplam}
       apiKey: '',
       apiSecret: '',
       token: '',
+      hesapTuru: 'Yemek',
       aktif: true,
     });
     setEntegrasyonMesaji(`${platform} bağlantısı silindi.`);
@@ -1769,9 +1810,15 @@ Toplam Ciro: {toplam}
       return;
     }
 
+    if (entegrasyonTestModu) {
+      onlineTestSenaryoOlustur(platform, entegrasyonTestSenaryosu);
+      setOnlineSiparisMesaji(`${platform} test modu açık. Gerçek API çağrısı yapılmadı; seçili senaryo online sipariş havuzuna eklendi.`);
+      return;
+    }
+
     const baglanti = aktifRestoranPlatformBaglantilari.find(b => b.platform === platform);
     if (!baglanti || baglanti.aktif === false) {
-      alert(`${platform} bağlantısı aktif değil. Önce Entegrasyonlar ekranından kaydedin.`);
+      alert(`${platform} bağlantısı aktif değil. Önce Entegrasyonlar ekranından kaydedin veya test modunu açın.`);
       return;
     }
 
@@ -1809,40 +1856,66 @@ Toplam Ciro: {toplam}
   };
 
   // gerçek API bağlanmadan ekran akışını denemek için örnek online sipariş oluşturan kod
-  const onlineDemoSiparisOlustur = (platform = aktifEntegrasyonPlatformu) => {
+  const onlineDemoSiparisOlustur = (platform = aktifEntegrasyonPlatformu, senaryoKey = entegrasyonTestSenaryosu, sıraNo = 0) => {
     if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') {
       alert('Test siparişi için aktif restoran bulunamadı.');
-      return;
+      return null;
     }
 
-    const secilenUrunler = aktifMenu.slice(0, 2);
+    const senaryo = onlineTestSenaryosuBul(senaryoKey);
+    const secilenUrunler = aktifMenu.slice(sıraNo, sıraNo + 2);
     const varsayilanUrunler = secilenUrunler.length > 0
       ? secilenUrunler.map((u, idx) => ({
           ad: u.ad,
-          adet: idx === 0 ? 1 : 2,
+          adet: idx === 0 ? 1 + sıraNo : 2,
           fiyat: Number(u.fiyat || 0),
-          not: idx === 0 ? 'Acısız / test siparişi' : '',
+          not: idx === 0 ? `${senaryo.label} / test siparişi` : '',
         }))
       : [
-          { ad: 'Online Test Ürünü', adet: 1, fiyat: 100, not: 'Test siparişi' },
+          { ad: 'Online Test Ürünü', adet: 1 + sıraNo, fiyat: 100, not: senaryo.label },
         ];
 
+    const senaryoAyar = {
+      normal: { odemeTipi: 'Online Ödendi', notMetni: 'Bu kayıt API bağlanmadan ekran akışını test etmek için oluşturuldu.', dakikaOnce: 0 },
+      kapida_nakit: { odemeTipi: 'Kapıda Nakit', notMetni: 'Kapıda nakit alınacak. Kurye para üstü kontrol etsin.', dakikaOnce: 3 },
+      kapida_kart: { odemeTipi: 'Kapıda Kart', notMetni: 'Kapıda POS ile kart ödeme alınacak.', dakikaOnce: 4 },
+      gecikmis: { odemeTipi: 'Online Ödendi', notMetni: 'Gecikme uyarısını test etmek için 20 dk önce gelmiş gibi oluşturuldu.', dakikaOnce: 20 },
+      yogun: { odemeTipi: sıraNo % 2 === 0 ? 'Online Ödendi' : 'Kapıda Nakit', notMetni: 'Yoğun saat test paketi siparişi.', dakikaOnce: sıraNo * 2 },
+    }[senaryo.key] || {};
+
+    const createdAt = new Date(Date.now() - Number(senaryoAyar.dakikaOnce || 0) * 60000).toISOString();
     const demoSiparis = onlineSiparisiNormalizeEt({
       platform,
-      platformOrderId: `${platform.slice(0, 2).toUpperCase()}-${Date.now().toString().slice(-6)}`,
-      musteriAdi: `${platform} Test Müşterisi`,
+      platformOrderId: `${platform.slice(0, 2).toUpperCase()}-TEST-${Date.now().toString().slice(-6)}${sıraNo ? `-${sıraNo + 1}` : ''}`,
+      musteriAdi: `${platform} ${senaryo.label} Müşterisi${sıraNo ? ` ${sıraNo + 1}` : ''}`,
       telefon: '05xx xxx xx xx',
-      adres: 'Test Mahallesi, Entegrasyon Sokak No:1',
-      notMetni: 'Bu kayıt API bağlanmadan ekran akışını test etmek için oluşturuldu.',
-      odemeTipi: 'Online Ödendi',
+      adres: `Test Mahallesi, ${platform} ${senaryo.label} Sokak No:${sıraNo + 1}`,
+      notMetni: senaryoAyar.notMetni || senaryo.aciklama,
+      odemeTipi: senaryoAyar.odemeTipi || 'Online Ödendi',
       urunler: varsayilanUrunler,
       durum: 'Yeni',
-      createdAt: new Date().toISOString(),
+      createdAt,
+      rawPayload: { testModu: true, senaryo: senaryo.key, kaynak: 'Integra POS demo' },
     }, platform);
 
     setOnlineSiparisler(prev => [demoSiparis, ...(Array.isArray(prev) ? prev : [])]);
     setPaketOnlineSekmesi('yeni');
-    setOnlineSiparisMesaji(`${platform} test siparişi online sipariş havuzuna eklendi.`);
+    setOnlineSiparisMesaji(`${platform} ${senaryo.label} test siparişi online sipariş havuzuna eklendi.`);
+    return demoSiparis;
+  };
+
+  const onlineTestSenaryoOlustur = (platform = aktifEntegrasyonPlatformu, senaryoKey = entegrasyonTestSenaryosu) => {
+    const senaryo = onlineTestSenaryosuBul(senaryoKey);
+
+    if (senaryo.key === 'yogun') {
+      const siparisler = [0, 1, 2]
+        .map(index => onlineDemoSiparisOlustur(platform, senaryo.key, index))
+        .filter(Boolean);
+      setOnlineSiparisMesaji(`${platform} yoğun saat test paketi oluşturuldu: ${siparisler.length} sipariş havuza eklendi.`);
+      return siparisler;
+    }
+
+    return onlineDemoSiparisOlustur(platform, senaryo.key, 0);
   };
 
   const onlineSiparisDurumuGuncelle = (siparisId, yeniDurum, ekstra = {}) => {
@@ -11034,6 +11107,11 @@ Toplam Ciro: {toplam}
     localStorage.setItem('integra_platform_baglantilari', JSON.stringify(platformBaglantilari));
   }, [platformBaglantilari]);
 
+  // entegrasyon test modunu tarayıcıda yedekleyen kod
+  useEffect(() => {
+    localStorage.setItem('integra_entegrasyon_test_modu', String(entegrasyonTestModu));
+  }, [entegrasyonTestModu]);
+
   // QR menü ayarlarını tarayıcıda yedekleyen kod
   useEffect(() => {
     localStorage.setItem('integra_qr_menu_ayarlari', JSON.stringify(qrMenuAyarlari));
@@ -13885,7 +13963,7 @@ Toplam Ciro: {toplam}
                       <button type="button" onClick={() => onlineSiparisleriBackenddenCek(aktifEntegrasyonPlatformu)} disabled={onlineSiparisYukleniyor} style={{ ...styles.btnOrange, backgroundColor: onlineSiparisYukleniyor ? '#94a3b8' : '#2563eb' }}>
                         {onlineSiparisYukleniyor ? 'Çekiliyor...' : 'Siparişleri Çek'}
                       </button>
-                      <button type="button" onClick={() => onlineDemoSiparisOlustur(aktifEntegrasyonPlatformu)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>
+                      <button type="button" onClick={() => onlineTestSenaryoOlustur(aktifEntegrasyonPlatformu, entegrasyonTestSenaryosu)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>
                         Test Siparişi Düşür
                       </button>
                       <button type="button" onClick={() => setActiveTab('entegrasyonlar')} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>
@@ -13903,6 +13981,21 @@ Toplam Ciro: {toplam}
                         </button>
                       );
                     })}
+                  </div>
+
+                  <div style={{ backgroundColor: entegrasyonTestModu ? '#eff6ff' : '#f8fafc', border: entegrasyonTestModu ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '14px', padding: '10px', marginBottom: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <strong style={{ color: '#1e293b', fontSize: '13px' }}>🧪 Entegrasyon test modu: {entegrasyonTestModu ? 'Açık' : 'Kapalı'}</strong>
+                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '3px' }}>API bilgisi yokken seçili senaryo ile gerçek sipariş gibi deneme kaydı oluşturur.</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <select value={entegrasyonTestSenaryosu} onChange={e => setEntegrasyonTestSenaryosu(e.target.value)} style={{ ...styles.input, minWidth: '170px' }}>
+                        {onlineTestSenaryolari.map(senaryo => (<option key={senaryo.key} value={senaryo.key}>{senaryo.label}</option>))}
+                      </select>
+                      <button type="button" onClick={() => setEntegrasyonTestModu(prev => !prev)} style={{ ...styles.btnOrange, backgroundColor: entegrasyonTestModu ? '#1d4ed8' : '#64748b' }}>
+                        {entegrasyonTestModu ? 'Test Modunu Kapat' : 'Test Modunu Aç'}
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
@@ -14681,6 +14774,23 @@ Toplam Ciro: {toplam}
                       </div>
                       <span style={{ ...platformRenkleri(aktifEntegrasyonPlatformu), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '6px 10px', fontSize: '12px', fontWeight: '900' }}>{aktifPlatformBaglantisi?.aktif !== false && aktifPlatformBaglantisi ? 'Aktif Bağlantı' : 'Kurulum Bekliyor'}</span>
                     </div>
+                    <div style={{ backgroundColor: entegrasyonTestModu ? '#eff6ff' : '#fff7ed', border: entegrasyonTestModu ? '1px solid #bfdbfe' : '1px solid #fed7aa', borderRadius: '14px', padding: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <div>
+                          <strong style={{ color: '#1e293b' }}>🧪 Test Modu {entegrasyonTestModu ? 'Açık' : 'Kapalı'}</strong>
+                          <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', lineHeight: 1.5 }}>{platformApiUyarisiMetni(aktifEntegrasyonPlatformu, aktifPlatformBaglantisi)}</div>
+                        </div>
+                        <button type="button" onClick={() => setEntegrasyonTestModu(prev => !prev)} style={{ ...styles.btnOrange, backgroundColor: entegrasyonTestModu ? '#2563eb' : '#64748b' }}>
+                          {entegrasyonTestModu ? 'Test Modu Açık' : 'Test Modu Kapalı'}
+                        </button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
+                        <select value={entegrasyonTestSenaryosu} onChange={e => setEntegrasyonTestSenaryosu(e.target.value)} style={{ ...styles.input, width: '100%' }}>
+                          {onlineTestSenaryolari.map(senaryo => (<option key={senaryo.key} value={senaryo.key}>{senaryo.label} - {senaryo.aciklama}</option>))}
+                        </select>
+                        <button type="button" onClick={() => onlineTestSenaryoOlustur(aktifEntegrasyonPlatformu, entegrasyonTestSenaryosu)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Seçili Senaryoyu Oluştur</button>
+                      </div>
+                    </div>
                     <form onSubmit={platformBaglantisiKaydet} style={{ display: 'grid', gap: '10px' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
                         <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Platform
@@ -14695,6 +14805,19 @@ Toplam Ciro: {toplam}
                       <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Entegrasyon Referans Kodu
                         <input type="text" value={entegrasyonFormu.entegrasyonReferansKodu} onChange={e => entegrasyonFormuGuncelle('entegrasyonReferansKodu', e.target.value)} placeholder="Panelde görünen entegrasyon referans kodu" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
                       </label>
+                      <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Hesap Türü
+                        <select value={entegrasyonFormu.hesapTuru || 'Yemek'} onChange={e => entegrasyonFormuGuncelle('hesapTuru', e.target.value)} style={{ ...styles.input, width: '100%', marginTop: '5px' }}>
+                          <option value="Yemek">Yemek / restoran sipariş hesabı</option>
+                          <option value="Pazaryeri">Pazaryeri / satış mağazası</option>
+                          <option value="Market">Market / hızlı market hesabı</option>
+                          <option value="Bilinmiyor">Emin değilim</option>
+                        </select>
+                      </label>
+                      {entegrasyonFormu.hesapTuru === 'Pazaryeri' && (
+                        <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900', lineHeight: 1.5 }}>
+                          Bu hesap satış mağazası / pazaryeri hesabı olarak işaretlendi. Trendyol Yemek gibi restoran siparişleri bu API'den dönmeyebilir; yine de test modu ile POS akışını deneyebilirsiniz.
+                        </div>
+                      )}
                       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
                         <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>API Key
                           <input type="password" value={entegrasyonFormu.apiKey} onChange={e => entegrasyonFormuGuncelle('apiKey', e.target.value)} placeholder="API Key" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
@@ -14715,7 +14838,7 @@ Toplam Ciro: {toplam}
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button type="submit" style={styles.btnOrange}>Bağlantıyı Kaydet</button>
                         <button type="button" onClick={() => onlineSiparisleriBackenddenCek(aktifEntegrasyonPlatformu)} disabled={onlineSiparisYukleniyor} style={{ ...styles.btnOrange, backgroundColor: onlineSiparisYukleniyor ? '#94a3b8' : '#2563eb' }}>{onlineSiparisYukleniyor ? 'Test Ediliyor...' : 'Sipariş Çekmeyi Test Et'}</button>
-                        <button type="button" onClick={() => onlineDemoSiparisOlustur(aktifEntegrasyonPlatformu)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Test Siparişi Oluştur</button>
+                        <button type="button" onClick={() => onlineTestSenaryoOlustur(aktifEntegrasyonPlatformu, entegrasyonTestSenaryosu)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Test Siparişi Oluştur</button>
                         {aktifPlatformBaglantisi && (<button type="button" onClick={() => platformBaglantisiSil(aktifEntegrasyonPlatformu)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Bağlantıyı Sil</button>)}
                       </div>
                     </form>
@@ -14728,7 +14851,7 @@ Toplam Ciro: {toplam}
                           {aktifRestoranPlatformBaglantilari.map(baglanti => (
                             <div key={baglanti.id || baglanti.platform} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                               <span style={{ ...platformRenkleri(baglanti.platform), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '5px 9px', fontSize: '12px', fontWeight: '900' }}>{baglanti.platform}</span>
-                              <div style={{ flex: 1 }}><strong>{baglanti.saticiId || '-'}</strong><div style={{ color: '#64748b', fontSize: '12px' }}>API Key: {baglanti.apiKey ? '••••••••' : 'Yok'} / Token: {baglanti.token ? '••••••••' : 'Yok'}</div></div>
+                              <div style={{ flex: 1 }}><strong>{baglanti.saticiId || '-'}</strong><div style={{ color: '#64748b', fontSize: '12px' }}>Hesap: {baglanti.hesapTuru || 'Yemek'} / API Key: {baglanti.apiKey ? '••••••••' : 'Yok'} / Token: {baglanti.token ? '••••••••' : 'Yok'}</div></div>
                               <span style={baglanti.aktif !== false ? styles.badgeActive : styles.badgePending}>{baglanti.aktif !== false ? 'Aktif' : 'Pasif'}</span>
                             </div>
                           ))}
