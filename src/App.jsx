@@ -94,6 +94,15 @@ function IntegraApp() {
   const [screen, setScreen] = useState(baslangicScreen);
   const [activeTab, setActiveTab] = useState(baslangicTab);
   const [reportType, setReportType] = useState('gunluk');
+  const [rehberGizli, setRehberGizli] = useState(() => localStorage.getItem('integra_rehber_gizli') === '1');
+
+  const kullanimRehberiniDegistir = () => {
+    setRehberGizli(prev => {
+      const yeniDeger = !prev;
+      localStorage.setItem('integra_rehber_gizli', yeniDeger ? '1' : '0');
+      return yeniDeger;
+    });
+  };
 
   // mobil ve tablet ekranlarda panelin taşmasını engelleyen kod
   const [isMobile, setIsMobile] = useState(() => {
@@ -13600,6 +13609,219 @@ Toplam Ciro: {toplam}
                 </div>
   );
 
+
+  const ekranRehberleri = {
+    raporlar: {
+      rozet: 'Patron özeti',
+      baslik: 'Satış, maliyet ve kârı tek ekranda izle',
+      aciklama: 'Günlük veya tarih aralığı seçerek ciroyu, ürün maliyetini ve brüt kârı kontrol edin. Maliyetlerin doğru çıkması için ürün reçetesi veya ürün kartı maliyeti dolu olmalı.',
+      adimlar: ['Tarih filtresini seç', 'Satış ve ürün sekmesini kontrol et', 'Maliyet / brüt kâr farklarını izle'],
+      aksiyonlar: [{ label: 'Reçeteleri düzenle', tab: 'receteler' }, { label: 'Kasa hareketleri', tab: 'kasa' }],
+    },
+    masalar: {
+      rozet: 'Salon akışı',
+      baslik: 'Masa, adisyon ve QR siparişleri buradan yönet',
+      aciklama: 'Masaya ürün ekleyin, QR menüden gelen talepleri garson onayıyla masaya aktarın ve ödeme alınca satış raporuna işleyin.',
+      adimlar: ['Masa seç', 'Ürünleri adisyona ekle', 'Ödeme al ve adisyonu kapat'],
+      aksiyonlar: [{ label: 'Servis talepleri', tab: 'servis_talepleri' }, { label: 'QR Menü', tab: 'qr_menu' }],
+    },
+    mutfak: {
+      rozet: 'Hazırlık ekranı',
+      baslik: 'Mutfak ve bar fişlerini canlı takip et',
+      aciklama: 'Masadan, QR siparişten, paket servisten ve hızlı satıştan gelen hazırlama fişlerini burada takip edin.',
+      adimlar: ['Yeni fişleri kontrol et', 'Hazırlananları kapat', 'İptal ve notları takip et'],
+      aksiyonlar: [{ label: 'Masalar', tab: 'masalar' }, { label: 'Paket servis', tab: 'paket' }],
+    },
+    paket: {
+      rozet: 'Paket servis',
+      baslik: 'Manuel paket ve online sipariş havuzu',
+      aciklama: 'Telefonla alınan siparişleri buradan girin. Trendyol/Getir/Migros entegrasyonları hazır olduğunda online siparişler de bu akışa bağlanır.',
+      adimlar: ['Müşteri seç veya gir', 'Ürünleri ekle', 'Kurye/ödeme durumunu takip et'],
+      aksiyonlar: [{ label: 'Entegrasyonlar', tab: 'entegrasyonlar' }, { label: 'Cari hesaplar', tab: 'cari' }],
+    },
+    entegrasyonlar: {
+      rozet: 'Dış platformlar',
+      baslik: 'Trendyol, Getir, Migros ve test siparişleri',
+      aciklama: 'Gerçek API bilgisi gelene kadar test moduyla akışı deneyin. API bilgileri hiçbir zaman App.jsx içine yazılmaz; güvenli ayar alanında tutulur.',
+      adimlar: ['Platformu seç', 'Hesap türünü belirle', 'Test siparişiyle akışı dene'],
+      aksiyonlar: [{ label: 'Online siparişler', tab: 'paket' }],
+    },
+    cari: {
+      rozet: 'Müşteri / tedarikçi',
+      baslik: 'Cari hesap, tahsilat ve alış bağlantısı',
+      aciklama: 'Müşteri veresiye hesaplarını ve tedarikçi alışlarını buradan takip edin. Alış fişinde cari seçildiğinde vadeli borç ekstereye işlenir.',
+      adimlar: ['Cari oluştur', 'Tahsilat veya borç işle', 'Ekstreyi kontrol et'],
+      aksiyonlar: [{ label: 'Alış fişi', tab: 'receteler' }, { label: 'Sadakat', tab: 'sadakat' }],
+    },
+    stok: {
+      rozet: 'Satış stoku',
+      baslik: 'Satış ürünlerinin stok durumunu izle',
+      aciklama: 'Hammadde, alış fişi, üretim ve depo sayımı Reçeteler ekranında yönetilir. Bu ekran satış ürünlerinin stok takibi için sade tutuldu.',
+      adimlar: ['Stok takipli ürünleri kontrol et', 'Kritik stokları izle', 'Gerekirse Reçetelerden alış/üretim yap'],
+      aksiyonlar: [{ label: 'Reçeteler ve alış', tab: 'receteler' }, { label: 'Raporlar', tab: 'raporlar' }],
+    },
+    kasa: {
+      rozet: 'Gün sonu',
+      baslik: 'Kasa, ödeme ve Z raporu kontrolü',
+      aciklama: 'Nakit, kart, cari ve paket servis hareketlerini gün sonunda buradan kontrol edip arşivleyin.',
+      adimlar: ['Kasa hareketlerini kontrol et', 'Gerçek kasa tutarını gir', 'Gün sonu Z raporunu al'],
+      aksiyonlar: [{ label: 'Satış raporu', tab: 'raporlar' }],
+    },
+    hizli_satis: {
+      rozet: 'Gel-al satış',
+      baslik: 'Masa açmadan hızlı satış yap',
+      aciklama: 'Kasadan hızlı ürün satışı, nakit/kart/cari ödeme ve anlık fiyat değişikliği için kullanılır.',
+      adimlar: ['Ürünleri sepete ekle', 'Ödeme tipini seç', 'Satışı kapat'],
+      aksiyonlar: [{ label: 'Menü ayarları', tab: 'menu' }, { label: 'Cari hesap', tab: 'cari' }],
+    },
+    giderler: {
+      rozet: 'Masraf takibi',
+      baslik: 'Dış giderleri ve işletme masraflarını takip et',
+      aciklama: 'Kira, personel, elektrik, temizlik veya alış fişinden gelen giderleri bu bölümde izleyin.',
+      adimlar: ['Kategori seç', 'Tutar ve açıklama gir', 'Kârlılık raporunda gideri takip et'],
+      aksiyonlar: [{ label: 'Raporlar', tab: 'raporlar' }],
+    },
+    iadeler: {
+      rozet: 'Kontrol kaydı',
+      baslik: 'İade, ikram, zayi ve personel yemeği',
+      aciklama: 'Satış dışı ürün hareketlerini kayıt altına alarak maliyet ve stok farklarını daha doğru izleyin.',
+      adimlar: ['İşlem tipini seç', 'Ürün ve sebebi gir', 'Kaydı oluştur'],
+      aksiyonlar: [{ label: 'Raporlar', tab: 'raporlar' }],
+    },
+    rezervasyonlar: {
+      rozet: 'Misafir planlama',
+      baslik: 'Rezervasyon, kapora ve hatırlatma akışı',
+      aciklama: 'Müşteri, masa, saat ve kapora bilgilerini düzenli tutun. WhatsApp hatırlatma linkleriyle müşteriye hızlı dönüş yapın.',
+      adimlar: ['Müşteri ve tarih seç', 'Masa/kapora gir', 'Geldi veya gelmedi durumunu işle'],
+      aksiyonlar: [{ label: 'Cari oluştur', tab: 'cari' }, { label: 'Masalar', tab: 'masalar' }],
+    },
+    garsonlar: {
+      rozet: 'Personel yetkisi',
+      baslik: 'Personel ekranlarını ve görevlerini yönet',
+      aciklama: 'Garson/kasiyer yetkilerini işletmenin aktif modülleriyle uyumlu şekilde verin. Kapalı modüller personele görünmez.',
+      adimlar: ['Personel oluştur', 'Görev ve telefon gir', 'Ekran yetkilerini seç'],
+      aksiyonlar: [{ label: 'Modül yetkileri', tab: 'admin_moduller' }],
+    },
+    menu: {
+      rozet: 'Ürün vitrini',
+      baslik: 'Menü, fiyat, QR görünürlük ve satış durumu',
+      aciklama: 'Ürünleri satışa alın/kaldırın, QR menüde görünüp görünmeyeceğini belirleyin ve ürün kartı maliyetini kontrol edin.',
+      adimlar: ['Ürün gruplarını düzenle', 'Fiyat ve görsel gir', 'QR / satış durumunu ayarla'],
+      aksiyonlar: [{ label: 'QR Menü önizle', tab: 'qr_menu' }, { label: 'Reçete kur', tab: 'receteler' }],
+    },
+    receteler: {
+      rozet: 'Üretim ve alış',
+      baslik: 'Hammadde, reçete, üretim, alış fişi ve depo sayımı',
+      aciklama: 'Bir ürünü oluşturan tüm hammaddeleri reçeteye ekleyin. Manuel üretimde ürün stoğu artar; satışta üretimde hammadde satış anında düşer.',
+      adimlar: ['Hammadde kartlarını aç', 'Ürüne toplu reçete kaydet', 'Üretim veya alış fişiyle stokları güncelle'],
+      aksiyonlar: [{ label: 'Satış ürünü aç', tab: 'menu' }, { label: 'Stok takibi', tab: 'stok' }],
+    },
+    qr_menu: {
+      rozet: 'Müşteri ekranı',
+      baslik: 'QR menüden masa seçimi ve sipariş talebi',
+      aciklama: 'Müşteri masa seçip sipariş talebi gönderir. Talep servis ekranına düşer; garson kabul edince ilgili masaya aktarılır.',
+      adimlar: ['QR linkini paylaş', 'Masa seçimini test et', 'Servis taleplerinden onayla'],
+      aksiyonlar: [{ label: 'Servis talepleri', tab: 'servis_talepleri' }, { label: 'Menü ürünleri', tab: 'menu' }],
+    },
+    servis_talepleri: {
+      rozet: 'Garson onayı',
+      baslik: 'QR sipariş, garson çağır ve hesap iste talepleri',
+      aciklama: 'QR siparişler paket servise düşmez. Garson burada kabul ederse ürünler seçili masanın adisyonuna aktarılır.',
+      adimlar: ['Yeni talepleri izle', 'QR siparişi kontrol et', 'Kabul edip masaya aktar'],
+      aksiyonlar: [{ label: 'Masaları aç', tab: 'masalar' }, { label: 'QR Menü', tab: 'qr_menu' }],
+    },
+    sadakat: {
+      rozet: 'Tekrar müşteri',
+      baslik: 'Puan, ziyaret ve kampanya takibi',
+      aciklama: 'Cari müşterilerden sadakat listesi oluşturup puan, ziyaret ve WhatsApp kampanya akışını takip edin.',
+      adimlar: ['Müşteri seç', 'Puan/ziyaret kontrol et', 'Kampanya mesajı hazırla'],
+      aksiyonlar: [{ label: 'Cari hesaplar', tab: 'cari' }],
+    },
+    kiosk: {
+      rozet: 'Self servis',
+      baslik: 'Kiosk / self servis sipariş ekranı',
+      aciklama: 'Fast food ve gel-al işletmeler için müşteri veya kasiyer odaklı hızlı sipariş akışı.',
+      adimlar: ['Ürünleri seç', 'Siparişi oluştur', 'Mutfak ve ödeme akışını kontrol et'],
+      aksiyonlar: [{ label: 'Hızlı satış', tab: 'hizli_satis' }, { label: 'Mutfak', tab: 'mutfak' }],
+    },
+    super_admin: {
+      rozet: 'SaaS yönetimi',
+      baslik: 'Tüm işletmeleri ve başvuruları yönet',
+      aciklama: 'Yeni işletmeleri onaylayın, hesap durumlarını kontrol edin ve müşteri destek sürecini takip edin.',
+      adimlar: ['Yeni başvuruları incele', 'Aktif/pasif durumunu yönet', 'Modül paketini kontrol et'],
+      aksiyonlar: [{ label: 'Lisanslar', tab: 'admin_lisans' }, { label: 'Modül yetkileri', tab: 'admin_moduller' }],
+    },
+    admin_lisans: {
+      rozet: 'Gelir takibi',
+      baslik: 'Lisans, ödeme ve paket yönetimi',
+      aciklama: 'Deneme süresi, geciken ödeme ve paket bazlı müşteri takibini buradan yapın.',
+      adimlar: ['Gecikenleri kontrol et', 'Paketi güncelle', 'Modül yetkisini düzenle'],
+      aksiyonlar: [{ label: 'Modül yetkileri', tab: 'admin_moduller' }],
+    },
+    admin_moduller: {
+      rozet: 'Paket yetkisi',
+      baslik: 'İşletme bazlı sekme ve modül erişimi',
+      aciklama: 'Başlangıç, profesyonel, QR plus veya premium paketlere göre işletmenin göreceği ekranları belirleyin.',
+      adimlar: ['İşletmeyi seç', 'Paket şablonu uygula', 'Gereken sekmeleri aç/kapat'],
+      aksiyonlar: [{ label: 'Lisanslar', tab: 'admin_lisans' }],
+    },
+    admin_destek: {
+      rozet: 'Destek merkezi',
+      baslik: 'Müşteri talepleri ve geliştirme notları',
+      aciklama: 'Panel içinden gelen destek taleplerini durum, konu ve işletmeye göre takip edin.',
+      adimlar: ['Açık talepleri incele', 'Durum güncelle', 'Geliştirme notu bırak'],
+      aksiyonlar: [{ label: 'Tüm müşteriler', tab: 'super_admin' }],
+    },
+  };
+
+  const renderEkranRehberi = () => {
+    const rehber = ekranRehberleri[activeTab];
+    if (!rehber || rehberGizli) return null;
+
+    const gorunurAksiyonlar = (rehber.aksiyonlar || []).filter(aksiyon => {
+      if (!aksiyon?.tab) return false;
+      if (user?.role === 'super_admin' && String(aksiyon.tab).startsWith('admin')) return true;
+      return tabGorunur(aksiyon.tab);
+    });
+
+    return (
+      <div style={styles.smartGuideCard}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+            <div style={styles.smartGuideBadge}>{rehber.rozet}</div>
+            <h2 style={styles.smartGuideTitle}>{rehber.baslik}</h2>
+            <p style={styles.smartGuideText}>{rehber.aciklama}</p>
+          </div>
+          <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideCloseBtn}>Rehberi gizle</button>
+        </div>
+
+        <div style={isMobile ? styles.smartGuideStepsMobile : styles.smartGuideSteps}>
+          {(rehber.adimlar || []).map((adim, index) => (
+            <div key={`${activeTab}-rehber-${index}`} style={styles.smartGuideStep}>
+              <span style={styles.smartGuideStepNo}>{index + 1}</span>
+              <span>{adim}</span>
+            </div>
+          ))}
+        </div>
+
+        {gorunurAksiyonlar.length > 0 ? (
+          <div style={styles.smartGuideActions}>
+            {gorunurAksiyonlar.map(aksiyon => (
+              <button
+                key={`${activeTab}-${aksiyon.tab}`}
+                type="button"
+                onClick={() => setActiveTab(aksiyon.tab)}
+                style={styles.smartGuideActionBtn}
+              >
+                {aksiyon.label} →
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   return (
     <div style={styles.appViewport}>
       {/* ödeme sonrası fiş yazdırma sorusunu ortada estetik modal olarak gösteren kod */}
@@ -14621,6 +14843,7 @@ Toplam Ciro: {toplam}
             </div>
 
             <nav style={isMobile ? styles.navGroupMobile : styles.navGroup}>
+              <div style={styles.navSectionTitle}>Günlük Operasyon</div>
               {tabGorunur('raporlar') && (
                 <button
                   type="button"
@@ -14672,6 +14895,7 @@ Toplam Ciro: {toplam}
                 </button>
               )}
 
+              <div style={styles.navSectionTitle}>Finans ve Müşteri</div>
               {tabGorunur('cari') && (
                 <button
                   type="button"
@@ -14703,6 +14927,7 @@ Toplam Ciro: {toplam}
               )}
 
 
+              <div style={styles.navSectionTitle}>Satış Kanalları</div>
               {tabGorunur('hizli_satis') && (
                 <button
                   type="button"
@@ -14713,6 +14938,7 @@ Toplam Ciro: {toplam}
                 </button>
               )}
 
+              <div style={styles.navSectionTitle}>Yönetim</div>
               {tabGorunur('giderler') && (
                 <button
                   type="button"
@@ -14753,6 +14979,7 @@ Toplam Ciro: {toplam}
                 </button>
               )}
 
+              <div style={styles.navSectionTitle}>Ürün ve Dijital</div>
               {tabGorunur('menu') && (
                 <button
                   type="button"
@@ -14815,6 +15042,7 @@ Toplam Ciro: {toplam}
 
               {user?.role === 'super_admin' && (
                 <>
+                  <div style={styles.navSectionTitle}>Integra Admin</div>
                   <button
                     type="button"
                     onClick={() => setActiveTab('super_admin')}
@@ -14849,6 +15077,10 @@ Toplam Ciro: {toplam}
                 </>
               )}
             </nav>
+            <div style={styles.sidebarHelpBox}>
+              <div style={{ fontWeight: '900', color: '#fff', marginBottom: '4px' }}>Destek ve kurulum</div>
+              <div style={{ color: '#cbd5e1', fontSize: '11px', lineHeight: 1.45 }}>Canlı destek: 0532 501 42 77</div>
+            </div>
             <button
               onClick={() => {
                 localStorage.removeItem('integra_user');
@@ -14869,6 +15101,10 @@ Toplam Ciro: {toplam}
 
           {/* MAIN */}
           <div style={isMobile ? styles.mainContentMobile : styles.mainContent}>
+            {renderEkranRehberi()}
+            {rehberGizli ? (
+              <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideShowBtn}>💡 Ekran rehberini göster</button>
+            ) : null}
             {/* masalar ve canlı adisyon ekranını gösteren kod */}
             {activeTab === 'masalar' && (
               <div style={isMobile ? styles.posLayoutMobile : styles.posLayout}>
@@ -20811,6 +21047,146 @@ const styles = {
     backgroundColor: '#f8fafc',
     fontFamily: 'Inter, Arial, sans-serif',
     overflowX: 'hidden',
+  },
+
+
+  smartGuideCard: {
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,247,237,0.94))',
+    border: '1px solid #fed7aa',
+    borderRadius: '22px',
+    padding: '18px',
+    marginBottom: '16px',
+    boxShadow: '0 24px 55px -38px rgba(249,115,22,0.45)',
+  },
+
+  smartGuideBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: '#ffedd5',
+    color: '#c2410c',
+    border: '1px solid #fed7aa',
+    borderRadius: '999px',
+    padding: '6px 10px',
+    fontSize: '11px',
+    fontWeight: '900',
+    marginBottom: '8px',
+  },
+
+  smartGuideTitle: {
+    margin: '0 0 6px',
+    color: '#0f172a',
+    fontSize: '22px',
+    letterSpacing: '-0.02em',
+  },
+
+  smartGuideText: {
+    margin: 0,
+    color: '#64748b',
+    fontSize: '13px',
+    lineHeight: 1.65,
+    fontWeight: '650',
+  },
+
+  smartGuideCloseBtn: {
+    border: '1px solid #fed7aa',
+    backgroundColor: '#fff',
+    color: '#9a3412',
+    borderRadius: '999px',
+    padding: '8px 12px',
+    cursor: 'pointer',
+    fontWeight: '900',
+    fontSize: '12px',
+  },
+
+  smartGuideShowBtn: {
+    border: '1px solid #fed7aa',
+    backgroundColor: '#fff7ed',
+    color: '#9a3412',
+    borderRadius: '999px',
+    padding: '9px 13px',
+    cursor: 'pointer',
+    fontWeight: '900',
+    fontSize: '12px',
+    marginBottom: '14px',
+    boxShadow: '0 12px 28px -24px rgba(249,115,22,0.55)',
+  },
+
+  smartGuideSteps: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '10px',
+    marginTop: '14px',
+  },
+
+  smartGuideStepsMobile: {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
+    gap: '8px',
+    marginTop: '14px',
+  },
+
+  smartGuideStep: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: '#fff',
+    border: '1px solid #ffedd5',
+    borderRadius: '14px',
+    padding: '10px 12px',
+    color: '#334155',
+    fontSize: '12px',
+    fontWeight: '850',
+  },
+
+  smartGuideStepNo: {
+    width: '24px',
+    height: '24px',
+    borderRadius: '999px',
+    backgroundColor: '#f97316',
+    color: '#fff',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '900',
+    flex: '0 0 24px',
+    fontSize: '11px',
+  },
+
+  smartGuideActions: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap',
+    marginTop: '14px',
+  },
+
+  smartGuideActionBtn: {
+    border: 'none',
+    backgroundColor: '#0f172a',
+    color: '#fff',
+    borderRadius: '999px',
+    padding: '9px 12px',
+    cursor: 'pointer',
+    fontWeight: '900',
+    fontSize: '12px',
+  },
+
+  navSectionTitle: {
+    margin: '12px 0 5px',
+    color: '#7890a9',
+    fontSize: '10px',
+    letterSpacing: '0.10em',
+    textTransform: 'uppercase',
+    fontWeight: '900',
+    padding: '0 8px',
+  },
+
+  sidebarHelpBox: {
+    margin: '12px 0',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: '14px',
+    padding: '10px 12px',
   },
 
   landingViewport: {
