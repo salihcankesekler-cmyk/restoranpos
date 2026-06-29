@@ -13316,7 +13316,7 @@ Toplam Ciro: {toplam}
     servisTalepleriniSupabasedenCek(mevcutRestaurantId);
     const zamanlayici = window.setInterval(() => {
       servisTalepleriniSupabasedenCek(mevcutRestaurantId);
-    }, 12000);
+    }, 6500);
 
     return () => window.clearInterval(zamanlayici);
   }, [user?.id, screen, mevcutRestaurantId]);
@@ -13328,7 +13328,7 @@ Toplam Ciro: {toplam}
 
     const aktifRestaurantId = mevcutRestaurantId;
     const yenilemeZamanlayicilari = {};
-    const sessizYenilemeAraligiMs = 30000;
+    const sessizYenilemeAraligiMs = 6500;
 
     const yenilemePlanla = (anahtar, yenile) => {
       if (typeof window === 'undefined' || typeof yenile !== 'function') return;
@@ -13461,23 +13461,37 @@ Toplam Ciro: {toplam}
       }
     });
 
-    // Realtime bağlantısı tarayıcı/telefon internetinden dolayı kaçırırsa sessiz yedek yenileme yapar.
-    const yedekZamanlayici = window.setInterval(() => {
-      yenilemePlanla('menu_urunleri_yedek', () => menuUrunleriniSupabasedenCek(aktifRestaurantId));
-      yenilemePlanla('menu_gruplari_yedek', () => menuGruplariniSupabasedenCek(aktifRestaurantId));
-      yenilemePlanla('masalar_yedek', async () => {
-        await masalariSupabasedenCek(aktifRestaurantId);
-        await masaBolumleriniSupabasedenCek(aktifRestaurantId);
+    // Realtime bağlantısı tarayıcı/telefon internetinden dolayı kaçırırsa 6,5 saniyede bir sessiz yedek yenileme yapar.
+    // Özellikle telefon/tablet ürün eklediğinde bilgisayarda F5 gerekmemesi için menü, masa, stok ve servis verileri hızlı kontrol edilir.
+    const hizliYedekYenile = () => {
+      tabloYenileyicileri.forEach(({ tablo, yenile }) => {
+        yenilemePlanla(`${tablo}_yedek`, yenile);
       });
-      yenilemePlanla('servis_talepleri_yedek', () => servisTalepleriniSupabasedenCek(aktifRestaurantId));
-      if (typeof mutfakFisleriniSupabasedenCek === 'function') yenilemePlanla('mutfak_fisleri_yedek', () => mutfakFisleriniSupabasedenCek(aktifRestaurantId));
-    }, sessizYenilemeAraligiMs);
+    };
+
+    const yedekZamanlayici = window.setInterval(hizliYedekYenile, sessizYenilemeAraligiMs);
+
+    const odaklanincaYenile = () => {
+      if (document.visibilityState === 'visible') {
+        hizliYedekYenile();
+      }
+    };
+
+    const pencereOdakYenile = () => hizliYedekYenile();
+
+    document.addEventListener('visibilitychange', odaklanincaYenile);
+    window.addEventListener('focus', pencereOdakYenile);
+
+    // Ekran ilk açıldığında da kısa süre içinde güncel veriyi çeker.
+    window.setTimeout(hizliYedekYenile, 900);
 
     return () => {
       Object.values(yenilemeZamanlayicilari).forEach(zamanlayici => {
         if (zamanlayici) window.clearTimeout(zamanlayici);
       });
       window.clearInterval(yedekZamanlayici);
+      document.removeEventListener('visibilitychange', odaklanincaYenile);
+      window.removeEventListener('focus', pencereOdakYenile);
       supabase.removeChannel(kanal);
     };
   }, [user?.id, screen, mevcutRestaurantId]);
@@ -13520,13 +13534,24 @@ Toplam Ciro: {toplam}
 
     const yedekZamanlayici = window.setInterval(() => {
       qrYenilemePlanla('qr_menu_yedek');
-    }, 45000);
+    }, 6500);
+
+    const qrOdaklanincaYenile = () => {
+      if (document.visibilityState === 'visible') qrYenilemePlanla('qr_menu_odak');
+    };
+    const qrPencereOdakYenile = () => qrYenilemePlanla('qr_menu_focus');
+
+    document.addEventListener('visibilitychange', qrOdaklanincaYenile);
+    window.addEventListener('focus', qrPencereOdakYenile);
+    window.setTimeout(() => qrYenilemePlanla('qr_menu_ilk'), 900);
 
     return () => {
       Object.values(yenilemeZamanlayicilari).forEach(zamanlayici => {
         if (zamanlayici) window.clearTimeout(zamanlayici);
       });
       window.clearInterval(yedekZamanlayici);
+      document.removeEventListener('visibilitychange', qrOdaklanincaYenile);
+      window.removeEventListener('focus', qrPencereOdakYenile);
       supabase.removeChannel(qrKanal);
     };
   }, [qrMenuMusteriModu, qrMenuLinkRestaurantId]);
