@@ -561,6 +561,14 @@ Toplam Ciro: {toplam}
   const [receteAyarlananUrunId, setReceteAyarlananUrunId] = useState('');
   const [receteMalzemeId, setReceteMalzemeId] = useState('');
   const [receteMiktar, setReceteMiktar] = useState('');
+  const [receteFireYuzde, setReceteFireYuzde] = useState('');
+  const [receteHazirlikNotu, setReceteHazirlikNotu] = useState('');
+  const [recetePorsiyonCarpani, setRecetePorsiyonCarpani] = useState('1');
+  const [receteKopyalanacakUrunId, setReceteKopyalanacakUrunId] = useState('');
+  const [receteDuzenlenenSatirId, setReceteDuzenlenenSatirId] = useState(null);
+  const [receteDuzenlemeMiktar, setReceteDuzenlemeMiktar] = useState('');
+  const [receteDuzenlemeFireYuzde, setReceteDuzenlemeFireYuzde] = useState('');
+  const [receteDuzenlemeNotu, setReceteDuzenlemeNotu] = useState('');
 
 
   // hızlı satış / gel-al ekranı için kullanılan kod
@@ -748,6 +756,10 @@ Toplam Ciro: {toplam}
   });
 
   const aktifMenu = menuUrunleri.filter(u => u.restaurantId === mevcutRestaurantId);
+
+  // giriş yapan restorana ait hammadde/stok malzemelerini listeleyen kod
+  const aktifStokMalzemeleri = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : [])
+    .filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || ''));
 
   // para ve yüzde inputlarını güvenli sayıya çeviren yardımcı kod
   const sayiyaCevir = (deger) => {
@@ -2751,6 +2763,65 @@ Toplam Ciro: {toplam}
   const hizliSatisToplam = Math.max(hizliSatisAraToplam - hizliSatisToplamIndirim, 0);
   const hizliSatisKdvOzeti = siparislerKdvOzetiHesapla(hizliSatisUrunler, hizliSatisToplam);
 
+  // reçete satırını fire oranı, stok düşümü ve maliyet açısından hesaplayan yardımcı kodlar
+  const receteSatirlariBul = (urunId) => {
+    return (Array.isArray(urunReceteleri) ? urunReceteleri : [])
+      .filter(r => String(r.urunId) === String(urunId));
+  };
+
+  const receteSatiriFireOrani = (satir = {}) => {
+    return Math.max(0, sayiyaCevir(satir.fireYuzde ?? satir.fire_yuzde ?? 0));
+  };
+
+  const receteSatiriNetMiktar = (satir = {}) => {
+    return Math.max(0, sayiyaCevir(satir.miktar));
+  };
+
+  const receteSatiriFireliMiktar = (satir = {}) => {
+    const netMiktar = receteSatiriNetMiktar(satir);
+    const fireYuzde = receteSatiriFireOrani(satir);
+    return paraYuvarla(netMiktar * (1 + fireYuzde / 100));
+  };
+
+  const receteSatiriMaliyetiHesapla = (satir = {}) => {
+    const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(satir.malzemeId));
+    return paraYuvarla(receteSatiriFireliMiktar(satir) * Number(malzeme?.birimMaliyet || 0));
+  };
+
+  const urunReceteAnaliziHesapla = (urunId) => {
+    const urun = aktifMenu.find(u => String(u.id) === String(urunId));
+    const satirlar = receteSatirlariBul(urunId);
+    const maliyet = paraYuvarla(satirlar.reduce((toplam, satir) => toplam + receteSatiriMaliyetiHesapla(satir), 0));
+    const satisFiyati = Number(urun?.fiyat || 0);
+    const brutKar = paraYuvarla(satisFiyati - maliyet);
+    const maliyetOrani = satisFiyati > 0 ? paraYuvarla((maliyet / satisFiyati) * 100) : 0;
+    const eksikMaliyetliKalemler = satirlar.filter(satir => {
+      const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(satir.malzemeId));
+      return !malzeme || Number(malzeme?.birimMaliyet || 0) <= 0;
+    });
+    const porsiyonLimitleri = satirlar
+      .map(satir => {
+        const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(satir.malzemeId));
+        const kullanilan = receteSatiriFireliMiktar(satir);
+        if (!malzeme || !kullanilan) return null;
+        return Math.floor(Number(malzeme.stokMiktari || 0) / kullanilan);
+      })
+      .filter(sayi => Number.isFinite(sayi));
+    const stoktanCikabilecekPorsiyon = porsiyonLimitleri.length > 0 ? Math.max(0, Math.min(...porsiyonLimitleri)) : 0;
+
+    return {
+      urun,
+      satirlar,
+      maliyet,
+      satisFiyati,
+      brutKar,
+      maliyetOrani,
+      eksikMaliyetliKalemler,
+      stoktanCikabilecekPorsiyon,
+      receteTamamMi: satirlar.length > 0 && eksikMaliyetliKalemler.length === 0,
+    };
+  };
+
   // ürün reçetesinden veya ürün kartından birim maliyet hesaplayan kod
   const urunBirimMaliyetiBul = (kayit = {}) => {
     const urunId = kayit.urunId || kayit.urun_id || kayit.id;
@@ -2758,23 +2829,14 @@ Toplam Ciro: {toplam}
     const urun = aktifMenu.find(u => String(u.id) === String(urunId)) ||
       aktifMenu.find(u => String(u.ad || '') === String(urunAdi || ''));
     const hedefUrunId = urun?.id || urunId;
-    const receteSatirlari = (Array.isArray(urunReceteleri) ? urunReceteleri : []).filter(r => String(r.urunId) === String(hedefUrunId));
-    const receteMaliyeti = receteSatirlari.reduce((toplam, r) => {
-      const malzeme = stokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
-      return toplam + Number(r.miktar || 0) * Number(malzeme?.birimMaliyet || 0);
-    }, 0);
+    const receteMaliyeti = urunReceteAnaliziHesapla(hedefUrunId).maliyet;
 
     if (receteMaliyeti > 0) return paraYuvarla(receteMaliyeti);
     return paraYuvarla(Number(kayit.maliyet ?? urun?.maliyet ?? 0));
   };
 
   const urunReceteMaliyetiHesapla = (urunId) => {
-    return paraYuvarla((Array.isArray(urunReceteleri) ? urunReceteleri : [])
-      .filter(r => String(r.urunId) === String(urunId))
-      .reduce((toplam, r) => {
-        const malzeme = stokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
-        return toplam + Number(r.miktar || 0) * Number(malzeme?.birimMaliyet || 0);
-      }, 0));
+    return urunReceteAnaliziHesapla(urunId).maliyet;
   };
 
   const bugunStrGenel = new Date().toISOString().split('T')[0];
@@ -3327,6 +3389,9 @@ Toplam Ciro: {toplam}
       urunId: r.urun_id,
       malzemeId: r.malzeme_id,
       miktar: Number(r.miktar || 0),
+      fireYuzde: Number(r.fire_yuzde || r.fire_orani || 0),
+      hazirlikNotu: r.hazirlik_notu || r.notu || '',
+      birimMaliyetSnapshot: Number(r.birim_maliyet_snapshot || 0),
       createdAt: r.created_at,
     })));
   };
@@ -6502,7 +6567,7 @@ Toplam Ciro: {toplam}
 
       receteSatirlari.forEach(r => {
         const adet = Number(siparis.adet || 1);
-        const dusulecekMiktar = Number(r.miktar || 0) * adet;
+        const dusulecekMiktar = receteSatiriFireliMiktar(r) * adet;
         if (!dusulecekMiktar || dusulecekMiktar <= 0) return;
 
         malzemeGuncellemeleri[r.malzemeId] = Number(malzemeGuncellemeleri[r.malzemeId] || 0) + dusulecekMiktar;
@@ -7764,7 +7829,29 @@ Toplam Ciro: {toplam}
     setStokMalzemeEklenecekMiktarlar(prev => ({ ...prev, [malzeme.id]: '' }));
   };
 
-  // ürün reçetesine hammadde satırı ekleyen kod
+  // Supabase'den gelen reçete satırını uygulama formatına çeviren kod
+  const receteSatiriniUygulamaFormatinaCevir = (data = {}, yedek = {}) => ({
+    id: data.id ?? yedek.id,
+    restaurantId: data.restaurant_id ?? yedek.restaurantId ?? mevcutRestaurantId,
+    urunId: data.urun_id ?? yedek.urunId,
+    malzemeId: data.malzeme_id ?? yedek.malzemeId,
+    miktar: Number(data.miktar ?? yedek.miktar ?? 0),
+    fireYuzde: Number(data.fire_yuzde ?? yedek.fireYuzde ?? 0),
+    hazirlikNotu: data.hazirlik_notu ?? yedek.hazirlikNotu ?? '',
+    birimMaliyetSnapshot: Number(data.birim_maliyet_snapshot ?? yedek.birimMaliyetSnapshot ?? 0),
+    createdAt: data.created_at ?? yedek.createdAt,
+  });
+
+  // reçete satırı kaydederken yeni kolonlar yoksa kullanıcıyı anlaşılır şekilde uyaran kod
+  const receteKolonHatasiMesaji = (error) => {
+    const mesaj = String(error?.message || '');
+    if (mesaj.includes('fire_yuzde') || mesaj.includes('hazirlik_notu') || mesaj.includes('birim_maliyet_snapshot')) {
+      return 'Reçete geliştirme SQL kolonları eksik görünüyor. Önce gönderdiğim urun_receteleri SQL tamir kodunu çalıştırın.';
+    }
+    return mesaj;
+  };
+
+  // ürün reçetesine hammadde satırı ekleyen veya aynı satır varsa güncelleyen kod
   const urunReceteSatiriEkle = async () => {
     if (!receteAyarlananUrunId || !receteMalzemeId) {
       alert('Ürün ve hammadde seçin.');
@@ -7777,33 +7864,132 @@ Toplam Ciro: {toplam}
       return;
     }
 
+    const secilenMalzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(receteMalzemeId));
+    const fireYuzde = Math.max(0, sayiyaCevir(receteFireYuzde));
+    const hazirlikNotu = String(receteHazirlikNotu || '').trim();
+    const mevcutSatir = receteSatirlariBul(receteAyarlananUrunId)
+      .find(r => String(r.malzemeId) === String(receteMalzemeId));
+
+    const kayit = {
+      restaurant_id: mevcutRestaurantId,
+      urun_id: receteAyarlananUrunId,
+      malzeme_id: receteMalzemeId,
+      miktar,
+      fire_yuzde: fireYuzde,
+      hazirlik_notu: hazirlikNotu,
+      birim_maliyet_snapshot: Number(secilenMalzeme?.birimMaliyet || 0),
+    };
+
+    if (mevcutSatir) {
+      const { data, error } = await supabase
+        .from('urun_receteleri')
+        .update(kayit)
+        .eq('id', mevcutSatir.id)
+        .eq('restaurant_id', mevcutRestaurantId)
+        .select()
+        .single();
+
+      if (error) {
+        alert('Reçete satırı güncellenemedi: ' + receteKolonHatasiMesaji(error));
+        return;
+      }
+
+      const guncelSatir = receteSatiriniUygulamaFormatinaCevir(data, {
+        ...mevcutSatir,
+        urunId: receteAyarlananUrunId,
+        malzemeId: receteMalzemeId,
+        miktar,
+        fireYuzde,
+        hazirlikNotu,
+        birimMaliyetSnapshot: Number(secilenMalzeme?.birimMaliyet || 0),
+      });
+
+      setUrunReceteleri(urunReceteleri.map(r => String(r.id) === String(mevcutSatir.id) ? guncelSatir : r));
+    } else {
+      const { data, error } = await supabase
+        .from('urun_receteleri')
+        .insert([kayit])
+        .select()
+        .single();
+
+      if (error) {
+        alert('Reçete satırı eklenemedi: ' + receteKolonHatasiMesaji(error));
+        return;
+      }
+
+      setUrunReceteleri([...urunReceteleri, receteSatiriniUygulamaFormatinaCevir(data, {
+        restaurantId: mevcutRestaurantId,
+        urunId: receteAyarlananUrunId,
+        malzemeId: receteMalzemeId,
+        miktar,
+        fireYuzde,
+        hazirlikNotu,
+        birimMaliyetSnapshot: Number(secilenMalzeme?.birimMaliyet || 0),
+      })]);
+    }
+
+    setReceteMalzemeId('');
+    setReceteMiktar('');
+    setReceteFireYuzde('');
+    setReceteHazirlikNotu('');
+    islemLoguEkle('Reçete', 'Ürün reçetesi satırı kaydedildi.');
+  };
+
+  const urunReceteSatiriDuzenlemeyeAl = (satir) => {
+    setReceteDuzenlenenSatirId(satir.id);
+    setReceteDuzenlemeMiktar(String(satir.miktar || ''));
+    setReceteDuzenlemeFireYuzde(String(satir.fireYuzde || ''));
+    setReceteDuzenlemeNotu(satir.hazirlikNotu || '');
+  };
+
+  const urunReceteDuzenlemeyiIptalEt = () => {
+    setReceteDuzenlenenSatirId(null);
+    setReceteDuzenlemeMiktar('');
+    setReceteDuzenlemeFireYuzde('');
+    setReceteDuzenlemeNotu('');
+  };
+
+  const urunReceteSatiriGuncelle = async (satir) => {
+    const miktar = sayiyaCevir(receteDuzenlemeMiktar);
+    if (!miktar || miktar <= 0) {
+      alert('Geçerli reçete miktarı girin.');
+      return;
+    }
+
+    const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(satir.malzemeId));
+    const fireYuzde = Math.max(0, sayiyaCevir(receteDuzenlemeFireYuzde));
+    const hazirlikNotu = String(receteDuzenlemeNotu || '').trim();
+    const payload = {
+      miktar,
+      fire_yuzde: fireYuzde,
+      hazirlik_notu: hazirlikNotu,
+      birim_maliyet_snapshot: Number(malzeme?.birimMaliyet || 0),
+    };
+
     const { data, error } = await supabase
       .from('urun_receteleri')
-      .insert([{
-        restaurant_id: mevcutRestaurantId,
-        urun_id: receteAyarlananUrunId,
-        malzeme_id: receteMalzemeId,
-        miktar,
-      }])
+      .update(payload)
+      .eq('id', satir.id)
+      .eq('restaurant_id', mevcutRestaurantId)
       .select()
       .single();
 
     if (error) {
-      alert('Reçete satırı eklenemedi: ' + error.message);
+      alert('Reçete satırı güncellenemedi: ' + receteKolonHatasiMesaji(error));
       return;
     }
 
-    setUrunReceteleri([...urunReceteleri, {
-      id: data.id,
-      restaurantId: data.restaurant_id,
-      urunId: data.urun_id,
-      malzemeId: data.malzeme_id,
-      miktar: Number(data.miktar || 0),
-      createdAt: data.created_at,
-    }]);
+    const guncelSatir = receteSatiriniUygulamaFormatinaCevir(data, {
+      ...satir,
+      miktar,
+      fireYuzde,
+      hazirlikNotu,
+      birimMaliyetSnapshot: Number(malzeme?.birimMaliyet || 0),
+    });
 
-    setReceteMalzemeId('');
-    setReceteMiktar('');
+    setUrunReceteleri(urunReceteleri.map(r => String(r.id) === String(satir.id) ? guncelSatir : r));
+    urunReceteDuzenlemeyiIptalEt();
+    islemLoguEkle('Reçete', 'Ürün reçetesi satırı güncellendi.');
   };
 
   // ürün reçetesinden hammadde satırı silen kod
@@ -7822,6 +8008,100 @@ Toplam Ciro: {toplam}
     }
 
     setUrunReceteleri(urunReceteleri.filter(r => r.id !== receteId));
+    islemLoguEkle('Reçete', 'Ürün reçetesi satırı silindi.');
+  };
+
+  const urunRecetesiniKopyala = async () => {
+    if (!receteAyarlananUrunId || !receteKopyalanacakUrunId) {
+      alert('Kopyalama için kaynak ve hedef ürün seçin.');
+      return;
+    }
+
+    if (String(receteAyarlananUrunId) === String(receteKopyalanacakUrunId)) {
+      alert('Aynı üründen aynı ürüne reçete kopyalanamaz.');
+      return;
+    }
+
+    const kaynakSatirlar = receteSatirlariBul(receteKopyalanacakUrunId);
+    if (kaynakSatirlar.length === 0) {
+      alert('Kaynak üründe kopyalanacak reçete satırı yok.');
+      return;
+    }
+
+    const hedefSatirlar = receteSatirlariBul(receteAyarlananUrunId);
+    if (hedefSatirlar.length > 0 && !window.confirm('Hedef üründe mevcut reçete var. Silip kaynak reçeteyi kopyalayalım mı?')) {
+      return;
+    }
+
+    if (hedefSatirlar.length > 0) {
+      const { error: silError } = await supabase
+        .from('urun_receteleri')
+        .delete()
+        .eq('restaurant_id', mevcutRestaurantId)
+        .eq('urun_id', receteAyarlananUrunId);
+
+      if (silError) {
+        alert('Mevcut reçete temizlenemedi: ' + silError.message);
+        return;
+      }
+    }
+
+    const yeniSatirlar = kaynakSatirlar.map(satir => {
+      const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(satir.malzemeId));
+      return {
+        restaurant_id: mevcutRestaurantId,
+        urun_id: receteAyarlananUrunId,
+        malzeme_id: satir.malzemeId,
+        miktar: Number(satir.miktar || 0),
+        fire_yuzde: Number(satir.fireYuzde || 0),
+        hazirlik_notu: satir.hazirlikNotu || '',
+        birim_maliyet_snapshot: Number(malzeme?.birimMaliyet || 0),
+      };
+    });
+
+    const { data, error } = await supabase
+      .from('urun_receteleri')
+      .insert(yeniSatirlar)
+      .select();
+
+    if (error) {
+      alert('Reçete kopyalanamadı: ' + receteKolonHatasiMesaji(error));
+      return;
+    }
+
+    const temizListe = urunReceteleri.filter(r => String(r.urunId) !== String(receteAyarlananUrunId));
+    const eklenenler = (Array.isArray(data) ? data : []).map((satir, index) => receteSatiriniUygulamaFormatinaCevir(satir, {
+      ...kaynakSatirlar[index],
+      restaurantId: mevcutRestaurantId,
+      urunId: receteAyarlananUrunId,
+    }));
+    setUrunReceteleri([...temizListe, ...eklenenler]);
+    setReceteKopyalanacakUrunId('');
+    islemLoguEkle('Reçete', 'Ürün reçetesi başka üründen kopyalandı.');
+  };
+
+  const receteMaliyetiniUrunKartinaYaz = async (urunId) => {
+    const maliyet = urunReceteMaliyetiHesapla(urunId);
+    if (!maliyet || maliyet <= 0) {
+      alert('Bu ürün için hesaplanmış reçete maliyeti yok.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('menu_urunleri')
+      .update({ maliyet })
+      .eq('id', urunId)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (error) {
+      alert('Ürün kartı maliyeti güncellenemedi: ' + error.message);
+      return;
+    }
+
+    setMenuUrunleri(menuUrunleri.map(u => String(u.id) === String(urunId) ? { ...u, maliyet: Number(data?.maliyet ?? maliyet) } : u));
+    islemLoguEkle('Reçete', 'Reçete maliyeti ürün kartına yazıldı.');
   };
 
   // hızlı satış ürününü sepete ekleyen kod
@@ -15252,9 +15532,9 @@ Toplam Ciro: {toplam}
                     <button type="submit" style={styles.btnOrange}>Hammadde Ekle</button>
                   </form>
 
-                  {stokMalzemeleri.length === 0 ? (
-                    <div style={{ color: '#94a3b8', padding: '12px' }}>Henüz hammadde stok kartı yok.</div>
-                  ) : stokMalzemeleri.map(m => (
+                  {aktifStokMalzemeleri.length === 0 ? (
+                    <div style={{ color: '#94a3b8', padding: '12px' }}>Henüz hammadde stok kartı yok. Satın alma ve reçete listesi için önce hammadde ekleyin.</div>
+                  ) : aktifStokMalzemeleri.map(m => (
                     <div key={m.id} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <div style={{ flex: 1 }}>
                         <strong>{m.ad}</strong>
@@ -15276,39 +15556,154 @@ Toplam Ciro: {toplam}
                 </div>
 
                 <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>🧾 Ürün Reçetesi</h3>
-                  <div style={styles.inlineForm}>
-                    <select value={receteAyarlananUrunId} onChange={e => setReceteAyarlananUrunId(e.target.value)} style={styles.input}>
-                      <option value="">Reçete ürünü seç</option>
-                      {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad}</option>)}
-                    </select>
-                    <select value={receteMalzemeId} onChange={e => setReceteMalzemeId(e.target.value)} style={styles.input}>
-                      <option value="">Hammadde seç</option>
-                      {stokMalzemeleri.map(m => <option key={m.id} value={m.id}>{m.ad} ({m.birim})</option>)}
-                    </select>
-                    <input type="number" placeholder="1 üründe kullanılan miktar" value={receteMiktar} onChange={e => setReceteMiktar(e.target.value)} style={styles.input} />
-                    <button type="button" onClick={urunReceteSatiriEkle} style={styles.btnOrange}>Reçeteye Ekle</button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Gelişmiş Ürün Reçetesi</h3>
+                      <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
+                        Her ürünün kaç gram/kg/adet hammadde kullandığını tanımlayın. Sistem satışta fireli miktarı stoktan düşer, maliyet ve kârı otomatik hesaplar.
+                      </p>
+                    </div>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px', minWidth: '220px' }}>
+                      <div style={{ fontSize: '11px', color: '#9a3412', fontWeight: '900' }}>Reçete Durumu</div>
+                      <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '900' }}>{aktifMenu.filter(u => receteSatirlariBul(u.id).length > 0).length} ürün reçeteli / {aktifMenu.length} ürün</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Reçetesiz ürünler maliyet raporunda eksik kâr gösterebilir.</div>
+                    </div>
                   </div>
 
-                  {receteAyarlananUrunId && (
-                    <div style={{ marginTop: '12px' }}>
-                      <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>
-                        Reçete Maliyeti: {urunReceteMaliyetiHesapla(receteAyarlananUrunId)} TL / ürün
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr', gap: '12px', marginTop: '14px' }}>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>1) Ürün seç ve reçete satırı ekle</div>
+                      <div style={styles.inlineForm}>
+                        <select value={receteAyarlananUrunId} onChange={e => setReceteAyarlananUrunId(e.target.value)} style={styles.input}>
+                          <option value="">Reçete ürünü seç</option>
+                          {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad} — Satış {u.fiyat} TL</option>)}
+                        </select>
+                        <select value={receteMalzemeId} onChange={e => setReceteMalzemeId(e.target.value)} style={styles.input}>
+                          <option value="">Hammadde seç</option>
+                          {aktifStokMalzemeleri.map(m => <option key={m.id} value={m.id}>{m.ad} ({m.birim}) / Stok {m.stokMiktari}</option>)}
+                        </select>
+                        <input type="number" step="0.001" placeholder="Net miktar" value={receteMiktar} onChange={e => setReceteMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '130px' }} />
+                        <input type="number" step="0.01" placeholder="Fire %" value={receteFireYuzde} onChange={e => setReceteFireYuzde(e.target.value)} style={{ ...styles.input, maxWidth: '100px' }} />
+                        <input type="text" placeholder="Hazırlık notu: doğranmış, pişmiş, soslu..." value={receteHazirlikNotu} onChange={e => setReceteHazirlikNotu(e.target.value)} style={{ ...styles.input, flex: '1 1 220px' }} />
+                        <button type="button" onClick={urunReceteSatiriEkle} style={styles.btnOrange}>Satırı Kaydet</button>
                       </div>
-                      {urunReceteleri.filter(r => String(r.urunId) === String(receteAyarlananUrunId)).length === 0 ? (
-                        <div style={{ color: '#94a3b8', padding: '10px' }}>Bu ürün için reçete satırı yok.</div>
-                      ) : urunReceteleri.filter(r => String(r.urunId) === String(receteAyarlananUrunId)).map(r => {
-                        const malzeme = stokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
-                        return (
-                          <div key={r.id} style={styles.dataRow}>
-                            <span>{malzeme?.ad || 'Hammadde'} — {r.miktar} {malzeme?.birim || ''}</span>
-                            <strong>{paraYuvarla(Number(r.miktar || 0) * Number(malzeme?.birimMaliyet || 0))} TL</strong>
-                            <button type="button" onClick={() => urunReceteSatiriSil(r.id)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Sil</button>
-                          </div>
-                        );
-                      })}
+                      <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '8px' }}>
+                        Örnek: 1 kumpirde 0.35 kg patates kullanılıyorsa miktar <strong>0.35</strong> yazılır. Soyma/pişirme kaybı varsa fire yüzdesi eklenir.
+                      </div>
                     </div>
+
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>2) Başka üründen reçete kopyala</div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <select value={receteKopyalanacakUrunId} onChange={e => setReceteKopyalanacakUrunId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px' }}>
+                          <option value="">Kaynak ürün seç</option>
+                          {aktifMenu.filter(u => String(u.id) !== String(receteAyarlananUrunId) && receteSatirlariBul(u.id).length > 0).map(u => <option key={u.id} value={u.id}>{u.ad} ({receteSatirlariBul(u.id).length} kalem)</option>)}
+                        </select>
+                        <button type="button" onClick={urunRecetesiniKopyala} style={{ ...styles.btnOrange, backgroundColor: '#1e293b' }}>Kopyala</button>
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '11px', marginTop: '8px', lineHeight: 1.5 }}>
+                        Benzer ürünlerde hızlı kurulum için kullanılır. Örn: Kaşarlı Kumpir reçetesini Karışık Kumpir'e kopyalayıp sadece ekstra malzemeleri ekleyin.
+                      </div>
+                    </div>
+                  </div>
+
+                  {receteAyarlananUrunId ? (() => {
+                    const analiz = urunReceteAnaliziHesapla(receteAyarlananUrunId);
+                    const porsiyonCarpani = Math.max(1, sayiyaCevir(recetePorsiyonCarpani) || 1);
+                    return (
+                      <div style={{ marginTop: '14px' }}>
+                        <div style={styles.statsGrid}>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Satış Fiyatı</div>
+                            <div style={styles.statsValue}>{analiz.satisFiyati} TL</div>
+                          </div>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Reçete Maliyeti</div>
+                            <div style={styles.statsValue}>{analiz.maliyet} TL</div>
+                          </div>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Brüt Kâr</div>
+                            <div style={{ ...styles.statsValue, color: analiz.brutKar >= 0 ? '#10b981' : '#ef4444' }}>{analiz.brutKar} TL</div>
+                          </div>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Maliyet Oranı</div>
+                            <div style={{ ...styles.statsValue, color: analiz.maliyetOrani > 45 ? '#ef4444' : '#10b981' }}>%{analiz.maliyetOrani}</div>
+                          </div>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Stoktan Çıkabilecek</div>
+                            <div style={styles.statsValue}>{analiz.stoktanCikabilecekPorsiyon} porsiyon</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', margin: '12px 0' }}>
+                          <input type="number" min="1" step="1" placeholder="Kaç porsiyon?" value={recetePorsiyonCarpani} onChange={e => setRecetePorsiyonCarpani(e.target.value)} style={{ ...styles.input, maxWidth: '150px' }} />
+                          <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>{porsiyonCarpani} porsiyon üretimde toplam reçete maliyeti: {paraYuvarla(analiz.maliyet * porsiyonCarpani)} TL</span>
+                          <button type="button" onClick={() => receteMaliyetiniUrunKartinaYaz(receteAyarlananUrunId)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Maliyeti Ürün Kartına Yaz</button>
+                        </div>
+
+                        {analiz.eksikMaliyetliKalemler.length > 0 ? (
+                          <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', borderRadius: '12px', padding: '10px 12px', fontSize: '12px', fontWeight: '800', marginBottom: '10px' }}>
+                            Bu reçetede maliyeti 0 olan veya eksik hammadde var. Hammadde kartına birim maliyet girersen kâr raporu düzelir.
+                          </div>
+                        ) : null}
+
+                        {analiz.satirlar.length === 0 ? (
+                          <div style={{ color: '#94a3b8', padding: '12px', backgroundColor: '#fff', border: '1px dashed #fed7aa', borderRadius: '14px' }}>Bu ürün için reçete satırı yok. Yukarıdan hammadde seçip miktar girerek başlayın.</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {analiz.satirlar.map(r => {
+                              const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
+                              const fireliMiktar = receteSatiriFireliMiktar(r);
+                              const satirMaliyeti = receteSatiriMaliyetiHesapla(r);
+                              const duzenleniyor = String(receteDuzenlenenSatirId) === String(r.id);
+                              return (
+                                <div key={r.id} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px' }}>
+                                  {duzenleniyor ? (
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                      <strong style={{ minWidth: '150px', color: '#1e293b' }}>{malzeme?.ad || 'Hammadde'}</strong>
+                                      <input type="number" step="0.001" value={receteDuzenlemeMiktar} onChange={e => setReceteDuzenlemeMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '130px' }} />
+                                      <input type="number" step="0.01" value={receteDuzenlemeFireYuzde} onChange={e => setReceteDuzenlemeFireYuzde(e.target.value)} placeholder="Fire %" style={{ ...styles.input, maxWidth: '100px' }} />
+                                      <input type="text" value={receteDuzenlemeNotu} onChange={e => setReceteDuzenlemeNotu(e.target.value)} placeholder="Not" style={{ ...styles.input, flex: '1 1 200px' }} />
+                                      <button type="button" onClick={() => urunReceteSatiriGuncelle(r)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Kaydet</button>
+                                      <button type="button" onClick={urunReceteDuzenlemeyiIptalEt} style={{ ...styles.btnOrange, backgroundColor: '#64748b' }}>Vazgeç</button>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 0.9fr 0.9fr 0.8fr 0.8fr auto', gap: '8px', alignItems: 'center' }}>
+                                      <div>
+                                        <strong style={{ color: '#1e293b' }}>{malzeme?.ad || 'Hammadde bulunamadı'}</strong>
+                                        <div style={{ color: '#64748b', fontSize: '11px' }}>{r.hazirlikNotu || 'Hazırlık notu yok'}</div>
+                                      </div>
+                                      <div style={{ fontSize: '12px', color: '#334155' }}>Net: <strong>{r.miktar}</strong> {malzeme?.birim || ''}</div>
+                                      <div style={{ fontSize: '12px', color: '#334155' }}>Fireli: <strong>{fireliMiktar}</strong> {malzeme?.birim || ''}</div>
+                                      <div style={{ fontSize: '12px', color: '#334155' }}>Fire: <strong>%{receteSatiriFireOrani(r)}</strong></div>
+                                      <div style={{ fontSize: '12px', color: '#334155' }}>Maliyet: <strong>{satirMaliyeti} TL</strong></div>
+                                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+                                        <button type="button" onClick={() => urunReceteSatiriDuzenlemeyeAl(r)} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Düzenle</button>
+                                        <button type="button" onClick={() => urunReceteSatiriSil(r.id)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Sil</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })() : (
+                    <div style={{ color: '#94a3b8', padding: '12px', marginTop: '12px', backgroundColor: '#fff', border: '1px dashed #fed7aa', borderRadius: '14px' }}>Reçete yönetimi için önce ürün seçin.</div>
                   )}
+
+                  {aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).length > 0 ? (
+                    <details style={{ marginTop: '12px', backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px' }}>
+                      <summary style={{ cursor: 'pointer', color: '#9a3412', fontWeight: '900' }}>Reçetesiz ürünler ({aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).length})</summary>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                        {aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).slice(0, 40).map(u => (
+                          <button key={u.id} type="button" onClick={() => setReceteAyarlananUrunId(String(u.id))} style={{ border: '1px solid #fed7aa', backgroundColor: '#fff7ed', color: '#9a3412', borderRadius: '999px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '800' }}>{u.ad}</button>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
                 </div>
 
                 {aktifMenu.length === 0 ? (
@@ -15370,7 +15765,7 @@ Toplam Ciro: {toplam}
                     <form onSubmit={satinAlmaTalebiOlustur} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <select value={satinAlmaMalzemeId} onChange={e => setSatinAlmaMalzemeId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px' }}>
                         <option value="">Malzeme seç</option>
-                        {stokMalzemeleri.filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || '')).map(m => <option key={m.id} value={String(m.id)}>{m.ad} / {m.miktar} {m.birim}</option>)}
+                        {stokMalzemeleri.filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || '')).map(m => <option key={m.id} value={String(m.id)}>{m.ad} / {m.stokMiktari} {m.birim}</option>)}
                       </select>
                       <input type="number" placeholder="Miktar" value={satinAlmaMiktar} onChange={e => setSatinAlmaMiktar(e.target.value)} style={{ ...styles.input, width: '120px' }} />
                       <input type="text" placeholder="Tedarikçi" value={satinAlmaTedarikci} onChange={e => setSatinAlmaTedarikci(e.target.value)} style={{ ...styles.input, flex: '1 1 160px' }} />
