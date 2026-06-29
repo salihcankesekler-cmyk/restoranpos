@@ -70,7 +70,7 @@ function IntegraApp() {
     kayitliUser?.role === 'waiter'
       ? 'masalar'
       : kayitliUser?.role === 'super_admin'
-        ? (['super_admin', 'admin_lisans', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
+        ? (['super_admin', 'admin_lisans', 'admin_moduller', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
         : kayitliActiveTab || 'raporlar';
 
   // müşterinin QR menü linkiyle siteye girdiğini yakalayan kod
@@ -2533,6 +2533,93 @@ Toplam Ciro: {toplam}
     { key: 'garsonlar', label: '👥 Personel Listesi' },
   ];
 
+
+  // süper adminin işletme bazında açıp kapatabileceği modül paketlerini tutan kod
+  const tumIsletmeSekmeYetkileri = () => personelSekmeSecenekleri.map(s => s.key);
+
+  // Supabase jsonb/text[]/metin olarak gelen yetki değerlerini güvenli diziye çeviren kod
+  const diziDegeriniHazirla = (deger) => {
+    if (Array.isArray(deger)) return deger.filter(Boolean).map(String);
+
+    if (typeof deger === 'string') {
+      const temiz = deger.trim();
+      if (!temiz) return [];
+
+      try {
+        const parseEdilen = JSON.parse(temiz);
+        if (Array.isArray(parseEdilen)) return parseEdilen.filter(Boolean).map(String);
+      } catch {
+        // metin JSON değilse virgül veya noktalı virgülle ayrılmış liste kabul edilir
+      }
+
+      return temiz
+        .split(/[;,]/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  };
+
+  // satış paketlerine göre hazır modül/sekme şablonlarını hazırlayan kod
+  const modulPaketSablonlari = [
+    {
+      key: 'Baslangic',
+      label: 'Başlangıç',
+      aciklama: 'Masa, mutfak, hızlı satış ve temel rapor isteyen küçük işletmeler.',
+      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'raporlar', 'kasa', 'garsonlar'],
+    },
+    {
+      key: 'Profesyonel',
+      label: 'Profesyonel',
+      aciklama: 'Restoranların günlük operasyonu için en dengeli paket.',
+      sekmeler: ['raporlar', 'masalar', 'mutfak', 'paket', 'hizli_satis', 'menu', 'qr_menu', 'servis_talepleri', 'cari', 'stok', 'kasa', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar'],
+    },
+    {
+      key: 'Paket Servis',
+      label: 'Paket Servis Odaklı',
+      aciklama: 'Paket, online sipariş havuzu, kurye ve entegrasyon ağırlıklı kullanım.',
+      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'garsonlar'],
+    },
+    {
+      key: 'QR Plus',
+      label: 'QR Menü Plus',
+      aciklama: 'QR menü, masadan sipariş, servis talebi ve sadakat odaklı kullanım.',
+      sekmeler: ['masalar', 'mutfak', 'menu', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'garsonlar'],
+    },
+    {
+      key: 'Premium',
+      label: 'Premium / Tüm Modüller',
+      aciklama: 'Tüm sekmeler açık. Demo, satış sunumu ve tam paket müşteriler için.',
+      sekmeler: tumIsletmeSekmeYetkileri(),
+    },
+    {
+      key: 'Kurumsal',
+      label: 'Kurumsal / Özel',
+      aciklama: 'Tüm modüller açık; özel entegrasyon ve kurumsal kullanım için.',
+      sekmeler: tumIsletmeSekmeYetkileri(),
+    },
+  ];
+
+  const modulPaketSablonuBul = (paketAdi = '') => {
+    const paketMetni = String(paketAdi || '').toLocaleLowerCase('tr-TR');
+    return modulPaketSablonlari.find(p => {
+      return paketMetni === String(p.key).toLocaleLowerCase('tr-TR') || paketMetni === String(p.label).toLocaleLowerCase('tr-TR');
+    }) || modulPaketSablonlari.find(p => p.key === 'Premium');
+  };
+
+  // işletme sahibi ve personeller için işletme bazlı aktif sekmeleri hazırlayan kod
+  const isletmeSekmeleriniHazirla = (sekmeler, paketAdi = 'Premium') => {
+    const izinliSekmeler = tumIsletmeSekmeYetkileri();
+    const kayitliListe = diziDegeriniHazirla(sekmeler).filter(s => izinliSekmeler.includes(s));
+    const kaynak = kayitliListe.length > 0
+      ? kayitliListe
+      : modulPaketSablonuBul(paketAdi || 'Premium')?.sekmeler || izinliSekmeler;
+
+    const temizListe = Array.from(new Set(kaynak.filter(s => izinliSekmeler.includes(s))));
+    return temizListe.length > 0 ? temizListe : ['masalar'];
+  };
+
   // göreve göre varsayılan personel ekran yetkilerini oluşturan kod
   const goreveGoreVarsayilanYetkiler = (gorev) => {
     const gorevMetni = String(gorev || '').toLocaleLowerCase('tr-TR');
@@ -2567,14 +2654,18 @@ Toplam Ciro: {toplam}
   // giriş yapan kullanıcının görebileceği sekmeleri hazırlayan kod
   const kullaniciSekmeleri = (() => {
     if (user?.role === 'super_admin') {
-      return ['super_admin', 'admin_lisans', 'admin_destek'];
+      return ['super_admin', 'admin_lisans', 'admin_moduller', 'admin_destek'];
     }
+
+    const isletmeAktifSekmeleri = isletmeSekmeleriniHazirla(user?.aktifSekmeler, user?.modulPaketi || user?.paketAdi || 'Premium');
 
     if (user?.role === 'owner') {
-      return personelSekmeSecenekleri.map(s => s.key);
+      return isletmeAktifSekmeleri;
     }
 
-    return yetkiListesiniHazirla(user?.tabYetkileri, user?.personelGorev || 'Garson');
+    const personelYetkileri = yetkiListesiniHazirla(user?.tabYetkileri, user?.personelGorev || 'Garson');
+    const kesisenYetkiler = personelYetkileri.filter(y => isletmeAktifSekmeleri.includes(y));
+    return kesisenYetkiler.length > 0 ? kesisenYetkiler : [isletmeAktifSekmeleri[0] || 'masalar'];
   })();
 
   // sekmenin kullanıcı için görünür olup olmadığını kontrol eden kod
@@ -2583,10 +2674,19 @@ Toplam Ciro: {toplam}
   };
 
   // giriş sonrası açılacak ilk sekmeyi seçen kod
-  const ilkGirisSekmesi = (rol, yetkiler, gorev = 'Garson') => {
+  const ilkGirisSekmesi = (rol, yetkiler, gorev = 'Garson', isletmeSekmeleri = null) => {
     if (rol === 'super_admin') return 'super_admin';
-    if (rol === 'owner') return 'raporlar';
-    return yetkiListesiniHazirla(yetkiler, gorev)[0] || 'masalar';
+
+    const aktifIsletmeSekmeleri = Array.isArray(isletmeSekmeleri) && isletmeSekmeleri.length > 0
+      ? isletmeSekmeleri
+      : isletmeSekmeleriniHazirla(null, 'Premium');
+
+    if (rol === 'owner') {
+      return aktifIsletmeSekmeleri.includes('raporlar') ? 'raporlar' : aktifIsletmeSekmeleri[0] || 'masalar';
+    }
+
+    const personelYetkileri = yetkiListesiniHazirla(yetkiler, gorev).filter(y => aktifIsletmeSekmeleri.includes(y));
+    return personelYetkileri[0] || aktifIsletmeSekmeleri[0] || 'masalar';
   };
 
   // yetki listesini ekranda okunabilir hale getiren kod
@@ -2911,6 +3011,9 @@ Toplam Ciro: {toplam}
     lisansDurumu: r.lisans_durumu || r.durum || 'Onay Bekliyor',
     lisansNotu: r.lisans_notu || '',
     kullaniciLimiti: Number(r.kullanici_limiti || 3),
+    aktifSekmeler: isletmeSekmeleriniHazirla(r.aktif_sekmeler, r.modul_paketi || r.paket_adi || r.basvuru_paketi || 'Premium'),
+    modulPaketi: r.modul_paketi || r.paket_adi || r.basvuru_paketi || 'Premium',
+    modulNotu: r.modul_notu || '',
     yetkiliAdi: r.yetkili_adi || '',
     firmaTelefon: r.firma_telefon || r.telefon || '',
     firmaAdres: r.firma_adres || r.adres || '',
@@ -3590,26 +3693,48 @@ Toplam Ciro: {toplam}
       return;
     }
 
+    const parentRestaurantId = data.parentRestaurantId || data.parent_restaurant_id || data.id;
+    let isletmeAyarKaydi = data;
+
+    if (data.rol !== 'owner' && parentRestaurantId && String(parentRestaurantId) !== String(data.id)) {
+      const { data: parentData, error: parentError } = await supabase
+        .from('restaurants')
+        .select('id, aktif_sekmeler, modul_paketi, paket_adi, basvuru_paketi, kullanici_limiti')
+        .eq('id', parentRestaurantId)
+        .maybeSingle();
+
+      if (!parentError && parentData) {
+        isletmeAyarKaydi = { ...data, ...parentData };
+      }
+    }
+
+    const aktifIsletmeSekmeleri = isletmeSekmeleriniHazirla(
+      isletmeAyarKaydi.aktif_sekmeler,
+      isletmeAyarKaydi.modul_paketi || isletmeAyarKaydi.paket_adi || isletmeAyarKaydi.basvuru_paketi || 'Premium'
+    );
+
     // giriş yapan kullanıcı bilgisini uygulama formatına çeviren kod
     const girenKullanici = {
       id: data.id,
       email: data.email,
       restaurant: data.restaurant_name || data.name,
       restaurantId: data.id,
-      parentRestaurantId: data.parentRestaurantId || data.parent_restaurant_id || data.id,
+      parentRestaurantId,
       role: data.rol,
       durum: data.durum,
       waiterName: data.waiter_name || data.name || data.restaurant_name || data.email,
       personelId: data.personel_id || null,
       personelGorev: data.personel_gorev || data.gorev || (data.rol === 'owner' ? 'İşletme Sahibi' : 'Garson'),
       tabYetkileri: yetkiListesiniHazirla(data.tab_yetkileri, data.personel_gorev || 'Garson'),
-      kullaniciLimiti: Number(data.kullanici_limiti || 3),
+      aktifSekmeler: aktifIsletmeSekmeleri,
+      modulPaketi: isletmeAyarKaydi.modul_paketi || isletmeAyarKaydi.paket_adi || isletmeAyarKaydi.basvuru_paketi || 'Premium',
+      kullaniciLimiti: Number(isletmeAyarKaydi.kullanici_limiti || data.kullanici_limiti || 3),
     };
 
     localStorage.setItem('integra_user', JSON.stringify(girenKullanici));
     localStorage.setItem('integra_screen', 'dashboard');
 
-    const girisTab = ilkGirisSekmesi(data.rol, data.tab_yetkileri, data.personel_gorev || 'Garson');
+    const girisTab = ilkGirisSekmesi(data.rol, data.tab_yetkileri, data.personel_gorev || 'Garson', aktifIsletmeSekmeleri);
     localStorage.setItem('integra_activeTab', girisTab);
 
     setUser(girenKullanici);
@@ -9123,6 +9248,174 @@ Toplam Ciro: {toplam}
     }));
   };
 
+
+  // süper adminin işletme bazlı aktif modül/sekme listesini kaydeden kod
+  const restoranModulYetkileriniKaydet = async (restoran, yeniSekmeler, ekstraAlanlar = {}) => {
+    if (!restoran?.id) return;
+
+    const temizSekmeler = isletmeSekmeleriniHazirla(yeniSekmeler, restoran.modulPaketi || restoran.paketAdi || 'Premium');
+
+    if (temizSekmeler.length === 0) {
+      alert('İşletmede en az bir sekme aktif olmalı.');
+      return;
+    }
+
+    const guncelleme = {
+      aktif_sekmeler: temizSekmeler,
+      modul_guncelleme_tarihi: new Date().toISOString(),
+      ...ekstraAlanlar,
+    };
+
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update(guncelleme)
+      .eq('id', restoran.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('İşletme modül yetkileri güncellenemedi:', error);
+      alert('Modül yetkileri güncellenemedi. Supabase SQL kolonlarını eklediğinden emin ol. Hata: ' + error.message);
+      return;
+    }
+
+    const temizRestoran = restoranSatiriniHazirla(data);
+    setRestoranlar(restoranlar.map(r => String(r.id) === String(restoran.id) ? temizRestoran : r));
+  };
+
+  // süper adminin tek bir işletme sekmesini açıp kapatmasını sağlayan kod
+  const restoranModulYetkisiDegistir = async (restoran, sekmeKey, secili) => {
+    const mevcutSekmeler = isletmeSekmeleriniHazirla(restoran.aktifSekmeler, restoran.modulPaketi || restoran.paketAdi || 'Premium');
+    const yeniSekmeler = secili
+      ? Array.from(new Set([...mevcutSekmeler, sekmeKey]))
+      : mevcutSekmeler.filter(s => s !== sekmeKey);
+
+    if (yeniSekmeler.length === 0) {
+      alert('İşletmede en az bir sekme açık kalmalı.');
+      return;
+    }
+
+    await restoranModulYetkileriniKaydet(restoran, yeniSekmeler, {
+      modul_paketi: restoran.modulPaketi || 'Özel Paket',
+    });
+  };
+
+  // süper adminin hazır paket şablonunu işletmeye uygulamasını sağlayan kod
+  const restoranModulPaketiUygula = async (restoran, paketKey) => {
+    const sablon = modulPaketSablonuBul(paketKey);
+    if (!sablon) return;
+
+    await restoranModulYetkileriniKaydet(restoran, sablon.sekmeler, {
+      modul_paketi: sablon.key,
+      paket_adi: restoran.paketAdi || sablon.label,
+    });
+  };
+
+  // süper adminin işletme modül notunu kaydetmesini sağlayan kod
+  const restoranModulNotuGuncelle = async (restoran, notMetni) => {
+    if (!restoran?.id) return;
+
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({
+        modul_notu: notMetni,
+        modul_guncelleme_tarihi: new Date().toISOString(),
+      })
+      .eq('id', restoran.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Modül notu güncellenemedi:', error);
+      alert('Modül notu güncellenemedi: ' + error.message);
+      return;
+    }
+
+    const temizRestoran = restoranSatiriniHazirla(data);
+    setRestoranlar(restoranlar.map(r => String(r.id) === String(restoran.id) ? temizRestoran : r));
+  };
+
+  // modül yetki kutularını hem lisans hem modül panelinde tekrar kullanmak için hazırlayan kod
+  const restoranModulYetkiPaneli = (restoran) => {
+    const aktifSekmeler = isletmeSekmeleriniHazirla(restoran.aktifSekmeler, restoran.modulPaketi || restoran.paketAdi || 'Premium');
+    const aktifPaket = modulPaketSablonuBul(restoran.modulPaketi || restoran.paketAdi || 'Premium');
+
+    return (
+      <div style={{ marginTop: '14px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <div>
+            <h4 style={{ margin: '0 0 4px', color: '#1e293b' }}>🧩 İşletme Modül Yetkileri</h4>
+            <div style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5 }}>
+              Aktif paket: <strong>{aktifPaket?.label || restoran.modulPaketi || 'Premium'}</strong> / Açık sekme: <strong>{aktifSekmeler.length}</strong> / {personelSekmeSecenekleri.length}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {modulPaketSablonlari.map(paket => (
+              <button
+                key={paket.key}
+                type="button"
+                onClick={() => restoranModulPaketiUygula(restoran, paket.key)}
+                title={paket.aciklama}
+                style={(restoran.modulPaketi === paket.key || restoran.modulPaketi === paket.label) ? styles.filterBtnActive : styles.filterBtn}
+              >
+                {paket.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '8px' }}>
+          {personelSekmeSecenekleri.map(sekme => {
+            const secili = aktifSekmeler.includes(sekme.key);
+            return (
+              <label
+                key={sekme.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: secili ? '1px solid #fed7aa' : '1px solid #e2e8f0',
+                  backgroundColor: secili ? '#fff7ed' : '#fff',
+                  color: '#334155',
+                  padding: '9px 10px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '900',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={secili}
+                  onChange={e => restoranModulYetkisiDegistir(restoran, sekme.key, e.target.checked)}
+                />
+                <span>{sekme.label}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '10px', alignItems: 'end', marginTop: '12px' }}>
+          <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+            Modül / Satış Notu
+            <input
+              defaultValue={restoran.modulNotu || ''}
+              onBlur={e => restoranModulNotuGuncelle(restoran, e.target.value)}
+              placeholder="Örn: QR Plus paketi teklif edildi, kiosk kapalı bırakıldı"
+              style={{ ...styles.input, minWidth: '100%' }}
+            />
+          </label>
+
+          <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px', color: '#64748b', fontSize: '12px', minWidth: isMobile ? '100%' : '230px' }}>
+            <div><strong>Kapalı sekme:</strong> {Math.max(personelSekmeSecenekleri.length - aktifSekmeler.length, 0)}</div>
+            <div><strong>Personel etkisi:</strong> Kapalı sekmeler personelde de gizlenir.</div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // restoranın lisans kullanıcı limitini süper adminin güncellemesini sağlayan kod
   const restoranKullaniciLimitiGuncelle = async (restoran, limitDegeri) => {
     const yeniLimit = Math.max(Number(limitDegeri || 0), 0);
@@ -9168,6 +9461,8 @@ Toplam Ciro: {toplam}
       sonOdemeTutari: 'son_odeme_tutari',
       sonOdemeYontemi: 'son_odeme_yontemi',
       lisansNotu: 'lisans_notu',
+      modulPaketi: 'modul_paketi',
+      modulNotu: 'modul_notu',
     };
 
     const kolon = kolonMap[alan];
@@ -12620,6 +12915,13 @@ Toplam Ciro: {toplam}
                     style={activeTab === 'admin_lisans' ? styles.navItemActive : styles.navItem}
                   >
                     💳 Lisans & Ödeme {adminLisansOzet.geciken > 0 ? `(${adminLisansOzet.geciken})` : ''}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('admin_moduller')}
+                    style={activeTab === 'admin_moduller' ? styles.navItemActive : styles.navItem}
+                  >
+                    🧩 Modül Yetkileri
                   </button>
                   <button
                     type="button"
@@ -17862,6 +18164,8 @@ Toplam Ciro: {toplam}
                           </td>
                           <td style={styles.td}>
                             <div>Paket: <strong>{r.paketAdi || 'Profesyonel'}</strong></div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Modül Paketi: <strong>{modulPaketSablonuBul(r.modulPaketi || r.paketAdi)?.label || r.modulPaketi || 'Premium'}</strong></div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Açık Sekme: <strong>{isletmeSekmeleriniHazirla(r.aktifSekmeler, r.modulPaketi || r.paketAdi).length} / {personelSekmeSecenekleri.length}</strong></div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Aylık: <strong>{Number(r.aylikUcret || 0)} TL</strong></div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Son ödeme: <strong>{r.sonOdemeTarihi || '-'}</strong></div>
                           </td>
@@ -18138,9 +18442,68 @@ Toplam Ciro: {toplam}
                               <div><strong>Sonraki ödeme:</strong> {r.sonrakiOdemeTarihi || '-'}</div>
                             </div>
                           </div>
+
+                          {restoranModulYetkiPaneli(r)}
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* süper admin modül yetkileri ekranını gösteren kod */}
+            {activeTab === 'admin_moduller' && (
+              <div style={styles.panelCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '18px' }}>
+                  <div>
+                    <h2 style={styles.pageTitle}>🧩 İşletme Modül Yetkileri</h2>
+                    <p style={{ color: '#64748b', marginTop: '-6px' }}>Her işletmenin kullanacağı sekmeleri buradan açıp kapatabilirsiniz. Kapalı sekmeler işletme sahibi ve personel panelinde görünmez.</p>
+                  </div>
+                  <button type="button" onClick={restoranlariSupabasedenCek} style={styles.btnOrange}>
+                    🔄 Firmaları Yenile
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                  <div style={{ ...styles.statCard, margin: 0 }}><span>Firma</span><strong>{sahipRestoranlar.length}</strong></div>
+                  <div style={{ ...styles.statCard, margin: 0 }}><span>Toplam Sekme</span><strong>{personelSekmeSecenekleri.length}</strong></div>
+                  <div style={{ ...styles.statCard, margin: 0 }}><span>Tüm Modüller Açık</span><strong>{sahipRestoranlar.filter(r => isletmeSekmeleriniHazirla(r.aktifSekmeler, r.modulPaketi || r.paketAdi).length === personelSekmeSecenekleri.length).length}</strong></div>
+                  <div style={{ ...styles.statCard, margin: 0 }}><span>Kısıtlı Paket</span><strong>{sahipRestoranlar.filter(r => isletmeSekmeleriniHazirla(r.aktifSekmeler, r.modulPaketi || r.paketAdi).length < personelSekmeSecenekleri.length).length}</strong></div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '18px' }}>
+                  <input value={adminLisansArama} onChange={e => setAdminLisansArama(e.target.value)} placeholder="Firma, yetkili, mail veya paket ara..." style={{ ...styles.input, minWidth: isMobile ? '100%' : '320px' }} />
+                  {modulPaketSablonlari.map(paket => (
+                    <span key={paket.key} style={{ fontSize: '11px', color: '#475569', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 9px', borderRadius: '999px', fontWeight: '900' }}>
+                      {paket.label}: {paket.sekmeler.length} sekme
+                    </span>
+                  ))}
+                </div>
+
+                {adminLisansListe.length === 0 ? (
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '16px', padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                    Bu aramaya uyan firma bulunamadı.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '14px' }}>
+                    {adminLisansListe.map(r => (
+                      <div key={r.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '16px', boxShadow: '0 18px 36px -30px rgba(15,23,42,0.28)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          <div>
+                            <strong style={{ color: '#1e293b', fontSize: '17px' }}>🏢 {r.ad}</strong>
+                            <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px' }}>
+                              {r.yetkiliAdi ? `${r.yetkiliAdi} / ` : ''}{r.email}{r.firmaTelefon ? ` / ${r.firmaTelefon}` : ''}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: '11px', color: '#0f766e', backgroundColor: '#ccfbf1', padding: '5px 9px', borderRadius: '999px', fontWeight: '900' }}>
+                            {modulPaketSablonuBul(r.modulPaketi || r.paketAdi)?.label || 'Premium'}
+                          </span>
+                        </div>
+
+                        {restoranModulYetkiPaneli(r)}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
