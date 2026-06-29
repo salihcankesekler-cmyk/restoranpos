@@ -667,11 +667,40 @@ Toplam Ciro: {toplam}
   const [satinAlmaTedarikci, setSatinAlmaTedarikci] = useState('');
   const [satinAlmaMesaji, setSatinAlmaMesaji] = useState('');
 
+  // alış fişi ile hammadde stok girişi ve dış gider kaydı için kullanılan kod
+  const [alisFisleri, setAlisFisleri] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_alis_fisleri');
+      return kayit ? JSON.parse(kayit) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [alisFisTedarikci, setAlisFisTedarikci] = useState('');
+  const [alisFisBelgeNo, setAlisFisBelgeNo] = useState('');
+  const [alisFisOdemeTipi, setAlisFisOdemeTipi] = useState('Nakit');
+  const [alisFisNotu, setAlisFisNotu] = useState('');
+  const [alisFisGiderKategorisi, setAlisFisGiderKategorisi] = useState('Malzeme');
+  const [alisFisGiderOlarakIsle, setAlisFisGiderOlarakIsle] = useState(true);
+  const [alisFisMalzemeId, setAlisFisMalzemeId] = useState('');
+  const [alisFisMiktar, setAlisFisMiktar] = useState('');
+  const [alisFisBirimFiyat, setAlisFisBirimFiyat] = useState('');
+  const [alisFisKalemleri, setAlisFisKalemleri] = useState([]);
+  const [alisFisMesaji, setAlisFisMesaji] = useState('');
+
+  // depo sayımı ekranında aktif sayımı ve açıklamasını tutan kod
+  const [aktifStokSayimId, setAktifStokSayimId] = useState(null);
+  const [stokSayimBaslik, setStokSayimBaslik] = useState('Günlük Depo Sayımı');
+
   // ürün maliyeti, ürün görseli ve kasa gün sonu için kullanılan kod
   const [yeniUrunMaliyeti, setYeniUrunMaliyeti] = useState('');
   const [duzenlenenUrunMaliyeti, setDuzenlenenUrunMaliyeti] = useState('');
   const [yeniUrunResimUrl, setYeniUrunResimUrl] = useState('');
   const [duzenlenenUrunResimUrl, setDuzenlenenUrunResimUrl] = useState('');
+  const [yeniUrunQrMenudeGorunsun, setYeniUrunQrMenudeGorunsun] = useState(true);
+  const [duzenlenenUrunQrMenudeGorunsun, setDuzenlenenUrunQrMenudeGorunsun] = useState(true);
+  const [yeniUrunSatistaAktif, setYeniUrunSatistaAktif] = useState(true);
+  const [duzenlenenUrunSatistaAktif, setDuzenlenenUrunSatistaAktif] = useState(true);
   const [kasaGercekTutar, setKasaGercekTutar] = useState('');
 
   // gün sonu kapatıldıktan sonra kasa bölümünde saklanacak Z raporlarını tutan kod
@@ -778,6 +807,24 @@ Toplam Ciro: {toplam}
   // ürün kartlarında kullanılacak görseli bulan kod
   const urunGosterimResmi = (urun) => {
     return urunResimUrlTemizle(urun?.resimUrl || urun?.resim_url || '');
+  };
+
+  // ürünün satışta ve QR menüde görünür olup olmadığını standart hale getiren kod
+  const urunSatistaAktifMi = (urun = {}) => {
+    if (urun?.satistaAktif !== undefined) return urun.satistaAktif !== false;
+    if (urun?.satista_aktif !== undefined) return urun.satista_aktif !== false;
+    if (urun?.satisAktif !== undefined) return urun.satisAktif !== false;
+    if (urun?.aktif !== undefined) return urun.aktif !== false;
+
+    const durumMetni = String(urun?.durum || urun?.status || '').toLocaleLowerCase('tr-TR');
+    if (durumMetni.includes('pasif') || durumMetni.includes('satıştan') || durumMetni.includes('satistan') || durumMetni.includes('kalk')) return false;
+
+    return true;
+  };
+
+  const urunQrMenudeGorunurMu = (urun = {}) => {
+    const qrDurumu = urun?.qrMenudeGorunsun ?? urun?.qr_menude_gorunsun ?? urun?.qrMenuAktif ?? urun?.qr_menu_aktif ?? true;
+    return qrDurumu !== false && urunSatistaAktifMi(urun);
   };
 
   // bilgisayardan seçilen ürün görselini uygulamada saklanabilir hale çeviren kod
@@ -958,6 +1005,7 @@ Toplam Ciro: {toplam}
     const temizUrunler = (Array.isArray(urunler) ? urunler : [])
       .filter(u => String(u.restaurantId || u.restaurant_id || '') === String(restaurantId || u.restaurantId || u.restaurant_id || ''))
       .filter(u => String(u.ad || '').trim())
+      .filter(u => urunQrMenudeGorunurMu(u))
       .map(u => ({
         ...u,
         ad: u.ad || u.name || 'Ürün',
@@ -1297,6 +1345,36 @@ Toplam Ciro: {toplam}
     const sayi = Number(deger || 0);
     if (!Number.isFinite(sayi)) return 0;
     return Math.round(sayi * 100) / 100;
+  };
+
+  // depo sayımı ekranında farklı alan adlarıyla gelen stok değerlerini tek formata çeviren kod
+  const stokMalzemeMiktari = (malzeme = {}) => {
+    return paraYuvarla(sayiyaCevir(malzeme.stokMiktari ?? malzeme.stok_miktari ?? malzeme.miktar ?? 0));
+  };
+
+  const stokMalzemeKritikMiktari = (malzeme = {}) => {
+    return paraYuvarla(sayiyaCevir(malzeme.kritikMiktar ?? malzeme.kritik_miktar ?? malzeme.kritik ?? 0));
+  };
+
+  const stokSayimKaleminiHesapla = (kalem = {}, sayilanDeger = kalem.sayilanMiktarRaw ?? kalem.sayilanMiktar ?? '') => {
+    const sistemMiktari = stokMalzemeMiktari(kalem);
+    const sayilanMiktarRaw = String(sayilanDeger ?? '');
+    const sayildi = sayilanMiktarRaw.trim() !== '';
+    const sayilanMiktar = sayildi ? paraYuvarla(sayiyaCevir(sayilanMiktarRaw)) : '';
+    const farkMiktar = sayildi ? paraYuvarla(Number(sayilanMiktar || 0) - sistemMiktari) : 0;
+    const birimMaliyet = paraYuvarla(sayiyaCevir(kalem.birimMaliyet ?? kalem.birim_maliyet ?? 0));
+
+    return {
+      ...kalem,
+      sistemMiktari,
+      sayilanMiktarRaw,
+      sayilanMiktar,
+      sayildi,
+      farkMiktar,
+      farkTutar: paraYuvarla(farkMiktar * birimMaliyet),
+      kritikMiktar: stokMalzemeKritikMiktari(kalem),
+      birimMaliyet,
+    };
   };
 
   // KDV dahil satış tutarının içindeki KDV payını hesaplayan kod
@@ -2217,6 +2295,8 @@ Toplam Ciro: {toplam}
         menuNotlari: Array.isArray(u.menu_notlari) ? u.menu_notlari : [],
         resimUrl: u.resim_url || u.resimUrl || '',
         aciklama: u.aciklama || u.description || '',
+        qrMenudeGorunsun: (u.qr_menude_gorunsun ?? u.qrMenudeGorunsun ?? true) !== false,
+        satistaAktif: (u.satista_aktif ?? u.satistaAktif ?? u.aktif ?? true) !== false,
         favori: Boolean(u.favori),
       }));
 
@@ -2466,29 +2546,157 @@ Toplam Ciro: {toplam}
   };
 
   const stokSayimFisOlustur = () => {
-    const kritikler = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : [])
-      .filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || ''))
-      .filter(m => Number(m.miktar || 0) <= Number(m.kritik || 0));
+    const malzemeler = (Array.isArray(aktifStokMalzemeleri) ? aktifStokMalzemeleri : [])
+      .filter(m => String(m.ad || '').trim());
+
+    if (malzemeler.length === 0) {
+      alert('Önce Stok > Hammadde bölümünden malzeme ekleyin. Depo sayımı bu malzemeler üzerinden yapılır.');
+      return;
+    }
+
+    const kalemler = malzemeler.map(m => stokSayimKaleminiHesapla({
+      malzemeId: m.id,
+      malzemeAdi: m.ad,
+      ad: m.ad,
+      birim: m.birim || 'adet',
+      stokMiktari: stokMalzemeMiktari(m),
+      sistemMiktari: stokMalzemeMiktari(m),
+      kritikMiktar: stokMalzemeKritikMiktari(m),
+      birimMaliyet: sayiyaCevir(m.birimMaliyet || 0),
+    }, ''));
 
     const kayit = {
       id: `sayim-${Date.now()}`,
       restaurantId: mevcutRestaurantId,
+      baslik: stokSayimBaslik || 'Depo Sayımı',
       tarih: new Date().toISOString(),
-      malzemeSayisi: stokMalzemeleri.filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || '')).length,
-      kritikSayisi: kritikler.length,
-      durum: 'Sayım Açıldı',
+      malzemeSayisi: kalemler.length,
+      kritikSayisi: kalemler.filter(k => Number(k.sistemMiktari || 0) <= Number(k.kritikMiktar || 0)).length,
+      sayilanKalemSayisi: 0,
+      toplamFarkTutari: 0,
+      kalemler,
+      durum: 'Sayıma Açık',
     };
 
     setStokSayimKayitlari(prev => [kayit, ...(Array.isArray(prev) ? prev : [])]);
-    setSatinAlmaMesaji('Stok sayım fişi oluşturuldu.');
-    islemLoguEkle('Stok Sayım', 'Stok sayım fişi oluşturuldu.');
+    setAktifStokSayimId(kayit.id);
+    setSatinAlmaMesaji('Depo sayımı başlatıldı. Şimdi her malzeme için elindeki gerçek miktarı gir.');
+    islemLoguEkle('Depo Sayımı', 'Depo sayımı başlatıldı.');
+  };
+
+  const stokSayimKaleminiGuncelle = (sayimId, malzemeId, deger) => {
+    setStokSayimKayitlari(prev => (Array.isArray(prev) ? prev : []).map(kayit => {
+      if (String(kayit.id) !== String(sayimId)) return kayit;
+
+      const kalemler = (Array.isArray(kayit.kalemler) ? kayit.kalemler : []).map(kalem => {
+        if (String(kalem.malzemeId) !== String(malzemeId)) return kalem;
+        return stokSayimKaleminiHesapla(kalem, deger);
+      });
+
+      const sayilanKalemSayisi = kalemler.filter(k => k.sayildi).length;
+      const toplamFarkTutari = paraYuvarla(kalemler.reduce((t, k) => t + Number(k.farkTutar || 0), 0));
+
+      return {
+        ...kayit,
+        kalemler,
+        sayilanKalemSayisi,
+        toplamFarkTutari,
+        updatedAt: new Date().toISOString(),
+      };
+    }));
+  };
+
+  const stokSayimKaydiniTamamla = async (sayimId, stoguGuncelle = false) => {
+    const sayim = (Array.isArray(stokSayimKayitlari) ? stokSayimKayitlari : []).find(k => String(k.id) === String(sayimId));
+    if (!sayim) {
+      alert('Depo sayımı bulunamadı.');
+      return;
+    }
+
+    const kalemler = (Array.isArray(sayim.kalemler) ? sayim.kalemler : []).map(k => stokSayimKaleminiHesapla(k));
+    const sayilanKalemler = kalemler.filter(k => k.sayildi);
+
+    if (sayilanKalemler.length === 0) {
+      alert('Önce en az bir malzemenin sayılan gerçek miktarını girin.');
+      return;
+    }
+
+    if (stoguGuncelle) {
+      for (const kalem of sayilanKalemler) {
+        const { error } = await supabase
+          .from('stok_malzemeleri')
+          .update({ stok_miktari: Number(kalem.sayilanMiktar || 0) })
+          .eq('id', kalem.malzemeId)
+          .eq('restaurant_id', mevcutRestaurantId);
+
+        if (error) {
+          console.error('Depo sayımı stok güncelleme hatası:', error);
+          alert(`${kalem.malzemeAdi} stoğu güncellenemedi: ${error.message}`);
+          return;
+        }
+      }
+
+      setStokMalzemeleri(prev => (Array.isArray(prev) ? prev : []).map(m => {
+        const kalem = sayilanKalemler.find(k => String(k.malzemeId) === String(m.id));
+        return kalem ? { ...m, stokMiktari: Number(kalem.sayilanMiktar || 0) } : m;
+      }));
+    }
+
+    const toplamFarkTutari = paraYuvarla(kalemler.reduce((t, k) => t + Number(k.farkTutar || 0), 0));
+    setStokSayimKayitlari(prev => (Array.isArray(prev) ? prev : []).map(k => String(k.id) === String(sayimId) ? {
+      ...k,
+      kalemler,
+      sayilanKalemSayisi: sayilanKalemler.length,
+      toplamFarkTutari,
+      durum: stoguGuncelle ? 'Tamamlandı / Stok Güncellendi' : 'Tamamlandı / Kontrol Edildi',
+      tamamlandi: true,
+      tamamlanmaTarihi: new Date().toISOString(),
+    } : k));
+
+    setSatinAlmaMesaji(stoguGuncelle ? 'Depo sayımı tamamlandı ve stoklar gerçek sayılan miktarlara göre güncellendi.' : 'Depo sayımı kontrol edildi. Stok miktarları değiştirilmedi.');
+    islemLoguEkle('Depo Sayımı', stoguGuncelle ? 'Depo sayımı stoklara işlendi.' : 'Depo sayımı kontrol edildi.');
+  };
+
+  const stokSayimEksiklerindenSatinAlmaOlustur = (sayimId) => {
+    const sayim = (Array.isArray(stokSayimKayitlari) ? stokSayimKayitlari : []).find(k => String(k.id) === String(sayimId));
+    if (!sayim) return;
+
+    const eksikler = (Array.isArray(sayim.kalemler) ? sayim.kalemler : [])
+      .map(k => stokSayimKaleminiHesapla(k))
+      .filter(k => k.sayildi && Number(k.sayilanMiktar || 0) <= Number(k.kritikMiktar || 0));
+
+    if (eksikler.length === 0) {
+      alert('Bu sayımda kritik seviyenin altında kalan malzeme yok.');
+      return;
+    }
+
+    const yeniTalepler = eksikler.map(k => {
+      const hedefMiktar = Math.max(Number(k.kritikMiktar || 0) * 2, Number(k.sayilanMiktar || 0) + 1);
+      const onerilenMiktar = paraYuvarla(Math.max(hedefMiktar - Number(k.sayilanMiktar || 0), 1));
+      return {
+        id: `satinalma-${Date.now()}-${k.malzemeId}`,
+        restaurantId: mevcutRestaurantId,
+        malzemeId: k.malzemeId,
+        malzemeAdi: k.malzemeAdi,
+        birim: k.birim || 'adet',
+        miktar: onerilenMiktar,
+        tedarikci: 'Depo sayımından otomatik',
+        durum: 'Talep Açıldı',
+        kaynak: 'Depo Sayımı',
+        createdAt: new Date().toISOString(),
+      };
+    });
+
+    setSatinAlmaTalepleri(prev => [...yeniTalepler, ...(Array.isArray(prev) ? prev : [])]);
+    setSatinAlmaMesaji(`${yeniTalepler.length} kritik malzeme için eksik malzeme siparişi oluşturuldu.`);
+    islemLoguEkle('Satın Alma', 'Depo sayımından eksik malzeme siparişi oluşturuldu.');
   };
 
   const satinAlmaTalebiOlustur = (e) => {
     e.preventDefault();
-    const malzeme = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : []).find(m => String(m.id) === String(satinAlmaMalzemeId));
+    const malzeme = (Array.isArray(aktifStokMalzemeleri) ? aktifStokMalzemeleri : []).find(m => String(m.id) === String(satinAlmaMalzemeId));
     if (!malzeme) {
-      alert('Malzeme seçin.');
+      alert('Malzeme seçin. Liste boşsa önce Hammadde bölümünden malzeme ekleyin.');
       return;
     }
 
@@ -2504,6 +2712,8 @@ Toplam Ciro: {toplam}
       malzemeId: malzeme.id,
       malzemeAdi: malzeme.ad,
       birim: malzeme.birim || 'adet',
+      mevcutStok: stokMalzemeMiktari(malzeme),
+      kritikMiktar: stokMalzemeKritikMiktari(malzeme),
       miktar,
       tedarikci: satinAlmaTedarikci || 'Tedarikçi seçilmedi',
       durum: 'Talep Açıldı',
@@ -2514,13 +2724,213 @@ Toplam Ciro: {toplam}
     setSatinAlmaMalzemeId('');
     setSatinAlmaMiktar('');
     setSatinAlmaTedarikci('');
-    setSatinAlmaMesaji('Satın alma talebi oluşturuldu.');
+    setSatinAlmaMesaji('Eksik malzeme siparişi oluşturuldu.');
     islemLoguEkle('Satın Alma', `${kayit.malzemeAdi} için satın alma talebi açıldı.`);
   };
 
-  const satinAlmaDurumGuncelle = (talepId, durum) => {
-    setSatinAlmaTalepleri(prev => (Array.isArray(prev) ? prev : []).map(t => String(t.id) === String(talepId) ? { ...t, durum, updatedAt: new Date().toISOString() } : t));
+  const satinAlmaDurumGuncelle = async (talepId, durum) => {
+    const talep = (Array.isArray(satinAlmaTalepleri) ? satinAlmaTalepleri : []).find(t => String(t.id) === String(talepId));
+
+    if (durum === 'Teslim Alındı' && talep && !talep.stogaIslendi) {
+      const malzeme = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : []).find(m => String(m.id) === String(talep.malzemeId));
+      if (!malzeme) {
+        alert('Teslim alınacak malzeme stok listesinde bulunamadı.');
+        return;
+      }
+
+      const yeniStok = paraYuvarla(stokMalzemeMiktari(malzeme) + sayiyaCevir(talep.miktar || 0));
+      const { error } = await supabase
+        .from('stok_malzemeleri')
+        .update({ stok_miktari: yeniStok })
+        .eq('id', talep.malzemeId)
+        .eq('restaurant_id', mevcutRestaurantId);
+
+      if (error) {
+        alert('Teslim alınan malzeme stoğa işlenemedi: ' + error.message);
+        return;
+      }
+
+      await supabase.from('stok_hareketleri').insert([{
+        restaurant_id: mevcutRestaurantId,
+        malzeme_id: talep.malzemeId,
+        tip: 'Giriş',
+        miktar: sayiyaCevir(talep.miktar || 0),
+        aciklama: `${talep.malzemeAdi || 'Malzeme'} satın alma teslimi`,
+      }]);
+
+      setStokMalzemeleri(prev => (Array.isArray(prev) ? prev : []).map(m => String(m.id) === String(talep.malzemeId) ? { ...m, stokMiktari: yeniStok } : m));
+    }
+
+    setSatinAlmaTalepleri(prev => (Array.isArray(prev) ? prev : []).map(t => String(t.id) === String(talepId) ? {
+      ...t,
+      durum,
+      stogaIslendi: durum === 'Teslim Alındı' ? true : t.stogaIslendi,
+      updatedAt: new Date().toISOString(),
+    } : t));
     islemLoguEkle('Satın Alma', `Satın alma durumu ${durum} yapıldı.`);
+  };
+
+  // alış fişi toplamını hesaplayan kod
+  const alisFisToplami = (Array.isArray(alisFisKalemleri) ? alisFisKalemleri : []).reduce((toplam, kalem) => {
+    return toplam + Number(kalem.miktar || 0) * Number(kalem.birimFiyat || 0);
+  }, 0);
+
+  // hammaddeyi alış fişine hızlı seçen kod
+  const alisFisineMalzemeyiSec = (malzeme) => {
+    if (!malzeme) return;
+    setAlisFisMalzemeId(String(malzeme.id));
+    setAlisFisBirimFiyat(String(malzeme.birimMaliyet || malzeme.birim_maliyet || ''));
+    setAlisFisMesaji(`${malzeme.ad} seçildi. Miktarı girip alış fişine ekleyin.`);
+  };
+
+  // alış fişine kalem ekleyen kod
+  const alisFisKalemiEkle = () => {
+    const malzeme = (Array.isArray(aktifStokMalzemeleri) ? aktifStokMalzemeleri : []).find(m => String(m.id) === String(alisFisMalzemeId));
+    if (!malzeme) {
+      alert('Alış fişine eklemek için malzeme seçin. Liste boşsa önce Hammadde Stokları bölümünden malzeme kartı açın.');
+      return;
+    }
+
+    const miktar = sayiyaCevir(alisFisMiktar);
+    if (!miktar || miktar <= 0) {
+      alert('Alınan miktarı girin.');
+      return;
+    }
+
+    const birimFiyat = sayiyaCevir(alisFisBirimFiyat || malzeme.birimMaliyet || 0);
+    const yeniKalem = {
+      id: `${malzeme.id}-${Date.now()}`,
+      malzemeId: malzeme.id,
+      malzemeAdi: malzeme.ad,
+      birim: malzeme.birim || 'adet',
+      mevcutStok: stokMalzemeMiktari(malzeme),
+      miktar,
+      birimFiyat,
+      toplam: paraYuvarla(miktar * birimFiyat),
+    };
+
+    setAlisFisKalemleri(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const ayniIndex = liste.findIndex(k => String(k.malzemeId) === String(malzeme.id) && Number(k.birimFiyat || 0) === Number(birimFiyat || 0));
+      if (ayniIndex >= 0) {
+        return liste.map((k, index) => {
+          if (index !== ayniIndex) return k;
+          const yeniMiktar = paraYuvarla(Number(k.miktar || 0) + miktar);
+          return { ...k, miktar: yeniMiktar, toplam: paraYuvarla(yeniMiktar * Number(k.birimFiyat || 0)) };
+        });
+      }
+      return [...liste, yeniKalem];
+    });
+
+    setAlisFisMalzemeId('');
+    setAlisFisMiktar('');
+    setAlisFisBirimFiyat('');
+  };
+
+  // alış fişinden kalem silen kod
+  const alisFisKalemiSil = (kalemId) => {
+    setAlisFisKalemleri(prev => (Array.isArray(prev) ? prev : []).filter(k => String(k.id) !== String(kalemId)));
+  };
+
+  // alış fişini kaydedip stok girişini yapan kod
+  const alisFisiniKaydetVeStogaIsle = async () => {
+    const kalemler = Array.isArray(alisFisKalemleri) ? alisFisKalemleri : [];
+    if (kalemler.length === 0) {
+      alert('Alış fişine en az bir malzeme ekleyin.');
+      return;
+    }
+
+    const toplam = paraYuvarla(kalemler.reduce((t, k) => t + Number(k.toplam || 0), 0));
+    const fis = {
+      id: `alis-${Date.now()}`,
+      restaurantId: mevcutRestaurantId,
+      tedarikci: alisFisTedarikci || 'Tedarikçi belirtilmedi',
+      belgeNo: alisFisBelgeNo || '',
+      odemeTipi: alisFisOdemeTipi || 'Nakit',
+      giderKategorisi: alisFisGiderKategorisi || 'Malzeme',
+      notu: alisFisNotu || '',
+      toplam,
+      kalemler,
+      giderOlarakIslendi: Boolean(alisFisGiderOlarakIsle),
+      tarih: new Date().toISOString(),
+      durum: 'Stoğa İşlendi',
+    };
+
+    for (const kalem of kalemler) {
+      const malzeme = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : []).find(m => String(m.id) === String(kalem.malzemeId));
+      if (!malzeme) continue;
+
+      const yeniStok = paraYuvarla(stokMalzemeMiktari(malzeme) + Number(kalem.miktar || 0));
+      const yeniBirimMaliyet = Number(kalem.birimFiyat || 0) > 0 ? Number(kalem.birimFiyat || 0) : Number(malzeme.birimMaliyet || 0);
+
+      const { error } = await supabase
+        .from('stok_malzemeleri')
+        .update({ stok_miktari: yeniStok, birim_maliyet: yeniBirimMaliyet })
+        .eq('id', kalem.malzemeId)
+        .eq('restaurant_id', mevcutRestaurantId);
+
+      if (error) {
+        alert(`${kalem.malzemeAdi} stoğa işlenemedi: ${error.message}`);
+        return;
+      }
+
+      await supabase.from('stok_hareketleri').insert([{
+        restaurant_id: mevcutRestaurantId,
+        malzeme_id: kalem.malzemeId,
+        tip: 'Giriş',
+        miktar: Number(kalem.miktar || 0),
+        aciklama: `Alış fişi ${fis.belgeNo || fis.id} - ${fis.tedarikci}`,
+      }]);
+    }
+
+    setStokMalzemeleri(prev => (Array.isArray(prev) ? prev : []).map(m => {
+      const kalem = kalemler.find(k => String(k.malzemeId) === String(m.id));
+      if (!kalem) return m;
+      return {
+        ...m,
+        stokMiktari: paraYuvarla(stokMalzemeMiktari(m) + Number(kalem.miktar || 0)),
+        birimMaliyet: Number(kalem.birimFiyat || 0) > 0 ? Number(kalem.birimFiyat || 0) : Number(m.birimMaliyet || 0),
+      };
+    }));
+
+    if (alisFisGiderOlarakIsle && toplam > 0) {
+      const bugun = new Date().toISOString().split('T')[0];
+      const aciklama = `Alış fişi${fis.belgeNo ? ` ${fis.belgeNo}` : ''} - ${fis.tedarikci}`;
+      const { data, error } = await supabase
+        .from('giderler')
+        .insert([{ restaurant_id: mevcutRestaurantId, tarih: bugun, kategori: fis.giderKategorisi, aciklama, tutar: toplam }])
+        .select()
+        .single();
+
+      if (!error && data) {
+        setGiderler(prev => [{ id: data.id, restaurantId: data.restaurant_id, tarih: data.tarih, kategori: data.kategori, aciklama: data.aciklama || '', tutar: Number(data.tutar || 0), createdAt: data.created_at, gunSonuKapandi: false, gunSonuRaporId: null }, ...(Array.isArray(prev) ? prev : [])]);
+      } else if (error) {
+        console.warn('Alış fişi gider kaydı oluşturulamadı:', error.message);
+      }
+    }
+
+    setAlisFisleri(prev => [fis, ...(Array.isArray(prev) ? prev : [])]);
+    setAlisFisKalemleri([]);
+    setAlisFisTedarikci('');
+    setAlisFisBelgeNo('');
+    setAlisFisNotu('');
+    setAlisFisMesaji('Alış fişi kaydedildi, ürün girişleri stoklara işlendi.');
+    islemLoguEkle('Alış Fişi', `Alış fişi stoğa işlendi. Toplam: ${toplam} TL`);
+  };
+
+  const aktifStokSayimKaydi = (Array.isArray(stokSayimKayitlari) ? stokSayimKayitlari : []).find(k => String(k.id) === String(aktifStokSayimId))
+    || (Array.isArray(stokSayimKayitlari) ? stokSayimKayitlari : []).find(k => String(k.restaurantId) === String(mevcutRestaurantId) && !k.tamamlandi && Array.isArray(k.kalemler));
+
+  const aktifStokSayimKalemleri = Array.isArray(aktifStokSayimKaydi?.kalemler)
+    ? aktifStokSayimKaydi.kalemler.map(k => stokSayimKaleminiHesapla(k))
+    : [];
+
+  const aktifStokSayimOzeti = {
+    sayilan: aktifStokSayimKalemleri.filter(k => k.sayildi).length,
+    toplam: aktifStokSayimKalemleri.length,
+    eksikKalem: aktifStokSayimKalemleri.filter(k => k.sayildi && Number(k.farkMiktar || 0) < 0).length,
+    fazlaKalem: aktifStokSayimKalemleri.filter(k => k.sayildi && Number(k.farkMiktar || 0) > 0).length,
+    toplamFarkTutari: paraYuvarla(aktifStokSayimKalemleri.reduce((t, k) => t + Number(k.farkTutar || 0), 0)),
   };
 
   // personel ekran yetkilerinde kullanılacak sekme seçeneklerini tutan kod
@@ -2531,6 +2941,7 @@ Toplam Ciro: {toplam}
     { key: 'entegrasyonlar', label: '🔌 Entegrasyonlar' },
     { key: 'hizli_satis', label: '⚡ Hızlı Satış' },
     { key: 'menu', label: '🍔 Menü & Ayarlar' },
+    { key: 'receteler', label: '🧾 Reçeteler' },
     { key: 'qr_menu', label: '📱 QR Menü' },
     { key: 'servis_talepleri', label: '🔔 Servis Talepleri' },
     { key: 'sadakat', label: '🎁 Sadakat' },
@@ -2579,25 +2990,25 @@ Toplam Ciro: {toplam}
       key: 'Baslangic',
       label: 'Başlangıç',
       aciklama: 'Masa, mutfak, hızlı satış ve temel rapor isteyen küçük işletmeler.',
-      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'raporlar', 'kasa', 'garsonlar'],
+      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'raporlar', 'kasa', 'garsonlar'],
     },
     {
       key: 'Profesyonel',
       label: 'Profesyonel',
       aciklama: 'Restoranların günlük operasyonu için en dengeli paket.',
-      sekmeler: ['raporlar', 'masalar', 'mutfak', 'paket', 'hizli_satis', 'menu', 'qr_menu', 'servis_talepleri', 'cari', 'stok', 'kasa', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar'],
+      sekmeler: ['raporlar', 'masalar', 'mutfak', 'paket', 'hizli_satis', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'cari', 'stok', 'kasa', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar'],
     },
     {
       key: 'Paket Servis',
       label: 'Paket Servis Odaklı',
       aciklama: 'Paket, online sipariş havuzu, kurye ve entegrasyon ağırlıklı kullanım.',
-      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'garsonlar'],
+      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'garsonlar'],
     },
     {
       key: 'QR Plus',
       label: 'QR Menü Plus',
       aciklama: 'QR menü, masadan sipariş, servis talebi ve sadakat odaklı kullanım.',
-      sekmeler: ['masalar', 'mutfak', 'menu', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'garsonlar'],
+      sekmeler: ['masalar', 'mutfak', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'garsonlar'],
     },
     {
       key: 'Premium',
@@ -2637,7 +3048,7 @@ Toplam Ciro: {toplam}
     const gorevMetni = String(gorev || '').toLocaleLowerCase('tr-TR');
 
     if (gorevMetni.includes('müdür') || gorevMetni.includes('mudur')) {
-      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'qr_menu', 'servis_talepleri', 'sadakat', 'kiosk'];
+      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'kiosk'];
     }
 
     if (gorevMetni.includes('mutfak')) {
@@ -3429,6 +3840,8 @@ Toplam Ciro: {toplam}
       stokAdedi: Number(u.stok_adedi || 0),
       kritikStok: Number(u.kritik_stok || 0),
       favori: Boolean(u.favori),
+      qrMenudeGorunsun: (u.qr_menude_gorunsun ?? u.qrMenudeGorunsun ?? true) !== false,
+      satistaAktif: (u.satista_aktif ?? u.satistaAktif ?? u.aktif ?? true) !== false,
       resimUrl: u.resim_url || u.resimUrl || '',
     }));
 
@@ -10045,6 +10458,8 @@ Toplam Ciro: {toplam}
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
       favori: Boolean(data.favori),
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? data.qrMenudeGorunsun ?? true) !== false,
+      satistaAktif: (data.satista_aktif ?? data.satistaAktif ?? data.aktif ?? true) !== false,
       resimUrl: data.resim_url || data.resimUrl || '',
     };
 
@@ -10599,6 +11014,8 @@ Toplam Ciro: {toplam}
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
       favori: Boolean(data.favori),
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? data.qrMenudeGorunsun ?? true) !== false,
+      satistaAktif: (data.satista_aktif ?? data.satistaAktif ?? data.aktif ?? true) !== false,
       resimUrl: data.resim_url || data.resimUrl || '',
     };
 
@@ -10642,6 +11059,9 @@ Toplam Ciro: {toplam}
           stok_adedi: 0,
           kritik_stok: 0,
           favori: false,
+          qr_menude_gorunsun: yeniUrunQrMenudeGorunsun,
+          satista_aktif: yeniUrunSatistaAktif,
+          aktif: yeniUrunSatistaAktif,
           resim_url: urunResimUrlTemizle(yeniUrunResimUrl),
         }
       ])
@@ -10672,6 +11092,8 @@ Toplam Ciro: {toplam}
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
       favori: Boolean(data.favori),
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? data.qrMenudeGorunsun ?? true) !== false,
+      satistaAktif: (data.satista_aktif ?? data.satistaAktif ?? data.aktif ?? true) !== false,
       resimUrl: data.resim_url || data.resimUrl || '',
     };
 
@@ -10680,6 +11102,8 @@ Toplam Ciro: {toplam}
     setYeniUrunFiyati('');
     setYeniUrunMaliyeti('');
     setYeniUrunResimUrl('');
+    setYeniUrunQrMenudeGorunsun(true);
+    setYeniUrunSatistaAktif(true);
     if (e.currentTarget && typeof e.currentTarget.reset === 'function') {
       e.currentTarget.reset();
     }
@@ -10691,6 +11115,8 @@ Toplam Ciro: {toplam}
     setDuzenlenenUrunFiyati(String(urun.fiyat));
     setDuzenlenenUrunMaliyeti(String(urun.maliyet || 0));
     setDuzenlenenUrunResimUrl(urunGosterimResmi(urun));
+    setDuzenlenenUrunQrMenudeGorunsun(urunQrMenudeGorunurMu(urun));
+    setDuzenlenenUrunSatistaAktif(urunSatistaAktifMi(urun));
   };
 
   // ürün düzenleme modunu iptal eden kod
@@ -10700,6 +11126,8 @@ Toplam Ciro: {toplam}
     setDuzenlenenUrunFiyati('');
     setDuzenlenenUrunMaliyeti('');
     setDuzenlenenUrunResimUrl('');
+    setDuzenlenenUrunQrMenudeGorunsun(true);
+    setDuzenlenenUrunSatistaAktif(true);
   };
 
   // ürün adını ve fiyatını Supabase'de güncelleyen, hazır notları koruyan kod
@@ -10718,6 +11146,9 @@ Toplam Ciro: {toplam}
         fiyat: Number(duzenlenenUrunFiyati),
         maliyet: sayiyaCevir(duzenlenenUrunMaliyeti || 0),
         resim_url: urunResimUrlTemizle(duzenlenenUrunResimUrl),
+        qr_menude_gorunsun: duzenlenenUrunQrMenudeGorunsun && duzenlenenUrunSatistaAktif,
+        satista_aktif: duzenlenenUrunSatistaAktif,
+        aktif: duzenlenenUrunSatistaAktif,
         kategori: eskiUrun?.menuGrubu || eskiUrun?.kategori || aktifGrup.ad || 'Genel',
         menu_grubu: eskiUrun?.menuGrubu || eskiUrun?.kategori || aktifGrup.ad || 'Genel',
         departman: eskiUrun?.departman || aktifGrup.departman || 'Mutfak',
@@ -10756,6 +11187,8 @@ Toplam Ciro: {toplam}
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
       favori: Boolean(data.favori),
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? data.qrMenudeGorunsun ?? true) !== false,
+      satistaAktif: (data.satista_aktif ?? data.satistaAktif ?? data.aktif ?? true) !== false,
       resimUrl: data.resim_url || data.resimUrl || '',
     };
 
@@ -10858,6 +11291,8 @@ Toplam Ciro: {toplam}
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
       favori: Boolean(data.favori),
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? data.qrMenudeGorunsun ?? true) !== false,
+      satistaAktif: (data.satista_aktif ?? data.satistaAktif ?? data.aktif ?? true) !== false,
       resimUrl: data.resim_url || data.resimUrl || '',
     };
 
@@ -10918,6 +11353,8 @@ Toplam Ciro: {toplam}
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
       favori: Boolean(data.favori),
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? data.qrMenudeGorunsun ?? true) !== false,
+      satistaAktif: (data.satista_aktif ?? data.satistaAktif ?? data.aktif ?? true) !== false,
       resimUrl: data.resim_url || data.resimUrl || '',
     };
 
@@ -11011,6 +11448,8 @@ Toplam Ciro: {toplam}
       stokAdedi: Number(data.stok_adedi || 0),
       kritikStok: Number(data.kritik_stok || 0),
       favori: Boolean(data.favori),
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? data.qrMenudeGorunsun ?? true) !== false,
+      satistaAktif: (data.satista_aktif ?? data.satistaAktif ?? data.aktif ?? true) !== false,
       resimUrl: data.resim_url || data.resimUrl || '',
     };
 
@@ -11052,6 +11491,71 @@ Toplam Ciro: {toplam}
       }
       return u;
     }));
+  };
+
+  // ürünün QR menüde görünüp görünmeyeceğini ayarlayan kod
+  const urunQrMenuDurumunuAyarla = async (urun, yeniDurum) => {
+    if (!urun || !urun.id) {
+      alert('Ürün bulunamadı.');
+      return;
+    }
+
+    const satistaAktif = urunSatistaAktifMi(urun);
+    const qrDurumu = Boolean(yeniDurum) && satistaAktif;
+
+    const { data, error } = await supabase
+      .from('menu_urunleri')
+      .update({ qr_menude_gorunsun: qrDurumu })
+      .eq('id', urun.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('QR menü ürün durumu güncellenemedi:', error);
+      alert('QR menü ürün durumu güncellenemedi. Supabase SQL kolonlarını eklediğinden emin ol: ' + error.message);
+      return;
+    }
+
+    setMenuUrunleri(menuUrunleri.map(u => String(u.id) === String(urun.id) ? {
+      ...u,
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? qrDurumu) !== false,
+    } : u));
+  };
+
+  // ürünü satışta aktif/pasif yapıp QR menüden de otomatik kaldıran kod
+  const urunSatisDurumunuAyarla = async (urun, yeniDurum) => {
+    if (!urun || !urun.id) {
+      alert('Ürün bulunamadı.');
+      return;
+    }
+
+    const satistaAktif = Boolean(yeniDurum);
+    const qrDurumu = satistaAktif ? urunQrMenudeGorunurMu(urun) : false;
+
+    const { data, error } = await supabase
+      .from('menu_urunleri')
+      .update({
+        satista_aktif: satistaAktif,
+        aktif: satistaAktif,
+        qr_menude_gorunsun: qrDurumu,
+      })
+      .eq('id', urun.id)
+      .eq('restaurant_id', mevcutRestaurantId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Ürün satış durumu güncellenemedi:', error);
+      alert('Ürün satış durumu güncellenemedi. Supabase SQL kolonlarını eklediğinden emin ol: ' + error.message);
+      return;
+    }
+
+    setMenuUrunleri(menuUrunleri.map(u => String(u.id) === String(urun.id) ? {
+      ...u,
+      satistaAktif: (data.satista_aktif ?? data.aktif ?? satistaAktif) !== false,
+      qrMenudeGorunsun: (data.qr_menude_gorunsun ?? qrDurumu) !== false,
+    } : u));
   };
 
   // seçili rapor tipine göre satışları filtreleyen kod
@@ -11717,6 +12221,10 @@ Toplam Ciro: {toplam}
     localStorage.setItem('integra_satin_alma_talepleri', JSON.stringify(satinAlmaTalepleri));
   }, [satinAlmaTalepleri]);
 
+  useEffect(() => {
+    localStorage.setItem('integra_alis_fisleri', JSON.stringify(alisFisleri));
+  }, [alisFisleri]);
+
   // herkese açık QR menü linki açıldığında menü verisini yükleyen kod
   useEffect(() => {
     if (!qrMenuMusteriModu || !qrMenuLinkRestaurantId) return;
@@ -11976,6 +12484,161 @@ Toplam Ciro: {toplam}
       </div>
     );
   }
+
+
+  // gelişmiş reçete panelini stoktan ayrı sekmede de kullanmak için hazırlayan kod
+  const receteYonetimiPaneli = (kapsayiciStili = {}) => (
+                <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', marginBottom: '16px', ...kapsayiciStili }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Gelişmiş Ürün Reçetesi</h3>
+                      <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
+                        Her ürünün kaç gram/kg/adet hammadde kullandığını tanımlayın. Sistem satışta fireli miktarı stoktan düşer, maliyet ve kârı otomatik hesaplar.
+                      </p>
+                    </div>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px', minWidth: '220px' }}>
+                      <div style={{ fontSize: '11px', color: '#9a3412', fontWeight: '900' }}>Reçete Durumu</div>
+                      <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '900' }}>{aktifMenu.filter(u => receteSatirlariBul(u.id).length > 0).length} ürün reçeteli / {aktifMenu.length} ürün</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Reçetesiz ürünler maliyet raporunda eksik kâr gösterebilir.</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr', gap: '12px', marginTop: '14px' }}>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>1) Ürün seç ve reçete satırı ekle</div>
+                      <div style={styles.inlineForm}>
+                        <select value={receteAyarlananUrunId} onChange={e => setReceteAyarlananUrunId(e.target.value)} style={styles.input}>
+                          <option value="">Reçete ürünü seç</option>
+                          {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad} — Satış {u.fiyat} TL</option>)}
+                        </select>
+                        <select value={receteMalzemeId} onChange={e => setReceteMalzemeId(e.target.value)} style={styles.input}>
+                          <option value="">Hammadde seç</option>
+                          {aktifStokMalzemeleri.map(m => <option key={m.id} value={m.id}>{m.ad} ({m.birim}) / Stok {m.stokMiktari}</option>)}
+                        </select>
+                        <input type="number" step="0.001" placeholder="Net miktar" value={receteMiktar} onChange={e => setReceteMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '130px' }} />
+                        <input type="number" step="0.01" placeholder="Fire %" value={receteFireYuzde} onChange={e => setReceteFireYuzde(e.target.value)} style={{ ...styles.input, maxWidth: '100px' }} />
+                        <input type="text" placeholder="Hazırlık notu: doğranmış, pişmiş, soslu..." value={receteHazirlikNotu} onChange={e => setReceteHazirlikNotu(e.target.value)} style={{ ...styles.input, flex: '1 1 220px' }} />
+                        <button type="button" onClick={urunReceteSatiriEkle} style={styles.btnOrange}>Satırı Kaydet</button>
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '8px' }}>
+                        Örnek: 1 kumpirde 0.35 kg patates kullanılıyorsa miktar <strong>0.35</strong> yazılır. Soyma/pişirme kaybı varsa fire yüzdesi eklenir.
+                      </div>
+                    </div>
+
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>2) Başka üründen reçete kopyala</div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <select value={receteKopyalanacakUrunId} onChange={e => setReceteKopyalanacakUrunId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px' }}>
+                          <option value="">Kaynak ürün seç</option>
+                          {aktifMenu.filter(u => String(u.id) !== String(receteAyarlananUrunId) && receteSatirlariBul(u.id).length > 0).map(u => <option key={u.id} value={u.id}>{u.ad} ({receteSatirlariBul(u.id).length} kalem)</option>)}
+                        </select>
+                        <button type="button" onClick={urunRecetesiniKopyala} style={{ ...styles.btnOrange, backgroundColor: '#1e293b' }}>Kopyala</button>
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '11px', marginTop: '8px', lineHeight: 1.5 }}>
+                        Benzer ürünlerde hızlı kurulum için kullanılır. Örn: Kaşarlı Kumpir reçetesini Karışık Kumpir'e kopyalayıp sadece ekstra malzemeleri ekleyin.
+                      </div>
+                    </div>
+                  </div>
+
+                  {receteAyarlananUrunId ? (() => {
+                    const analiz = urunReceteAnaliziHesapla(receteAyarlananUrunId);
+                    const porsiyonCarpani = Math.max(1, sayiyaCevir(recetePorsiyonCarpani) || 1);
+                    return (
+                      <div style={{ marginTop: '14px' }}>
+                        <div style={styles.statsGrid}>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Satış Fiyatı</div>
+                            <div style={styles.statsValue}>{analiz.satisFiyati} TL</div>
+                          </div>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Reçete Maliyeti</div>
+                            <div style={styles.statsValue}>{analiz.maliyet} TL</div>
+                          </div>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Brüt Kâr</div>
+                            <div style={{ ...styles.statsValue, color: analiz.brutKar >= 0 ? '#10b981' : '#ef4444' }}>{analiz.brutKar} TL</div>
+                          </div>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Maliyet Oranı</div>
+                            <div style={{ ...styles.statsValue, color: analiz.maliyetOrani > 45 ? '#ef4444' : '#10b981' }}>%{analiz.maliyetOrani}</div>
+                          </div>
+                          <div style={styles.statsCard}>
+                            <div style={styles.statsTitle}>Stoktan Çıkabilecek</div>
+                            <div style={styles.statsValue}>{analiz.stoktanCikabilecekPorsiyon} porsiyon</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', margin: '12px 0' }}>
+                          <input type="number" min="1" step="1" placeholder="Kaç porsiyon?" value={recetePorsiyonCarpani} onChange={e => setRecetePorsiyonCarpani(e.target.value)} style={{ ...styles.input, maxWidth: '150px' }} />
+                          <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>{porsiyonCarpani} porsiyon üretimde toplam reçete maliyeti: {paraYuvarla(analiz.maliyet * porsiyonCarpani)} TL</span>
+                          <button type="button" onClick={() => receteMaliyetiniUrunKartinaYaz(receteAyarlananUrunId)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Maliyeti Ürün Kartına Yaz</button>
+                        </div>
+
+                        {analiz.eksikMaliyetliKalemler.length > 0 ? (
+                          <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', borderRadius: '12px', padding: '10px 12px', fontSize: '12px', fontWeight: '800', marginBottom: '10px' }}>
+                            Bu reçetede maliyeti 0 olan veya eksik hammadde var. Hammadde kartına birim maliyet girersen kâr raporu düzelir.
+                          </div>
+                        ) : null}
+
+                        {analiz.satirlar.length === 0 ? (
+                          <div style={{ color: '#94a3b8', padding: '12px', backgroundColor: '#fff', border: '1px dashed #fed7aa', borderRadius: '14px' }}>Bu ürün için reçete satırı yok. Yukarıdan hammadde seçip miktar girerek başlayın.</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {analiz.satirlar.map(r => {
+                              const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
+                              const fireliMiktar = receteSatiriFireliMiktar(r);
+                              const satirMaliyeti = receteSatiriMaliyetiHesapla(r);
+                              const duzenleniyor = String(receteDuzenlenenSatirId) === String(r.id);
+                              return (
+                                <div key={r.id} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px' }}>
+                                  {duzenleniyor ? (
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                      <strong style={{ minWidth: '150px', color: '#1e293b' }}>{malzeme?.ad || 'Hammadde'}</strong>
+                                      <input type="number" step="0.001" value={receteDuzenlemeMiktar} onChange={e => setReceteDuzenlemeMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '130px' }} />
+                                      <input type="number" step="0.01" value={receteDuzenlemeFireYuzde} onChange={e => setReceteDuzenlemeFireYuzde(e.target.value)} placeholder="Fire %" style={{ ...styles.input, maxWidth: '100px' }} />
+                                      <input type="text" value={receteDuzenlemeNotu} onChange={e => setReceteDuzenlemeNotu(e.target.value)} placeholder="Not" style={{ ...styles.input, flex: '1 1 200px' }} />
+                                      <button type="button" onClick={() => urunReceteSatiriGuncelle(r)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Kaydet</button>
+                                      <button type="button" onClick={urunReceteDuzenlemeyiIptalEt} style={{ ...styles.btnOrange, backgroundColor: '#64748b' }}>Vazgeç</button>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 0.9fr 0.9fr 0.8fr 0.8fr auto', gap: '8px', alignItems: 'center' }}>
+                                      <div>
+                                        <strong style={{ color: '#1e293b' }}>{malzeme?.ad || 'Hammadde bulunamadı'}</strong>
+                                        <div style={{ color: '#64748b', fontSize: '11px' }}>{r.hazirlikNotu || 'Hazırlık notu yok'}</div>
+                                      </div>
+                                      <div style={{ fontSize: '12px', color: '#334155' }}>Net: <strong>{r.miktar}</strong> {malzeme?.birim || ''}</div>
+                                      <div style={{ fontSize: '12px', color: '#334155' }}>Fireli: <strong>{fireliMiktar}</strong> {malzeme?.birim || ''}</div>
+                                      <div style={{ fontSize: '12px', color: '#334155' }}>Fire: <strong>%{receteSatiriFireOrani(r)}</strong></div>
+                                      <div style={{ fontSize: '12px', color: '#334155' }}>Maliyet: <strong>{satirMaliyeti} TL</strong></div>
+                                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+                                        <button type="button" onClick={() => urunReceteSatiriDuzenlemeyeAl(r)} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Düzenle</button>
+                                        <button type="button" onClick={() => urunReceteSatiriSil(r.id)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Sil</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })() : (
+                    <div style={{ color: '#94a3b8', padding: '12px', marginTop: '12px', backgroundColor: '#fff', border: '1px dashed #fed7aa', borderRadius: '14px' }}>Reçete yönetimi için önce ürün seçin.</div>
+                  )}
+
+                  {aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).length > 0 ? (
+                    <details style={{ marginTop: '12px', backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px' }}>
+                      <summary style={{ cursor: 'pointer', color: '#9a3412', fontWeight: '900' }}>Reçetesiz ürünler ({aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).length})</summary>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                        {aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).slice(0, 40).map(u => (
+                          <button key={u.id} type="button" onClick={() => setReceteAyarlananUrunId(String(u.id))} style={{ border: '1px solid #fed7aa', backgroundColor: '#fff7ed', color: '#9a3412', borderRadius: '999px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '800' }}>{u.ad}</button>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
+                </div>
+  );
 
   return (
     <div style={styles.appViewport}>
@@ -13137,6 +13800,16 @@ Toplam Ciro: {toplam}
                   style={activeTab === 'menu' ? styles.navItemActive : styles.navItem}
                 >
                   🍔 Menü & Ayarlar
+                </button>
+              )}
+
+              {tabGorunur('receteler') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('receteler')}
+                  style={activeTab === 'receteler' ? styles.navItemActive : styles.navItem}
+                >
+                  🧾 Reçeteler
                 </button>
               )}
 
@@ -15543,167 +16216,109 @@ Toplam Ciro: {toplam}
                       <span style={Number(m.stokMiktari || 0) <= Number(m.kritikMiktar || 0) ? styles.badgePending : styles.badgeActive}>
                         Stok: {m.stokMiktari} {m.birim}
                       </span>
-                      <input
-                        type="number"
-                        placeholder="Stok ekle"
-                        value={stokMalzemeEklenecekMiktarlar[m.id] || ''}
-                        onChange={e => setStokMalzemeEklenecekMiktarlar(prev => ({ ...prev, [m.id]: e.target.value }))}
-                        style={{ ...styles.input, width: '120px', minWidth: '120px' }}
-                      />
-                      <button type="button" onClick={() => stokMalzemeStokEkle(m)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>+ Ekle</button>
+                      <button type="button" onClick={() => alisFisineMalzemeyiSec(m)} style={{ ...styles.btnOrange, backgroundColor: '#0ea5e9' }}>Alış Fişine Ekle</button>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', marginBottom: '16px' }}>
+                <div style={{ ...styles.panelCard, backgroundColor: '#ecfeff', border: '1px solid #bae6fd', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                     <div>
-                      <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Gelişmiş Ürün Reçetesi</h3>
-                      <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
-                        Her ürünün kaç gram/kg/adet hammadde kullandığını tanımlayın. Sistem satışta fireli miktarı stoktan düşer, maliyet ve kârı otomatik hesaplar.
+                      <h3 style={{ fontSize: '17px', color: '#0f172a', margin: '0 0 6px' }}>🧾 Alış Fişi / Ürün Girişi</h3>
+                      <p style={{ color: '#475569', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
+                        Stok ekleme artık buradan yapılır. Tedarikçiden alınan hammaddeleri fişe ekle, kaydettiğinde stok miktarı artar ve istersen gider kaydı da oluşur.
                       </p>
                     </div>
-                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px', minWidth: '220px' }}>
-                      <div style={{ fontSize: '11px', color: '#9a3412', fontWeight: '900' }}>Reçete Durumu</div>
-                      <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '900' }}>{aktifMenu.filter(u => receteSatirlariBul(u.id).length > 0).length} ürün reçeteli / {aktifMenu.length} ürün</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Reçetesiz ürünler maliyet raporunda eksik kâr gösterebilir.</div>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '10px 12px', minWidth: '160px' }}>
+                      <div style={{ fontSize: '11px', color: '#0369a1', fontWeight: '900' }}>Fiş Toplamı</div>
+                      <div style={{ fontSize: '20px', color: '#0f172a', fontWeight: '900' }}>{paraYuvarla(alisFisToplami)} TL</div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr', gap: '12px', marginTop: '14px' }}>
-                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>1) Ürün seç ve reçete satırı ekle</div>
-                      <div style={styles.inlineForm}>
-                        <select value={receteAyarlananUrunId} onChange={e => setReceteAyarlananUrunId(e.target.value)} style={styles.input}>
-                          <option value="">Reçete ürünü seç</option>
-                          {aktifMenu.map(u => <option key={u.id} value={u.id}>{u.ad} — Satış {u.fiyat} TL</option>)}
-                        </select>
-                        <select value={receteMalzemeId} onChange={e => setReceteMalzemeId(e.target.value)} style={styles.input}>
-                          <option value="">Hammadde seç</option>
-                          {aktifStokMalzemeleri.map(m => <option key={m.id} value={m.id}>{m.ad} ({m.birim}) / Stok {m.stokMiktari}</option>)}
-                        </select>
-                        <input type="number" step="0.001" placeholder="Net miktar" value={receteMiktar} onChange={e => setReceteMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '130px' }} />
-                        <input type="number" step="0.01" placeholder="Fire %" value={receteFireYuzde} onChange={e => setReceteFireYuzde(e.target.value)} style={{ ...styles.input, maxWidth: '100px' }} />
-                        <input type="text" placeholder="Hazırlık notu: doğranmış, pişmiş, soslu..." value={receteHazirlikNotu} onChange={e => setReceteHazirlikNotu(e.target.value)} style={{ ...styles.input, flex: '1 1 220px' }} />
-                        <button type="button" onClick={urunReceteSatiriEkle} style={styles.btnOrange}>Satırı Kaydet</button>
-                      </div>
-                      <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '8px' }}>
-                        Örnek: 1 kumpirde 0.35 kg patates kullanılıyorsa miktar <strong>0.35</strong> yazılır. Soyma/pişirme kaybı varsa fire yüzdesi eklenir.
-                      </div>
-                    </div>
+                  {alisFisMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#dbeafe', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '12px', padding: '9px 11px', fontSize: '12px', fontWeight: '800' }}>{alisFisMesaji}</div> : null}
 
-                    <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>2) Başka üründen reçete kopyala</div>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <select value={receteKopyalanacakUrunId} onChange={e => setReceteKopyalanacakUrunId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px' }}>
-                          <option value="">Kaynak ürün seç</option>
-                          {aktifMenu.filter(u => String(u.id) !== String(receteAyarlananUrunId) && receteSatirlariBul(u.id).length > 0).map(u => <option key={u.id} value={u.id}>{u.ad} ({receteSatirlariBul(u.id).length} kalem)</option>)}
-                        </select>
-                        <button type="button" onClick={urunRecetesiniKopyala} style={{ ...styles.btnOrange, backgroundColor: '#1e293b' }}>Kopyala</button>
-                      </div>
-                      <div style={{ color: '#64748b', fontSize: '11px', marginTop: '8px', lineHeight: 1.5 }}>
-                        Benzer ürünlerde hızlı kurulum için kullanılır. Örn: Kaşarlı Kumpir reçetesini Karışık Kumpir'e kopyalayıp sadece ekstra malzemeleri ekleyin.
-                      </div>
-                    </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, minmax(160px, 1fr))', gap: '8px', marginTop: '12px' }}>
+                    <input type="text" placeholder="Tedarikçi / firma" value={alisFisTedarikci} onChange={e => setAlisFisTedarikci(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
+                    <input type="text" placeholder="Fiş / fatura no" value={alisFisBelgeNo} onChange={e => setAlisFisBelgeNo(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
+                    <select value={alisFisOdemeTipi} onChange={e => setAlisFisOdemeTipi(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
+                      <option>Nakit</option>
+                      <option>Kart</option>
+                      <option>Cari / Vadeli</option>
+                      <option>Havale / EFT</option>
+                    </select>
+                    <select value={alisFisGiderKategorisi} onChange={e => setAlisFisGiderKategorisi(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
+                      <option>Malzeme</option>
+                      <option>Ambalaj</option>
+                      <option>Temizlik</option>
+                      <option>Bakım / Servis</option>
+                      <option>Diğer</option>
+                    </select>
                   </div>
 
-                  {receteAyarlananUrunId ? (() => {
-                    const analiz = urunReceteAnaliziHesapla(receteAyarlananUrunId);
-                    const porsiyonCarpani = Math.max(1, sayiyaCevir(recetePorsiyonCarpani) || 1);
-                    return (
-                      <div style={{ marginTop: '14px' }}>
-                        <div style={styles.statsGrid}>
-                          <div style={styles.statsCard}>
-                            <div style={styles.statsTitle}>Satış Fiyatı</div>
-                            <div style={styles.statsValue}>{analiz.satisFiyati} TL</div>
-                          </div>
-                          <div style={styles.statsCard}>
-                            <div style={styles.statsTitle}>Reçete Maliyeti</div>
-                            <div style={styles.statsValue}>{analiz.maliyet} TL</div>
-                          </div>
-                          <div style={styles.statsCard}>
-                            <div style={styles.statsTitle}>Brüt Kâr</div>
-                            <div style={{ ...styles.statsValue, color: analiz.brutKar >= 0 ? '#10b981' : '#ef4444' }}>{analiz.brutKar} TL</div>
-                          </div>
-                          <div style={styles.statsCard}>
-                            <div style={styles.statsTitle}>Maliyet Oranı</div>
-                            <div style={{ ...styles.statsValue, color: analiz.maliyetOrani > 45 ? '#ef4444' : '#10b981' }}>%{analiz.maliyetOrani}</div>
-                          </div>
-                          <div style={styles.statsCard}>
-                            <div style={styles.statsTitle}>Stoktan Çıkabilecek</div>
-                            <div style={styles.statsValue}>{analiz.stoktanCikabilecekPorsiyon} porsiyon</div>
-                          </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.3fr 0.7fr 0.7fr auto', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
+                    <select value={alisFisMalzemeId} onChange={e => {
+                      const secili = aktifStokMalzemeleri.find(m => String(m.id) === String(e.target.value));
+                      setAlisFisMalzemeId(e.target.value);
+                      setAlisFisBirimFiyat(secili?.birimMaliyet ? String(secili.birimMaliyet) : '');
+                    }} style={{ ...styles.input, backgroundColor: '#fff' }}>
+                      <option value="">Alınan hammadde / ürün seç</option>
+                      {aktifStokMalzemeleri.map(m => <option key={m.id} value={String(m.id)}>{m.ad} / Mevcut: {stokMalzemeMiktari(m)} {m.birim} / Maliyet: {m.birimMaliyet || 0} TL</option>)}
+                    </select>
+                    <input type="number" step="0.001" placeholder="Miktar" value={alisFisMiktar} onChange={e => setAlisFisMiktar(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
+                    <input type="number" step="0.01" placeholder="Birim fiyat" value={alisFisBirimFiyat} onChange={e => setAlisFisBirimFiyat(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }} />
+                    <button type="button" onClick={alisFisKalemiEkle} style={styles.btnOrange}>Fişe Ekle</button>
+                  </div>
+
+                  <input type="text" placeholder="Alış notu / açıklama" value={alisFisNotu} onChange={e => setAlisFisNotu(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff', marginTop: '8px' }} />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '12px', fontWeight: '900', marginTop: '8px' }}>
+                    <input type="checkbox" checked={alisFisGiderOlarakIsle} onChange={e => setAlisFisGiderOlarakIsle(e.target.checked)} />
+                    Bu alış fişini giderlere de işle
+                  </label>
+
+                  {alisFisKalemleri.length === 0 ? (
+                    <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px dashed #bae6fd', color: '#64748b', borderRadius: '12px', padding: '12px', fontSize: '12px' }}>
+                      Henüz fiş kalemi yok. Malzeme seçip miktar girerek alış fişine ekleyin. Malzeme listesi Hammadde Stokları bölümünden gelir.
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {alisFisKalemleri.map(k => (
+                        <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.55fr 0.55fr 0.55fr auto', gap: '8px', alignItems: 'center' }}>
+                          <strong style={{ color: '#0f172a' }}>{k.malzemeAdi}</strong>
+                          <span style={{ color: '#334155', fontSize: '12px', fontWeight: '800' }}>{k.miktar} {k.birim}</span>
+                          <span style={{ color: '#334155', fontSize: '12px', fontWeight: '800' }}>{k.birimFiyat} TL</span>
+                          <span style={{ color: '#0f172a', fontSize: '12px', fontWeight: '900' }}>{k.toplam} TL</span>
+                          <button type="button" onClick={() => alisFisKalemiSil(k.id)} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontWeight: '900' }}>Sil</button>
                         </div>
-
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', margin: '12px 0' }}>
-                          <input type="number" min="1" step="1" placeholder="Kaç porsiyon?" value={recetePorsiyonCarpani} onChange={e => setRecetePorsiyonCarpani(e.target.value)} style={{ ...styles.input, maxWidth: '150px' }} />
-                          <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>{porsiyonCarpani} porsiyon üretimde toplam reçete maliyeti: {paraYuvarla(analiz.maliyet * porsiyonCarpani)} TL</span>
-                          <button type="button" onClick={() => receteMaliyetiniUrunKartinaYaz(receteAyarlananUrunId)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Maliyeti Ürün Kartına Yaz</button>
-                        </div>
-
-                        {analiz.eksikMaliyetliKalemler.length > 0 ? (
-                          <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', borderRadius: '12px', padding: '10px 12px', fontSize: '12px', fontWeight: '800', marginBottom: '10px' }}>
-                            Bu reçetede maliyeti 0 olan veya eksik hammadde var. Hammadde kartına birim maliyet girersen kâr raporu düzelir.
-                          </div>
-                        ) : null}
-
-                        {analiz.satirlar.length === 0 ? (
-                          <div style={{ color: '#94a3b8', padding: '12px', backgroundColor: '#fff', border: '1px dashed #fed7aa', borderRadius: '14px' }}>Bu ürün için reçete satırı yok. Yukarıdan hammadde seçip miktar girerek başlayın.</div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {analiz.satirlar.map(r => {
-                              const malzeme = aktifStokMalzemeleri.find(m => String(m.id) === String(r.malzemeId));
-                              const fireliMiktar = receteSatiriFireliMiktar(r);
-                              const satirMaliyeti = receteSatiriMaliyetiHesapla(r);
-                              const duzenleniyor = String(receteDuzenlenenSatirId) === String(r.id);
-                              return (
-                                <div key={r.id} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px' }}>
-                                  {duzenleniyor ? (
-                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                      <strong style={{ minWidth: '150px', color: '#1e293b' }}>{malzeme?.ad || 'Hammadde'}</strong>
-                                      <input type="number" step="0.001" value={receteDuzenlemeMiktar} onChange={e => setReceteDuzenlemeMiktar(e.target.value)} style={{ ...styles.input, maxWidth: '130px' }} />
-                                      <input type="number" step="0.01" value={receteDuzenlemeFireYuzde} onChange={e => setReceteDuzenlemeFireYuzde(e.target.value)} placeholder="Fire %" style={{ ...styles.input, maxWidth: '100px' }} />
-                                      <input type="text" value={receteDuzenlemeNotu} onChange={e => setReceteDuzenlemeNotu(e.target.value)} placeholder="Not" style={{ ...styles.input, flex: '1 1 200px' }} />
-                                      <button type="button" onClick={() => urunReceteSatiriGuncelle(r)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Kaydet</button>
-                                      <button type="button" onClick={urunReceteDuzenlemeyiIptalEt} style={{ ...styles.btnOrange, backgroundColor: '#64748b' }}>Vazgeç</button>
-                                    </div>
-                                  ) : (
-                                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 0.9fr 0.9fr 0.8fr 0.8fr auto', gap: '8px', alignItems: 'center' }}>
-                                      <div>
-                                        <strong style={{ color: '#1e293b' }}>{malzeme?.ad || 'Hammadde bulunamadı'}</strong>
-                                        <div style={{ color: '#64748b', fontSize: '11px' }}>{r.hazirlikNotu || 'Hazırlık notu yok'}</div>
-                                      </div>
-                                      <div style={{ fontSize: '12px', color: '#334155' }}>Net: <strong>{r.miktar}</strong> {malzeme?.birim || ''}</div>
-                                      <div style={{ fontSize: '12px', color: '#334155' }}>Fireli: <strong>{fireliMiktar}</strong> {malzeme?.birim || ''}</div>
-                                      <div style={{ fontSize: '12px', color: '#334155' }}>Fire: <strong>%{receteSatiriFireOrani(r)}</strong></div>
-                                      <div style={{ fontSize: '12px', color: '#334155' }}>Maliyet: <strong>{satirMaliyeti} TL</strong></div>
-                                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
-                                        <button type="button" onClick={() => urunReceteSatiriDuzenlemeyeAl(r)} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Düzenle</button>
-                                        <button type="button" onClick={() => urunReceteSatiriSil(r.id)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Sil</button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })() : (
-                    <div style={{ color: '#94a3b8', padding: '12px', marginTop: '12px', backgroundColor: '#fff', border: '1px dashed #fed7aa', borderRadius: '14px' }}>Reçete yönetimi için önce ürün seçin.</div>
+                      ))}
+                    </div>
                   )}
 
-                  {aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).length > 0 ? (
-                    <details style={{ marginTop: '12px', backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px' }}>
-                      <summary style={{ cursor: 'pointer', color: '#9a3412', fontWeight: '900' }}>Reçetesiz ürünler ({aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).length})</summary>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-                        {aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).slice(0, 40).map(u => (
-                          <button key={u.id} type="button" onClick={() => setReceteAyarlananUrunId(String(u.id))} style={{ border: '1px solid #fed7aa', backgroundColor: '#fff7ed', color: '#9a3412', borderRadius: '999px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '800' }}>{u.ad}</button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                    <button type="button" onClick={alisFisiniKaydetVeStogaIsle} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Alış Fişini Kaydet ve Stoğa İşle</button>
+                    <button type="button" onClick={() => setAlisFisKalemleri([])} style={{ ...styles.btnOrange, backgroundColor: '#64748b' }}>Fişi Temizle</button>
+                  </div>
+
+                  {alisFisleri.filter(f => String(f.restaurantId) === String(mevcutRestaurantId)).length > 0 ? (
+                    <details style={{ marginTop: '12px' }}>
+                      <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#0369a1' }}>Son alış fişleri</summary>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                        {alisFisleri.filter(f => String(f.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(f => (
+                          <div key={f.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155' }}>
+                            <strong>{f.tedarikci}</strong> — {f.belgeNo || 'Belge no yok'} — {tarihSaatYaz(f.tarih)} — <strong>{f.toplam} TL</strong>
+                            <div style={{ color: '#64748b', marginTop: '4px' }}>{Array.isArray(f.kalemler) ? f.kalemler.map(k => `${k.malzemeAdi}: ${k.miktar} ${k.birim}`).join(' / ') : ''}</div>
+                          </div>
                         ))}
                       </div>
                     </details>
                   ) : null}
+                </div>
+
+                <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Reçeteler ayrı sekmeye taşındı</h3>
+                  <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
+                    Ürün reçeteleri artık sol menüdeki <strong>Reçeteler</strong> sekmesinden yönetilir. Stok ekranında sadece hammadde kartları, alış fişi, depo sayımı ve stok girişleri kalır.
+                  </p>
+                  <button type="button" onClick={() => setActiveTab('receteler')} style={{ ...styles.btnOrange, marginTop: '10px' }}>Reçeteler Sekmesini Aç</button>
                 </div>
 
                 {aktifMenu.length === 0 ? (
@@ -15746,33 +16361,105 @@ Toplam Ciro: {toplam}
               </div>
             )}
 
-            {/* stok sayım ve satın alma ekranını gösteren kod */}
+            {/* depo sayımı ve eksik malzeme siparişi ekranını gösteren kod */}
             {activeTab === 'stok' && (
               <div style={{ ...styles.panelCard, marginTop: '16px' }}>
-                <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>📋 Stok Sayım & Satın Alma</h3>
+                <h3 style={{ margin: '0 0 8px', color: '#1e293b' }}>📋 Depo Sayımı & Eksik Malzeme Siparişi</h3>
+                <p style={{ color: '#64748b', fontSize: '13px', lineHeight: 1.55, marginTop: 0 }}>
+                  Depo sayımı artık sadece mevcut miktarı göstermez. Önce sayımı başlat, elindeki gerçek miktarı gir, sistem farkı ve maliyet etkisini hesaplasın. İstersen stokları gerçek sayıma göre güncelleyebilir veya kritik eksiklerden satın alma talebi oluşturabilirsin.
+                </p>
+
                 {satinAlmaMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{satinAlmaMesaji}</div> : null}
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.35fr 0.9fr', gap: '14px' }}>
                   <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
-                    <h4 style={{ margin: '0 0 10px', color: '#1e293b' }}>Stok sayım fişi</h4>
-                    <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5 }}>Kritik stokları ve mevcut hammadde listesini sayım fişine çevirin.</p>
-                    <button type="button" onClick={stokSayimFisOlustur} style={styles.btnOrange}>Sayım Fişi Aç</button>
-                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {stokSayimKayitlari.filter(k => String(k.restaurantId) === String(mevcutRestaurantId)).slice(0, 4).map(k => <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155' }}>{tarihSaatYaz(k.tarih)} — {k.malzemeSayisi} kalem / Kritik: {k.kritikSayisi}</div>)}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
+                      <div>
+                        <h4 style={{ margin: 0, color: '#1e293b' }}>Depo sayımı</h4>
+                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>1) Başlat 2) Gerçek sayılan miktarı gir 3) Farkları kontrol et 4) Stoka işle</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <input type="text" value={stokSayimBaslik} onChange={e => setStokSayimBaslik(e.target.value)} placeholder="Sayım adı" style={{ ...styles.input, minWidth: '170px', backgroundColor: '#fff' }} />
+                        <button type="button" onClick={stokSayimFisOlustur} style={styles.btnOrange}>Yeni Depo Sayımı Başlat</button>
+                      </div>
                     </div>
+
+                    {aktifStokMalzemeleri.length === 0 ? (
+                      <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '12px', fontSize: '13px', fontWeight: '800' }}>
+                        Sayım yapılacak hammadde yok. Önce yukarıdaki Hammadde Stokları bölümünden Patates, Kaşar, Sosis gibi malzemeleri ekle.
+                      </div>
+                    ) : !aktifStokSayimKaydi ? (
+                      <div style={{ backgroundColor: '#fff', border: '1px dashed #cbd5e1', color: '#64748b', borderRadius: '12px', padding: '16px', fontSize: '13px' }}>
+                        Aktif depo sayımı yok. “Yeni Depo Sayımı Başlat” butonuna basınca mevcut hammadde listesi sayım tablosuna dönüşür.
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Sayım</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{aktifStokSayimOzeti.sayilan}/{aktifStokSayimOzeti.toplam}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Eksik Kalem</div><div style={{ ...styles.statsValue, fontSize: '18px', color: '#ef4444' }}>{aktifStokSayimOzeti.eksikKalem}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fazla Kalem</div><div style={{ ...styles.statsValue, fontSize: '18px', color: '#10b981' }}>{aktifStokSayimOzeti.fazlaKalem}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fark Tutarı</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{aktifStokSayimOzeti.toplamFarkTutari} TL</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Durum</div><div style={{ ...styles.statsValue, fontSize: '15px' }}>{aktifStokSayimKaydi.durum}</div></div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '430px', overflowY: 'auto', paddingRight: '4px' }}>
+                          {aktifStokSayimKalemleri.map(kalem => (
+                            <div key={kalem.malzemeId} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.75fr 0.85fr 0.8fr 0.75fr', gap: '8px', alignItems: 'center' }}>
+                              <div>
+                                <strong style={{ color: '#1e293b' }}>{kalem.malzemeAdi}</strong>
+                                <div style={{ color: '#64748b', fontSize: '12px' }}>Kritik: {kalem.kritikMiktar} {kalem.birim} / Birim maliyet: {kalem.birimMaliyet} TL</div>
+                              </div>
+                              <div style={{ color: '#334155', fontSize: '12px', fontWeight: '900' }}>Sistem: {kalem.sistemMiktari} {kalem.birim}</div>
+                              <input type="number" step="0.001" value={kalem.sayilanMiktarRaw ?? ''} onChange={e => stokSayimKaleminiGuncelle(aktifStokSayimKaydi.id, kalem.malzemeId, e.target.value)} placeholder="Sayılan gerçek" style={{ ...styles.input, backgroundColor: '#fff' }} />
+                              <div style={{ fontSize: '12px', fontWeight: '900', color: !kalem.sayildi ? '#94a3b8' : Number(kalem.farkMiktar || 0) < 0 ? '#ef4444' : Number(kalem.farkMiktar || 0) > 0 ? '#10b981' : '#334155' }}>
+                                {!kalem.sayildi ? 'Henüz sayılmadı' : `Fark: ${kalem.farkMiktar} ${kalem.birim}`}
+                              </div>
+                              <div style={{ fontSize: '12px', fontWeight: '900', color: Number(kalem.farkTutar || 0) < 0 ? '#ef4444' : '#334155' }}>{kalem.sayildi ? `${kalem.farkTutar} TL` : '-'}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                          <button type="button" onClick={() => stokSayimKaydiniTamamla(aktifStokSayimKaydi.id, false)} style={{ ...styles.btnOrange, backgroundColor: '#475569' }}>Sadece Kontrol Olarak Kaydet</button>
+                          <button type="button" onClick={() => stokSayimKaydiniTamamla(aktifStokSayimKaydi.id, true)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Stoku Gerçek Sayıma Göre Güncelle</button>
+                          <button type="button" onClick={() => stokSayimEksiklerindenSatinAlmaOlustur(aktifStokSayimKaydi.id)} style={{ ...styles.btnOrange, backgroundColor: '#2563eb' }}>Kritik Eksiklerden Sipariş Listesi Oluştur</button>
+                        </div>
+                      </>
+                    )}
+
+                    <details style={{ marginTop: '12px' }}>
+                      <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#334155' }}>Geçmiş depo sayımları</summary>
+                      <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {stokSayimKayitlari.filter(k => String(k.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(k => (
+                          <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155', display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <span><strong>{k.baslik || 'Depo Sayımı'}</strong> — {tarihSaatYaz(k.tarih)} — {k.sayilanKalemSayisi || 0}/{k.malzemeSayisi || 0} kalem</span>
+                            <span>{k.durum} / Fark: {k.toplamFarkTutari || 0} TL</span>
+                            <button type="button" onClick={() => setAktifStokSayimId(k.id)} style={{ border: 'none', backgroundColor: '#e2e8f0', color: '#334155', borderRadius: '8px', padding: '6px 9px', cursor: 'pointer', fontWeight: '900', fontSize: '11px' }}>Aç</button>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                   </div>
+
                   <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
-                    <h4 style={{ margin: '0 0 10px', color: '#1e293b' }}>Satın alma talebi</h4>
+                    <h4 style={{ margin: '0 0 6px', color: '#1e293b' }}>Eksik malzeme siparişi</h4>
+                    <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, marginTop: 0 }}>Bu liste Hammadde Stokları bölümüne eklediğin malzemelerden gelir. Liste boşsa önce hammadde ekle.</p>
                     <form onSubmit={satinAlmaTalebiOlustur} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <select value={satinAlmaMalzemeId} onChange={e => setSatinAlmaMalzemeId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px' }}>
+                      <select value={satinAlmaMalzemeId} onChange={e => setSatinAlmaMalzemeId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px', backgroundColor: '#fff' }}>
                         <option value="">Malzeme seç</option>
-                        {stokMalzemeleri.filter(m => String(m.restaurantId || '') === String(mevcutRestaurantId || '')).map(m => <option key={m.id} value={String(m.id)}>{m.ad} / {m.stokMiktari} {m.birim}</option>)}
+                        {aktifStokMalzemeleri.map(m => <option key={m.id} value={String(m.id)}>{m.ad} / Stok: {stokMalzemeMiktari(m)} {m.birim} / Kritik: {stokMalzemeKritikMiktari(m)}</option>)}
                       </select>
-                      <input type="number" placeholder="Miktar" value={satinAlmaMiktar} onChange={e => setSatinAlmaMiktar(e.target.value)} style={{ ...styles.input, width: '120px' }} />
-                      <input type="text" placeholder="Tedarikçi" value={satinAlmaTedarikci} onChange={e => setSatinAlmaTedarikci(e.target.value)} style={{ ...styles.input, flex: '1 1 160px' }} />
-                      <button type="submit" style={styles.btnOrange}>Talep Aç</button>
+                      <input type="number" placeholder="Alınacak miktar" value={satinAlmaMiktar} onChange={e => setSatinAlmaMiktar(e.target.value)} style={{ ...styles.input, width: '150px', backgroundColor: '#fff' }} />
+                      <input type="text" placeholder="Tedarikçi" value={satinAlmaTedarikci} onChange={e => setSatinAlmaTedarikci(e.target.value)} style={{ ...styles.input, flex: '1 1 160px', backgroundColor: '#fff' }} />
+                      <button type="submit" style={styles.btnOrange}>Sipariş Talebi Aç</button>
                     </form>
+
+                    {aktifStokMalzemeleri.length === 0 ? (
+                      <div style={{ marginTop: '10px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '10px', fontSize: '12px', fontWeight: '800' }}>Malzeme seçimi için önce Hammadde Stokları bölümünden malzeme ekleyin.</div>
+                    ) : null}
+
                     <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {satinAlmaTalepleri.filter(t => String(t.restaurantId) === String(mevcutRestaurantId)).slice(0, 5).map(t => <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: '12px', color: '#334155' }}>{t.malzemeAdi} — {t.miktar} {t.birim} / {t.tedarikci}</span><select value={t.durum} onChange={e => satinAlmaDurumGuncelle(t.id, e.target.value)} style={{ ...styles.input, minWidth: '130px' }}><option>Talep Açıldı</option><option>Sipariş Verildi</option><option>Teslim Alındı</option><option>İptal</option></select></div>)}
+                      {satinAlmaTalepleri.filter(t => String(t.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(t => <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: '12px', color: '#334155' }}><strong>{t.malzemeAdi}</strong> — {t.miktar} {t.birim} / {t.tedarikci}<br /><span style={{ color: '#94a3b8' }}>Mevcut: {t.mevcutStok ?? '-'} / Kritik: {t.kritikMiktar ?? '-'} / Kaynak: {t.kaynak || 'Manuel'}</span></span><select value={t.durum} onChange={e => satinAlmaDurumGuncelle(t.id, e.target.value)} style={{ ...styles.input, minWidth: '140px', backgroundColor: '#fff' }}><option>Talep Açıldı</option><option>Sipariş Verildi</option><option>Teslim Alındı</option><option>İptal</option></select></div>)}
                     </div>
                   </div>
                 </div>
@@ -16394,6 +17081,36 @@ Toplam Ciro: {toplam}
                 <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
                   Ürünleri Ana Yemekler, İçecekler, Tatlılar gibi gruplara ayırabilirsiniz. Ürünler departman, KDV ve mutfak ayarını bağlı olduğu gruptan alır.
                 </p>
+
+                <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 5px', color: '#0f172a', fontSize: '16px' }}>📱 QR Menü / Satış Durumu</h3>
+                      <p style={{ color: '#475569', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
+                        Ürünü satıştan kaldırırsan QR menüden de otomatik gizlenir. Sadece QR'da gizlemek istersen “QR Kapalı” yap.
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setActiveTab('qr_menu')} style={{ ...styles.btnOrange, backgroundColor: '#2563eb' }}>QR Menü Önizle</button>
+                  </div>
+
+                  {aktifMenu.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Ürün ekledikten sonra QR/satış durumları burada görünür.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+                      {aktifMenu.map(u => (
+                        <div key={`qr-durum-${u.id}`} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr auto auto auto', gap: '8px', alignItems: 'center' }}>
+                          <div>
+                            <strong style={{ color: '#0f172a' }}>{u.ad}</strong>
+                            <div style={{ color: '#64748b', fontSize: '11px' }}>{u.menuGrubu || u.kategori || 'Genel'} / {u.fiyat} TL</div>
+                          </div>
+                          <span style={{ backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: '900', textAlign: 'center' }}>{urunSatistaAktifMi(u) ? 'Satışta' : 'Satıştan kalktı'}</span>
+                          <button type="button" onClick={() => urunSatisDurumunuAyarla(u, !urunSatistaAktifMi(u))} style={{ border: 'none', backgroundColor: urunSatistaAktifMi(u) ? '#fee2e2' : '#dcfce7', color: urunSatistaAktifMi(u) ? '#991b1b' : '#15803d', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>{urunSatistaAktifMi(u) ? 'Satıştan Kaldır' : 'Satışa Al'}</button>
+                          <button type="button" disabled={!urunSatistaAktifMi(u)} onClick={() => urunQrMenuDurumunuAyarla(u, !urunQrMenudeGorunurMu(u))} style={{ border: 'none', backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', borderRadius: '8px', padding: '8px 10px', cursor: urunSatistaAktifMi(u) ? 'pointer' : 'not-allowed', fontWeight: '900', fontSize: '12px', opacity: urunSatistaAktifMi(u) ? 1 : 0.6 }}>{urunQrMenudeGorunurMu(u) ? 'QR Kapalı Yap' : 'QR Aç'}</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* firma bilgisi ve adisyon/mutfak yazıcı ayarlarını yöneten kod */}
                 <div
@@ -17164,6 +17881,16 @@ Toplam Ciro: {toplam}
                     )}
                   </div>
 
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '900', color: '#334155', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 10px' }}>
+                    <input type="checkbox" checked={yeniUrunSatistaAktif} onChange={e => { setYeniUrunSatistaAktif(e.target.checked); if (!e.target.checked) setYeniUrunQrMenudeGorunsun(false); }} />
+                    Satışta aktif
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '900', color: '#334155', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 10px' }}>
+                    <input type="checkbox" checked={yeniUrunQrMenudeGorunsun && yeniUrunSatistaAktif} disabled={!yeniUrunSatistaAktif} onChange={e => setYeniUrunQrMenudeGorunsun(e.target.checked)} />
+                    QR menüde görünsün
+                  </label>
+
                   <button type="submit" style={styles.btnOrange}>
                     {aktifGrup.ad || 'Gruba'} Ürün Ekle
                   </button>
@@ -17230,6 +17957,16 @@ Toplam Ciro: {toplam}
                             )}
                           </div>
 
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '900', color: '#334155', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 10px' }}>
+                            <input type="checkbox" checked={duzenlenenUrunSatistaAktif} onChange={e => { setDuzenlenenUrunSatistaAktif(e.target.checked); if (!e.target.checked) setDuzenlenenUrunQrMenudeGorunsun(false); }} />
+                            Satışta aktif
+                          </label>
+
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '900', color: '#334155', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 10px' }}>
+                            <input type="checkbox" checked={duzenlenenUrunQrMenudeGorunsun && duzenlenenUrunSatistaAktif} disabled={!duzenlenenUrunSatistaAktif} onChange={e => setDuzenlenenUrunQrMenudeGorunsun(e.target.checked)} />
+                            QR menüde görünsün
+                          </label>
+
                           <button
                             type="button"
                             onClick={() => urunGuncelle(u.id)}
@@ -17281,6 +18018,24 @@ Toplam Ciro: {toplam}
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <span style={styles.priceTag}>{u.fiyat} TL</span><span style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Maliyet: {u.maliyet || 0} TL</span>
+
+                            <span style={{ backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: '900' }}>
+                              {urunSatistaAktifMi(u) ? '✅ Satışta' : '🚫 Satıştan kalktı'}
+                            </span>
+
+                            <span style={{ backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', padding: '7px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: '900' }}>
+                              {urunQrMenudeGorunurMu(u) ? '📱 QR açık' : '📵 QR kapalı'}
+                            </span>
+
+                            <select value={urunSatistaAktifMi(u) ? 'true' : 'false'} onChange={e => urunSatisDurumunuAyarla(u, e.target.value === 'true')} style={{ border: '1px solid #cbd5e1', backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '8px', cursor: 'pointer', fontWeight: '900', fontSize: '12px', outline: 'none' }}>
+                              <option value="true">✅ Satışta aktif</option>
+                              <option value="false">🚫 Satıştan kaldır</option>
+                            </select>
+
+                            <select value={urunQrMenudeGorunurMu(u) ? 'true' : 'false'} disabled={!urunSatistaAktifMi(u)} onChange={e => urunQrMenuDurumunuAyarla(u, e.target.value === 'true')} style={{ border: '1px solid #cbd5e1', backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', padding: '7px 9px', borderRadius: '8px', cursor: urunSatistaAktifMi(u) ? 'pointer' : 'not-allowed', fontWeight: '900', fontSize: '12px', outline: 'none', opacity: urunSatistaAktifMi(u) ? 1 : 0.65 }}>
+                              <option value="true">📱 QR menüde görünsün</option>
+                              <option value="false">📵 QR menüde görünmesin</option>
+                            </select>
 
                             <span
                               style={{
@@ -17571,6 +18326,17 @@ Toplam Ciro: {toplam}
                     </div>
                   ))
                 )}
+              </div>
+            )}
+
+            {/* ürün reçetelerini ayrı sekmede yöneten kod */}
+            {activeTab === 'receteler' && (
+              <div style={styles.panelCard}>
+                <h2 style={styles.pageTitle}>🧾 Ürün Reçeteleri</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px', lineHeight: 1.55 }}>
+                  Satılan ürünlerin hangi hammaddelerden oluştuğunu buradan tanımlayın. Reçete maliyeti, fireli stok düşümü, porsiyon hesabı ve kâr oranı bu sekmede yönetilir.
+                </p>
+                {receteYonetimiPaneli({ marginBottom: 0 })}
               </div>
             )}
 
