@@ -2626,6 +2626,8 @@ Toplam Ciro: {toplam}
     const yeniTutar = genelIndirimOzeti.netToplam;
     const adisyonAcilisSaati = hedefMasa.adisyonAcilisSaati || new Date().toISOString();
     const adisyonGarsonAdi = hedefMasa.adisyonGarsonAdi || (user?.role === 'waiter' ? user?.waiterName || user?.restaurant || user?.email : 'İşletme Sahibi');
+    const qrMusteriAdi = String(talep?.musteriAdi || talep?.payload?.musteriAdi || '').trim();
+    const guncelMusteriAdi = qrMusteriAdi || hedefMasa.musteriAdi || '';
 
     const { data, error } = await supabase
       .from('masalar')
@@ -2638,6 +2640,7 @@ Toplam Ciro: {toplam}
         siparisler: yeniSiparisler,
         adisyon_acilis_saati: adisyonAcilisSaati,
         adisyon_garson_adi: adisyonGarsonAdi,
+        musteri_adi: guncelMusteriAdi || null,
       })
       .eq('id', hedefMasa.id)
       .select()
@@ -2662,7 +2665,7 @@ Toplam Ciro: {toplam}
       odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
       adisyonAcilisSaati: data.adisyon_acilis_saati || adisyonAcilisSaati,
       adisyonGarsonAdi: data.adisyon_garson_adi || adisyonGarsonAdi || '',
-      musteriAdi: data.musteri_adi || hedefMasa.musteriAdi || '',
+      musteriAdi: data.musteri_adi || guncelMusteriAdi || '',
       bolum: data.bolum || hedefMasa.bolum || aktifMasaBolumu || 'Salon',
     };
 
@@ -3758,6 +3761,31 @@ Toplam Ciro: {toplam}
     return urunReceteAnaliziHesapla(urunId).maliyet;
   };
 
+  // satış raporlarında ürün maliyetini tutarlı hesaplayan kod
+  const satisSatiriToplamMaliyetiHesapla = (satisSatiri = {}) => {
+    const adet = Number(satisSatiri.adet || 1);
+    const kayitliToplamMaliyet = Number(satisSatiri.toplamMaliyet ?? satisSatiri.toplam_maliyet ?? 0);
+
+    if (kayitliToplamMaliyet > 0) {
+      return paraYuvarla(kayitliToplamMaliyet);
+    }
+
+    const kayitliBirimMaliyet = Number(satisSatiri.maliyet ?? 0);
+    const birimMaliyet = kayitliBirimMaliyet > 0 ? kayitliBirimMaliyet : urunBirimMaliyetiBul(satisSatiri);
+    return paraYuvarla(birimMaliyet * adet);
+  };
+
+  const satisSatiriBirimMaliyetiHesapla = (satisSatiri = {}) => {
+    const adet = Math.max(Number(satisSatiri.adet || 1), 1);
+    const kayitliBirimMaliyet = Number(satisSatiri.maliyet ?? 0);
+
+    if (kayitliBirimMaliyet > 0) {
+      return paraYuvarla(kayitliBirimMaliyet);
+    }
+
+    return paraYuvarla(satisSatiriToplamMaliyetiHesapla(satisSatiri) / adet);
+  };
+
   const bugunStrGenel = new Date().toISOString().split('T')[0];
   const bugunkuSatislar = satisGecmisi.filter(s => {
     return s.restaurantId === mevcutRestaurantId && String(s.tarih || '') === bugunStrGenel && !s.gunSonuKapandi;
@@ -3768,11 +3796,7 @@ Toplam Ciro: {toplam}
   }, 0);
 
   const bugunkuMaliyet = paraYuvarla(bugunkuSatislar.reduce((toplam, s) => {
-    const kayitliToplamMaliyet = Number(s.toplamMaliyet ?? s.toplam_maliyet ?? 0);
-    if (kayitliToplamMaliyet > 0) return toplam + kayitliToplamMaliyet;
-
-    const birimMaliyet = Number(s.maliyet ?? 0) > 0 ? Number(s.maliyet || 0) : urunBirimMaliyetiBul(s);
-    return toplam + birimMaliyet * Number(s.adet || 1);
+    return toplam + satisSatiriToplamMaliyetiHesapla(s);
   }, 0));
 
   const bugunkuKdvToplami = satisKayitlariKdvOzetiHesapla(bugunkuSatislar).kdvToplam;
@@ -7236,6 +7260,9 @@ Toplam Ciro: {toplam}
     const satisKayitlari = dagitilmisMasaSatirlari.map(satir => {
       const s = satir.kaynak;
       const satirIndirimTutari = Number(s.indirimTutari || 0) + Number(satir.satirToplamIndirim || 0) / Math.max(Number(s.adet || 1), 1);
+      const satirMaliyetKaydi = { ...s, fiyat: Number(satir.netBirimFiyat || 0), adet: Number(s.adet || 1) };
+      const birimMaliyet = satisSatiriBirimMaliyetiHesapla(satirMaliyetKaydi);
+      const toplamMaliyet = satisSatiriToplamMaliyetiHesapla(satirMaliyetKaydi);
 
       return ({
       restaurant_id: mevcutRestaurantId,
@@ -7263,6 +7290,8 @@ Toplam Ciro: {toplam}
       menu_grubu: s.menuGrubu || 'Genel',
       departman: s.departman || 'Mutfak',
       kdv_orani: Number(s.kdvOrani || 10),
+      maliyet: birimMaliyet,
+      toplam_maliyet: toplamMaliyet,
       garson_adi: masa.adisyonGarsonAdi || '',
     });
     });
@@ -7325,6 +7354,9 @@ Toplam Ciro: {toplam}
     const yeniRaporKayitlari = dagitilmisMasaSatirlari.map(satir => {
       const s = satir.kaynak;
       const satirIndirimTutari = Number(s.indirimTutari || 0) + Number(satir.satirToplamIndirim || 0) / Math.max(Number(s.adet || 1), 1);
+      const satirMaliyetKaydi = { ...s, fiyat: Number(satir.netBirimFiyat || 0), adet: Number(s.adet || 1) };
+      const birimMaliyet = satisSatiriBirimMaliyetiHesapla(satirMaliyetKaydi);
+      const toplamMaliyet = satisSatiriToplamMaliyetiHesapla(satirMaliyetKaydi);
 
       return ({
       id: Date.now() + Math.random(),
@@ -7353,6 +7385,8 @@ Toplam Ciro: {toplam}
       menuGrubu: s.menuGrubu || 'Genel',
       departman: s.departman || 'Mutfak',
       kdvOrani: Number(s.kdvOrani || 10),
+      maliyet: birimMaliyet,
+      toplamMaliyet: toplamMaliyet,
       garsonAdi: masa.adisyonGarsonAdi || '',
     });
     });
@@ -12457,16 +12491,20 @@ Toplam Ciro: {toplam}
     let toplamIndirim = 0;
     let toplamKdv = 0;
     let toplamMatrah = 0;
+    let toplamMaliyet = 0;
 
     filtrelenmisSatislar.forEach(s => {
       const notEki = s.not ? ` / Not: ${s.not}` : '';
       const urunAnahtari = `${s.ad}${notEki}`;
       const toplamUrunTutari = Number(s.fiyat || 0) * Number(s.adet || 1);
       const satirKdvOzeti = satisSatiriKdvOzetiHesapla(s);
+      const satirToplamMaliyet = satisSatiriToplamMaliyetiHesapla(s);
+      const satirBirimMaliyet = satisSatiriBirimMaliyetiHesapla(s);
       toplamCiro += toplamUrunTutari;
       toplamIndirim += Number(s.indirimTutari || 0) * Number(s.adet || 1);
       toplamKdv += satirKdvOzeti.kdvTutari;
       toplamMatrah += satirKdvOzeti.matrah;
+      toplamMaliyet += satirToplamMaliyet;
 
       if (urunOzetMap[urunAnahtari]) {
         urunOzetMap[urunAnahtari].adet += Number(s.adet || 1);
@@ -12474,6 +12512,8 @@ Toplam Ciro: {toplam}
         urunOzetMap[urunAnahtari].indirimTutari += Number(s.indirimTutari || 0) * Number(s.adet || 1);
         urunOzetMap[urunAnahtari].kdvTutari += satirKdvOzeti.kdvTutari;
         urunOzetMap[urunAnahtari].matrah += satirKdvOzeti.matrah;
+        urunOzetMap[urunAnahtari].maliyet += satirToplamMaliyet;
+        urunOzetMap[urunAnahtari].kar = urunOzetMap[urunAnahtari].ciro - urunOzetMap[urunAnahtari].maliyet;
       } else {
         urunOzetMap[urunAnahtari] = {
           ad: s.ad,
@@ -12487,6 +12527,9 @@ Toplam Ciro: {toplam}
           kdvTutari: satirKdvOzeti.kdvTutari,
           matrah: satirKdvOzeti.matrah,
           fiyat: Number(s.fiyat || 0),
+          birimMaliyet: satirBirimMaliyet,
+          maliyet: satirToplamMaliyet,
+          kar: toplamUrunTutari - satirToplamMaliyet,
         };
       }
     });
@@ -12598,6 +12641,8 @@ Toplam Ciro: {toplam}
       toplamIndirim: paraYuvarla(toplamIndirim),
       toplamKdv: paraYuvarla(toplamKdv),
       toplamMatrah: paraYuvarla(toplamMatrah),
+      toplamMaliyet: paraYuvarla(toplamMaliyet),
+      brutKar: paraYuvarla(toplamCiro - toplamMaliyet),
       nakitToplam,
       kartToplam,
       digerOdemeToplam,
@@ -12798,7 +12843,7 @@ Toplam Ciro: {toplam}
       masaId: seciliMasa.id || null,
       masaNo: seciliMasa.ad || String(qrSiparisMasaNo || '').trim(),
       masaAdi: seciliMasa.ad || String(qrSiparisMasaNo || '').trim(),
-      musteriAdi: qrSiparisMusteriAdi || 'QR Menü Müşterisi',
+      musteriAdi: String(qrSiparisMusteriAdi || '').trim(),
       notMetni: qrSiparisNotu,
       kaynak: 'QR Menü',
       durum: 'Açık',
@@ -19407,7 +19452,7 @@ Toplam Ciro: {toplam}
                   return (
                     <div key={t.id} style={{ ...styles.dataRow, alignItems: 'stretch', flexDirection: isMobile ? 'column' : 'row' }}>
                       <div style={{ flex: 1 }}>
-                        <span><strong>{t.tip}</strong> {t.masaAdi || t.masaNo ? `/ ${t.masaAdi || t.masaNo}` : ''} — {t.kaynak || 'QR'} / {tarihSaatYaz(t.createdAt)} {t.notMetni ? ` / ${t.notMetni}` : ''}</span>
+                        <span><strong>{t.tip}</strong> {t.masaAdi || t.masaNo ? `/ ${t.masaAdi || t.masaNo}` : ''}{t.musteriAdi ? ` / Müşteri: ${t.musteriAdi}` : ''} — {t.kaynak || 'QR'} / {tarihSaatYaz(t.createdAt)} {t.notMetni ? ` / ${t.notMetni}` : ''}</span>
                         {qrSiparisTalebiMi ? (
                           <div style={{ marginTop: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px' }}>
                             <div style={{ color: '#334155', fontSize: '12px', fontWeight: '900', marginBottom: '6px' }}>QR sipariş ürünleri — {Number(t.toplam || 0).toLocaleString('tr-TR')} TL</div>
@@ -19823,6 +19868,16 @@ Toplam Ciro: {toplam}
                   </div>
 
                   <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Ürün Maliyeti</div>
+                    <div style={{ ...styles.statsValue, color: '#ef4444' }}>{raporData.toplamMaliyet || 0} TL</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Brüt Kâr</div>
+                    <div style={{ ...styles.statsValue, color: Number(raporData.brutKar || 0) >= 0 ? '#10b981' : '#ef4444' }}>{raporData.brutKar || 0} TL</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
                     <div style={styles.statsTitle}>Giderler</div>
                     <div style={{ ...styles.statsValue, color: '#ef4444' }}>{raporData.giderToplam || 0} TL</div>
                   </div>
@@ -19888,6 +19943,8 @@ Toplam Ciro: {toplam}
                               <th style={styles.th}>Birim Fiyatı</th>
                               <th style={styles.th}>Toplam Satış Adeti</th>
                               <th style={styles.th}>Toplam Ciro</th>
+                              <th style={styles.th}>Maliyet</th>
+                              <th style={styles.th}>Brüt Kâr</th>
                               <th style={styles.th}>KDV</th>
                               <th style={styles.th}>İndirim</th>
                             </tr>
@@ -19901,6 +19958,8 @@ Toplam Ciro: {toplam}
                                 <td style={styles.td}>{item.fiyat} TL</td>
                                 <td style={{ ...styles.td, color: '#ff6b35', fontWeight: 'bold' }}>{item.adet} Adet</td>
                                 <td style={{ ...styles.td, fontWeight: 'bold' }}>{paraYuvarla(item.ciro)} TL</td>
+                                <td style={{ ...styles.td, color: '#ef4444', fontWeight: 'bold' }}>{paraYuvarla(item.maliyet || 0)} TL <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '800' }}>Birim: {paraYuvarla(item.birimMaliyet || 0)} TL</div></td>
+                                <td style={{ ...styles.td, color: Number(item.kar || 0) >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{paraYuvarla(item.kar || 0)} TL</td>
                                 <td style={{ ...styles.td, color: '#7c3aed', fontWeight: 'bold' }}>{paraYuvarla(item.kdvTutari || 0)} TL</td>
                                 <td style={{ ...styles.td, color: '#ef4444', fontWeight: 'bold' }}>{paraYuvarla(item.indirimTutari || 0)} TL</td>
                               </tr>
