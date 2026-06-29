@@ -70,7 +70,7 @@ function IntegraApp() {
     kayitliUser?.role === 'waiter'
       ? 'masalar'
       : kayitliUser?.role === 'super_admin'
-        ? (['super_admin', 'admin_lisans', 'admin_moduller', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
+        ? (['super_admin', 'admin_basari', 'admin_lisans', 'admin_moduller', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
         : kayitliActiveTab || 'raporlar';
 
   // müşterinin QR menü linkiyle siteye girdiğini yakalayan kod
@@ -136,6 +136,9 @@ function IntegraApp() {
   const [adminDestekFiltresi, setAdminDestekFiltresi] = useState('Açık');
   const [adminLisansFiltresi, setAdminLisansFiltresi] = useState('Tümü');
   const [adminLisansArama, setAdminLisansArama] = useState('');
+  const [adminBasariArama, setAdminBasariArama] = useState('');
+  const [adminBasariFiltresi, setAdminBasariFiltresi] = useState('Tümü');
+  const [onboardingGizli, setOnboardingGizli] = useState(() => localStorage.getItem('integra_onboarding_gizli') === '1');
   const [user, setUser] = useState(kayitliUser);
   const [yeniGarsonAdi, setYeniGarsonAdi] = useState('');
   const [yeniGarsonEmail, setYeniGarsonEmail] = useState('');
@@ -3434,6 +3437,8 @@ Toplam Ciro: {toplam}
     { key: 'cari', label: '📒 Cari / Veresiye' },
     { key: 'stok', label: '📦 Stok' },
     { key: 'kasa', label: '💰 Kasa' },
+    { key: 'isletme_profili', label: '🏢 İşletme Profili' },
+    { key: 'kurulum', label: '🚀 Kurulum Sihirbazı' },
     { key: 'giderler', label: '🧾 Giderler' },
     { key: 'iadeler', label: '↩️ İade / İkram' },
     { key: 'rezervasyonlar', label: '📅 Rezervasyon' },
@@ -3474,7 +3479,7 @@ Toplam Ciro: {toplam}
       key: 'Baslangic',
       label: 'Başlangıç',
       aciklama: 'Masa, mutfak, hızlı satış ve temel rapor isteyen küçük işletmeler.',
-      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'raporlar', 'kasa', 'garsonlar'],
+      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'garsonlar'],
     },
     {
       key: 'Profesyonel',
@@ -3486,13 +3491,13 @@ Toplam Ciro: {toplam}
       key: 'Paket Servis',
       label: 'Paket Servis Odaklı',
       aciklama: 'Paket, online sipariş havuzu, kurye ve entegrasyon ağırlıklı kullanım.',
-      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'garsonlar'],
+      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'isletme_profili', 'kurulum', 'garsonlar'],
     },
     {
       key: 'QR Plus',
       label: 'QR Menü Plus',
       aciklama: 'QR menü, masadan sipariş, servis talebi ve sadakat odaklı kullanım.',
-      sekmeler: ['masalar', 'mutfak', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'garsonlar'],
+      sekmeler: ['masalar', 'mutfak', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'garsonlar'],
     },
     {
       key: 'Premium',
@@ -3532,7 +3537,7 @@ Toplam Ciro: {toplam}
     const gorevMetni = String(gorev || '').toLocaleLowerCase('tr-TR');
 
     if (gorevMetni.includes('müdür') || gorevMetni.includes('mudur')) {
-      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'kiosk'];
+      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'kiosk', 'isletme_profili', 'kurulum'];
     }
 
     if (gorevMetni.includes('mutfak')) {
@@ -3561,7 +3566,7 @@ Toplam Ciro: {toplam}
   // giriş yapan kullanıcının görebileceği sekmeleri hazırlayan kod
   const kullaniciSekmeleri = (() => {
     if (user?.role === 'super_admin') {
-      return ['super_admin', 'admin_lisans', 'admin_moduller', 'admin_destek'];
+      return ['super_admin', 'admin_basari', 'admin_lisans', 'admin_moduller', 'admin_destek'];
     }
 
     const isletmeAktifSekmeleri = isletmeSekmeleriniHazirla(user?.aktifSekmeler, user?.modulPaketi || user?.paketAdi || 'Premium');
@@ -3814,6 +3819,14 @@ Toplam Ciro: {toplam}
   const bugunkuPaketSatis = paraYuvarla(bugunkuSatislar.filter(s => String(s.siparisTipi || s.siparis_tipi || '').toLocaleLowerCase('tr-TR').includes('paket')).reduce((t, s) => t + Number(s.fiyat || 0) * Number(s.adet || 1), 0));
   const bugunkuHizliSatis = paraYuvarla(bugunkuSatislar.filter(s => String(s.siparisTipi || s.siparis_tipi || '').toLocaleLowerCase('tr-TR').includes('hızlı') || String(s.siparisTipi || s.siparis_tipi || '').toLocaleLowerCase('tr-TR').includes('hizli')).reduce((t, s) => t + Number(s.fiyat || 0) * Number(s.adet || 1), 0));
   const bugunkuMasaSatis = paraYuvarla(Math.max(bugunkuCiro - bugunkuPaketSatis - bugunkuHizliSatis, 0));
+  const bugunkuNakitSatis = paraYuvarla(bugunkuSatislar.reduce((toplam, s) => {
+    const odemeler = Array.isArray(s.odemeler) ? s.odemeler : [];
+    return toplam + odemeler.filter(o => String(o.tip || '').toLowerCase().includes('nakit')).reduce((t, o) => t + Number(o.tutar || 0), 0);
+  }, 0));
+  const bugunkuKartSatis = paraYuvarla(bugunkuSatislar.reduce((toplam, s) => {
+    const odemeler = Array.isArray(s.odemeler) ? s.odemeler : [];
+    return toplam + odemeler.filter(o => String(o.tip || '').toLowerCase().includes('kart')).reduce((t, o) => t + Number(o.tutar || 0), 0);
+  }, 0));
 
   const bugunkuGiderToplami = giderler.reduce((toplam, g) => {
     return toplam + (!g.gunSonuKapandi ? Number(g.tutar || 0) : 0);
@@ -3936,6 +3949,132 @@ Toplam Ciro: {toplam}
     aylikTahmini: sahipRestoranlar
       .filter(r => !['Donduruldu', 'Askıya Alındı'].includes(String(r.lisansDurumu || r.durum || '')))
       .reduce((toplam, r) => toplam + Number(r.aylikUcret || 0), 0),
+  };
+
+  // SaaS yönetimi için müşteri başarı, lisans ve kullanım özetlerini hazırlayan kod
+  const restoranKullanimOzetiHazirla = (restoran = {}) => {
+    const restaurantId = restoran.id || restoran.restaurantId;
+    const satislar = satisGecmisi.filter(s => String(s.restaurantId) === String(restaurantId));
+    const bugun = new Date().toISOString().split('T')[0];
+    const yediGunOnce = new Date();
+    yediGunOnce.setDate(yediGunOnce.getDate() - 7);
+    const yediGunStr = yediGunOnce.toISOString().split('T')[0];
+    const bugunCiro = paraYuvarla(satislar.filter(s => String(s.tarih || '') === bugun).reduce((t, s) => t + Number(s.fiyat || 0) * Number(s.adet || 1), 0));
+    const yediGunCiro = paraYuvarla(satislar.filter(s => String(s.tarih || '') >= yediGunStr).reduce((t, s) => t + Number(s.fiyat || 0) * Number(s.adet || 1), 0));
+    const masaSayisi = masalar.filter(m => String(m.restaurantId) === String(restaurantId)).length;
+    const menuSayisi = menuUrunleri.filter(u => String(u.restaurantId) === String(restaurantId)).length;
+    const qrAktif = isletmeSekmeleriniHazirla(restoran.aktifSekmeler, restoran.modulPaketi || restoran.paketAdi).includes('qr_menu');
+    const yaziciKayitli = Boolean(printerAgentKurulumu?.kurulum_kodu) && String(restaurantId) === String(mevcutRestaurantId);
+    const sonSatisTarihi = satislar.map(s => String(s.tarih || '')).filter(Boolean).sort().pop() || '';
+    const rozet = lisansRozetiHazirla(restoran);
+    const riskPuani = (rozet.etiket === 'Ödeme Gecikti' ? 40 : 0) + (yediGunCiro <= 0 ? 25 : 0) + (!qrAktif ? 10 : 0) + (masaSayisi <= 0 ? 15 : 0);
+
+    return {
+      restaurantId,
+      bugunCiro,
+      yediGunCiro,
+      masaSayisi,
+      menuSayisi,
+      qrAktif,
+      yaziciKayitli,
+      sonSatisTarihi,
+      rozet,
+      riskPuani,
+      durumEtiketi: riskPuani >= 40 ? 'Yakın takip' : yediGunCiro > 0 ? 'Aktif kullanıyor' : 'Kurulum bekliyor',
+    };
+  };
+
+  const adminBasariAramaMetni = String(adminBasariArama || '').toLocaleLowerCase('tr-TR').trim();
+  const adminBasariListe = sahipRestoranlar
+    .map(r => ({ ...r, kullanimOzeti: restoranKullanimOzetiHazirla(r) }))
+    .filter(r => {
+      const metin = `${r.ad || ''} ${r.email || ''} ${r.yetkiliAdi || ''} ${r.firmaTelefon || ''}`.toLocaleLowerCase('tr-TR');
+      const aramaUyuyor = !adminBasariAramaMetni || metin.includes(adminBasariAramaMetni);
+      const durum = r.kullanimOzeti?.durumEtiketi || '';
+      if (!aramaUyuyor) return false;
+      if (adminBasariFiltresi === 'Tümü') return true;
+      return durum === adminBasariFiltresi;
+    })
+    .sort((a, b) => Number(b.kullanimOzeti?.riskPuani || 0) - Number(a.kullanimOzeti?.riskPuani || 0));
+
+  const aktifKullaniciLisansRozeti = user?.role === 'owner' ? lisansRozetiHazirla({
+    durum: user?.durum || 'Aktif',
+    lisansDurumu: user?.lisansDurumu || user?.durum || 'Aktif',
+    odemeDurumu: user?.odemeDurumu || 'Ödendi',
+    sonrakiOdemeTarihi: user?.sonrakiOdemeTarihi,
+    sonOdemeTarihi: user?.sonOdemeTarihi,
+  }) : null;
+
+  const csvIndir = (dosyaAdi, satirlar = []) => {
+    if (!Array.isArray(satirlar) || satirlar.length === 0) {
+      alert('Dışa aktarılacak kayıt bulunamadı.');
+      return;
+    }
+
+    const basliklar = Object.keys(satirlar[0]);
+    const hucreTemizle = (deger) => `"${String(deger ?? '').replace(/"/g, '""')}"`;
+    const icerik = [
+      basliklar.join(';'),
+      ...satirlar.map(satir => basliklar.map(b => hucreTemizle(satir[b])).join(';')),
+    ].join('\n');
+    const blob = new Blob([`﻿${icerik}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = dosyaAdi;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const raporCsvIndir = () => {
+    const satirlar = raporData.liste.map(item => ({
+      Urun: item.ad,
+      Grup: item.menuGrubu,
+      Departman: item.departman,
+      Adet: item.adet,
+      Ciro: item.ciro,
+      Maliyet: item.maliyet,
+      BrutKar: item.kar,
+      Kdv: item.kdvTutari,
+    }));
+    csvIndir(`integra-rapor-${raporTarihi || bugunRaporTarihi}.csv`, satirlar);
+  };
+
+  const stokCsvIndir = () => {
+    const satirlar = aktifStokMalzemeleri.map(m => ({
+      Malzeme: m.ad,
+      Birim: m.birim,
+      Stok: m.miktar,
+      Kritik: m.kritik,
+      BirimMaliyet: m.maliyet,
+      StokDegeri: paraYuvarla(Number(m.miktar || 0) * Number(m.maliyet || 0)),
+    }));
+    csvIndir(`integra-stok-${bugunRaporTarihi}.csv`, satirlar);
+  };
+
+  const cariEkstreCsvIndir = (cari) => {
+    const hareketler = Array.isArray(cari?.hareketler) ? cari.hareketler : [];
+    const satirlar = hareketler.map(h => ({
+      Tarih: h.tarih,
+      Tip: h.tip,
+      Aciklama: h.aciklama,
+      Tutar: h.tutar,
+      Bakiye: cari?.bakiye || 0,
+    }));
+    csvIndir(`integra-cari-${String(cari?.ad || 'musteri').replace(/\s+/g, '-')}.csv`, satirlar);
+  };
+
+  const cariWhatsappHatirlat = (cari) => {
+    const telefon = telefonRakamlari(cari?.telefon || '');
+    if (!telefon) {
+      alert('Bu caride telefon numarası yok.');
+      return;
+    }
+
+    const mesaj = `Merhaba ${cari?.ad || ''}, Integra POS cari kaydınıza göre güncel bakiyeniz ${Number(cari?.bakiye || 0)} TL görünmektedir. Detay için bizimle iletişime geçebilirsiniz.`;
+    window.open(`https://wa.me/90${telefon.replace(/^90/, '')}?text=${encodeURIComponent(mesaj)}`, '_blank');
   };
   // canlı masa ekranında aktif rezervasyonu bulan kod
   const aktifRezervasyonBul = (masaId, kontrolTarihi = new Date()) => {
@@ -13744,6 +13883,27 @@ Toplam Ciro: {toplam}
       adimlar: ['Ürünleri seç', 'Siparişi oluştur', 'Mutfak ve ödeme akışını kontrol et'],
       aksiyonlar: [{ label: 'Hızlı satış', tab: 'hizli_satis' }, { label: 'Mutfak', tab: 'mutfak' }],
     },
+    isletme_profili: {
+      rozet: 'Firma ayarları',
+      baslik: 'Fiş, QR ve iletişim bilgilerini tek yerde düzenle',
+      aciklama: 'İşletme adı, telefon, adres, vergi bilgisi ve QR WhatsApp numarasını buradan güncelleyin.',
+      adimlar: ['Firma bilgilerini doldur', 'Fiş alt notunu kontrol et', 'QR ve destek iletişimini kaydet'],
+      aksiyonlar: [{ label: 'QR Menü', tab: 'qr_menu' }, { label: 'Kasa', tab: 'kasa' }],
+    },
+    kurulum: {
+      rozet: 'Kurulum başlangıcı',
+      baslik: 'Yeni işletmeyi adım adım hazırla',
+      aciklama: 'Masa, ürün, reçete, QR menü ve firma profilini sırayla tamamlayarak müşteriyi hızlıca kullanıma alırsınız.',
+      adimlar: ['Masa ve ürünleri aç', 'Reçete/QR ayarlarını tamamla', 'Test satışla raporu kontrol et'],
+      aksiyonlar: [{ label: 'Masalar', tab: 'masalar' }, { label: 'Menü', tab: 'menu' }],
+    },
+    admin_basari: {
+      rozet: 'Müşteri başarı',
+      baslik: 'Müşterilerin kullanım ve risk durumunu izle',
+      aciklama: 'Son 7 gün ciro, lisans durumu, QR aktifliği ve kurulum eksiklerine göre hangi müşterinin desteğe ihtiyacı olduğunu görün.',
+      adimlar: ['Yakın takip listesini kontrol et', 'Lisans veya modül ekranına geç', 'Destek/kurulum aksiyonu planla'],
+      aksiyonlar: [{ label: 'Lisanslar', tab: 'admin_lisans' }, { label: 'Modül yetkileri', tab: 'admin_moduller' }],
+    },
     super_admin: {
       rozet: 'SaaS yönetimi',
       baslik: 'Tüm işletmeleri ve başvuruları yönet',
@@ -14954,6 +15114,26 @@ Toplam Ciro: {toplam}
                 </button>
               )}
 
+              {tabGorunur('isletme_profili') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('isletme_profili')}
+                  style={activeTab === 'isletme_profili' ? styles.navItemActive : styles.navItem}
+                >
+                  🏢 İşletme Profili
+                </button>
+              )}
+
+              {tabGorunur('kurulum') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('kurulum')}
+                  style={activeTab === 'kurulum' ? styles.navItemActive : styles.navItem}
+                >
+                  🚀 Kurulum Sihirbazı
+                </button>
+              )}
+
 
               <div style={styles.navSectionTitle}>Satış Kanalları</div>
               {tabGorunur('hizli_satis') && (
@@ -15080,6 +15260,13 @@ Toplam Ciro: {toplam}
                   </button>
                   <button
                     type="button"
+                    onClick={() => setActiveTab('admin_basari')}
+                    style={activeTab === 'admin_basari' ? styles.navItemActive : styles.navItem}
+                  >
+                    📈 Müşteri Başarı
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setActiveTab('admin_lisans')}
                     style={activeTab === 'admin_lisans' ? styles.navItemActive : styles.navItem}
                   >
@@ -15133,6 +15320,19 @@ Toplam Ciro: {toplam}
             {rehberGizli ? (
               <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideShowBtn}>💡 Ekran rehberini göster</button>
             ) : null}
+            {aktifKullaniciLisansRozeti && ['Yaklaşıyor', 'Ödeme Gecikti', 'Ödeme Bekliyor'].includes(aktifKullaniciLisansRozeti.etiket) && (
+              <div style={{ backgroundColor: aktifKullaniciLisansRozeti.zemin, color: aktifKullaniciLisansRozeti.renk, border: `1px solid ${aktifKullaniciLisansRozeti.renk}22`, borderRadius: '16px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <strong>💳 Lisans uyarısı: {aktifKullaniciLisansRozeti.etiket}</strong>
+                  <div style={{ fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>
+                    {aktifKullaniciLisansRozeti.kalanGun !== null ? `Kalan gün: ${aktifKullaniciLisansRozeti.kalanGun}` : 'Ödeme durumunuzu destek ekibiyle kontrol edin.'}
+                  </div>
+                </div>
+                <button type="button" onClick={() => window.open('https://wa.me/905325014277?text=' + encodeURIComponent('Merhaba, Integra POS lisans/ödeme durumum hakkında bilgi almak istiyorum.'), '_blank')} style={{ border: 'none', backgroundColor: '#1e293b', color: '#fff', padding: '10px 13px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900' }}>
+                  Destekle Görüş
+                </button>
+              </div>
+            )}
             {/* masalar ve canlı adisyon ekranını gösteren kod */}
             {activeTab === 'masalar' && (
               <div style={isMobile ? styles.posLayoutMobile : styles.posLayout}>
@@ -16278,6 +16478,13 @@ Toplam Ciro: {toplam}
                   </div>
                 </div>
 
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+                  <div style={styles.statsCard}><div style={styles.statsTitle}>Yeni Sipariş</div><div style={styles.statsValue}>{mutfakFisleri.filter(f => !['Hazırlandı', 'İptal'].includes(f.durum)).length}</div></div>
+                  <div style={styles.statsCard}><div style={styles.statsTitle}>Hazırlanan</div><div style={{ ...styles.statsValue, color: '#10b981' }}>{mutfakFisleri.filter(f => f.durum === 'Hazırlandı').length}</div></div>
+                  <div style={styles.statsCard}><div style={styles.statsTitle}>Geciken</div><div style={{ ...styles.statsValue, color: '#ef4444' }}>{mutfakFisleri.filter(f => !['Hazırlandı', 'İptal'].includes(f.durum) && (Date.now() - new Date(f.createdAt || f.created_at || Date.now()).getTime()) > 15 * 60 * 1000).length}</div></div>
+                  <div style={styles.statsCard}><div style={styles.statsTitle}>Departman</div><div style={styles.statsValue}>{Array.from(new Set(mutfakFisleri.map(f => f.departman || 'Mutfak'))).length}</div></div>
+                </div>
+
                 {(!Array.isArray(mutfakFisleri) || mutfakFisleri.length === 0) ? (
                   <div
                     style={{
@@ -17417,6 +17624,7 @@ Toplam Ciro: {toplam}
                 <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
                   Stok takibi açık ürünlerde satış ve paket sipariş sonrası stok otomatik düşer. Reçete tanımlarsanız satışta hammaddeler de düşer ve maliyet/kâr raporu daha doğru hesaplanır.
                 </p>
+                <button type="button" onClick={stokCsvIndir} style={{ ...styles.btnOrange, backgroundColor: '#1e293b', marginBottom: '14px' }}>⬇️ Stok Listesini CSV İndir</button>
 
                 <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', border: '1px solid #fed7aa', marginBottom: '16px' }}>
                   <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Reçete / Hammadde / Alış işlemleri taşındı</h3>
@@ -17513,6 +17721,14 @@ Toplam Ciro: {toplam}
 
                 <div style={{ ...styles.panelCard, marginTop: '18px', backgroundColor: '#f8fafc' }}>
                   <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>📌 Gün Sonu / Z Raporu</h3>
+                  <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px', marginBottom: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', fontSize: '12px', color: '#475569' }}>
+                    <div>🪑 Masa satışları: <strong>{bugunkuMasaSatis} TL</strong></div>
+                    <div>🛵 Paket servis: <strong>{bugunkuPaketSatis} TL</strong></div>
+                    <div>⚡ Hızlı satış: <strong>{bugunkuHizliSatis} TL</strong></div>
+                    <div>📒 Cari yazılan: <strong>{bugunkuCariSatis} TL</strong></div>
+                    <div>💳 Kart: <strong>{bugunkuKartSatis} TL</strong></div>
+                    <div>💵 Nakit: <strong>{bugunkuNakitSatis} TL</strong></div>
+                  </div>
                   <div style={styles.statsGrid}>
                     <div style={styles.statsCard}>
                       <div style={styles.statsTitle}>Bugünkü Ciro</div>
@@ -17617,6 +17833,73 @@ Toplam Ciro: {toplam}
               </div>
             )}
 
+
+            {/* işletme profili ve marka bilgilerini gösteren kod */}
+            {activeTab === 'isletme_profili' && (
+              <div style={styles.panelCard}>
+                <h2 style={styles.pageTitle}>🏢 İşletme Profili</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>
+                  Firma adı, telefon, adres, fiş başlığı, QR menü iletişim bilgileri ve destek görünümü bu alandan yönetilir.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                  <input type="text" placeholder="Firma adı" value={fisAyarlari.firmaAdi || ''} onChange={e => fisAyariGuncelle('firmaAdi', e.target.value)} style={styles.input} />
+                  <input type="text" placeholder="Firma telefon" value={fisAyarlari.firmaTelefon || ''} onChange={e => fisAyariGuncelle('firmaTelefon', e.target.value)} style={styles.input} />
+                  <input type="text" placeholder="Vergi / resmi bilgi" value={fisAyarlari.vergiBilgisi || ''} onChange={e => fisAyariGuncelle('vergiBilgisi', e.target.value)} style={styles.input} />
+                  <input type="text" placeholder="QR WhatsApp telefonu" value={qrMenuAyarlari.whatsappTelefon || ''} onChange={e => setQrMenuAyarlari(prev => ({ ...prev, whatsappTelefon: e.target.value }))} style={styles.input} />
+                  <textarea placeholder="Firma adresi" value={fisAyarlari.firmaAdres || ''} onChange={e => fisAyariGuncelle('firmaAdres', e.target.value)} style={{ ...styles.input, minHeight: '76px', resize: 'vertical' }} />
+                  <textarea placeholder="Fiş alt notu" value={fisAyarlari.fisAltNotu || ''} onChange={e => fisAyariGuncelle('fisAltNotu', e.target.value)} style={{ ...styles.input, minHeight: '76px', resize: 'vertical' }} />
+                </div>
+
+                <div style={{ marginTop: '14px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={() => { localStorage.setItem(fisAyarlariLocalKey(mevcutRestaurantId), JSON.stringify(fisAyarlari)); localStorage.setItem('integra_qr_menu_ayarlari', JSON.stringify(qrMenuAyarlari)); alert('İşletme profili kaydedildi.'); }} style={styles.btnOrange}>Profili Kaydet</button>
+                  <button type="button" onClick={() => setActiveTab('qr_menu')} style={{ ...styles.btnOrange, backgroundColor: '#1e293b' }}>QR Menüye Git</button>
+                  <button type="button" onClick={() => setActiveTab('kasa')} style={{ ...styles.btnOrange, backgroundColor: '#0f766e' }}>Kasa / Gün Sonu</button>
+                </div>
+
+                <div style={{ ...styles.panelCard, marginTop: '18px', backgroundColor: '#f8fafc' }}>
+                  <h3 style={{ marginTop: 0, color: '#1e293b' }}>Önizleme</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                    <div style={styles.statsCard}><div style={styles.statsTitle}>Fiş Başlığı</div><div style={styles.statsValue}>{fisAyarlari.firmaAdi || user?.restaurant || 'Integra POS'}</div></div>
+                    <div style={styles.statsCard}><div style={styles.statsTitle}>Telefon</div><div style={styles.statsValue}>{fisAyarlari.firmaTelefon || '-'}</div></div>
+                    <div style={styles.statsCard}><div style={styles.statsTitle}>QR WhatsApp</div><div style={styles.statsValue}>{qrMenuAyarlari.whatsappTelefon || '-'}</div></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* yeni müşteri kurulum sihirbazını gösteren kod */}
+            {activeTab === 'kurulum' && (
+              <div style={styles.panelCard}>
+                <h2 style={styles.pageTitle}>🚀 Kurulum Sihirbazı</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>
+                  Yeni işletme boş ekranda kalmasın diye temel kurulumu adım adım buradan tamamlayabilirsiniz.
+                </p>
+
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {[
+                    { tamam: tumRestoranMasalari.length > 0, baslik: 'Masa oluştur', aciklama: `${tumRestoranMasalari.length} masa kayıtlı`, tab: 'masalar' },
+                    { tamam: aktifMenu.length > 0, baslik: 'Menü ürünleri ekle', aciklama: `${aktifMenu.length} ürün kayıtlı`, tab: 'menu' },
+                    { tamam: menuGruplari.filter(g => String(g.restaurantId) === String(mevcutRestaurantId)).length > 0, baslik: 'Menü gruplarını ayarla', aciklama: 'Departman ve KDV kuralları', tab: 'menu' },
+                    { tamam: urunReceteleri.filter(r => String(r.restaurantId) === String(mevcutRestaurantId)).length > 0, baslik: 'Reçete / maliyet tanımla', aciklama: 'Satışta maliyet ve stok düşümü için', tab: 'receteler' },
+                    { tamam: Boolean(qrMenuAyarlari?.aktif !== false), baslik: 'QR menüyü hazırla', aciklama: 'Müşteri masadan sipariş talebi gönderebilir', tab: 'qr_menu' },
+                    { tamam: Boolean(fisAyarlari?.firmaAdi || user?.restaurant), baslik: 'İşletme profilini tamamla', aciklama: 'Fiş ve QR bilgilerinde kullanılır', tab: 'isletme_profili' },
+                  ].map((adim, idx) => (
+                    <div key={adim.baslik} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', padding: '14px', border: '1px solid #e2e8f0', borderRadius: '14px', backgroundColor: adim.tamam ? '#f0fdf4' : '#fff7ed' }}>
+                      <div>
+                        <strong style={{ color: '#1e293b' }}>{adim.tamam ? '✅' : '⏳'} {idx + 1}. {adim.baslik}</strong>
+                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>{adim.aciklama}</div>
+                      </div>
+                      <button type="button" onClick={() => setActiveTab(adim.tab)} style={{ ...styles.btnOrange, backgroundColor: adim.tamam ? '#10b981' : '#ff6b35' }}>{adim.tamam ? 'Kontrol Et' : 'Başla'}</button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: '16px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
+                  Satışa çıkmadan önce önerilen test: 1 masa aç, 1 ürün ekle, QR menüden sipariş talebi gönder, garson onayıyla masaya aktar, adisyonu kapat ve raporda maliyet/kârı kontrol et.
+                </div>
+              </div>
+            )}
 
             {/* hızlı satış / gel-al ekranını gösteren kod */}
             {activeTab === 'hizli_satis' && (
@@ -20025,6 +20308,10 @@ Toplam Ciro: {toplam}
                       {raporBasligi()}
                     </div>
                   </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button type="button" onClick={raporCsvIndir} style={{ ...styles.btnOrange, backgroundColor: '#1e293b' }}>⬇️ Rapor CSV</button>
+                    <button type="button" onClick={zRaporuYazdir} style={{ ...styles.btnOrange, backgroundColor: '#0f766e' }}>🖨️ Gün Sonu PDF/Fiş</button>
+                  </div>
                 </div>
 
                 <div style={{ ...styles.panelCard, marginBottom: '18px' }}>
@@ -20661,6 +20948,72 @@ Toplam Ciro: {toplam}
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* süper admin müşteri başarı ve kullanım takip ekranını gösteren kod */}
+            {activeTab === 'admin_basari' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '18px' }}>
+                  <div>
+                    <h2 style={styles.pageTitle}>📈 Müşteri Başarı Paneli</h2>
+                    <p style={{ color: '#64748b', marginTop: '-6px' }}>Aktif kullanım, lisans riski, QR menü ve kurulum durumlarını tek ekrandan takip edin.</p>
+                  </div>
+                </div>
+
+                <div style={styles.statsGrid}>
+                  <div style={styles.statCard}><span>Aktif Kullanan</span><strong>{adminBasariListe.filter(r => r.kullanimOzeti?.durumEtiketi === 'Aktif kullanıyor').length}</strong></div>
+                  <div style={styles.statCard}><span>Yakın Takip</span><strong>{adminBasariListe.filter(r => r.kullanimOzeti?.durumEtiketi === 'Yakın takip').length}</strong></div>
+                  <div style={styles.statCard}><span>Kurulum Bekleyen</span><strong>{adminBasariListe.filter(r => r.kullanimOzeti?.durumEtiketi === 'Kurulum bekliyor').length}</strong></div>
+                  <div style={styles.statCard}><span>7 Günlük Ciro</span><strong>{adminBasariListe.reduce((t, r) => t + Number(r.kullanimOzeti?.yediGunCiro || 0), 0)} TL</strong></div>
+                </div>
+
+                <div style={{ ...styles.panelCard, marginTop: '18px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    <input type="text" placeholder="İşletme, e-posta, yetkili veya telefon ara" value={adminBasariArama} onChange={e => setAdminBasariArama(e.target.value)} style={{ ...styles.input, minWidth: '260px', flex: 1 }} />
+                    {['Tümü', 'Aktif kullanıyor', 'Yakın takip', 'Kurulum bekliyor'].map(f => (
+                      <button key={f} type="button" onClick={() => setAdminBasariFiltresi(f)} style={adminBasariFiltresi === f ? styles.filterBtnActive : styles.filterBtn}>{f}</button>
+                    ))}
+                  </div>
+
+                  {adminBasariListe.length === 0 ? (
+                    <div style={{ color: '#94a3b8', padding: '24px', textAlign: 'center' }}>Aramanıza uygun müşteri bulunamadı.</div>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      {adminBasariListe.map(r => {
+                        const ozet = r.kullanimOzeti || {};
+                        const rozet = ozet.rozet || lisansRozetiHazirla(r);
+                        return (
+                          <div key={r.id} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', backgroundColor: '#fff', display: 'grid', gap: '10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                              <div>
+                                <strong style={{ color: '#1e293b', fontSize: '16px' }}>{r.ad}</strong>
+                                <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>{r.email} / {r.firmaTelefon || r.telefon || 'Telefon yok'}</div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <span style={{ backgroundColor: rozet.zemin, color: rozet.renk, padding: '6px 10px', borderRadius: '999px', fontWeight: '900', fontSize: '12px' }}>{rozet.etiket}</span>
+                                <span style={{ backgroundColor: ozet.riskPuani >= 40 ? '#fee2e2' : '#dcfce7', color: ozet.riskPuani >= 40 ? '#b91c1c' : '#15803d', padding: '6px 10px', borderRadius: '999px', fontWeight: '900', fontSize: '12px' }}>{ozet.durumEtiketi}</span>
+                              </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '12px', color: '#475569' }}>
+                              <div>Bugün ciro<br /><strong>{ozet.bugunCiro} TL</strong></div>
+                              <div>Son 7 gün<br /><strong>{ozet.yediGunCiro} TL</strong></div>
+                              <div>Masa / Ürün<br /><strong>{ozet.masaSayisi} / {ozet.menuSayisi}</strong></div>
+                              <div>QR Menü<br /><strong>{ozet.qrAktif ? 'Aktif' : 'Kapalı'}</strong></div>
+                              <div>Son satış<br /><strong>{ozet.sonSatisTarihi || '-'}</strong></div>
+                              <div>Kalan gün<br /><strong>{rozet.kalanGun ?? '-'}</strong></div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <button type="button" onClick={() => { setAdminLisansArama(r.ad || ''); setActiveTab('admin_lisans'); }} style={styles.filterBtn}>Lisansı Aç</button>
+                              <button type="button" onClick={() => { setAdminLisansArama(r.ad || ''); setActiveTab('admin_moduller'); }} style={styles.filterBtn}>Modülleri Aç</button>
+                              <button type="button" onClick={() => window.open('https://wa.me/905325014277?text=' + encodeURIComponent(`${r.ad} için müşteri başarı takibi açıldı.`), '_blank')} style={styles.filterBtn}>Takip Notu</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
