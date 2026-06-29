@@ -2384,28 +2384,95 @@ Toplam Ciro: {toplam}
     return kayit;
   };
 
+  const QR_SERVIS_TALEBI_JSON_PREFIX = '__INTEGRA_QR_SERVIS_TALEBI__';
+
+  const servisTalebiGomuluPayloadCoz = (satir = {}) => {
+    const mesaj = String(satir?.mesaj || satir?.not_metni || '').trim();
+    if (!mesaj.startsWith(QR_SERVIS_TALEBI_JSON_PREFIX)) return {};
+
+    try {
+      const jsonMetni = mesaj.slice(QR_SERVIS_TALEBI_JSON_PREFIX.length);
+      return JSON.parse(jsonMetni) || {};
+    } catch (err) {
+      console.warn('QR servis talebi gömülü payload çözülemedi:', err?.message || err);
+      return {};
+    }
+  };
+
   const servisTalebiSupabaseSatiriniHazirla = (satir = {}) => {
-    const payload = satir.payload || satir.raw_payload || {};
-    const siparisUrunleri = satir.siparis_urunleri || satir.siparisUrunleri || payload.urunler || [];
+    const gomuluPayload = servisTalebiGomuluPayloadCoz(satir);
+    const payload = satir.payload || satir.raw_payload || gomuluPayload || {};
+    const siparisUrunleri = satir.siparis_urunleri || satir.siparisUrunleri || payload.siparisUrunleri || payload.urunler || [];
     const masaAdi = satir.masa_adi || satir.masa_no || payload.masaAdi || payload.masaNo || '';
+    const mesajMetni = String(satir.mesaj || '').startsWith(QR_SERVIS_TALEBI_JSON_PREFIX) ? (payload.notMetni || '') : satir.mesaj;
 
     return {
       id: satir.id,
-      restaurantId: satir.restaurant_id || satir.restaurantId || mevcutRestaurantId,
+      restaurantId: satir.restaurant_id || satir.restaurantId || payload.restaurantId || mevcutRestaurantId,
       tip: satir.talep_tipi || satir.tip || payload.tip || 'Servis Talebi',
       masaId: satir.masa_id || satir.masaId || payload.masaId || '',
-      masaNo: satir.masa_no || masaAdi || '',
-      masaAdi: masaAdi || '',
-      notMetni: satir.not_metni || satir.mesaj || satir.notMetni || payload.notMetni || '',
+      masaNo: satir.masa_no || payload.masaNo || masaAdi || '',
+      masaAdi: masaAdi || payload.masaAdi || '',
+      notMetni: satir.not_metni || satir.notMetni || mesajMetni || payload.notMetni || '',
       kaynak: satir.kaynak || satir.source || payload.kaynak || 'QR Menü',
-      durum: satir.durum || 'Açık',
+      durum: satir.durum || payload.durum || 'Açık',
       siparisUrunleri: Array.isArray(siparisUrunleri) ? siparisUrunleri : [],
       toplam: Number(satir.toplam || payload.toplam || 0),
       musteriAdi: satir.musteri_adi || payload.musteriAdi || '',
       payload,
-      createdAt: satir.created_at || satir.createdAt || new Date().toISOString(),
+      createdAt: satir.created_at || satir.createdAt || payload.createdAt || new Date().toISOString(),
       kapandiAt: satir.tamamlanma_zamani || satir.kapandiAt || null,
     };
+  };
+
+  const servisTalebiTemelMesajiHazirla = (kayit = {}) => {
+    return `${QR_SERVIS_TALEBI_JSON_PREFIX}${JSON.stringify(kayit)}`;
+  };
+
+  const servisTalebiSupabaseKaydet = async (kayit = {}) => {
+    const tamSatir = {
+      restaurant_id: kayit.restaurantId,
+      talep_tipi: kayit.tip,
+      masa_id: kayit.masaId || null,
+      masa_adi: kayit.masaAdi || kayit.masaNo || '',
+      masa_no: kayit.masaNo || kayit.masaAdi || '',
+      mesaj: kayit.notMetni || '',
+      not_metni: kayit.notMetni || '',
+      kaynak: kayit.kaynak || 'QR Menü',
+      durum: kayit.durum || 'Açık',
+      siparis_urunleri: Array.isArray(kayit.siparisUrunleri) ? kayit.siparisUrunleri : [],
+      toplam: Number(kayit.toplam || 0),
+      musteri_adi: kayit.musteriAdi || '',
+      payload: kayit,
+    };
+
+    const { data, error } = await supabase
+      .from('servis_talepleri')
+      .insert([tamSatir])
+      .select()
+      .single();
+
+    if (!error) return servisTalebiSupabaseSatiriniHazirla(data || tamSatir);
+
+    console.warn('Servis talebi tam kolonlarla kaydedilemedi, temel kayıt deneniyor:', error.message);
+
+    const temelSatir = {
+      restaurant_id: kayit.restaurantId,
+      talep_tipi: kayit.tip,
+      masa_id: kayit.masaId || null,
+      masa_adi: kayit.masaAdi || kayit.masaNo || '',
+      mesaj: servisTalebiTemelMesajiHazirla(kayit),
+      durum: kayit.durum || 'Açık',
+    };
+
+    const { data: temelData, error: temelError } = await supabase
+      .from('servis_talepleri')
+      .insert([temelSatir])
+      .select()
+      .single();
+
+    if (temelError) throw temelError;
+    return servisTalebiSupabaseSatiriniHazirla(temelData || temelSatir);
   };
 
   const servisTalepleriniSupabasedenCek = async (restaurantId = mevcutRestaurantId) => {
@@ -2457,24 +2524,11 @@ Toplam Ciro: {toplam}
 
     setServisTalepleri(prev => [kayit, ...(Array.isArray(prev) ? prev : [])]);
 
-    supabase.from('servis_talepleri').insert([{
-      restaurant_id: kayit.restaurantId,
-      talep_tipi: kayit.tip,
-      masa_id: kayit.masaId || null,
-      masa_adi: kayit.masaAdi || kayit.masaNo || '',
-      masa_no: kayit.masaNo || kayit.masaAdi || '',
-      mesaj: kayit.notMetni,
-      not_metni: kayit.notMetni,
-      kaynak: kayit.kaynak,
-      durum: kayit.durum,
-      siparis_urunleri: kayit.siparisUrunleri,
-      toplam: kayit.toplam,
-      musteri_adi: kayit.musteriAdi,
-      payload: kayit.payload,
-    }]).then(({ data, error }) => {
-      if (error) {
-        console.warn('Servis talebi Supabase kaydı atlandı:', error.message);
-      }
+    servisTalebiSupabaseKaydet(kayit).then(kayitliTalep => {
+      setServisTalepleri(prev => (Array.isArray(prev) ? prev : []).map(t => String(t.id) === String(kayit.id) ? kayitliTalep : t));
+    }).catch(err => {
+      console.warn('Servis talebi Supabase kaydı atlandı:', err?.message || err);
+      alert('Servis talebi veritabanına kaydedilemedi. Supabase servis_talepleri SQL izinlerini kontrol edin.');
     });
 
     islemLoguEkle('Servis Talebi', `${kayit.masaAdi || kayit.masaNo ? `${kayit.masaAdi || kayit.masaNo} - ` : ''}${tip}`);
@@ -12710,29 +12764,14 @@ Toplam Ciro: {toplam}
     };
 
     try {
-      const { data, error } = await supabase.from('servis_talepleri').insert([{
-        restaurant_id: kayit.restaurantId,
-        talep_tipi: kayit.tip,
-        masa_id: kayit.masaId,
-        masa_adi: kayit.masaAdi,
-        masa_no: kayit.masaNo,
-        mesaj: kayit.notMetni,
-        not_metni: kayit.notMetni,
-        kaynak: kayit.kaynak,
-        durum: kayit.durum,
-        siparis_urunleri: [],
-        toplam: 0,
-        payload: kayit,
-      }]).select().single();
-
-      if (error) throw error;
-      setServisTalepleri(prev => [servisTalebiSupabaseSatiriniHazirla(data), ...(Array.isArray(prev) ? prev : [])]);
+      const kayitliTalep = await servisTalebiSupabaseKaydet(kayit);
+      setServisTalepleri(prev => [kayitliTalep, ...(Array.isArray(prev) ? prev : [])]);
+      setQrServisMesaji(`${tip} talebiniz işletmeye iletildi.`);
     } catch (err) {
-      console.warn('QR servis talebi Supabase kaydı atlandı:', err?.message || err);
-      setServisTalepleri(prev => [{ id: `qr-srv-${Date.now()}`, ...kayit }, ...(Array.isArray(prev) ? prev : [])]);
+      console.error('QR servis talebi panele düşürülemedi:', err);
+      setQrServisMesaji('Talep panele iletilemedi. Lütfen işletme personeline haber verin.');
+      alert('Servis talebi panele düşürülemedi: ' + (err?.message || err));
     }
-
-    setQrServisMesaji(`${tip} talebiniz işletmeye iletildi.`);
   };
 
   const publicAyarlariMasaZorunluMu = () => {
@@ -12770,34 +12809,18 @@ Toplam Ciro: {toplam}
 
     setQrSiparisGonderiliyor(true);
     try {
-      const { data, error } = await supabase.from('servis_talepleri').insert([{
-        restaurant_id: siparisTalebi.restaurantId,
-        talep_tipi: siparisTalebi.tip,
-        masa_id: siparisTalebi.masaId,
-        masa_adi: siparisTalebi.masaAdi,
-        masa_no: siparisTalebi.masaNo,
-        musteri_adi: siparisTalebi.musteriAdi,
-        mesaj: siparisTalebi.notMetni,
-        not_metni: siparisTalebi.notMetni,
-        kaynak: siparisTalebi.kaynak,
-        durum: siparisTalebi.durum,
-        siparis_urunleri: siparisTalebi.siparisUrunleri,
-        toplam: siparisTalebi.toplam,
-        payload: siparisTalebi,
-      }]).select().single();
-
-      if (error) throw error;
-      setServisTalepleri(prev => [servisTalebiSupabaseSatiriniHazirla(data), ...(Array.isArray(prev) ? prev : [])]);
+      const kayitliTalep = await servisTalebiSupabaseKaydet(siparisTalebi);
+      setServisTalepleri(prev => [kayitliTalep, ...(Array.isArray(prev) ? prev : [])]);
+      setQrSepet([]);
+      setQrSiparisNotu('');
+      setQrSiparisMesaji('Sipariş talebiniz garson onayına gönderildi. Garson onaylayınca masanıza aktarılacak.');
     } catch (err) {
-      console.warn('QR sipariş servis talebi Supabase kaydı atlandı:', err?.message || err);
-      setServisTalepleri(prev => [{ id: `qr-order-${Date.now()}`, ...siparisTalebi }, ...(Array.isArray(prev) ? prev : [])]);
+      console.error('QR sipariş servis talebi panele düşürülemedi:', err);
+      setQrSiparisMesaji('Sipariş talebi panele iletilemedi. Lütfen işletme personeline haber verin.');
+      alert('QR sipariş panele düşürülemedi: ' + (err?.message || err));
     } finally {
       setQrSiparisGonderiliyor(false);
     }
-
-    setQrSepet([]);
-    setQrSiparisNotu('');
-    setQrSiparisMesaji('Sipariş talebiniz garson onayına gönderildi. Garson onaylayınca masanıza aktarılacak.');
   };
 
   // adisyon ekranında ürün butonuna basılınca ürünü seçen kod
