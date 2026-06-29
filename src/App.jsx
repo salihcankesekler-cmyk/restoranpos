@@ -73,6 +73,24 @@ function IntegraApp() {
         ? (['super_admin', 'admin_lisans', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
         : kayitliActiveTab || 'raporlar';
 
+  // müşterinin QR menü linkiyle siteye girdiğini yakalayan kod
+  const qrMenuLinkRestaurantId = (() => {
+    if (typeof window === 'undefined') return '';
+
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      const hashParams = String(window.location.hash || '').includes('?')
+        ? new URLSearchParams(String(window.location.hash || '').split('?')[1] || '')
+        : null;
+
+      return params.get('qr_menu') || params.get('qrMenu') || params.get('menu') || hashParams?.get('qr_menu') || hashParams?.get('qrMenu') || '';
+    } catch {
+      return '';
+    }
+  })();
+
+  const qrMenuMusteriModu = Boolean(qrMenuLinkRestaurantId);
+
   const [screen, setScreen] = useState(baslangicScreen);
   const [activeTab, setActiveTab] = useState(baslangicTab);
   const [reportType, setReportType] = useState('gunluk');
@@ -148,6 +166,24 @@ function IntegraApp() {
 
   // adisyon ekranında ürün arama metnini tutan kod
   const [adisyonUrunArama, setAdisyonUrunArama] = useState('');
+
+  // QR menü ayarları ve herkese açık QR menü ekranı için kullanılan kod
+  const [qrMenuArama, setQrMenuArama] = useState('');
+  const [aktifQrMenuGrubu, setAktifQrMenuGrubu] = useState('Tümü');
+  const [qrMenuMesaji, setQrMenuMesaji] = useState('');
+  const [qrMenuYukleniyor, setQrMenuYukleniyor] = useState(false);
+  const [qrMenuHatasi, setQrMenuHatasi] = useState('');
+  const [qrMenuRestoran, setQrMenuRestoran] = useState(null);
+  const [qrMenuPublicUrunleri, setQrMenuPublicUrunleri] = useState([]);
+  const [qrMenuPublicGruplari, setQrMenuPublicGruplari] = useState([]);
+  const [qrMenuAyarlari, setQrMenuAyarlari] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_qr_menu_ayarlari');
+      return kayit ? JSON.parse(kayit) : {};
+    } catch {
+      return {};
+    }
+  });
 
   // yeni menü grubu oluşturma alanlarını tutan kod
   const [yeniMenuGrupAdi, setYeniMenuGrupAdi] = useState('');
@@ -427,6 +463,39 @@ Toplam Ciro: {toplam}
 
   // paket servis siparişi oluştururken müşteri bilgilerini kaydetme ayarını tutan kod
   const [paketMusteriKaydedilsin, setPaketMusteriKaydedilsin] = useState(true);
+
+  // Trendyol / Getir / Migros gibi online sipariş entegrasyonları için kullanılan kod
+  const entegrasyonPlatformSecenekleri = ['Trendyol', 'Getir', 'Migros'];
+  const [paketOnlineSekmesi, setPaketOnlineSekmesi] = useState('yeni');
+  const [aktifEntegrasyonPlatformu, setAktifEntegrasyonPlatformu] = useState('Trendyol');
+  const [onlineSiparisYukleniyor, setOnlineSiparisYukleniyor] = useState(false);
+  const [onlineSiparisMesaji, setOnlineSiparisMesaji] = useState('');
+  const [entegrasyonMesaji, setEntegrasyonMesaji] = useState('');
+  const [onlineSiparisler, setOnlineSiparisler] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_online_siparisler');
+      return kayit ? JSON.parse(kayit) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [platformBaglantilari, setPlatformBaglantilari] = useState(() => {
+    try {
+      const kayit = localStorage.getItem('integra_platform_baglantilari');
+      return kayit ? JSON.parse(kayit) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [entegrasyonFormu, setEntegrasyonFormu] = useState({
+    platform: 'Trendyol',
+    saticiId: '',
+    entegrasyonReferansKodu: '',
+    apiKey: '',
+    apiSecret: '',
+    token: '',
+    aktif: true,
+  });
 
   // cari/veresiye müşteri hesaplarını tutan kod
   const [cariMusteriler, setCariMusteriler] = useState([]);
@@ -758,6 +827,85 @@ Toplam Ciro: {toplam}
     };
     return etiketler[tip] || tip;
   };
+
+  // QR menü için varsayılan ayarları oluşturan kod
+  function varsayilanQrMenuAyarlari(restaurantId = mevcutRestaurantId, firmaAdi = user?.restaurant || '') {
+    return {
+      restaurantId,
+      aktif: true,
+      baslik: firmaAdi || 'Dijital Menü',
+      aciklama: 'QR kodu okutarak menümüzü inceleyebilirsiniz.',
+      logoUrl: '',
+      temaRengi: '#ff6b35',
+      whatsappTelefon: '',
+      siparisNotu: 'Sipariş vermek için garsonumuza bilgi verebilirsiniz.',
+      fiyatlariGoster: true,
+    };
+  }
+
+  // QR menü linkini oluşturan kod
+  function qrMenuLinkiHazirla(restaurantId = mevcutRestaurantId) {
+    const hedefId = restaurantId || mevcutRestaurantId || '';
+    const origin = typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'https://www.integraposbilisim.com';
+
+    return `${origin}/?qr_menu=${encodeURIComponent(String(hedefId || ''))}`;
+  }
+
+  // QR kod görselini dış servis üzerinden hazırlayan kod
+  function qrKodGorselUrlHazirla(link, boyut = 280) {
+    const guvenliLink = encodeURIComponent(String(link || ''));
+    const temizBoyut = Math.max(Number(boyut || 280), 160);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${temizBoyut}x${temizBoyut}&data=${guvenliLink}`;
+  }
+
+  // QR menüde gösterilecek grupları ürünlerle birlikte hazırlayan kod
+  function qrMenuGruplariniHazirla(urunler = [], gruplar = [], restaurantId = mevcutRestaurantId) {
+    const temizUrunler = (Array.isArray(urunler) ? urunler : [])
+      .filter(u => String(u.restaurantId || u.restaurant_id || '') === String(restaurantId || u.restaurantId || u.restaurant_id || ''))
+      .filter(u => String(u.ad || '').trim())
+      .map(u => ({
+        ...u,
+        ad: u.ad || u.name || 'Ürün',
+        fiyat: Number(u.fiyat || u.price || 0),
+        menuGrubu: u.menuGrubu || u.menu_grubu || u.kategori || 'Genel',
+        kategori: u.menuGrubu || u.menu_grubu || u.kategori || 'Genel',
+        resimUrl: u.resimUrl || u.resim_url || '',
+        aciklama: u.aciklama || u.description || '',
+      }));
+
+    const grupMap = new Map();
+
+    (Array.isArray(gruplar) ? gruplar : [])
+      .filter(g => !restaurantId || String(g.restaurantId || g.restaurant_id || '') === String(restaurantId))
+      .forEach(g => {
+        const ad = String(g.ad || g.name || 'Genel').trim() || 'Genel';
+        if (!grupMap.has(ad)) {
+          grupMap.set(ad, { ...g, ad, urunler: [] });
+        }
+      });
+
+    temizUrunler.forEach(u => {
+      const grupAdi = String(u.menuGrubu || u.kategori || 'Genel').trim() || 'Genel';
+      if (!grupMap.has(grupAdi)) {
+        grupMap.set(grupAdi, { id: `qr-grup-${grupAdi}`, restaurantId: restaurantId || u.restaurantId, ad: grupAdi, urunler: [] });
+      }
+
+      grupMap.get(grupAdi).urunler.push(u);
+    });
+
+    return Array.from(grupMap.values())
+      .map(g => ({
+        ...g,
+        urunler: (Array.isArray(g.urunler) ? g.urunler : []).sort((a, b) => {
+          const favoriFarki = Number(Boolean(b.favori)) - Number(Boolean(a.favori));
+          if (favoriFarki !== 0) return favoriFarki;
+          return String(a.ad || '').localeCompare(String(b.ad || ''), 'tr');
+        }),
+      }))
+      .filter(g => g.urunler.length > 0);
+  }
 
   // seçili fiş şablonunu bulan kod
   const fisSablonuBul = (fisTipi) => {
@@ -1270,6 +1418,31 @@ Toplam Ciro: {toplam}
     return (u.menuGrubu || u.kategori || 'Genel') === (aktifGrup.ad || aktifMenuGrubu || 'Genel');
   });
 
+  // QR menüye aktarılacak ürün ve grup verisini hazırlayan kod
+  const aktifQrMenuAyari = {
+    ...varsayilanQrMenuAyarlari(mevcutRestaurantId, user?.restaurant || ''),
+    ...((qrMenuAyarlari || {})[String(mevcutRestaurantId)] || {}),
+  };
+  const qrMenuPanelLinki = qrMenuLinkiHazirla(mevcutRestaurantId);
+  const qrMenuPanelKodUrl = qrKodGorselUrlHazirla(qrMenuPanelLinki, 280);
+  const qrMenuPanelGruplari = qrMenuGruplariniHazirla(aktifMenu, aktifMenuGruplari, mevcutRestaurantId);
+  const qrMenuPanelUrunSayisi = qrMenuPanelGruplari.reduce((toplam, g) => toplam + g.urunler.length, 0);
+  const qrMenuAramaMetni = String(qrMenuArama || '').toLocaleLowerCase('tr-TR').trim();
+  const qrMenuPanelFiltreliGruplari = qrMenuPanelGruplari
+    .map(grup => ({
+      ...grup,
+      urunler: grup.urunler.filter(u => {
+        const grupUyuyor = aktifQrMenuGrubu === 'Tümü' || grup.ad === aktifQrMenuGrubu;
+        const aramaUyuyor = !qrMenuAramaMetni
+          || String(u.ad || '').toLocaleLowerCase('tr-TR').includes(qrMenuAramaMetni)
+          || String(u.aciklama || '').toLocaleLowerCase('tr-TR').includes(qrMenuAramaMetni)
+          || String(grup.ad || '').toLocaleLowerCase('tr-TR').includes(qrMenuAramaMetni);
+
+        return grupUyuyor && aramaUyuyor;
+      }),
+    }))
+    .filter(grup => grup.urunler.length > 0);
+
   // adisyon ekranında aktif seçili ürün grubunu bulan kod
   const aktifAdisyonGrup =
     aktifMenuGruplari.find(g => g.ad === aktifAdisyonMenuGrubu) ||
@@ -1327,13 +1500,589 @@ Toplam Ciro: {toplam}
     return gorev.includes('kurye') || gorev.includes('garson') || gorev.includes('müdür') || gorev.includes('mudur') || gorev.includes('kasiyer');
   });
 
+  // online sipariş entegrasyon bağlantılarını aktif restorana göre hazırlayan kod
+  const aktifRestoranPlatformBaglantilari = (Array.isArray(platformBaglantilari) ? platformBaglantilari : []).filter(b => {
+    return String(b.restaurantId || '') === String(mevcutRestaurantId || '');
+  });
+
+  const aktifPlatformBaglantisi = aktifRestoranPlatformBaglantilari.find(b => b.platform === aktifEntegrasyonPlatformu) || null;
+
+  // online sipariş listesini aktif restoran ve seçilen duruma göre hazırlayan kod
+  const aktifRestoranOnlineSiparisleri = (Array.isArray(onlineSiparisler) ? onlineSiparisler : [])
+    .filter(s => String(s.restaurantId || '') === String(mevcutRestaurantId || ''))
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+  const yeniOnlineSiparisSayisi = aktifRestoranOnlineSiparisleri.filter(s => String(s.durum || 'Yeni') === 'Yeni').length;
+  const aktarilanOnlineSiparisSayisi = aktifRestoranOnlineSiparisleri.filter(s => String(s.durum || '') === 'Paket Servise Aktarıldı').length;
+
+  const filtreliOnlineSiparisler = aktifRestoranOnlineSiparisleri.filter(s => {
+    const durum = String(s.durum || 'Yeni');
+    if (paketOnlineSekmesi === 'yeni') return durum === 'Yeni';
+    if (paketOnlineSekmesi === 'aktarilan') return durum === 'Paket Servise Aktarıldı';
+    if (paketOnlineSekmesi === 'iptal') return durum === 'İptal' || durum === 'Yok Sayıldı';
+    return true;
+  });
+
+  const onlineSiparisDurumRengi = (durum = 'Yeni') => {
+    const metin = String(durum || 'Yeni');
+    if (metin === 'Yeni') return { backgroundColor: '#fff7ed', color: '#ea580c', borderColor: '#fed7aa' };
+    if (metin === 'Paket Servise Aktarıldı') return { backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' };
+    if (metin === 'İptal' || metin === 'Yok Sayıldı') return { backgroundColor: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' };
+    return { backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' };
+  };
+
+  const platformRenkleri = (platform = '') => {
+    const metin = String(platform || '').toLocaleLowerCase('tr-TR');
+    if (metin.includes('trendyol')) return { backgroundColor: '#fff7ed', color: '#f97316', borderColor: '#fed7aa' };
+    if (metin.includes('getir')) return { backgroundColor: '#f5f3ff', color: '#6d28d9', borderColor: '#ddd6fe' };
+    if (metin.includes('migros')) return { backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' };
+    return { backgroundColor: '#f8fafc', color: '#334155', borderColor: '#e2e8f0' };
+  };
+
+  // online sipariş platform seçimi yapılınca formu dolduran kod
+  const entegrasyonPlatformuSec = (platform) => {
+    const secilenPlatform = platform || 'Trendyol';
+    const mevcutKayit = aktifRestoranPlatformBaglantilari.find(b => b.platform === secilenPlatform);
+
+    setAktifEntegrasyonPlatformu(secilenPlatform);
+    setEntegrasyonMesaji('');
+    setEntegrasyonFormu({
+      platform: secilenPlatform,
+      saticiId: mevcutKayit?.saticiId || '',
+      entegrasyonReferansKodu: mevcutKayit?.entegrasyonReferansKodu || '',
+      apiKey: mevcutKayit?.apiKey || '',
+      apiSecret: mevcutKayit?.apiSecret || '',
+      token: mevcutKayit?.token || '',
+      aktif: mevcutKayit?.aktif !== false,
+    });
+  };
+
+  const entegrasyonFormuGuncelle = (alan, deger) => {
+    setEntegrasyonFormu(prev => ({
+      ...(prev || {}),
+      [alan]: deger,
+    }));
+  };
+
+  // Trendyol / Getir / Migros bağlantı bilgilerini panelde kaydeden kod
+  const platformBaglantisiKaydet = (e) => {
+    e.preventDefault();
+
+    if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') {
+      alert('Entegrasyon kaydı için aktif restoran bulunamadı.');
+      return;
+    }
+
+    if (!entegrasyonFormu.platform) {
+      alert('Platform seçin.');
+      return;
+    }
+
+    if (!String(entegrasyonFormu.saticiId || '').trim()) {
+      alert('Satıcı ID / Cari ID alanını girin.');
+      return;
+    }
+
+    const kayit = {
+      id: `${mevcutRestaurantId}-${entegrasyonFormu.platform}`,
+      restaurantId: mevcutRestaurantId,
+      platform: entegrasyonFormu.platform,
+      saticiId: String(entegrasyonFormu.saticiId || '').trim(),
+      entegrasyonReferansKodu: String(entegrasyonFormu.entegrasyonReferansKodu || '').trim(),
+      apiKey: String(entegrasyonFormu.apiKey || '').trim(),
+      apiSecret: String(entegrasyonFormu.apiSecret || '').trim(),
+      token: String(entegrasyonFormu.token || '').trim(),
+      aktif: entegrasyonFormu.aktif !== false,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setPlatformBaglantilari(prev => {
+      const liste = Array.isArray(prev) ? prev : [];
+      const digerleri = liste.filter(b => !(String(b.restaurantId) === String(mevcutRestaurantId) && b.platform === kayit.platform));
+      return [kayit, ...digerleri];
+    });
+
+    setEntegrasyonMesaji(`${kayit.platform} bağlantısı kaydedildi. Sipariş çekme için Supabase Edge Function / backend adaptörü bağlandığında bu bilgiler kullanılacak.`);
+  };
+
+  const platformBaglantisiSil = (platform = aktifEntegrasyonPlatformu) => {
+    if (!window.confirm(`${platform} entegrasyon bilgileri silinsin mi?`)) return;
+
+    setPlatformBaglantilari(prev => (Array.isArray(prev) ? prev : []).filter(b => {
+      return !(String(b.restaurantId) === String(mevcutRestaurantId) && b.platform === platform);
+    }));
+
+    setEntegrasyonFormu({
+      platform,
+      saticiId: '',
+      entegrasyonReferansKodu: '',
+      apiKey: '',
+      apiSecret: '',
+      token: '',
+      aktif: true,
+    });
+    setEntegrasyonMesaji(`${platform} bağlantısı silindi.`);
+  };
+
+  // backendden gelen farklı platform siparişlerini tek formata çeviren kod
+  const onlineSiparisiNormalizeEt = (siparis = {}, varsayilanPlatform = aktifEntegrasyonPlatformu) => {
+    const platform = siparis.platform || siparis.kaynak || varsayilanPlatform || 'Online';
+    const urunler = Array.isArray(siparis.urunler)
+      ? siparis.urunler
+      : Array.isArray(siparis.lines)
+        ? siparis.lines
+        : Array.isArray(siparis.items)
+          ? siparis.items
+          : [];
+
+    const temizUrunler = urunler.map((u, idx) => {
+      const ad = u.ad || u.name || u.productName || u.urun_adi || `Ürün ${idx + 1}`;
+      const adet = Number(u.adet || u.quantity || u.qty || 1);
+      const fiyat = Number(u.fiyat || u.price || u.unitPrice || u.unit_price || 0);
+      const menuUrunu = aktifMenu.find(mu => String(mu.ad || '').toLocaleLowerCase('tr-TR') === String(ad || '').toLocaleLowerCase('tr-TR'));
+
+      return {
+        urunId: menuUrunu?.id || u.urunId || u.productId || `online-${idx + 1}`,
+        ad,
+        adet: adet > 0 ? adet : 1,
+        fiyat,
+        normalFiyat: Number(menuUrunu?.fiyat || fiyat || 0),
+        listeFiyati: Number(menuUrunu?.fiyat || fiyat || 0),
+        satisFiyati: fiyat,
+        maliyet: Number(menuUrunu?.maliyet || 0),
+        menuGrubu: menuUrunu?.menuGrubu || menuUrunu?.kategori || u.menuGrubu || 'Online Sipariş',
+        departman: menuUrunu?.departman || u.departman || 'Mutfak',
+        kdvOrani: Number(menuUrunu?.kdvOrani || u.kdvOrani || 10),
+        not: u.not || u.note || u.description || '',
+      };
+    });
+
+    const hesaplananToplam = temizUrunler.reduce((toplam, u) => toplam + Number(u.fiyat || 0) * Number(u.adet || 1), 0);
+
+    return {
+      id: siparis.id || siparis.platform_order_id || siparis.orderId || `${platform}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      restaurantId: mevcutRestaurantId,
+      platform,
+      platformOrderId: siparis.platformOrderId || siparis.platform_order_id || siparis.orderNumber || siparis.orderId || siparis.id || `ORD-${Date.now()}`,
+      musteriAdi: siparis.musteriAdi || siparis.customerName || siparis.customer_name || siparis.clientName || 'Online Müşteri',
+      telefon: siparis.telefon || siparis.phone || siparis.customerPhone || siparis.customer_phone || '',
+      adres: siparis.adres || siparis.address || siparis.deliveryAddress || siparis.delivery_address || '',
+      notMetni: siparis.notMetni || siparis.note || siparis.customerNote || siparis.customer_note || '',
+      odemeTipi: siparis.odemeTipi || siparis.paymentType || siparis.payment_type || 'Online Ödendi',
+      toplam: Number(siparis.toplam || siparis.total || siparis.totalPrice || siparis.total_price || hesaplananToplam || 0),
+      durum: siparis.durum || 'Yeni',
+      urunler: temizUrunler,
+      rawPayload: siparis.rawPayload || siparis,
+      createdAt: siparis.createdAt || siparis.created_at || new Date().toISOString(),
+    };
+  };
+
+  const onlineSiparisleriListeyeEkle = (liste = []) => {
+    const temizListe = (Array.isArray(liste) ? liste : []).map(s => onlineSiparisiNormalizeEt(s));
+
+    setOnlineSiparisler(prev => {
+      const mevcutListe = Array.isArray(prev) ? prev : [];
+      const mevcutAnahtarlar = new Set(mevcutListe.map(s => `${s.platform}-${s.platformOrderId}`));
+      const yeniKayitlar = temizListe.filter(s => !mevcutAnahtarlar.has(`${s.platform}-${s.platformOrderId}`));
+      return [...yeniKayitlar, ...mevcutListe];
+    });
+
+    return temizListe.length;
+  };
+
+  // online sipariş backend fonksiyonunu çağıran kod
+  const onlineSiparisleriBackenddenCek = async (platform = aktifEntegrasyonPlatformu) => {
+    if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') {
+      alert('Online sipariş çekmek için aktif restoran bulunamadı.');
+      return;
+    }
+
+    const baglanti = aktifRestoranPlatformBaglantilari.find(b => b.platform === platform);
+    if (!baglanti || baglanti.aktif === false) {
+      alert(`${platform} bağlantısı aktif değil. Önce Entegrasyonlar ekranından kaydedin.`);
+      return;
+    }
+
+    setOnlineSiparisYukleniyor(true);
+    setOnlineSiparisMesaji('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('online-siparisleri-cek', {
+        body: {
+          restaurantId: mevcutRestaurantId,
+          platform,
+        },
+      });
+
+      if (error) {
+        console.warn('Online sipariş backend fonksiyonu cevap vermedi:', error.message);
+        setOnlineSiparisMesaji('Backend fonksiyonu henüz bağlı değil. Şimdilik test siparişiyle ekranı deneyebilirsiniz.');
+        return;
+      }
+
+      const gelenSiparisler = Array.isArray(data?.siparisler)
+        ? data.siparisler
+        : Array.isArray(data)
+          ? data
+          : [];
+
+      const adet = onlineSiparisleriListeyeEkle(gelenSiparisler);
+      setOnlineSiparisMesaji(adet > 0 ? `${adet} online sipariş alındı.` : 'Yeni online sipariş bulunamadı.');
+    } catch (err) {
+      console.warn('Online siparişler çekilemedi:', err);
+      setOnlineSiparisMesaji('Backend entegrasyonu henüz hazır değil. Test siparişi oluşturup ekran akışını deneyebilirsiniz.');
+    } finally {
+      setOnlineSiparisYukleniyor(false);
+    }
+  };
+
+  // gerçek API bağlanmadan ekran akışını denemek için örnek online sipariş oluşturan kod
+  const onlineDemoSiparisOlustur = (platform = aktifEntegrasyonPlatformu) => {
+    if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') {
+      alert('Test siparişi için aktif restoran bulunamadı.');
+      return;
+    }
+
+    const secilenUrunler = aktifMenu.slice(0, 2);
+    const varsayilanUrunler = secilenUrunler.length > 0
+      ? secilenUrunler.map((u, idx) => ({
+          ad: u.ad,
+          adet: idx === 0 ? 1 : 2,
+          fiyat: Number(u.fiyat || 0),
+          not: idx === 0 ? 'Acısız / test siparişi' : '',
+        }))
+      : [
+          { ad: 'Online Test Ürünü', adet: 1, fiyat: 100, not: 'Test siparişi' },
+        ];
+
+    const demoSiparis = onlineSiparisiNormalizeEt({
+      platform,
+      platformOrderId: `${platform.slice(0, 2).toUpperCase()}-${Date.now().toString().slice(-6)}`,
+      musteriAdi: `${platform} Test Müşterisi`,
+      telefon: '05xx xxx xx xx',
+      adres: 'Test Mahallesi, Entegrasyon Sokak No:1',
+      notMetni: 'Bu kayıt API bağlanmadan ekran akışını test etmek için oluşturuldu.',
+      odemeTipi: 'Online Ödendi',
+      urunler: varsayilanUrunler,
+      durum: 'Yeni',
+      createdAt: new Date().toISOString(),
+    }, platform);
+
+    setOnlineSiparisler(prev => [demoSiparis, ...(Array.isArray(prev) ? prev : [])]);
+    setPaketOnlineSekmesi('yeni');
+    setOnlineSiparisMesaji(`${platform} test siparişi online sipariş havuzuna eklendi.`);
+  };
+
+  const onlineSiparisDurumuGuncelle = (siparisId, yeniDurum, ekstra = {}) => {
+    setOnlineSiparisler(prev => (Array.isArray(prev) ? prev : []).map(s => {
+      if (String(s.id) === String(siparisId)) {
+        return { ...s, ...ekstra, durum: yeniDurum, updatedAt: new Date().toISOString() };
+      }
+      return s;
+    }));
+  };
+
+  // online siparişi mevcut paket servis sistemine aktaran kod
+  const onlineSiparisiPaketServiseAktar = async (onlineSiparis) => {
+    if (!onlineSiparis) return;
+
+    if (!Array.isArray(onlineSiparis.urunler) || onlineSiparis.urunler.length === 0) {
+      alert('Aktarılacak online siparişte ürün yok.');
+      return;
+    }
+
+    const paketUrunleri = onlineSiparis.urunler.map((u, idx) => {
+      const menuUrunu = aktifMenu.find(mu => {
+        return String(mu.id) === String(u.urunId) || String(mu.ad || '').toLocaleLowerCase('tr-TR') === String(u.ad || '').toLocaleLowerCase('tr-TR');
+      });
+
+      return {
+        urunId: menuUrunu?.id || u.urunId || `online-${idx}`,
+        ad: u.ad || menuUrunu?.ad || `Ürün ${idx + 1}`,
+        fiyat: Number(u.fiyat || u.satisFiyati || menuUrunu?.fiyat || 0),
+        adet: Number(u.adet || 1),
+        not: u.not || onlineSiparis.notMetni || '',
+        normalFiyat: Number(u.normalFiyat || menuUrunu?.fiyat || u.fiyat || 0),
+        listeFiyati: Number(u.listeFiyati || menuUrunu?.fiyat || u.fiyat || 0),
+        satisFiyati: Number(u.satisFiyati || u.fiyat || menuUrunu?.fiyat || 0),
+        maliyet: Number(u.maliyet || menuUrunu?.maliyet || 0),
+        menuGrubu: u.menuGrubu || menuUrunu?.menuGrubu || menuUrunu?.kategori || 'Online Sipariş',
+        departman: u.departman || menuUrunu?.departman || 'Mutfak',
+        kdvOrani: Number(u.kdvOrani || menuUrunu?.kdvOrani || 10),
+      };
+    });
+
+    const toplam = Number(onlineSiparis.toplam || siparislerAraToplamHesapla(paketUrunleri) || 0);
+    const notMetni = [
+      `${onlineSiparis.platform || 'Online'} Sipariş No: ${onlineSiparis.platformOrderId || '-'}`,
+      onlineSiparis.odemeTipi ? `Ödeme: ${onlineSiparis.odemeTipi}` : '',
+      onlineSiparis.notMetni || '',
+    ].filter(Boolean).join(' | ');
+
+    const { data, error } = await supabase
+      .from('paket_siparisleri')
+      .insert([
+        {
+          restaurant_id: mevcutRestaurantId,
+          paket_musteri_id: null,
+          musteri_adi: onlineSiparis.musteriAdi || 'Online Müşteri',
+          telefon: onlineSiparis.telefon || '',
+          adres: onlineSiparis.adres || '',
+          not_metni: notMetni,
+          durum: 'Hazırlanıyor',
+          odeme_tipi: 'Bekliyor',
+          tutar: toplam,
+          brut_tutar: toplam,
+          indirim_yuzde: 0,
+          indirim_tutari: 0,
+          urunler: paketUrunleri,
+          odendi: false,
+          alinan_tutar: 0,
+          para_ustu: 0,
+          kapanis_saati: null,
+          kurye_adi: '',
+          kurye_personel_id: null,
+          yola_cikis_saati: null,
+          teslim_saati: null,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Online sipariş paket servise aktarılamadı:', error);
+      alert('Online sipariş paket servise aktarılamadı: ' + error.message);
+      return;
+    }
+
+    const yeniPaket = {
+      id: data.id,
+      restaurantId: data.restaurant_id,
+      paketMusteriId: null,
+      musteriAdi: data.musteri_adi || onlineSiparis.musteriAdi || 'Online Müşteri',
+      telefon: data.telefon || onlineSiparis.telefon || '',
+      adres: data.adres || onlineSiparis.adres || '',
+      notMetni: data.not_metni || notMetni,
+      durum: data.durum || 'Hazırlanıyor',
+      odemeTipi: data.odeme_tipi || 'Bekliyor',
+      tutar: Number(data.tutar || toplam),
+      brutTutar: Number(data.brut_tutar || toplam),
+      indirimYuzde: 0,
+      indirimTutari: 0,
+      urunler: Array.isArray(data.urunler) ? data.urunler : paketUrunleri,
+      odendi: Boolean(data.odendi),
+      alinanTutar: 0,
+      paraUstu: 0,
+      kapanisSaati: null,
+      kuryeAdi: '',
+      kuryePersonelId: null,
+      yolaCikisSaati: null,
+      teslimSaati: null,
+      createdAt: data.created_at,
+      kaynakPlatform: onlineSiparis.platform || 'Online',
+      platformOrderId: onlineSiparis.platformOrderId || '',
+    };
+
+    const onlineMutfakKayitlari = paketUrunleri
+      .filter(paketUrun => {
+        const menuUrunu = aktifMenu.find(u => String(u.id) === String(paketUrun.urunId));
+        return mutfakEkraniAktifMi(paketUrun) && mutfakEkraniAktifMi(menuUrunu);
+      })
+      .map(paketUrun => ({
+        restaurant_id: mevcutRestaurantId,
+        masa_id: null,
+        masa_adi: `${onlineSiparis.platform || 'Online'} - ${onlineSiparis.musteriAdi || 'Müşteri'}`,
+        urun_adi: paketUrun.ad,
+        adet: Number(paketUrun.adet || 1),
+        not_metni: [paketUrun.not ? `Ürün Notu: ${paketUrun.not}` : '', notMetni].filter(Boolean).join(' | '),
+        departman: paketUrun.departman || 'Mutfak',
+        garson_adi: onlineSiparis.platform || 'Online Sipariş',
+        durum: 'Bekliyor',
+        yazdirildi: !fisYaziciAktifMi(paketUrun),
+      }));
+
+    if (onlineMutfakKayitlari.length > 0) {
+      const { data: mutfakData, error: mutfakError } = await supabase
+        .from('mutfak_fisleri')
+        .insert(onlineMutfakKayitlari)
+        .select();
+
+      if (mutfakError) {
+        console.error('Online sipariş mutfak fişi oluşturulamadı:', mutfakError);
+      } else {
+        const yeniMutfakFisleri = (Array.isArray(mutfakData) ? mutfakData : []).map(f => ({
+          id: f.id,
+          restaurantId: f.restaurant_id,
+          masaId: f.masa_id,
+          masaAdi: f.masa_adi,
+          urunAdi: f.urun_adi,
+          adet: Number(f.adet || 1),
+          notMetni: f.not_metni || '',
+          departman: f.departman || 'Mutfak',
+          garsonAdi: f.garson_adi || onlineSiparis.platform || 'Online Sipariş',
+          durum: f.durum || 'Bekliyor',
+          createdAt: f.created_at,
+        }));
+
+        setMutfakFisleri(prev => [
+          ...yeniMutfakFisleri,
+          ...(Array.isArray(prev) ? prev : []),
+        ]);
+
+        mutfakFisYazdirmaKontrolEt(yeniMutfakFisleri);
+      }
+    }
+
+    setPaketSiparisleri(prev => [yeniPaket, ...(Array.isArray(prev) ? prev : [])]);
+    onlineSiparisDurumuGuncelle(onlineSiparis.id, 'Paket Servise Aktarıldı', { paketSiparisId: yeniPaket.id });
+    setOnlineSiparisMesaji(`${onlineSiparis.platform || 'Online'} siparişi paket servise aktarıldı.`);
+  };
+
+  // QR menü ayar alanını güncelleyen kod
+  const qrMenuAyariGuncelle = (alan, deger) => {
+    if (!mevcutRestaurantId) return;
+
+    const key = String(mevcutRestaurantId);
+    setQrMenuAyarlari(prev => ({
+      ...(prev || {}),
+      [key]: {
+        ...varsayilanQrMenuAyarlari(mevcutRestaurantId, user?.restaurant || ''),
+        ...((prev || {})[key] || {}),
+        restaurantId: mevcutRestaurantId,
+        [alan]: deger,
+      },
+    }));
+  };
+
+  // QR menü linkini panoya kopyalayan kod
+  const qrMenuLinkiniKopyala = async () => {
+    const link = qrMenuLinkiHazirla(mevcutRestaurantId);
+
+    try {
+      await navigator.clipboard.writeText(link);
+      setQrMenuMesaji('QR menü linki panoya kopyalandı.');
+    } catch {
+      window.prompt('QR menü linkini kopyalayın:', link);
+    }
+  };
+
+  // QR kod çıktısı almak için ayrı yazdırma penceresi açan kod
+  const qrMenuKoduYazdir = () => {
+    const link = qrMenuLinkiHazirla(mevcutRestaurantId);
+    const qrUrl = qrKodGorselUrlHazirla(link, 360);
+    const ayar = { ...varsayilanQrMenuAyarlari(mevcutRestaurantId, user?.restaurant || ''), ...aktifQrMenuAyari };
+    const pencere = window.open('', '_blank', 'width=460,height=640');
+
+    if (!pencere) {
+      alert('Yazdırma penceresi açılamadı. Tarayıcı açılır pencere iznini kontrol edin.');
+      return;
+    }
+
+    pencere.document.write(`
+      <html>
+        <head>
+          <title>QR Menü</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 28px; text-align: center; color: #0f172a; }
+            .card { border: 1px solid #e2e8f0; border-radius: 22px; padding: 26px; max-width: 360px; margin: 0 auto; }
+            h1 { font-size: 24px; margin: 0 0 8px; }
+            p { color: #64748b; margin: 0 0 18px; line-height: 1.5; }
+            img { width: 300px; height: 300px; }
+            .link { margin-top: 16px; font-size: 11px; color: #475569; word-break: break-all; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>${htmlGuvenli(ayar.baslik || user?.restaurant || 'QR Menü')}</h1>
+            <p>${htmlGuvenli(ayar.aciklama || 'Menümüzü görüntülemek için QR kodu okutun.')}</p>
+            <img src="${htmlGuvenli(qrUrl)}" alt="QR Menü" />
+            <div class="link">${htmlGuvenli(link)}</div>
+          </div>
+          <script>window.onload = () => window.print();</script>
+        </body>
+      </html>
+    `);
+    pencere.document.close();
+  };
+
+  // herkese açık QR menü linki açıldığında restoranın ürün ve grup verisini çeken kod
+  async function qrMenuyuSupabasedenCek(restaurantId) {
+    if (!restaurantId) return;
+
+    setQrMenuYukleniyor(true);
+    setQrMenuHatasi('');
+
+    try {
+      const [restoranSonuc, grupSonuc, urunSonuc] = await Promise.all([
+        supabase
+          .from('restaurants')
+          .select('*')
+          .eq('id', restaurantId)
+          .maybeSingle(),
+        supabase
+          .from('menu_gruplari')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .order('id', { ascending: true }),
+        supabase
+          .from('menu_urunleri')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .order('id', { ascending: true }),
+      ]);
+
+      if (restoranSonuc.error) throw restoranSonuc.error;
+      if (grupSonuc.error) throw grupSonuc.error;
+      if (urunSonuc.error) throw urunSonuc.error;
+
+      const restoran = restoranSonuc.data
+        ? restoranSatiriniHazirla(restoranSonuc.data)
+        : { id: restaurantId, ad: 'Dijital Menü' };
+
+      const temizGruplar = (Array.isArray(grupSonuc.data) ? grupSonuc.data : []).map(g => ({
+        id: g.id,
+        restaurantId: g.restaurant_id,
+        ad: g.ad || 'Genel',
+        departman: g.departman || 'Mutfak',
+        kdvOrani: Number(g.kdv_orani || 10),
+      }));
+
+      const temizUrunler = (Array.isArray(urunSonuc.data) ? urunSonuc.data : []).map(u => ({
+        id: u.id,
+        restaurantId: u.restaurant_id,
+        ad: u.ad || 'Ürün',
+        fiyat: Number(u.fiyat || 0),
+        maliyet: Number(u.maliyet || 0),
+        kategori: u.menu_grubu || u.kategori || 'Genel',
+        menuGrubu: u.menu_grubu || u.kategori || 'Genel',
+        departman: u.departman || 'Mutfak',
+        kdvOrani: Number(u.kdv_orani || 10),
+        menuNotlari: Array.isArray(u.menu_notlari) ? u.menu_notlari : [],
+        resimUrl: u.resim_url || u.resimUrl || '',
+        aciklama: u.aciklama || u.description || '',
+        favori: Boolean(u.favori),
+      }));
+
+      setQrMenuRestoran(restoran);
+      setQrMenuPublicGruplari(temizGruplar);
+      setQrMenuPublicUrunleri(temizUrunler);
+    } catch (err) {
+      console.error('QR menü verisi çekilemedi:', err);
+      setQrMenuHatasi('QR menü şu anda yüklenemedi. Lütfen işletmeden destek isteyin.');
+    } finally {
+      setQrMenuYukleniyor(false);
+    }
+  }
+
   // personel ekran yetkilerinde kullanılacak sekme seçeneklerini tutan kod
   const personelSekmeSecenekleri = [
     { key: 'masalar', label: '🪑 Masalar' },
     { key: 'mutfak', label: '👨‍🍳 Mutfak' },
     { key: 'paket', label: '🛵 Paket Servis' },
+    { key: 'entegrasyonlar', label: '🔌 Entegrasyonlar' },
     { key: 'hizli_satis', label: '⚡ Hızlı Satış' },
     { key: 'menu', label: '🍔 Menü & Ayarlar' },
+    { key: 'qr_menu', label: '📱 QR Menü' },
     { key: 'raporlar', label: '📊 Raporlar' },
     { key: 'cari', label: '📒 Cari / Veresiye' },
     { key: 'stok', label: '📦 Stok' },
@@ -1349,7 +2098,7 @@ Toplam Ciro: {toplam}
     const gorevMetni = String(gorev || '').toLocaleLowerCase('tr-TR');
 
     if (gorevMetni.includes('müdür') || gorevMetni.includes('mudur')) {
-      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu'];
+      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'qr_menu'];
     }
 
     if (gorevMetni.includes('mutfak')) {
@@ -9709,6 +10458,7 @@ Toplam Ciro: {toplam}
 
     const aktifAdisyonGrubuVar = aktifMenuGruplari.some(g => g.ad === aktifAdisyonMenuGrubu);
     const aktifPaketGrubuVar = aktifMenuGruplari.some(g => g.ad === aktifPaketMenuGrubu);
+    const aktifQrGrubuVar = aktifQrMenuGrubu === 'Tümü' || aktifMenuGruplari.some(g => g.ad === aktifQrMenuGrubu);
 
     if (!aktifAdisyonGrubuVar) {
       setAktifAdisyonMenuGrubu(aktifMenuGruplari[0].ad);
@@ -9717,7 +10467,11 @@ Toplam Ciro: {toplam}
     if (!aktifPaketGrubuVar) {
       setAktifPaketMenuGrubu(aktifMenuGruplari[0].ad);
     }
-  }, [mevcutRestaurantId, aktifMenuGruplari.length]);
+
+    if (!aktifQrGrubuVar) {
+      setAktifQrMenuGrubu('Tümü');
+    }
+  }, [mevcutRestaurantId, aktifMenuGruplari.length, aktifQrMenuGrubu]);
 
   // rapor verisi bozuk gelse bile beyaz ekran olmaması için varsayılan rapor kodu
   const bosRaporData = {
@@ -9780,6 +10534,45 @@ Toplam Ciro: {toplam}
   useEffect(() => {
     localStorage.setItem('integra_activeTab', activeTab);
   }, [activeTab]);
+
+  // online sipariş havuzunu tarayıcıda yedekleyen kod
+  useEffect(() => {
+    localStorage.setItem('integra_online_siparisler', JSON.stringify(onlineSiparisler));
+  }, [onlineSiparisler]);
+
+  // platform bağlantı bilgilerini tarayıcıda yedekleyen kod
+  useEffect(() => {
+    localStorage.setItem('integra_platform_baglantilari', JSON.stringify(platformBaglantilari));
+  }, [platformBaglantilari]);
+
+  // QR menü ayarlarını tarayıcıda yedekleyen kod
+  useEffect(() => {
+    localStorage.setItem('integra_qr_menu_ayarlari', JSON.stringify(qrMenuAyarlari));
+  }, [qrMenuAyarlari]);
+
+  // herkese açık QR menü linki açıldığında menü verisini yükleyen kod
+  useEffect(() => {
+    if (!qrMenuMusteriModu || !qrMenuLinkRestaurantId) return;
+    qrMenuyuSupabasedenCek(qrMenuLinkRestaurantId);
+  }, [qrMenuMusteriModu, qrMenuLinkRestaurantId]);
+
+  // aktif entegrasyon platformu değişince formu kayıtlı bilgiyle dolduran kod
+  useEffect(() => {
+    if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return;
+    const mevcutKayit = (Array.isArray(platformBaglantilari) ? platformBaglantilari : []).find(b => {
+      return String(b.restaurantId) === String(mevcutRestaurantId) && b.platform === aktifEntegrasyonPlatformu;
+    });
+
+    setEntegrasyonFormu({
+      platform: aktifEntegrasyonPlatformu,
+      saticiId: mevcutKayit?.saticiId || '',
+      entegrasyonReferansKodu: mevcutKayit?.entegrasyonReferansKodu || '',
+      apiKey: mevcutKayit?.apiKey || '',
+      apiSecret: mevcutKayit?.apiSecret || '',
+      token: mevcutKayit?.token || '',
+      aktif: mevcutKayit?.aktif !== false,
+    });
+  }, [aktifEntegrasyonPlatformu, mevcutRestaurantId]);
 
   // fiş yazdırma tercih ayarını tarayıcıda saklayan kod
   useEffect(() => {
@@ -9883,6 +10676,94 @@ Toplam Ciro: {toplam}
 
     verileriYenidenYukle();
   }, [user?.id]);
+
+  if (qrMenuMusteriModu) {
+    const publicRestoranAdi = qrMenuRestoran?.ad || qrMenuRestoran?.restaurant || 'Dijital Menü';
+    const publicAyarlari = varsayilanQrMenuAyarlari(qrMenuLinkRestaurantId, publicRestoranAdi);
+    const publicGruplar = qrMenuGruplariniHazirla(qrMenuPublicUrunleri, qrMenuPublicGruplari, qrMenuLinkRestaurantId);
+    const publicAramaMetni = String(qrMenuArama || '').toLocaleLowerCase('tr-TR').trim();
+    const publicFiltreliGruplar = publicGruplar
+      .map(grup => ({
+        ...grup,
+        urunler: grup.urunler.filter(u => {
+          const grupUyuyor = aktifQrMenuGrubu === 'Tümü' || grup.ad === aktifQrMenuGrubu;
+          const aramaUyuyor = !publicAramaMetni
+            || String(u.ad || '').toLocaleLowerCase('tr-TR').includes(publicAramaMetni)
+            || String(u.aciklama || '').toLocaleLowerCase('tr-TR').includes(publicAramaMetni)
+            || String(grup.ad || '').toLocaleLowerCase('tr-TR').includes(publicAramaMetni);
+
+          return grupUyuyor && aramaUyuyor;
+        }),
+      }))
+      .filter(grup => grup.urunler.length > 0);
+
+    return (
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #fff7ed 0%, #ffffff 34%, #f8fafc 100%)', fontFamily: 'Inter, Arial, sans-serif', color: '#0f172a' }}>
+        <div style={{ maxWidth: '980px', margin: '0 auto', padding: isMobile ? '18px 14px 34px' : '32px 20px 56px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', borderRadius: '28px', padding: isMobile ? '24px 18px' : '34px', color: '#fff', boxShadow: '0 30px 80px -45px rgba(15,23,42,0.5)', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: '900', marginBottom: '14px' }}>📱 QR Menü</div>
+                <h1 style={{ margin: '0 0 8px', fontSize: isMobile ? '30px' : '42px', lineHeight: 1.08, letterSpacing: '-0.03em' }}>{publicRestoranAdi}</h1>
+                <p style={{ margin: 0, color: '#cbd5e1', lineHeight: 1.7, maxWidth: '680px', fontWeight: '600' }}>{publicAyarlari.aciklama}</p>
+              </div>
+              <div style={{ backgroundColor: '#fff', color: '#0f172a', borderRadius: '18px', padding: '12px 15px', minWidth: '130px', textAlign: 'center', boxShadow: '0 18px 40px -28px rgba(0,0,0,0.5)' }}>
+                <div style={{ fontSize: '24px', fontWeight: '900' }}>{publicGruplar.reduce((t, g) => t + g.urunler.length, 0)}</div>
+                <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>ürün</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
+            <input type="text" placeholder="Ürün ara..." value={qrMenuArama} onChange={e => setQrMenuArama(e.target.value)} style={{ ...styles.input, flex: '1 1 260px', minWidth: '220px', borderRadius: '14px', backgroundColor: '#fff' }} />
+            <button type="button" onClick={() => setAktifQrMenuGrubu('Tümü')} style={{ border: aktifQrMenuGrubu === 'Tümü' ? `1px solid ${publicAyarlari.temaRengi}` : '1px solid #e2e8f0', backgroundColor: aktifQrMenuGrubu === 'Tümü' ? '#fff7ed' : '#fff', color: aktifQrMenuGrubu === 'Tümü' ? '#ea580c' : '#334155', padding: '10px 12px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900' }}>Tümü</button>
+            {publicGruplar.map(grup => (
+              <button key={grup.ad} type="button" onClick={() => setAktifQrMenuGrubu(grup.ad)} style={{ border: aktifQrMenuGrubu === grup.ad ? `1px solid ${publicAyarlari.temaRengi}` : '1px solid #e2e8f0', backgroundColor: aktifQrMenuGrubu === grup.ad ? '#fff7ed' : '#fff', color: aktifQrMenuGrubu === grup.ad ? '#ea580c' : '#334155', padding: '10px 12px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900' }}>{grup.ad}</button>
+            ))}
+          </div>
+
+          {qrMenuYukleniyor ? (
+            <div style={{ ...styles.panelCard, textAlign: 'center', color: '#64748b', fontWeight: '800' }}>Menü yükleniyor...</div>
+          ) : qrMenuHatasi ? (
+            <div style={{ ...styles.panelCard, textAlign: 'center', color: '#dc2626', fontWeight: '800' }}>{qrMenuHatasi}</div>
+          ) : publicFiltreliGruplar.length === 0 ? (
+            <div style={{ ...styles.panelCard, textAlign: 'center', color: '#94a3b8', fontWeight: '800' }}>Bu menüde gösterilecek ürün bulunamadı.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {publicFiltreliGruplar.map(grup => (
+                <section key={grup.ad} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: isMobile ? '16px' : '22px', boxShadow: '0 24px 55px -40px rgba(15,23,42,0.35)' }}>
+                  <h2 style={{ margin: '0 0 14px', fontSize: '22px', color: '#0f172a' }}>{grup.ad}</h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
+                    {grup.urunler.map(urun => {
+                      const resim = urunGosterimResmi(urun);
+                      return (
+                        <div key={urun.id} style={{ display: 'flex', gap: '12px', border: '1px solid #eef2f7', borderRadius: '18px', padding: '12px', backgroundColor: '#fbfdff' }}>
+                          {resim ? <img src={resim} alt={urun.ad} style={{ width: '78px', height: '78px', objectFit: 'cover', borderRadius: '14px', flex: '0 0 78px', border: '1px solid #e2e8f0' }} /> : <div style={{ width: '78px', height: '78px', borderRadius: '14px', flex: '0 0 78px', background: '#fff7ed', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', border: '1px solid #fed7aa' }}>🍽️</div>}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
+                              <strong style={{ color: '#1e293b', fontSize: '15px' }}>{urun.ad}</strong>
+                              <span style={{ color: publicAyarlari.temaRengi, fontWeight: '900', whiteSpace: 'nowrap' }}>{Number(urun.fiyat || 0).toLocaleString('tr-TR')} TL</span>
+                            </div>
+                            {urun.aciklama ? <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '12px', lineHeight: 1.5 }}>{urun.aciklama}</p> : null}
+                            {Array.isArray(urun.menuNotlari) && urun.menuNotlari.length > 0 ? (
+                              <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                {urun.menuNotlari.slice(0, 4).map(not => <span key={not.id || not.ad} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '4px 7px', color: '#475569', fontSize: '11px', fontWeight: '800' }}>{not.ad}{Number(not.fiyat || 0) > 0 ? ` +${Number(not.fiyat || 0)} TL` : ''}</span>)}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', fontWeight: '800', marginTop: '24px' }}>integra POS QR Menü</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.appViewport}>
@@ -10942,7 +11823,17 @@ Toplam Ciro: {toplam}
                   onClick={() => setActiveTab('paket')}
                   style={activeTab === 'paket' ? styles.navItemActive : styles.navItem}
                 >
-                  🛵 Paket Servis
+                  🛵 Paket Servis {yeniOnlineSiparisSayisi > 0 ? `(${yeniOnlineSiparisSayisi})` : ''}
+                </button>
+              )}
+
+              {tabGorunur('entegrasyonlar') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('entegrasyonlar')}
+                  style={activeTab === 'entegrasyonlar' ? styles.navItemActive : styles.navItem}
+                >
+                  🔌 Entegrasyonlar
                 </button>
               )}
 
@@ -11034,6 +11925,16 @@ Toplam Ciro: {toplam}
                   style={activeTab === 'menu' ? styles.navItemActive : styles.navItem}
                 >
                   🍔 Menü & Ayarlar
+                </button>
+              )}
+
+              {tabGorunur('qr_menu') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('qr_menu')}
+                  style={activeTab === 'qr_menu' ? styles.navItemActive : styles.navItem}
+                >
+                  📱 QR Menü
                 </button>
               )}
 
@@ -12383,6 +13284,104 @@ Toplam Ciro: {toplam}
                   Gel-al ve paket siparişleri buradan takip edebilirsiniz.
                 </p>
 
+                <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '16px', margin: 0, color: '#1e293b' }}>🌐 Online Siparişler</h3>
+                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
+                        Trendyol, Getir ve Migros siparişleri burada toplanır; onayladığınız sipariş paket servise ve mutfağa aktarılır.
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => onlineSiparisleriBackenddenCek(aktifEntegrasyonPlatformu)} disabled={onlineSiparisYukleniyor} style={{ ...styles.btnOrange, backgroundColor: onlineSiparisYukleniyor ? '#94a3b8' : '#2563eb' }}>
+                        {onlineSiparisYukleniyor ? 'Çekiliyor...' : 'Siparişleri Çek'}
+                      </button>
+                      <button type="button" onClick={() => onlineDemoSiparisOlustur(aktifEntegrasyonPlatformu)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>
+                        Test Siparişi Düşür
+                      </button>
+                      <button type="button" onClick={() => setActiveTab('entegrasyonlar')} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>
+                        Entegrasyon Ayarları
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    {entegrasyonPlatformSecenekleri.map(platform => {
+                      const bagli = aktifRestoranPlatformBaglantilari.some(b => b.platform === platform && b.aktif !== false);
+                      return (
+                        <button key={platform} type="button" onClick={() => setAktifEntegrasyonPlatformu(platform)} style={{ border: aktifEntegrasyonPlatformu === platform ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifEntegrasyonPlatformu === platform ? '#fff7ed' : '#fff', color: aktifEntegrasyonPlatformu === platform ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
+                          {platform} {bagli ? '✅' : '⚙️'}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    {[
+                      { key: 'yeni', label: `Yeni (${yeniOnlineSiparisSayisi})` },
+                      { key: 'aktarilan', label: `Aktarılan (${aktarilanOnlineSiparisSayisi})` },
+                      { key: 'tum', label: `Tümü (${aktifRestoranOnlineSiparisleri.length})` },
+                      { key: 'iptal', label: 'İptal / Yok Sayıldı' },
+                    ].map(sekme => (
+                      <button key={sekme.key} type="button" onClick={() => setPaketOnlineSekmesi(sekme.key)} style={{ border: paketOnlineSekmesi === sekme.key ? '1px solid #0f172a' : '1px solid #e2e8f0', backgroundColor: paketOnlineSekmesi === sekme.key ? '#0f172a' : '#fff', color: paketOnlineSekmesi === sekme.key ? '#fff' : '#334155', padding: '8px 10px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
+                        {sekme.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {onlineSiparisMesaji && (
+                    <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', padding: '9px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '800', marginBottom: '10px' }}>
+                      {onlineSiparisMesaji}
+                    </div>
+                  )}
+
+                  {filtreliOnlineSiparisler.length === 0 ? (
+                    <div style={{ color: '#94a3b8', padding: '12px', backgroundColor: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                      Bu bölümde online sipariş yok. API bağlanınca siparişler otomatik burada görünecek.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                      {filtreliOnlineSiparisler.map(siparis => (
+                        <div key={siparis.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start', marginBottom: '8px' }}>
+                            <div>
+                              <span style={{ ...platformRenkleri(siparis.platform), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '4px 8px', fontSize: '11px', fontWeight: '900', marginBottom: '6px' }}>{siparis.platform || 'Online'}</span>
+                              <div style={{ fontWeight: '900', color: '#1e293b' }}>#{siparis.platformOrderId || siparis.id}</div>
+                              <div style={{ color: '#64748b', fontSize: '12px' }}>{new Date(siparis.createdAt || Date.now()).toLocaleString('tr-TR')}</div>
+                            </div>
+                            <span style={{ ...onlineSiparisDurumRengi(siparis.durum), border: '1px solid', borderRadius: '999px', padding: '5px 8px', fontSize: '11px', fontWeight: '900', whiteSpace: 'nowrap' }}>{siparis.durum || 'Yeni'}</span>
+                          </div>
+                          <div style={{ color: '#334155', fontSize: '13px', lineHeight: 1.5 }}>
+                            <strong>{siparis.musteriAdi || 'Online Müşteri'}</strong><br />
+                            {siparis.telefon ? <>☎️ {siparis.telefon}<br /></> : null}
+                            {siparis.adres ? <>📍 {siparis.adres}<br /></> : null}
+                            {siparis.notMetni ? <>📝 {siparis.notMetni}</> : null}
+                          </div>
+                          <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {(siparis.urunler || []).map((u, idx) => (
+                              <span key={idx} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '6px 9px', fontSize: '12px', fontWeight: '800' }}>{u.adet}x {u.ad} / {u.fiyat} TL</span>
+                            ))}
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
+                            <div>
+                              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>{siparis.odemeTipi || 'Ödeme bilgisi yok'}</div>
+                              <div style={{ fontSize: '18px', color: '#0f172a', fontWeight: '950' }}>{Number(siparis.toplam || 0)} TL</div>
+                            </div>
+                            {String(siparis.durum || 'Yeni') === 'Yeni' ? (
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                <button type="button" onClick={() => onlineSiparisiPaketServiseAktar(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#10b981', padding: '8px 10px', fontSize: '12px' }}>Paket Servise Aktar</button>
+                                <button type="button" onClick={() => onlineSiparisDurumuGuncelle(siparis.id, 'Yok Sayıldı')} style={{ ...styles.btnOrange, backgroundColor: '#ef4444', padding: '8px 10px', fontSize: '12px' }}>Yok Say</button>
+                              </div>
+                            ) : (
+                              <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '900' }}>{siparis.paketSiparisId ? `Paket ID: ${siparis.paketSiparisId}` : 'İşlem tamamlandı'}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <form onSubmit={paketSiparisOlustur} style={{ ...styles.inlineForm, alignItems: 'flex-start' }}>
                   {/* kayıtlı paket servis müşterisi seçme kodu */}
                   <div
@@ -12854,6 +13853,13 @@ Toplam Ciro: {toplam}
                           <div>
                             <strong>{p.musteriAdi}</strong> — {p.telefon}
                             <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>{p.adres}</div>
+                            {(p.kaynakPlatform || String(p.notMetni || '').includes('Sipariş No:')) && (
+                              <div style={{ marginTop: '5px' }}>
+                                <span style={{ ...platformRenkleri(p.kaynakPlatform || 'Online'), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '4px 8px', fontSize: '11px', fontWeight: '900' }}>
+                                  🌐 {p.kaynakPlatform || 'Online Sipariş'} {p.platformOrderId ? `#${p.platformOrderId}` : ''}
+                                </span>
+                              </div>
+                            )}
                             {p.notMetni && <div style={{ color: '#ff6b35', fontSize: '12px', marginTop: '4px' }}>Not: {p.notMetni}</div>}
                             {p.kuryeAdi && <div style={{ color: '#2563eb', fontSize: '12px', marginTop: '4px', fontWeight: '800' }}>Kurye: {p.kuryeAdi}</div>}
                           </div>
@@ -13038,6 +14044,95 @@ Toplam Ciro: {toplam}
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* entegrasyonlar ekranını gösteren kod */}
+            {activeTab === 'entegrasyonlar' && (
+              <div style={styles.panelCard}>
+                <h2 style={styles.pageTitle}>🔌 Entegrasyonlar</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                  Trendyol, Getir ve Migros gibi platformların API bilgilerini burada yönetin. Siparişler Paket Servis ekranındaki Online Siparişler havuzuna düşer.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: '16px', alignItems: 'flex-start' }}>
+                  <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', margin: 0, border: '1px solid #e2e8f0' }}>
+                    <h3 style={{ marginTop: 0, color: '#1e293b', fontSize: '16px' }}>Platformlar</h3>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      {entegrasyonPlatformSecenekleri.map(platform => {
+                        const kayit = aktifRestoranPlatformBaglantilari.find(b => b.platform === platform);
+                        return (
+                          <button key={platform} type="button" onClick={() => entegrasyonPlatformuSec(platform)} style={{ textAlign: 'left', border: aktifEntegrasyonPlatformu === platform ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifEntegrasyonPlatformu === platform ? '#fff7ed' : '#fff', color: '#0f172a', borderRadius: '12px', padding: '12px', cursor: 'pointer', fontWeight: '900' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}><span>{platform}</span><span>{kayit?.aktif !== false && kayit ? '✅' : '⚙️'}</span></div>
+                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontWeight: '800' }}>{kayit ? `Satıcı ID: ${kayit.saticiId || '-'}` : 'Bağlantı yok'}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ ...styles.panelCard, backgroundColor: '#fff', margin: 0, border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
+                      <div>
+                        <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px' }}>{aktifEntegrasyonPlatformu} Bağlantısı</h3>
+                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>API Key / Secret bilgileri App.jsx içine gömülmez; kullanıcı panelden girer. Canlı çekim için backend fonksiyonu kullanılır.</div>
+                      </div>
+                      <span style={{ ...platformRenkleri(aktifEntegrasyonPlatformu), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '6px 10px', fontSize: '12px', fontWeight: '900' }}>{aktifPlatformBaglantisi?.aktif !== false && aktifPlatformBaglantisi ? 'Aktif Bağlantı' : 'Kurulum Bekliyor'}</span>
+                    </div>
+                    <form onSubmit={platformBaglantisiKaydet} style={{ display: 'grid', gap: '10px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+                        <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Platform
+                          <select value={entegrasyonFormu.platform} onChange={e => entegrasyonPlatformuSec(e.target.value)} style={{ ...styles.input, width: '100%', marginTop: '5px' }}>
+                            {entegrasyonPlatformSecenekleri.map(platform => (<option key={platform} value={platform}>{platform}</option>))}
+                          </select>
+                        </label>
+                        <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Satıcı ID / Cari ID
+                          <input type="text" value={entegrasyonFormu.saticiId} onChange={e => entegrasyonFormuGuncelle('saticiId', e.target.value)} placeholder="Trendyol Satıcı ID / Cari ID" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
+                        </label>
+                      </div>
+                      <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Entegrasyon Referans Kodu
+                        <input type="text" value={entegrasyonFormu.entegrasyonReferansKodu} onChange={e => entegrasyonFormuGuncelle('entegrasyonReferansKodu', e.target.value)} placeholder="Panelde görünen entegrasyon referans kodu" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+                        <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>API Key
+                          <input type="password" value={entegrasyonFormu.apiKey} onChange={e => entegrasyonFormuGuncelle('apiKey', e.target.value)} placeholder="API Key" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
+                        </label>
+                        <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>API Secret
+                          <input type="password" value={entegrasyonFormu.apiSecret} onChange={e => entegrasyonFormuGuncelle('apiSecret', e.target.value)} placeholder="API Secret" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
+                        </label>
+                      </div>
+                      <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Token
+                        <input type="password" value={entegrasyonFormu.token} onChange={e => entegrasyonFormuGuncelle('token', e.target.value)} placeholder="Token varsa girin" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', fontWeight: '900' }}>
+                        <input type="checkbox" checked={entegrasyonFormu.aktif !== false} onChange={e => entegrasyonFormuGuncelle('aktif', e.target.checked)} />
+                        Bu platformdan sipariş çekme aktif olsun
+                      </label>
+                      <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '800', lineHeight: 1.5 }}>Güvenlik notu: Gerçek canlı kullanımda API anahtarları Supabase Edge Function / Vercel API tarafında saklanmalı ve React tarafında doğrudan platform API çağrısı yapılmamalı. Bu ekran POS içi bağlantı yönetimi ve backend adaptörüne hazırlık için eklendi.</div>
+                      {entegrasyonMesaji && (<div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900' }}>{entegrasyonMesaji}</div>)}
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button type="submit" style={styles.btnOrange}>Bağlantıyı Kaydet</button>
+                        <button type="button" onClick={() => onlineSiparisleriBackenddenCek(aktifEntegrasyonPlatformu)} disabled={onlineSiparisYukleniyor} style={{ ...styles.btnOrange, backgroundColor: onlineSiparisYukleniyor ? '#94a3b8' : '#2563eb' }}>{onlineSiparisYukleniyor ? 'Test Ediliyor...' : 'Sipariş Çekmeyi Test Et'}</button>
+                        <button type="button" onClick={() => onlineDemoSiparisOlustur(aktifEntegrasyonPlatformu)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Test Siparişi Oluştur</button>
+                        {aktifPlatformBaglantisi && (<button type="button" onClick={() => platformBaglantisiSil(aktifEntegrasyonPlatformu)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Bağlantıyı Sil</button>)}
+                      </div>
+                    </form>
+                    <div style={{ marginTop: '16px' }}>
+                      <h4 style={{ margin: '0 0 8px', color: '#1e293b' }}>Kayıtlı Bağlantılar</h4>
+                      {aktifRestoranPlatformBaglantilari.length === 0 ? (
+                        <div style={{ color: '#94a3b8', padding: '12px', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>Bu restoran için kayıtlı platform bağlantısı yok.</div>
+                      ) : (
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          {aktifRestoranPlatformBaglantilari.map(baglanti => (
+                            <div key={baglanti.id || baglanti.platform} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <span style={{ ...platformRenkleri(baglanti.platform), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '5px 9px', fontSize: '12px', fontWeight: '900' }}>{baglanti.platform}</span>
+                              <div style={{ flex: 1 }}><strong>{baglanti.saticiId || '-'}</strong><div style={{ color: '#64748b', fontSize: '12px' }}>API Key: {baglanti.apiKey ? '••••••••' : 'Yok'} / Token: {baglanti.token ? '••••••••' : 'Yok'}</div></div>
+                              <span style={baglanti.aktif !== false ? styles.badgeActive : styles.badgePending}>{baglanti.aktif !== false ? 'Aktif' : 'Pasif'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -15009,6 +16104,108 @@ Toplam Ciro: {toplam}
                     </div>
                   ))
                 )}
+              </div>
+            )}
+
+            {/* QR menü linki, QR kod ve müşteriye açık dijital menü ekranını yöneten kod */}
+            {activeTab === 'qr_menu' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                <div style={styles.panelCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    <div>
+                      <h2 style={styles.pageTitle}>📱 QR Menü</h2>
+                      <p style={{ color: '#64748b', fontSize: '13px', margin: '8px 0 0', lineHeight: 1.6, maxWidth: '760px' }}>
+                        Menü yönetimindeki tüm ürünler ve gruplar otomatik olarak QR menüye aktarılır. Ürün adı, fiyatı, görseli, hazır notları ve grup bilgisi müşterinin telefonunda görünür.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={qrMenuLinkiniKopyala} style={{ ...styles.btnOrange, background: '#1e293b' }}>Linki Kopyala</button>
+                      <button type="button" onClick={() => window.open(qrMenuPanelLinki, '_blank')} style={{ ...styles.btnOrange, background: '#2563eb' }}>Müşteri Önizle</button>
+                      <button type="button" onClick={qrMenuKoduYazdir} style={{ ...styles.btnOrange, background: '#10b981' }}>QR Yazdır</button>
+                    </div>
+                  </div>
+
+                  {qrMenuMesaji && <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '14px' }}>{qrMenuMesaji}</div>}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px 1fr', gap: '18px', alignItems: 'start' }}>
+                    <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '16px', textAlign: 'center' }}>
+                      <div style={{ backgroundColor: '#fff', borderRadius: '18px', padding: '14px', border: '1px solid #e2e8f0', display: 'inline-block' }}>
+                        <img src={qrMenuPanelKodUrl} alt="QR Menü Kodu" style={{ width: '230px', height: '230px', display: 'block' }} />
+                      </div>
+                      <div style={{ marginTop: '12px', color: '#1e293b', fontWeight: '900' }}>{user?.restaurant || 'Restoran'}</div>
+                      <div style={{ marginTop: '6px', color: '#64748b', fontSize: '11px', wordBreak: 'break-all', lineHeight: 1.5 }}>{qrMenuPanelLinki}</div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+                      <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '18px', padding: '16px' }}>
+                        <div style={{ color: '#9a3412', fontSize: '12px', fontWeight: '900' }}>QR Ürün</div>
+                        <div style={{ color: '#0f172a', fontSize: '28px', fontWeight: '900', marginTop: '8px' }}>{qrMenuPanelUrunSayisi}</div>
+                        <div style={{ color: '#9a3412', fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>menüden otomatik gelir</div>
+                      </div>
+                      <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '18px', padding: '16px' }}>
+                        <div style={{ color: '#1d4ed8', fontSize: '12px', fontWeight: '900' }}>QR Grup</div>
+                        <div style={{ color: '#0f172a', fontSize: '28px', fontWeight: '900', marginTop: '8px' }}>{qrMenuPanelGruplari.length}</div>
+                        <div style={{ color: '#1d4ed8', fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>ürün grupları aktarılır</div>
+                      </div>
+                      <div style={{ backgroundColor: aktifQrMenuAyari.aktif ? '#ecfdf5' : '#fef2f2', border: aktifQrMenuAyari.aktif ? '1px solid #a7f3d0' : '1px solid #fecaca', borderRadius: '18px', padding: '16px' }}>
+                        <div style={{ color: aktifQrMenuAyari.aktif ? '#047857' : '#b91c1c', fontSize: '12px', fontWeight: '900' }}>Durum</div>
+                        <div style={{ color: '#0f172a', fontSize: '22px', fontWeight: '900', marginTop: '8px' }}>{aktifQrMenuAyari.aktif ? 'Aktif' : 'Pasif'}</div>
+                        <label style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', color: '#475569', fontSize: '12px', fontWeight: '800' }}><input type="checkbox" checked={aktifQrMenuAyari.aktif !== false} onChange={e => qrMenuAyariGuncelle('aktif', e.target.checked)} />QR menü açık</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={styles.panelCard}>
+                  <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>QR Menü Görünüm Ayarları</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(220px, 1fr))', gap: '10px' }}>
+                    <input type="text" placeholder="QR menü başlığı" value={aktifQrMenuAyari.baslik} onChange={e => qrMenuAyariGuncelle('baslik', e.target.value)} style={styles.input} />
+                    <input type="text" placeholder="Logo / ürün görseli URL" value={aktifQrMenuAyari.logoUrl} onChange={e => qrMenuAyariGuncelle('logoUrl', e.target.value)} style={styles.input} />
+                    <input type="text" placeholder="Açıklama" value={aktifQrMenuAyari.aciklama} onChange={e => qrMenuAyariGuncelle('aciklama', e.target.value)} style={styles.input} />
+                    <input type="text" placeholder="WhatsApp telefon" value={aktifQrMenuAyari.whatsappTelefon} onChange={e => qrMenuAyariGuncelle('whatsappTelefon', e.target.value)} style={styles.input} />
+                    <input type="text" placeholder="Alt not" value={aktifQrMenuAyari.siparisNotu} onChange={e => qrMenuAyariGuncelle('siparisNotu', e.target.value)} style={styles.input} />
+                    <label style={{ ...styles.input, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#475569' }}><input type="checkbox" checked={aktifQrMenuAyari.fiyatlariGoster !== false} onChange={e => qrMenuAyariGuncelle('fiyatlariGoster', e.target.checked)} />Fiyatları QR menüde göster</label>
+                  </div>
+                </div>
+
+                <div style={styles.panelCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, color: '#1e293b' }}>Canlı QR Menü Önizleme</h3>
+                      <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '700', marginTop: '4px' }}>Ürünler ve gruplar Menü & Ayarlar ekranından otomatik beslenir.</div>
+                    </div>
+                    <input type="text" placeholder="QR menüde ürün ara..." value={qrMenuArama} onChange={e => setQrMenuArama(e.target.value)} style={{ ...styles.input, minWidth: isMobile ? '100%' : '260px' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    <button type="button" onClick={() => setAktifQrMenuGrubu('Tümü')} style={{ border: aktifQrMenuGrubu === 'Tümü' ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifQrMenuGrubu === 'Tümü' ? '#fff7ed' : '#fff', color: aktifQrMenuGrubu === 'Tümü' ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>Tümü</button>
+                    {qrMenuPanelGruplari.map(grup => <button key={grup.ad} type="button" onClick={() => setAktifQrMenuGrubu(grup.ad)} style={{ border: aktifQrMenuGrubu === grup.ad ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifQrMenuGrubu === grup.ad ? '#fff7ed' : '#fff', color: aktifQrMenuGrubu === grup.ad ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>{grup.ad} ({grup.urunler.length})</button>)}
+                  </div>
+
+                  {qrMenuPanelFiltreliGruplari.length === 0 ? <div style={{ color: '#94a3b8', padding: '18px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '16px', textAlign: 'center', fontWeight: '800' }}>QR menüye aktarılacak ürün yok. Önce Menü & Ayarlar ekranından ürün ve grup ekleyin.</div> : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {qrMenuPanelFiltreliGruplari.map(grup => (
+                        <div key={grup.ad} style={{ border: '1px solid #e2e8f0', borderRadius: '18px', padding: '14px', backgroundColor: '#fbfdff' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '12px' }}><h4 style={{ margin: 0, color: '#1e293b', fontSize: '16px' }}>{grup.ad}</h4><span style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>{grup.urunler.length} ürün</span></div>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
+                            {grup.urunler.map(urun => {
+                              const resim = urunGosterimResmi(urun);
+                              return (
+                                <div key={urun.id} style={{ display: 'flex', gap: '10px', backgroundColor: '#fff', border: '1px solid #eef2f7', borderRadius: '14px', padding: '10px' }}>
+                                  {resim ? <img src={resim} alt={urun.ad} style={{ width: '58px', height: '58px', objectFit: 'cover', borderRadius: '12px', border: '1px solid #e2e8f0', flex: '0 0 58px' }} /> : <div style={{ width: '58px', height: '58px', borderRadius: '12px', backgroundColor: '#fff7ed', color: '#f97316', border: '1px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 58px', fontSize: '22px' }}>🍽️</div>}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}><strong style={{ color: '#1e293b', fontSize: '13px' }}>{urun.ad}</strong>{aktifQrMenuAyari.fiyatlariGoster !== false && <span style={{ color: '#ff6b35', fontWeight: '900', fontSize: '13px', whiteSpace: 'nowrap' }}>{Number(urun.fiyat || 0).toLocaleString('tr-TR')} TL</span>}</div>
+                                    <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', fontWeight: '700' }}>{urun.departman || grup.departman || 'Menü'} {urun.kdvOrani ? `• KDV %${urun.kdvOrani}` : ''}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
