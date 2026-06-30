@@ -2345,12 +2345,17 @@ Toplam Ciro: {toplam}
     pencere.document.close();
   };
 
-  // herkese açık QR menü linki açıldığında restoranın ürün ve grup verisini çeken kod
-  async function qrMenuyuSupabasedenCek(restaurantId) {
+  // herkese açık QR menü linki açıldığında restoranın ürün, grup ve masa verisini çeken kod
+  // sessiz mod, QR müşteri ekranının belirli aralıklarla "Menü yükleniyor" ekranına düşmesini engeller.
+  async function qrMenuyuSupabasedenCek(restaurantId, secenekler = {}) {
     if (!restaurantId) return;
 
-    setQrMenuYukleniyor(true);
-    setQrMenuHatasi('');
+    const sessizYenileme = Boolean(secenekler?.sessiz);
+
+    if (!sessizYenileme) {
+      setQrMenuYukleniyor(true);
+      setQrMenuHatasi('');
+    }
 
     try {
       const [restoranSonuc, grupSonuc, urunSonuc, masaSonuc] = await Promise.all([
@@ -2424,9 +2429,13 @@ Toplam Ciro: {toplam}
       setQrMenuPublicMasalar(temizMasalar);
     } catch (err) {
       console.error('QR menü verisi çekilemedi:', err);
-      setQrMenuHatasi('QR menü şu anda yüklenemedi. Lütfen işletmeden destek isteyin.');
+      if (!sessizYenileme || (!qrMenuRestoran && (!Array.isArray(qrMenuPublicUrunleri) || qrMenuPublicUrunleri.length === 0))) {
+        setQrMenuHatasi('QR menü şu anda yüklenemedi. Lütfen işletmeden destek isteyin.');
+      }
     } finally {
-      setQrMenuYukleniyor(false);
+      if (!sessizYenileme) {
+        setQrMenuYukleniyor(false);
+      }
     }
   }
 
@@ -13511,7 +13520,7 @@ Toplam Ciro: {toplam}
       }
 
       yenilemeZamanlayicilari[anahtar] = window.setTimeout(() => {
-        qrMenuyuSupabasedenCek(restaurantId);
+        qrMenuyuSupabasedenCek(restaurantId, { sessiz: true });
       }, 550);
     };
 
@@ -13532,9 +13541,11 @@ Toplam Ciro: {toplam}
 
     qrKanal.subscribe();
 
+    // QR müşteri ekranında sepet/masa seçimi bozulmasın diye panel kadar agresif yenileme yapmıyoruz.
+    // Realtime anlık günceller; bu yedek yenileme sadece bağlantı koparsa sessiz kontrol içindir.
     const yedekZamanlayici = window.setInterval(() => {
       qrYenilemePlanla('qr_menu_yedek');
-    }, 6500);
+    }, 20000);
 
     const qrOdaklanincaYenile = () => {
       if (document.visibilityState === 'visible') qrYenilemePlanla('qr_menu_odak');
@@ -13543,7 +13554,8 @@ Toplam Ciro: {toplam}
 
     document.addEventListener('visibilitychange', qrOdaklanincaYenile);
     window.addEventListener('focus', qrPencereOdakYenile);
-    window.setTimeout(() => qrYenilemePlanla('qr_menu_ilk'), 900);
+    // İlk veri yüklemesini yukarıdaki ana QR useEffect yapıyor.
+    // Burada tekrar yükleme başlatmıyoruz; böylece QR sayfa açılır açılmaz ikinci kez kendini yenilemez.
 
     return () => {
       Object.values(yenilemeZamanlayicilari).forEach(zamanlayici => {
