@@ -96,6 +96,11 @@ function IntegraApp() {
   const [reportType, setReportType] = useState('gunluk');
   const [rehberGizli, setRehberGizli] = useState(() => localStorage.getItem('integra_rehber_gizli') === '1');
   const [bildirimler, setBildirimler] = useState([]);
+  const [manuelYenilemeYapiliyor, setManuelYenilemeYapiliyor] = useState(false);
+  const [sonVeriYenilemeZamani, setSonVeriYenilemeZamani] = useState(null);
+  const [canliSenkronDurumu, setCanliSenkronDurumu] = useState('Bekleniyor');
+  const [supabaseBaglantiDurumu, setSupabaseBaglantiDurumu] = useState('Bekleniyor');
+  const [sonSistemHatasi, setSonSistemHatasi] = useState('');
 
   // tarayıcının eski üst alert penceresi yerine modern sağ alt bildirim gösteren kod
   const bildirimTipiniBul = (mesaj = '', verilenTip = 'info') => {
@@ -3531,6 +3536,7 @@ Toplam Ciro: {toplam}
     { key: 'kasa', label: '💰 Kasa' },
     { key: 'isletme_profili', label: '🏢 İşletme Profili' },
     { key: 'kurulum', label: '🚀 Kurulum Sihirbazı' },
+    { key: 'sistem_durumu', label: '🛠️ Sistem Durumu' },
     { key: 'giderler', label: '🧾 Giderler' },
     { key: 'iadeler', label: '↩️ İade / İkram' },
     { key: 'rezervasyonlar', label: '📅 Rezervasyon' },
@@ -3571,7 +3577,7 @@ Toplam Ciro: {toplam}
       key: 'Baslangic',
       label: 'Başlangıç',
       aciklama: 'Masa, mutfak, hızlı satış ve temel rapor isteyen küçük işletmeler.',
-      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'garsonlar'],
+      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
     },
     {
       key: 'Profesyonel',
@@ -3583,13 +3589,13 @@ Toplam Ciro: {toplam}
       key: 'Paket Servis',
       label: 'Paket Servis Odaklı',
       aciklama: 'Paket, online sipariş havuzu, kurye ve entegrasyon ağırlıklı kullanım.',
-      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'isletme_profili', 'kurulum', 'garsonlar'],
+      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
     },
     {
       key: 'QR Plus',
       label: 'QR Menü Plus',
       aciklama: 'QR menü, masadan sipariş, servis talebi ve sadakat odaklı kullanım.',
-      sekmeler: ['masalar', 'mutfak', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'garsonlar'],
+      sekmeler: ['masalar', 'mutfak', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
     },
     {
       key: 'Premium',
@@ -3674,6 +3680,7 @@ Toplam Ciro: {toplam}
 
   // sekmenin kullanıcı için görünür olup olmadığını kontrol eden kod
   const tabGorunur = (tabKey) => {
+    if (tabKey === 'sistem_durumu') return Boolean(user);
     return kullaniciSekmeleri.includes(tabKey);
   };
 
@@ -5207,6 +5214,7 @@ Toplam Ciro: {toplam}
       masaAdi: s.masa_adi || null,
       musteriAdi: s.musteri_adi || '',
       ad: s.ad,
+      urunId: s.urun_id || null,
       fiyat: Number(s.fiyat || 0),
       adet: Number(s.adet || 1),
       tarih: s.tarih || String(s.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
@@ -7712,6 +7720,89 @@ Toplam Ciro: {toplam}
     }));
   };
 
+
+  // kapalı adisyon geri açılırken daha önce düşülen stokları geri alan kod
+  const stokDusumunuGeriAl = async (siparisler = []) => {
+    const geriAlinacakSiparisler = Array.isArray(siparisler) ? siparisler : [];
+    if (geriAlinacakSiparisler.length === 0) return;
+
+    const guncelMenu = [...menuUrunleri];
+    const malzemeGuncellemeleri = {};
+    const stokHareketleri = [];
+
+    for (const siparis of geriAlinacakSiparisler) {
+      const urun = menuUrunleri.find(u => String(u.id) === String(siparis.urunId || '')) ||
+        menuUrunleri.find(u => String(u.ad || '').trim().toLocaleLowerCase('tr-TR') === String(siparis.ad || '').trim().toLocaleLowerCase('tr-TR'));
+
+      if (!urun) continue;
+
+      const adet = Number(siparis.adet || 1);
+
+      if (urun.stokTakip && !urunSatistaUretilecekMi(urun)) {
+        const yeniStok = paraYuvarla(Number(urun.stokAdedi || 0) + adet);
+
+        const { error } = await supabase
+          .from('menu_urunleri')
+          .update({ stok_adedi: yeniStok })
+          .eq('id', urun.id)
+          .eq('restaurant_id', mevcutRestaurantId);
+
+        if (error) console.error('Ürün stok geri alma hatası:', error);
+
+        const index = guncelMenu.findIndex(u => String(u.id) === String(urun.id));
+        if (index > -1) guncelMenu[index] = { ...guncelMenu[index], stokAdedi: yeniStok };
+      }
+
+      if (urunSatistaUretilecekMi(urun)) {
+        const receteSatirlari = (Array.isArray(urunReceteleri) ? urunReceteleri : [])
+          .filter(r => String(r.urunId) === String(urun.id));
+
+        receteSatirlari.forEach(r => {
+          const geriAlinacakMiktar = receteSatiriFireliMiktar(r) * adet;
+          if (!geriAlinacakMiktar || geriAlinacakMiktar <= 0) return;
+
+          malzemeGuncellemeleri[r.malzemeId] = Number(malzemeGuncellemeleri[r.malzemeId] || 0) + geriAlinacakMiktar;
+          stokHareketleri.push({
+            restaurant_id: mevcutRestaurantId,
+            malzeme_id: r.malzemeId,
+            urun_id: urun.id,
+            tip: 'Giriş',
+            miktar: geriAlinacakMiktar,
+            aciklama: `${siparis.ad || urun.ad} kapalı adisyon düzenleme stok iadesi`,
+          });
+        });
+      }
+    }
+
+    if (guncelMenu.some((u, idx) => Number(u.stokAdedi || 0) !== Number(menuUrunleri[idx]?.stokAdedi || 0))) {
+      setMenuUrunleri(guncelMenu);
+    }
+
+    if (Object.keys(malzemeGuncellemeleri).length > 0) {
+      const yeniMalzemeler = stokMalzemeleri.map(m => {
+        const eklenecek = Number(malzemeGuncellemeleri[m.id] || 0);
+        return eklenecek > 0 ? { ...m, stokMiktari: paraYuvarla(Number(m.stokMiktari || 0) + eklenecek) } : m;
+      });
+
+      for (const malzeme of yeniMalzemeler) {
+        if (!malzemeGuncellemeleri[malzeme.id]) continue;
+        const { error } = await supabase
+          .from('stok_malzemeleri')
+          .update({ stok_miktari: malzeme.stokMiktari })
+          .eq('id', malzeme.id)
+          .eq('restaurant_id', mevcutRestaurantId);
+
+        if (error) console.error('Hammadde stok geri alma hatası:', error);
+      }
+
+      if (stokHareketleri.length > 0) {
+        const { error } = await supabase.from('stok_hareketleri').insert(stokHareketleri);
+        if (error) console.warn('Stok iade hareketleri kaydedilemedi:', error.message);
+      }
+
+      setStokMalzemeleri(yeniMalzemeler);
+    }
+  };
 
   // stok takibi açık ürünlerin satış sonrası stoktan düşmesini sağlayan kod
   const stokDusur = async (siparisler = []) => {
@@ -12920,7 +13011,13 @@ Toplam Ciro: {toplam}
           adisyonAcilisSaati: s.adisyonAcilisSaati || null,
           adisyonKapanisSaati: s.adisyonKapanisSaati || null,
           siparisTipi: s.siparisTipi || 'Masa',
+          garsonAdi: s.garsonAdi || '',
+          satisKayitIdleri: [],
         };
+      }
+
+      if (s.id) {
+        adisyonMap[adisyonAnahtari].satisKayitIdleri.push(s.id);
       }
 
       const satirToplam = Number(s.fiyat || 0) * Number(s.adet || 1);
@@ -12930,6 +13027,8 @@ Toplam Ciro: {toplam}
       adisyonMap[adisyonAnahtari].toplamIndirim += satirIndirim;
 
       adisyonMap[adisyonAnahtari].urunler.push({
+        id: s.id,
+        urunId: s.urunId || null,
         ad: s.ad,
         not: s.not || '',
         fiyat: Number(s.fiyat || 0),
@@ -12971,6 +13070,189 @@ Toplam Ciro: {toplam}
         return `${o.tip}: ${tutar} TL`;
       })
       .join(' / ');
+  };
+
+  // sahada F5 gerekmeden elle tüm kritik verileri yenileyen kod
+  const panelVerileriniYenile = async ({ bildirim = true } = {}) => {
+    if (!user || screen !== 'dashboard') return;
+
+    setManuelYenilemeYapiliyor(true);
+    setSupabaseBaglantiDurumu('Kontrol ediliyor');
+
+    try {
+      if (user.role === 'super_admin') {
+        await restoranlariSupabasedenCek();
+        if (typeof adminBildirimleriniSupabasedenCek === 'function') await adminBildirimleriniSupabasedenCek();
+        if (typeof destekTalepleriniSupabasedenCek === 'function') await destekTalepleriniSupabasedenCek();
+      } else {
+        const aktifRestaurantId = user.role === 'waiter' ? user.parentRestaurantId : user.restaurantId;
+
+        if (!aktifRestaurantId) throw new Error('Aktif işletme bulunamadı.');
+
+        await masaBolumleriniSupabasedenCek(aktifRestaurantId);
+        await masalariSupabasedenCek(aktifRestaurantId);
+        await menuGruplariniSupabasedenCek(aktifRestaurantId);
+        await menuUrunleriniSupabasedenCek(aktifRestaurantId);
+
+        if (typeof servisTalepleriniSupabasedenCek === 'function') await servisTalepleriniSupabasedenCek(aktifRestaurantId);
+        if (typeof paketSiparisleriniSupabasedenCek === 'function') await paketSiparisleriniSupabasedenCek(aktifRestaurantId);
+        if (typeof stokMalzemeleriniSupabasedenCek === 'function') await stokMalzemeleriniSupabasedenCek(aktifRestaurantId);
+        if (typeof urunReceteleriniSupabasedenCek === 'function') await urunReceteleriniSupabasedenCek(aktifRestaurantId);
+        if (typeof cariMusterileriSupabasedenCek === 'function') await cariMusterileriSupabasedenCek(aktifRestaurantId);
+        if (typeof kasaHareketleriniSupabasedenCek === 'function') await kasaHareketleriniSupabasedenCek(aktifRestaurantId);
+        if (typeof satisGecmisiniSupabasedenCek === 'function') await satisGecmisiniSupabasedenCek(aktifRestaurantId);
+        if (typeof mutfakFisleriniSupabasedenCek === 'function') await mutfakFisleriniSupabasedenCek(aktifRestaurantId);
+        if (typeof giderleriSupabasedenCek === 'function') await giderleriSupabasedenCek(aktifRestaurantId);
+        if (typeof iadeKayitlariniSupabasedenCek === 'function') await iadeKayitlariniSupabasedenCek(aktifRestaurantId);
+        if (typeof rezervasyonlariSupabasedenCek === 'function') await rezervasyonlariSupabasedenCek(aktifRestaurantId);
+        if (typeof personelleriSupabasedenCek === 'function') await personelleriSupabasedenCek(aktifRestaurantId);
+      }
+
+      setSonVeriYenilemeZamani(new Date().toISOString());
+      setSupabaseBaglantiDurumu('Aktif');
+      setCanliSenkronDurumu(prev => prev === 'Kopuk' ? 'Yedek yenileme aktif' : (prev || 'Aktif'));
+      setSonSistemHatasi('');
+
+      if (bildirim) bildirimGoster('Veriler güncellendi.', 'success');
+    } catch (err) {
+      console.error('Manuel veri yenileme hatası:', err);
+      setSupabaseBaglantiDurumu('Hata');
+      setSonSistemHatasi(err?.message || 'Veriler yenilenemedi.');
+      if (bildirim) bildirimGoster('Veriler yenilenemedi: ' + (err?.message || err), 'error');
+    } finally {
+      setManuelYenilemeYapiliyor(false);
+    }
+  };
+
+  // kapalı adisyonu rapordan geri çekip aynı masada düzenlemeye açan kod
+  const kapaliAdisyonuDuzenlemeyeAc = async (adisyon) => {
+    if (!adisyon || !mevcutRestaurantId) return;
+
+    if (adisyon.siparisTipi === 'Paket Servis' || !adisyon.masaId) {
+      alert('Şimdilik sadece masa adisyonları tekrar düzenlemeye açılabilir.');
+      return;
+    }
+
+    const hedefMasa = masalar.find(m => String(m.id) === String(adisyon.masaId));
+
+    if (!hedefMasa) {
+      alert('Bu adisyonun bağlı olduğu masa bulunamadı.');
+      return;
+    }
+
+    if (hedefMasa.dolu || (Array.isArray(hedefMasa.siparisler) && hedefMasa.siparisler.length > 0)) {
+      alert(`${hedefMasa.ad} şu anda açık görünüyor. Önce masayı kapatın veya boş bir masaya aktarım yapın.`);
+      return;
+    }
+
+    const onay = window.confirm(`${hedefMasa.ad} için kapalı adisyon tekrar düzenlemeye açılacak. Bu işlem satış raporundan ilgili kayıtları geçici olarak kaldırır, stok düşümünü geri alır ve adisyonu masaya geri yükler. Devam edilsin mi?`);
+    if (!onay) return;
+
+    const geriYuklenecekSiparisler = (Array.isArray(adisyon.urunler) ? adisyon.urunler : []).map(urun => {
+      const menuUrunu = aktifMenu.find(u => String(u.id) === String(urun.urunId || '')) ||
+        aktifMenu.find(u => String(u.ad || '').trim().toLocaleLowerCase('tr-TR') === String(urun.ad || '').trim().toLocaleLowerCase('tr-TR'));
+
+      return {
+        urunId: menuUrunu?.id || urun.urunId || null,
+        ad: urun.ad,
+        fiyat: Number(urun.fiyat || urun.satisFiyati || 0),
+        adet: Number(urun.adet || 1),
+        not: urun.not || '',
+        ekstraUcret: Number(urun.ekstraUcret || 0),
+        normalFiyat: Number(urun.normalFiyat || urun.fiyat || 0),
+        listeFiyati: Number(urun.listeFiyati || urun.normalFiyat || urun.fiyat || 0),
+        satisFiyati: Number(urun.satisFiyati || urun.fiyat || 0),
+        indirimYuzde: Number(urun.indirimYuzde || 0),
+        indirimTutari: Number(urun.indirimTutari || 0),
+        fiyatDegistirildi: Boolean(urun.fiyatDegistirildi),
+        ikram: Boolean(urun.ikram),
+        menuGrubu: urun.menuGrubu || menuUrunu?.menuGrubu || 'Genel',
+        departman: urun.departman || menuUrunu?.departman || 'Mutfak',
+        kdvOrani: Number(urun.kdvOrani || menuUrunu?.kdvOrani || 10),
+      };
+    });
+
+    if (geriYuklenecekSiparisler.length === 0) {
+      alert('Bu adisyonda geri yüklenecek ürün bulunamadı.');
+      return;
+    }
+
+    try {
+      await stokDusumunuGeriAl(geriYuklenecekSiparisler);
+
+      const satisKayitIdleri = (Array.isArray(adisyon.satisKayitIdleri) ? adisyon.satisKayitIdleri : []).filter(Boolean);
+
+      if (satisKayitIdleri.length > 0) {
+        const { error: silmeError } = await supabase
+          .from('satis_gecmisi')
+          .delete()
+          .in('id', satisKayitIdleri)
+          .eq('restaurant_id', mevcutRestaurantId);
+
+        if (silmeError) throw silmeError;
+      } else if (adisyon.id) {
+        const { error: silmeError } = await supabase
+          .from('satis_gecmisi')
+          .delete()
+          .eq('restaurant_id', mevcutRestaurantId)
+          .eq('adisyon_id', adisyon.id);
+
+        if (silmeError) throw silmeError;
+      }
+
+      const brutTutar = siparislerAraToplamHesapla(geriYuklenecekSiparisler);
+      const netTutar = paraYuvarla(geriYuklenecekSiparisler.reduce((t, u) => t + Number(u.fiyat || 0) * Number(u.adet || 1), 0));
+
+      const { data, error: masaError } = await supabase
+        .from('masalar')
+        .update({
+          dolu: true,
+          tutar: netTutar,
+          brut_tutar: brutTutar,
+          adisyon_indirim_yuzde: 0,
+          adisyon_indirim_tutari: Number(adisyon.toplamIndirim || 0),
+          siparisler: geriYuklenecekSiparisler,
+          odemeler: Array.isArray(adisyon.odemeler) ? adisyon.odemeler : [],
+          adisyon_acilis_saati: adisyon.adisyonAcilisSaati || new Date().toISOString(),
+          adisyon_garson_adi: adisyon.garsonAdi || user?.restaurant || '',
+          musteri_adi: adisyon.musteriAdi || null,
+        })
+        .eq('id', hedefMasa.id)
+        .eq('restaurant_id', mevcutRestaurantId)
+        .select()
+        .single();
+
+      if (masaError) throw masaError;
+
+      const guncelMasa = {
+        id: data.id,
+        restaurantId: data.restaurant_id,
+        ad: data.ad,
+        dolu: data.dolu || false,
+        tutar: Number(data.tutar || 0),
+        brutTutar: Number(data.brut_tutar || 0),
+        adisyonIndirimYuzde: Number(data.adisyon_indirim_yuzde || 0),
+        adisyonIndirimTutari: Number(data.adisyon_indirim_tutari || 0),
+        siparisler: Array.isArray(data.siparisler) ? data.siparisler : [],
+        odemeler: Array.isArray(data.odemeler) ? data.odemeler : [],
+        adisyonAcilisSaati: data.adisyon_acilis_saati || null,
+        adisyonGarsonAdi: data.adisyon_garson_adi || '',
+        musteriAdi: data.musteri_adi || '',
+        bolum: data.bolum || hedefMasa.bolum || 'Salon',
+      };
+
+      setMasalar(prev => prev.map(m => String(m.id) === String(guncelMasa.id) ? guncelMasa : m));
+      setSatisGecmisi(prev => {
+        if (satisKayitIdleri.length > 0) return prev.filter(s => !satisKayitIdleri.includes(s.id));
+        return prev.filter(s => String(s.adisyonId || '') !== String(adisyon.id || ''));
+      });
+      setSelectedMasaId(guncelMasa.id);
+      setActiveTab('masalar');
+      bildirimGoster('Kapalı adisyon tekrar düzenlemeye açıldı. Düzenleyip yeniden ödeme alabilirsiniz.', 'success');
+    } catch (err) {
+      console.error('Kapalı adisyon düzenlemeye açılamadı:', err);
+      alert('Kapalı adisyon düzenlemeye açılamadı: ' + (err?.message || err));
+    }
   };
 
   // adisyon panelinde seçili ürünü bulmak için kullanılan kod
@@ -13349,8 +13631,13 @@ Toplam Ciro: {toplam}
       yenilemeZamanlayicilari[anahtar] = window.setTimeout(async () => {
         try {
           await yenile();
+          setSonVeriYenilemeZamani(new Date().toISOString());
+          setSupabaseBaglantiDurumu('Aktif');
+          setSonSistemHatasi('');
         } catch (err) {
           console.warn(`Canlı senkronizasyon yenilemesi tamamlanamadı (${anahtar}):`, err?.message || err);
+          setSonSistemHatasi(err?.message || String(err));
+          setSupabaseBaglantiDurumu('Hata');
         }
       }, 450);
     };
@@ -13465,7 +13752,14 @@ Toplam Ciro: {toplam}
     });
 
     kanal.subscribe(status => {
+      if (status === 'SUBSCRIBED') {
+        setCanliSenkronDurumu('Aktif');
+        setSupabaseBaglantiDurumu(prev => prev === 'Hata' ? prev : 'Aktif');
+      }
+
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        setCanliSenkronDurumu('Kopuk');
+        setSonSistemHatasi(`Canlı senkron bağlantısı: ${status}`);
         console.warn('Canlı senkronizasyon bağlantısı tekrar kurulmayı bekliyor:', status);
       }
     });
@@ -15555,6 +15849,14 @@ Toplam Ciro: {toplam}
                 </button>
               )}
 
+              <button
+                type="button"
+                onClick={() => setActiveTab('sistem_durumu')}
+                style={activeTab === 'sistem_durumu' ? styles.navItemActive : styles.navItem}
+              >
+                🛠️ Sistem Durumu
+              </button>
+
 
               <div style={styles.navSectionTitle}>Satış Kanalları</div>
               {tabGorunur('hizli_satis') && (
@@ -15737,6 +16039,48 @@ Toplam Ciro: {toplam}
 
           {/* MAIN */}
           <div style={isMobile ? styles.mainContentMobile : styles.mainContent}>
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                padding: '10px 12px',
+                marginBottom: '14px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '10px',
+                flexWrap: 'wrap',
+                boxShadow: '0 18px 40px -32px rgba(15,23,42,0.35)',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', color: '#64748b', fontSize: '12px', fontWeight: '850' }}>
+                <span style={{ color: canliSenkronDurumu === 'Aktif' ? '#16a34a' : canliSenkronDurumu === 'Kopuk' ? '#dc2626' : '#f97316' }}>●</span>
+                <span>Canlı senkron: {canliSenkronDurumu}</span>
+                <span>•</span>
+                <span>Supabase: {supabaseBaglantiDurumu}</span>
+                <span>•</span>
+                <span>Son yenileme: {sonVeriYenilemeZamani ? saatYaz(sonVeriYenilemeZamani) : 'Henüz yok'}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => panelVerileriniYenile({ bildirim: true })}
+                disabled={manuelYenilemeYapiliyor}
+                style={{
+                  border: 'none',
+                  backgroundColor: manuelYenilemeYapiliyor ? '#94a3b8' : '#0f172a',
+                  color: '#fff',
+                  padding: '9px 12px',
+                  borderRadius: '12px',
+                  cursor: manuelYenilemeYapiliyor ? 'not-allowed' : 'pointer',
+                  fontWeight: '950',
+                  fontSize: '12px',
+                }}
+              >
+                {manuelYenilemeYapiliyor ? '⏳ Yenileniyor' : '🔄 Verileri Yenile'}
+              </button>
+            </div>
             {renderEkranRehberi()}
             {rehberGizli ? (
               <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideShowBtn}>💡 Ekran rehberini göster</button>
@@ -15754,6 +16098,81 @@ Toplam Ciro: {toplam}
                 </button>
               </div>
             )}
+            {/* sistem durumu ve acil müdahale ekranını gösteren kod */}
+            {activeTab === 'sistem_durumu' && (
+              <div>
+                <div style={styles.contentHeader}>
+                  <div>
+                    <h2 style={styles.pageTitle}>🛠️ Sistem Durumu</h2>
+                    <div style={{ color: '#64748b', fontSize: '13px', marginTop: '6px', fontWeight: '700' }}>
+                      Sahada sorun olduğunda önce buradan bağlantı, yenileme ve açık işlem durumunu kontrol edin.
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => panelVerileriniYenile({ bildirim: true })}
+                    disabled={manuelYenilemeYapiliyor}
+                    style={{ ...styles.btnOrange, backgroundColor: manuelYenilemeYapiliyor ? '#94a3b8' : '#0f172a' }}
+                  >
+                    {manuelYenilemeYapiliyor ? '⏳ Yenileniyor' : '🔄 Tüm Verileri Yenile'}
+                  </button>
+                </div>
+
+                <div style={styles.statsGrid}>
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Canlı Senkron</div>
+                    <div style={{ ...styles.statsValue, color: canliSenkronDurumu === 'Aktif' ? '#10b981' : '#f97316' }}>{canliSenkronDurumu}</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Supabase Bağlantısı</div>
+                    <div style={{ ...styles.statsValue, color: supabaseBaglantiDurumu === 'Aktif' ? '#10b981' : supabaseBaglantiDurumu === 'Hata' ? '#ef4444' : '#f97316' }}>{supabaseBaglantiDurumu}</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Son Veri Yenileme</div>
+                    <div style={{ ...styles.statsValue, fontSize: '22px' }}>{sonVeriYenilemeZamani ? saatYaz(sonVeriYenilemeZamani) : '-'}</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Açık Masa</div>
+                    <div style={styles.statsValue}>{tumRestoranMasalari.filter(m => m.dolu).length}</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Bekleyen Servis / QR</div>
+                    <div style={{ ...styles.statsValue, color: acikServisTalebiSayisi > 0 ? '#f97316' : '#10b981' }}>{acikServisTalebiSayisi}</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Yeni Online/Paket</div>
+                    <div style={{ ...styles.statsValue, color: yeniOnlineSiparisSayisi > 0 ? '#f97316' : '#10b981' }}>{yeniOnlineSiparisSayisi}</div>
+                  </div>
+                </div>
+
+                <div style={{ ...styles.panelCard, marginTop: '18px' }}>
+                  <h3 style={{ margin: '0 0 10px', color: '#1e293b' }}>Acil kontrol sırası</h3>
+                  <div style={{ display: 'grid', gap: '8px', color: '#475569', fontSize: '13px', fontWeight: '750', lineHeight: 1.5 }}>
+                    <div>1. Sipariş veya ürün görünmüyorsa önce <strong>Verileri Yenile</strong> butonuna basın.</div>
+                    <div>2. Canlı senkron kopuk görünürse internet bağlantısını kontrol edin; sistem 6,5 saniyede bir yedek yeniler.</div>
+                    <div>3. Bekleyen QR siparişler <strong>Servis Talepleri</strong> ekranından kabul edilip masaya aktarılır.</div>
+                    <div>4. Gün sonunda açık masa kalmadığından ve kasa/gün sonu alındığından emin olun.</div>
+                  </div>
+
+                  {sonSistemHatasi ? (
+                    <div style={{ marginTop: '14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '12px', fontSize: '12px', fontWeight: '800' }}>
+                      Son hata: {sonSistemHatasi}
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '14px', backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', borderRadius: '12px', padding: '12px', fontSize: '12px', fontWeight: '800' }}>
+                      Kayıtlı son sistem hatası yok.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* masalar ve canlı adisyon ekranını gösteren kod */}
             {activeTab === 'masalar' && (
               <div style={isMobile ? styles.posLayoutMobile : styles.posLayout}>
@@ -21143,6 +21562,26 @@ Toplam Ciro: {toplam}
                               <div style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
                                 <strong>Ödeme:</strong> {odemeOzetYazisi(adisyon.odemeler)}
                               </div>
+
+                              {adisyon.siparisTipi !== 'Paket Servis' && adisyon.masaId ? (
+                                <button
+                                  type="button"
+                                  onClick={() => kapaliAdisyonuDuzenlemeyeAc(adisyon)}
+                                  style={{
+                                    border: 'none',
+                                    backgroundColor: '#2563eb',
+                                    color: '#fff',
+                                    padding: '9px 12px',
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    fontWeight: '900',
+                                    fontSize: '12px',
+                                    marginBottom: '10px',
+                                  }}
+                                >
+                                  🔁 Tekrar Aç ve Düzenle
+                                </button>
+                              ) : null}
 
                               <div style={{ fontSize: '13px', color: '#475569', marginBottom: '10px' }}>
                                 <strong>Toplam İndirim:</strong>{' '}
