@@ -380,8 +380,7 @@ function IntegraApp() {
         fisTipi: 'adisyon',
         baslik: 'ADİSYON FİŞİ',
         aktif: true,
-        sablonText: `{firma_adi}
-{fis_baslik}
+        sablonText: `{fis_baslik}
 Masa: {masa_adi}
 Garson: {garson_adi}
 Tarih: {tarih}
@@ -399,8 +398,7 @@ Toplam: {toplam}
         fisTipi: 'odeme',
         baslik: 'ÖDEME FİŞİ',
         aktif: true,
-        sablonText: `{firma_adi}
-{fis_baslik}
+        sablonText: `{fis_baslik}
 Masa: {masa_adi}
 Ödeme: {odeme_tipi}
 Tarih: {tarih}
@@ -446,8 +444,7 @@ Sebep: {iptal_sebebi}`,
         fisTipi: 'paket',
         baslik: 'PAKET SERVİS FİŞİ',
         aktif: true,
-        sablonText: `{firma_adi}
-{fis_baslik}
+        sablonText: `{fis_baslik}
 Müşteri: {musteri_adi}
 Telefon: {telefon}
 Adres: {adres}
@@ -463,8 +460,7 @@ Toplam: {toplam}
         fisTipi: 'z_raporu',
         baslik: 'GÜN SONU Z RAPORU',
         aktif: true,
-        sablonText: `{firma_adi}
-{fis_baslik}
+        sablonText: `{fis_baslik}
 Tarih: {tarih}
 
 Nakit: {nakit}
@@ -1311,22 +1307,38 @@ Toplam Ciro: {toplam}
       return varsayilanText;
     }
 
-    const sonuc = sablonDegiskenleriniUygula(sablon.sablonText, degiskenler).replace(/\n/g, '\r\n');
+    const sonuc = sablonDegiskenleriniUygula(sablon.sablonText, degiskenler)
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n')
+      .map(satir => String(satir || '').trim())
+      .filter(satir => satir && !/^integra\s*pos$/i.test(satir))
+      .join('\r\n');
+
     return String(sonuc || '').trim() || varsayilanText;
   };
 
-  // termal fişi 80mm kağıt için okunaklı metne dönüştüren kod
+  // termal fişi dar font taşmalarına karşı temizleyen ve 80mm yazıcıda okunaklı hale getiren kod
   const termalMetni80mmNormalizeEt = (metin = '') => {
-    const genislik = 48;
-    const satirlar = String(metin || '')
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .split('\n');
+    const genislik = 32;
+    const turkceKarakterDuzelt = (deger = '') => String(deger || '')
+      .replace(/İ/g, 'I')
+      .replace(/ı/g, 'i')
+      .replace(/Ş/g, 'S')
+      .replace(/ş/g, 's')
+      .replace(/Ğ/g, 'G')
+      .replace(/ğ/g, 'g')
+      .replace(/Ü/g, 'U')
+      .replace(/ü/g, 'u')
+      .replace(/Ö/g, 'O')
+      .replace(/ö/g, 'o')
+      .replace(/Ç/g, 'C')
+      .replace(/ç/g, 'c');
 
-    const kirilmisSatirlar = satirlar.flatMap(satir => {
-      const temizSatir = String(satir ?? '').trimEnd();
-
-      if (temizSatir.length <= genislik) return temizSatir;
+    const satirKir = (satir = '') => {
+      const temizSatir = turkceKarakterDuzelt(satir).trim();
+      if (!temizSatir || /^integra\s*pos$/i.test(temizSatir)) return [];
+      if (temizSatir.length <= genislik) return [temizSatir];
 
       const parcalar = [];
       let kalan = temizSatir;
@@ -1337,17 +1349,22 @@ Toplam Ciro: {toplam}
           kalan.lastIndexOf('/', genislik),
           kalan.lastIndexOf('-', genislik)
         );
-        const guvenliKesme = kesmeYeri > 12 ? kesmeYeri : genislik;
-        parcalar.push(kalan.slice(0, guvenliKesme).trimEnd());
-        kalan = kalan.slice(guvenliKesme).trimStart();
+        const guvenliKesme = kesmeYeri > 8 ? kesmeYeri : genislik;
+        parcalar.push(kalan.slice(0, guvenliKesme).trim());
+        kalan = kalan.slice(guvenliKesme).trim();
       }
 
       if (kalan) parcalar.push(kalan);
-
       return parcalar;
-    });
+    };
 
-    return kirilmisSatirlar.join('\r\n').trim();
+    return String(metin || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n')
+      .flatMap(satirKir)
+      .join('\r\n')
+      .trim();
   };
 
   // yazdırma HTML'i içinde özel karakterleri güvenli hale getiren kod
@@ -5960,19 +5977,13 @@ Toplam Ciro: {toplam}
   };
 
   // seçilen ürünü aktif masaya adet, hazır not, manuel not ve ekstra fiyat ile ekleyen kod
-  // ürün kartına doğrudan tıklanınca da aynı fonksiyon çalışır
-  const masayaSeciliUrunuEkle = async (tiklananUrun = null) => {
-    const hedefUrun = tiklananUrun || aktifMenu.find(u => String(u.id) === String(seciliUrunId));
+  const masayaSeciliUrunuEkle = async (urunParam = null) => {
+    const hedefUrunId = urunParam?.id ?? seciliUrunId;
 
-    if (!hedefUrun) {
+    if (!hedefUrunId) {
       alert('Lütfen menüden bir ürün seçin!');
       return;
     }
-
-    const ayniUrunSecili = String(seciliUrunId || '') === String(hedefUrun.id || '');
-    const kullanilacakHazirNotId = ayniUrunSecili ? seciliUrunHazirNotId : '';
-    const kullanilacakManuelNot = ayniUrunSecili ? seciliUrunNotu : '';
-    const kullanilacakEkstraFiyat = ayniUrunSecili ? seciliUrunEkstraFiyat : '';
 
     const adet = Number(seciliUrunAdet || 1);
 
@@ -5981,7 +5992,7 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const urun = hedefUrun;
+    const urun = urunParam || aktifMenu.find(u => String(u.id) === String(hedefUrunId));
 
     if (!urun) {
       alert('Ürün bulunamadı.');
@@ -5998,13 +6009,13 @@ Toplam Ciro: {toplam}
     const hazirNotlar = Array.isArray(urun.menuNotlari) ? urun.menuNotlari : [];
 
     const seciliHazirNot = hazirNotlar.find(n => {
-      return String(n.id) === String(kullanilacakHazirNotId);
+      return String(n.id) === String(seciliUrunHazirNotId);
     });
 
     const fiyatBilgisi = urunFiyatHesapla(
       urun,
-      kullanilacakHazirNotId,
-      kullanilacakEkstraFiyat,
+      seciliUrunHazirNotId,
+      seciliUrunEkstraFiyat,
       '',
       '',
       ''
@@ -6019,7 +6030,7 @@ Toplam Ciro: {toplam}
 
     const notMetni = seciliHazirNot
       ? seciliHazirNot.ad
-      : String(kullanilacakManuelNot || '').trim();
+      : String(seciliUrunNotu || '').trim();
 
     const normalFiyat = fiyatBilgisi.normalFiyat;
     const listeFiyati = fiyatBilgisi.listeFiyati;
@@ -6744,24 +6755,27 @@ Toplam Ciro: {toplam}
   };
 
   // termal yazıcıya gönderilecek sade metni hizalayan kod
-  const termalTextSatiri = (sol = '', sag = '', genislik = 48) => {
+  const TERMAL_FIS_GENISLIK = 32;
+
+  const termalTextSatiri = (sol = '', sag = '', genislik = TERMAL_FIS_GENISLIK) => {
     const solMetin = String(sol ?? '').trim();
     const sagMetin = String(sag ?? '').trim();
 
     if (!sagMetin) return solMetin;
 
+    if ((solMetin.length + sagMetin.length + 1) > genislik) {
+      return `${solMetin} ${sagMetin}`.trim();
+    }
+
     const bosluk = Math.max(genislik - solMetin.length - sagMetin.length, 1);
     return `${solMetin}${' '.repeat(bosluk)}${sagMetin}`;
   };
 
-  const termalTextOrtala = (metin = '', genislik = 48) => {
-    const temizMetin = String(metin ?? '').trim();
-    if (temizMetin.length >= genislik) return temizMetin;
-    const solBosluk = Math.floor((genislik - temizMetin.length) / 2);
-    return `${' '.repeat(solBosluk)}${temizMetin}`;
+  const termalTextOrtala = (metin = '', genislik = TERMAL_FIS_GENISLIK) => {
+    return String(metin ?? '').trim();
   };
 
-  const termalTextCizgi = (karakter = '=', genislik = 48) => karakter.repeat(genislik);
+  const termalTextCizgi = (karakter = '=', genislik = TERMAL_FIS_GENISLIK) => karakter.repeat(genislik);
 
   const fisUrunSatirlariTextHazirla = (siparisler = []) => {
     return (Array.isArray(siparisler) ? siparisler : []).flatMap(s => {
@@ -6769,7 +6783,7 @@ Toplam Ciro: {toplam}
       const fiyat = Number(s.fiyat || 0);
       const satirToplam = adet * fiyat;
       const satirlar = [
-        `${adet} x ${s.ad || '-'}        ${satirToplam} TL`,
+        termalTextSatiri(`${adet} x ${s.ad || '-'}`, `${satirToplam} TL`),
         `Birim: ${fiyat} TL / KDV: %${Number(s.kdvOrani ?? s.kdv_orani ?? 10)}`,
       ];
 
@@ -6778,7 +6792,7 @@ Toplam Ciro: {toplam}
       if (Number(s.indirimTutari || 0) > 0) satirlar.push(`İndirim: ${Number(s.indirimTutari || 0)} TL${Number(s.indirimYuzde || 0) > 0 ? ` / %${Number(s.indirimYuzde || 0)}` : ''}`);
       if (s.ikram) satirlar.push('İkram');
 
-      satirlar.push(termalTextCizgi('-', 48));
+      satirlar.push(termalTextCizgi('-'));
       return satirlar;
     }).join('\r\n');
   };
@@ -6804,7 +6818,6 @@ Toplam Ciro: {toplam}
 
     const urunlerText = fisUrunSatirlariTextHazirla(masa?.siparisler || []);
     const varsayilanText = [
-      termalTextOrtala(ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS'),
       termalTextOrtala(baslik),
       termalTextCizgi('='),
       termalTextSatiri('Masa', masa?.ad || '-'),
@@ -6828,7 +6841,7 @@ Toplam Ciro: {toplam}
     const fisTipi = String(baslik || '').toLocaleLowerCase('tr-TR').includes('hesap') ? 'odeme' : 'adisyon';
 
     return fisSablonTextHazirla(fisTipi, {
-      firma_adi: ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS',
+      firma_adi: '',
       fis_baslik: baslik,
       masa_adi: masa?.ad || '-',
       musteri_adi: masa?.musteriAdi || '',
@@ -6852,7 +6865,6 @@ Toplam Ciro: {toplam}
 
     const urunlerText = `${Number(adet || 1)} x ${urunAdi || '-'}`;
     const varsayilanText = [
-      termalTextOrtala(ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS'),
       termalTextOrtala(baslik),
       termalTextCizgi('='),
       termalTextSatiri('Tarih', new Date().toLocaleString('tr-TR')),
@@ -6866,7 +6878,7 @@ Toplam Ciro: {toplam}
     ].filter(Boolean).join('\r\n');
 
     return fisSablonTextHazirla('mutfak', {
-      firma_adi: ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS',
+      firma_adi: '',
       fis_baslik: baslik,
       masa_adi: masaAdi || '-',
       departman: departman || 'Mutfak',
@@ -6883,7 +6895,6 @@ Toplam Ciro: {toplam}
 
     const urunlerText = `İPTAL: ${Number(adet || 1)} x ${siparis?.ad || '-'}`;
     const varsayilanText = [
-      termalTextOrtala(ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS'),
       termalTextOrtala('İPTAL FİŞİ'),
       termalTextCizgi('='),
       termalTextSatiri('Tarih', new Date().toLocaleString('tr-TR')),
@@ -6898,7 +6909,7 @@ Toplam Ciro: {toplam}
     ].filter(Boolean).join('\r\n');
 
     return fisSablonTextHazirla('iptal', {
-      firma_adi: ayarlar.firmaAdi || user?.restaurant || 'INTEGRA POS',
+      firma_adi: '',
       fis_baslik: 'İPTAL FİŞİ',
       masa_adi: masa?.ad || '-',
       departman: departman || 'Mutfak',
@@ -15773,19 +15784,16 @@ Toplam Ciro: {toplam}
         <div style={styles.dashboardLayoutDrawer}>
           <button
             type="button"
-            onClick={() => setSolMenuAcik(prev => !prev)}
-            style={styles.menuFab}
-            aria-label="Menüyü aç veya kapat"
+            onClick={() => setSolMenuAcik(true)}
+            style={styles.sidebarHamburgerFixed}
+            aria-label="Menüyü aç"
           >
-            <span style={styles.menuFabLine}></span>
-            <span style={styles.menuFabLine}></span>
-            <span style={styles.menuFabLine}></span>
+            <span style={styles.sidebarHamburgerLine}></span>
+            <span style={styles.sidebarHamburgerLine}></span>
           </button>
 
           {solMenuAcik && (
-            <button
-              type="button"
-              aria-label="Menüyü kapat"
+            <div
               onClick={() => setSolMenuAcik(false)}
               style={styles.sidebarOverlay}
             />
@@ -15801,8 +15809,9 @@ Toplam Ciro: {toplam}
             >
               ×
             </button>
+
             <div
-              onClick={() => setScreen('landing')}
+              onClick={() => { setScreen('landing'); setSolMenuAcik(false); }}
               style={{ ...styles.sidebarLogo, cursor: 'pointer' }}
             >
               <span style={styles.orangeDot}>●</span> integra
@@ -15819,14 +15828,7 @@ Toplam Ciro: {toplam}
               </div>
             </div>
 
-            <nav
-              style={styles.navGroup}
-              onClick={event => {
-                if (event.target?.closest?.('button')) {
-                  setSolMenuAcik(false);
-                }
-              }}
-            >
+            <nav style={styles.navGroup} onClick={e => { if (e.target?.tagName === 'BUTTON') setSolMenuAcik(false); }}>
               <div style={styles.navSectionTitle}>Günlük Operasyon</div>
               {tabGorunur('raporlar') && (
                 <button
@@ -16111,6 +16113,7 @@ Toplam Ciro: {toplam}
                 setActiveTab('masalar');
                 setEmail('');
                 setPassword('');
+                setSolMenuAcik(false);
               }}
               style={styles.logoutBtn}
             >
@@ -16119,7 +16122,7 @@ Toplam Ciro: {toplam}
           </div>
 
           {/* MAIN */}
-          <div style={isMobile ? { ...styles.mainContentDrawer, padding: '86px 12px 14px' } : styles.mainContentDrawer}>
+          <div style={isMobile ? styles.mainContentMobile : styles.mainContentFull}>
             <div
               style={{
                 backgroundColor: '#ffffff',
@@ -16886,7 +16889,7 @@ Toplam Ciro: {toplam}
                                   <button
                                     key={u.id}
                                     type="button"
-                                    onClick={() => masayaSeciliUrunuEkle(u)}
+                                    onClick={() => { adisyondaUrunSec(u); masayaSeciliUrunuEkle(u); }}
                                     style={{
                                       border: seciliMi ? '2px solid #ff6b35' : '1px solid #e2e8f0',
                                       backgroundColor: seciliMi ? '#fff7ed' : '#fff',
@@ -16936,7 +16939,7 @@ Toplam Ciro: {toplam}
                                 fontWeight: '900',
                               }}
                             >
-                              Seçili ürün ayarları: {seciliMenuUrunu.ad} / {seciliMenuUrunu.fiyat} TL. Aynı ürüne tekrar dokununca bu not/seçeneklerle eklenir.
+                              Ürüne dokununca direkt masaya eklenir. Seçili ürün: {seciliMenuUrunu.ad} / {seciliMenuUrunu.fiyat} TL
                             </div>
                           )}
                         </div>
@@ -17006,7 +17009,8 @@ Toplam Ciro: {toplam}
                         <div
                           style={{
                             ...styles.panelAddBtn,
-                            backgroundColor: '#0f172a',
+                            backgroundColor: '#f8fafc',
+                            color: '#475569',
                             cursor: 'default',
                             textAlign: 'center',
                           }}
@@ -22514,99 +22518,6 @@ const styles = {
     padding: '10px 12px',
   },
 
-  dashboardLayoutDrawer: {
-    display: 'block',
-    width: '100%',
-    minHeight: '100vh',
-    margin: 0,
-    padding: 0,
-    background: 'radial-gradient(circle at 22% 0%, rgba(255,107,53,0.10), transparent 30%), linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
-    overflowX: 'hidden',
-  },
-
-  menuFab: {
-    position: 'fixed',
-    top: '18px',
-    left: '18px',
-    zIndex: 1500,
-    width: '62px',
-    height: '62px',
-    borderRadius: '999px',
-    border: '1px solid rgba(255,255,255,0.30)',
-    background: 'rgba(15,23,42,0.72)',
-    backdropFilter: 'blur(16px)',
-    boxShadow: '0 24px 70px -30px rgba(15,23,42,0.65)',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '7px',
-    cursor: 'pointer',
-  },
-
-  menuFabLine: {
-    width: '28px',
-    height: '4px',
-    borderRadius: '999px',
-    backgroundColor: '#fff',
-    display: 'block',
-  },
-
-  sidebarOverlay: {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 1400,
-    border: 'none',
-    background: 'rgba(15,23,42,0.48)',
-    backdropFilter: 'blur(3px)',
-    cursor: 'pointer',
-  },
-
-  sidebarDrawer: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 'min(310px, 86vw)',
-    maxWidth: '86vw',
-    background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 58%, #111827 100%)',
-    color: '#fff',
-    display: 'flex',
-    flexDirection: 'column',
-    padding: '74px 18px 18px',
-    boxSizing: 'border-box',
-    boxShadow: '30px 0 90px -45px rgba(15,23,42,0.95)',
-    zIndex: 1501,
-    overflowY: 'auto',
-    overflowX: 'hidden',
-    transition: 'transform 220ms ease',
-  },
-
-  sidebarCloseBtn: {
-    position: 'absolute',
-    top: '16px',
-    right: '16px',
-    width: '38px',
-    height: '38px',
-    borderRadius: '999px',
-    border: '1px solid rgba(255,255,255,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    color: '#fff',
-    cursor: 'pointer',
-    fontSize: '24px',
-    lineHeight: 1,
-    fontWeight: '900',
-  },
-
-  mainContentDrawer: {
-    width: '100%',
-    minHeight: '100vh',
-    padding: '28px 28px 28px 98px',
-    overflowY: 'auto',
-    boxSizing: 'border-box',
-    minWidth: 0,
-  },
-
   landingViewport: {
     width: '100%',
     minHeight: '100vh',
@@ -23326,6 +23237,99 @@ const styles = {
     color: '#475569',
     lineHeight: '1.6',
     border: '1px dashed #cbd5e1',
+  },
+
+
+  dashboardLayoutDrawer: {
+    display: 'flex',
+    width: '100%',
+    minHeight: '100vh',
+    margin: 0,
+    padding: 0,
+    background: 'radial-gradient(circle at 22% 0%, rgba(255,107,53,0.10), transparent 30%), linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+  },
+
+  sidebarHamburgerFixed: {
+    position: 'fixed',
+    left: '18px',
+    top: '18px',
+    zIndex: 80,
+    width: '58px',
+    height: '58px',
+    borderRadius: '999px',
+    border: '1px solid rgba(255,255,255,0.18)',
+    background: 'rgba(15,23,42,0.86)',
+    color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '7px',
+    boxShadow: '0 18px 45px -18px rgba(15,23,42,0.75)',
+    cursor: 'pointer',
+    backdropFilter: 'blur(16px)',
+  },
+
+  sidebarHamburgerLine: {
+    width: '28px',
+    height: '4px',
+    borderRadius: '999px',
+    backgroundColor: '#fff',
+    display: 'block',
+  },
+
+  sidebarOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(15,23,42,0.36)',
+    zIndex: 70,
+    backdropFilter: 'blur(2px)',
+  },
+
+  sidebarDrawer: {
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: '292px',
+    maxWidth: '88vw',
+    background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 58%, #111827 100%)',
+    color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '22px',
+    paddingTop: '76px',
+    boxSizing: 'border-box',
+    boxShadow: '30px 0 70px -36px rgba(15,23,42,0.85)',
+    zIndex: 90,
+    transition: 'transform 0.22s ease',
+    overflowY: 'auto',
+  },
+
+  sidebarCloseBtn: {
+    position: 'absolute',
+    top: '18px',
+    right: '18px',
+    width: '38px',
+    height: '38px',
+    borderRadius: '999px',
+    border: '1px solid rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: '24px',
+    fontWeight: '900',
+    lineHeight: 1,
+  },
+
+  mainContentFull: {
+    flex: 1,
+    padding: '28px',
+    paddingTop: '88px',
+    overflowY: 'auto',
+    boxSizing: 'border-box',
+    minWidth: 0,
+    width: '100%',
   },
 
   dashboardLayout: {
