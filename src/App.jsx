@@ -1302,6 +1302,15 @@ Toplam Ciro: {toplam}
 
   // kayıtlı fiş şablonu varsa onu, yoksa varsayılan metni kullanan kod
   const fisSablonTextHazirla = (fisTipi, degiskenler, varsayilanText) => {
+    const tip = String(fisTipi || '').toLocaleLowerCase('tr-TR');
+
+    // Sahadaki termal yazıcıda eski/kayıtlı şablonlar satır başı boşlukları ve firma başlığı
+    // bıraktığı için 80mm fişi dar alana bölüyordu. Fiziksel yazıcı kuyruğunda
+    // güvenli, kısa ve düz şablonu zorunlu kullanıyoruz.
+    if (['adisyon', 'odeme', 'ödeme', 'hesap', 'mutfak', 'iptal', 'paket', 'z_raporu'].some(anahtar => tip.includes(anahtar))) {
+      return String(varsayilanText || '').trim();
+    }
+
     const sablon = fisSablonuBul(fisTipi);
     if (!sablon || sablon.aktif === false || !String(sablon.sablonText || '').trim()) {
       return varsayilanText;
@@ -1320,7 +1329,7 @@ Toplam Ciro: {toplam}
 
   // termal fişi dar font taşmalarına karşı temizleyen ve 80mm yazıcıda okunaklı hale getiren kod
   const termalMetni80mmNormalizeEt = (metin = '') => {
-    const genislik = 32;
+    const genislik = 18;
     const turkceKarakterDuzelt = (deger = '') => String(deger || '')
       .replace(/İ/g, 'I')
       .replace(/ı/g, 'i')
@@ -6755,7 +6764,7 @@ Toplam Ciro: {toplam}
   };
 
   // termal yazıcıya gönderilecek sade metni hizalayan kod
-  const TERMAL_FIS_GENISLIK = 32;
+  const TERMAL_FIS_GENISLIK = 18;
 
   const termalTextSatiri = (sol = '', sag = '', genislik = TERMAL_FIS_GENISLIK) => {
     const solMetin = String(sol ?? '').trim();
@@ -6783,8 +6792,10 @@ Toplam Ciro: {toplam}
       const fiyat = Number(s.fiyat || 0);
       const satirToplam = adet * fiyat;
       const satirlar = [
-        termalTextSatiri(`${adet} x ${s.ad || '-'}`, `${satirToplam} TL`),
-        `Birim: ${fiyat} TL / KDV: %${Number(s.kdvOrani ?? s.kdv_orani ?? 10)}`,
+        `${adet} x ${s.ad || '-'}`,
+        `${satirToplam} TL`,
+        `Birim: ${fiyat} TL`,
+        `KDV: %${Number(s.kdvOrani ?? s.kdv_orani ?? 10)}`,
       ];
 
       if (s.not) satirlar.push(`Not: ${s.not}`);
@@ -6817,24 +6828,27 @@ Toplam Ciro: {toplam}
       : termalTextSatiri('Ödeme', `${toplamTutar} TL`);
 
     const urunlerText = fisUrunSatirlariTextHazirla(masa?.siparisler || []);
+    const firmaBasligi = String(ayarlar.firmaAdi || user?.restaurant || '').trim();
+    const guvenliFirmaBasligi = firmaBasligi && !/integra\s*pos/i.test(firmaBasligi) ? firmaBasligi : '';
     const varsayilanText = [
-      termalTextOrtala(baslik),
+      guvenliFirmaBasligi,
+      baslik,
       termalTextCizgi('='),
-      termalTextSatiri('Masa', masa?.ad || '-'),
-      masa?.musteriAdi ? termalTextSatiri('Müşteri', masa.musteriAdi) : '',
-      termalTextSatiri('Tarih', new Date().toLocaleString('tr-TR')),
+      `Masa: ${masa?.ad || '-'}`,
+      masa?.musteriAdi ? `Musteri: ${masa.musteriAdi}` : '',
+      `Tarih: ${new Date().toLocaleString('tr-TR')}`,
       termalTextCizgi('-'),
       fisUrunSatirlariTextHazirla(masa?.siparisler || []),
-      toplamIndirim > 0 ? termalTextSatiri('Toplam İndirim', `-${toplamIndirim} TL`) : '',
-      termalTextSatiri('KDV Matrahı', `${kdvOzeti.matrahToplam} TL`),
-      termalTextSatiri('KDV Toplamı', `${kdvOzeti.kdvToplam} TL`),
-      termalTextSatiri('Toplam', `${toplamTutar} TL`),
-      odenen > 0 ? termalTextSatiri('Ödenen', `${odenen} TL`) : '',
-      kalan > 0 ? termalTextSatiri('Kalan', `${kalan} TL`) : '',
+      toplamIndirim > 0 ? `Ind: -${paraYuvarla(toplamIndirim)} TL` : '',
+      `Ara: ${paraYuvarla(araToplam)} TL`,
+      `KDV: ${kdvOzeti.kdvToplam} TL`,
+      `Top: ${toplamTutar} TL`,
+      odenen > 0 ? `Odenen: ${odenen} TL` : '',
+      kalan > 0 ? `Kalan: ${kalan} TL` : '',
       termalTextCizgi('-'),
       odemeSatirlari,
       termalTextCizgi('='),
-      ayarlar.fisAltNotu || 'Bizi tercih ettiğiniz için teşekkür ederiz.',
+      ayarlar.fisAltNotu || 'Tesekkur ederiz.',
     ].filter(Boolean).join('\r\n');
 
     const paraUstuToplam = (Array.isArray(odemeler) ? odemeler : []).reduce((t, o) => t + Number(o.paraUstu || 0), 0);
@@ -16265,7 +16279,7 @@ Toplam Ciro: {toplam}
                   <div style={styles.contentHeader}>
                     <h2 style={styles.pageTitle}>Canlı Salon Planı</h2>
 
-                    {user?.role === 'owner' && (
+                    {user?.role !== 'waiter' && (
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <form onSubmit={masaBolumuEkle} style={{ display: 'flex', gap: '8px' }}>
                           <input
