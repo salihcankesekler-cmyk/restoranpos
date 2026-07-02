@@ -198,8 +198,8 @@ function IntegraApp() {
     return window.innerWidth <= 900;
   });
 
-  // mobilde sol menüyü modern çekmece olarak açıp kapatan kod
-  const [mobilMenuAcik, setMobilMenuAcik] = useState(false);
+  // sol menüyü sabit panel yerine yuvarlak hamburger butonla açıp kapatan kod
+  const [solMenuAcik, setSolMenuAcik] = useState(false);
 
   // auth
   const [email, setEmail] = useState('');
@@ -1313,6 +1313,41 @@ Toplam Ciro: {toplam}
 
     const sonuc = sablonDegiskenleriniUygula(sablon.sablonText, degiskenler).replace(/\n/g, '\r\n');
     return String(sonuc || '').trim() || varsayilanText;
+  };
+
+  // termal fişi 80mm kağıt için okunaklı metne dönüştüren kod
+  const termalMetni80mmNormalizeEt = (metin = '') => {
+    const genislik = 48;
+    const satirlar = String(metin || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n');
+
+    const kirilmisSatirlar = satirlar.flatMap(satir => {
+      const temizSatir = String(satir ?? '').trimEnd();
+
+      if (temizSatir.length <= genislik) return temizSatir;
+
+      const parcalar = [];
+      let kalan = temizSatir;
+
+      while (kalan.length > genislik) {
+        const kesmeYeri = Math.max(
+          kalan.lastIndexOf(' ', genislik),
+          kalan.lastIndexOf('/', genislik),
+          kalan.lastIndexOf('-', genislik)
+        );
+        const guvenliKesme = kesmeYeri > 12 ? kesmeYeri : genislik;
+        parcalar.push(kalan.slice(0, guvenliKesme).trimEnd());
+        kalan = kalan.slice(guvenliKesme).trimStart();
+      }
+
+      if (kalan) parcalar.push(kalan);
+
+      return parcalar;
+    });
+
+    return kirilmisSatirlar.join('\r\n').trim();
   };
 
   // yazdırma HTML'i içinde özel karakterleri güvenli hale getiren kod
@@ -5925,13 +5960,19 @@ Toplam Ciro: {toplam}
   };
 
   // seçilen ürünü aktif masaya adet, hazır not, manuel not ve ekstra fiyat ile ekleyen kod
+  // ürün kartına doğrudan tıklanınca da aynı fonksiyon çalışır
   const masayaSeciliUrunuEkle = async (tiklananUrun = null) => {
-    const hedefUrunId = tiklananUrun?.id ?? seciliUrunId;
+    const hedefUrun = tiklananUrun || aktifMenu.find(u => String(u.id) === String(seciliUrunId));
 
-    if (!hedefUrunId) {
+    if (!hedefUrun) {
       alert('Lütfen menüden bir ürün seçin!');
       return;
     }
+
+    const ayniUrunSecili = String(seciliUrunId || '') === String(hedefUrun.id || '');
+    const kullanilacakHazirNotId = ayniUrunSecili ? seciliUrunHazirNotId : '';
+    const kullanilacakManuelNot = ayniUrunSecili ? seciliUrunNotu : '';
+    const kullanilacakEkstraFiyat = ayniUrunSecili ? seciliUrunEkstraFiyat : '';
 
     const adet = Number(seciliUrunAdet || 1);
 
@@ -5940,7 +5981,7 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const urun = tiklananUrun || aktifMenu.find(u => String(u.id) === String(hedefUrunId));
+    const urun = hedefUrun;
 
     if (!urun) {
       alert('Ürün bulunamadı.');
@@ -5957,13 +5998,13 @@ Toplam Ciro: {toplam}
     const hazirNotlar = Array.isArray(urun.menuNotlari) ? urun.menuNotlari : [];
 
     const seciliHazirNot = hazirNotlar.find(n => {
-      return String(n.id) === String(seciliUrunHazirNotId);
+      return String(n.id) === String(kullanilacakHazirNotId);
     });
 
     const fiyatBilgisi = urunFiyatHesapla(
       urun,
-      seciliUrunHazirNotId,
-      seciliUrunEkstraFiyat,
+      kullanilacakHazirNotId,
+      kullanilacakEkstraFiyat,
       '',
       '',
       ''
@@ -5978,7 +6019,7 @@ Toplam Ciro: {toplam}
 
     const notMetni = seciliHazirNot
       ? seciliHazirNot.ad
-      : String(seciliUrunNotu || '').trim();
+      : String(kullanilacakManuelNot || '').trim();
 
     const normalFiyat = fiyatBilgisi.normalFiyat;
     const listeFiyati = fiyatBilgisi.listeFiyati;
@@ -6669,7 +6710,7 @@ Toplam Ciro: {toplam}
       return null;
     }
 
-    const temizIcerik = String(icerikText || '').trim();
+    const temizIcerik = termalMetni80mmNormalizeEt(icerikText);
 
     if (!temizIcerik) {
       return null;
@@ -6703,7 +6744,7 @@ Toplam Ciro: {toplam}
   };
 
   // termal yazıcıya gönderilecek sade metni hizalayan kod
-  const termalTextSatiri = (sol = '', sag = '', genislik = 32) => {
+  const termalTextSatiri = (sol = '', sag = '', genislik = 48) => {
     const solMetin = String(sol ?? '').trim();
     const sagMetin = String(sag ?? '').trim();
 
@@ -6713,14 +6754,14 @@ Toplam Ciro: {toplam}
     return `${solMetin}${' '.repeat(bosluk)}${sagMetin}`;
   };
 
-  const termalTextOrtala = (metin = '', genislik = 32) => {
+  const termalTextOrtala = (metin = '', genislik = 48) => {
     const temizMetin = String(metin ?? '').trim();
     if (temizMetin.length >= genislik) return temizMetin;
     const solBosluk = Math.floor((genislik - temizMetin.length) / 2);
     return `${' '.repeat(solBosluk)}${temizMetin}`;
   };
 
-  const termalTextCizgi = (karakter = '=', genislik = 32) => karakter.repeat(genislik);
+  const termalTextCizgi = (karakter = '=', genislik = 48) => karakter.repeat(genislik);
 
   const fisUrunSatirlariTextHazirla = (siparisler = []) => {
     return (Array.isArray(siparisler) ? siparisler : []).flatMap(s => {
@@ -6737,7 +6778,7 @@ Toplam Ciro: {toplam}
       if (Number(s.indirimTutari || 0) > 0) satirlar.push(`İndirim: ${Number(s.indirimTutari || 0)} TL${Number(s.indirimYuzde || 0) > 0 ? ` / %${Number(s.indirimYuzde || 0)}` : ''}`);
       if (s.ikram) satirlar.push('İkram');
 
-      satirlar.push(termalTextCizgi('-', 32));
+      satirlar.push(termalTextCizgi('-', 48));
       return satirlar;
     }).join('\r\n');
   };
@@ -13541,37 +13582,6 @@ Toplam Ciro: {toplam}
     };
   }, []);
 
-  // mobil çekmece açıkken sayfa arka planının kaymasını engelleyen kod
-  useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
-
-    const oncekiOverflow = document.body.style.overflow;
-
-    if (isMobile && mobilMenuAcik) {
-      document.body.style.overflow = 'hidden';
-    }
-
-    return () => {
-      document.body.style.overflow = oncekiOverflow;
-    };
-  }, [isMobile, mobilMenuAcik]);
-
-  // masaüstüne geçilince sol menü çekmecesini güvenli kapatan kod
-  useEffect(() => {
-    if (!isMobile && mobilMenuAcik) {
-      setMobilMenuAcik(false);
-    }
-  }, [isMobile, mobilMenuAcik]);
-
-  // sol menüden sekme değiştirince mobil çekmeceyi kapatan kod
-  const panelSekmesineGec = (sekme) => {
-    setActiveTab(sekme);
-
-    if (isMobile) {
-      setMobilMenuAcik(false);
-    }
-  };
-
   // açık ekran bilgisini yenileme sonrası koruyan kod
   useEffect(() => {
     localStorage.setItem('integra_screen', screen);
@@ -15760,30 +15770,37 @@ Toplam Ciro: {toplam}
 
       {/* giriş sonrası yönetim panelini gösteren kod */}
       {screen === 'dashboard' && user && (
-        <div style={isMobile ? styles.dashboardLayoutMobile : styles.dashboardLayout}>
-          {/* SIDEBAR */}
-          {isMobile && (
-            <>
-              <button
-                type="button"
-                onClick={() => setMobilMenuAcik(prev => !prev)}
-                style={styles.mobileMenuToggle}
-                aria-label={mobilMenuAcik ? 'Menüyü kapat' : 'Menüyü aç'}
-              >
-                {mobilMenuAcik ? '×' : '☰'}
-              </button>
+        <div style={styles.dashboardLayoutDrawer}>
+          <button
+            type="button"
+            onClick={() => setSolMenuAcik(prev => !prev)}
+            style={styles.menuFab}
+            aria-label="Menüyü aç veya kapat"
+          >
+            <span style={styles.menuFabLine}></span>
+            <span style={styles.menuFabLine}></span>
+            <span style={styles.menuFabLine}></span>
+          </button>
 
-              {mobilMenuAcik && (
-                <div
-                  onClick={() => setMobilMenuAcik(false)}
-                  style={styles.mobileMenuBackdrop}
-                />
-              )}
-            </>
+          {solMenuAcik && (
+            <button
+              type="button"
+              aria-label="Menüyü kapat"
+              onClick={() => setSolMenuAcik(false)}
+              style={styles.sidebarOverlay}
+            />
           )}
 
-          {(!isMobile || mobilMenuAcik) && (
-          <div style={isMobile ? styles.sidebarMobileDrawer : styles.sidebar}>
+          {/* SIDEBAR */}
+          <div style={{ ...styles.sidebarDrawer, transform: solMenuAcik ? 'translateX(0)' : 'translateX(-118%)' }}>
+            <button
+              type="button"
+              onClick={() => setSolMenuAcik(false)}
+              style={styles.sidebarCloseBtn}
+              aria-label="Menüyü kapat"
+            >
+              ×
+            </button>
             <div
               onClick={() => setScreen('landing')}
               style={{ ...styles.sidebarLogo, cursor: 'pointer' }}
@@ -15802,12 +15819,19 @@ Toplam Ciro: {toplam}
               </div>
             </div>
 
-            <nav style={isMobile ? styles.navGroupMobile : styles.navGroup}>
+            <nav
+              style={styles.navGroup}
+              onClick={event => {
+                if (event.target?.closest?.('button')) {
+                  setSolMenuAcik(false);
+                }
+              }}
+            >
               <div style={styles.navSectionTitle}>Günlük Operasyon</div>
               {tabGorunur('raporlar') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('raporlar')}
+                  onClick={() => setActiveTab('raporlar')}
                   style={activeTab === 'raporlar' ? styles.navItemActive : styles.navItem}
                 >
                   📊 Satış & Ürün Raporları
@@ -15817,7 +15841,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('masalar') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('masalar')}
+                  onClick={() => setActiveTab('masalar')}
                   style={activeTab === 'masalar' ? styles.navItemActive : styles.navItem}
                 >
                   🪑 Canlı Masalarım
@@ -15827,7 +15851,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('mutfak') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('mutfak')}
+                  onClick={() => setActiveTab('mutfak')}
                   style={activeTab === 'mutfak' ? styles.navItemActive : styles.navItem}
                 >
                   👨‍🍳 Mutfak
@@ -15838,7 +15862,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('paket') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('paket')}
+                  onClick={() => setActiveTab('paket')}
                   style={activeTab === 'paket' ? styles.navItemActive : styles.navItem}
                 >
                   🛵 Paket Servis {yeniOnlineSiparisSayisi > 0 ? `(${yeniOnlineSiparisSayisi})` : ''}
@@ -15848,7 +15872,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('entegrasyonlar') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('entegrasyonlar')}
+                  onClick={() => setActiveTab('entegrasyonlar')}
                   style={activeTab === 'entegrasyonlar' ? styles.navItemActive : styles.navItem}
                 >
                   🔌 Entegrasyonlar
@@ -15859,7 +15883,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('cari') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('cari')}
+                  onClick={() => setActiveTab('cari')}
                   style={activeTab === 'cari' ? styles.navItemActive : styles.navItem}
                 >
                   📒 Cari / Veresiye
@@ -15869,7 +15893,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('stok') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('stok')}
+                  onClick={() => setActiveTab('stok')}
                   style={activeTab === 'stok' ? styles.navItemActive : styles.navItem}
                 >
                   📦 Stok Takibi
@@ -15879,7 +15903,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('kasa') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('kasa')}
+                  onClick={() => setActiveTab('kasa')}
                   style={activeTab === 'kasa' ? styles.navItemActive : styles.navItem}
                 >
                   💰 Kasa
@@ -15889,7 +15913,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('isletme_profili') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('isletme_profili')}
+                  onClick={() => setActiveTab('isletme_profili')}
                   style={activeTab === 'isletme_profili' ? styles.navItemActive : styles.navItem}
                 >
                   🏢 İşletme Profili
@@ -15899,7 +15923,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('kurulum') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('kurulum')}
+                  onClick={() => setActiveTab('kurulum')}
                   style={activeTab === 'kurulum' ? styles.navItemActive : styles.navItem}
                 >
                   🚀 Kurulum Sihirbazı
@@ -15908,7 +15932,7 @@ Toplam Ciro: {toplam}
 
               <button
                 type="button"
-                onClick={() => panelSekmesineGec('sistem_durumu')}
+                onClick={() => setActiveTab('sistem_durumu')}
                 style={activeTab === 'sistem_durumu' ? styles.navItemActive : styles.navItem}
               >
                 🛠️ Sistem Durumu
@@ -15919,7 +15943,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('hizli_satis') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('hizli_satis')}
+                  onClick={() => setActiveTab('hizli_satis')}
                   style={activeTab === 'hizli_satis' ? styles.navItemActive : styles.navItem}
                 >
                   ⚡ Hızlı Satış
@@ -15930,7 +15954,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('giderler') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('giderler')}
+                  onClick={() => setActiveTab('giderler')}
                   style={activeTab === 'giderler' ? styles.navItemActive : styles.navItem}
                 >
                   🧾 Giderler
@@ -15940,7 +15964,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('iadeler') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('iadeler')}
+                  onClick={() => setActiveTab('iadeler')}
                   style={activeTab === 'iadeler' ? styles.navItemActive : styles.navItem}
                 >
                   ↩️ İade / İkram
@@ -15950,7 +15974,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('rezervasyonlar') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('rezervasyonlar')}
+                  onClick={() => setActiveTab('rezervasyonlar')}
                   style={activeTab === 'rezervasyonlar' ? styles.navItemActive : styles.navItem}
                 >
                   📅 Rezervasyon
@@ -15960,7 +15984,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('garsonlar') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('garsonlar')}
+                  onClick={() => setActiveTab('garsonlar')}
                   style={activeTab === 'garsonlar' ? styles.navItemActive : styles.navItem}
                 >
                   👥 Personel Listesi
@@ -15971,7 +15995,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('menu') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('menu')}
+                  onClick={() => setActiveTab('menu')}
                   style={activeTab === 'menu' ? styles.navItemActive : styles.navItem}
                 >
                   🍔 Menü & Ayarlar
@@ -15981,7 +16005,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('receteler') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('receteler')}
+                  onClick={() => setActiveTab('receteler')}
                   style={activeTab === 'receteler' ? styles.navItemActive : styles.navItem}
                 >
                   🧾 Reçeteler
@@ -15991,7 +16015,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('qr_menu') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('qr_menu')}
+                  onClick={() => setActiveTab('qr_menu')}
                   style={activeTab === 'qr_menu' ? styles.navItemActive : styles.navItem}
                 >
                   📱 QR Menü
@@ -16001,7 +16025,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('servis_talepleri') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('servis_talepleri')}
+                  onClick={() => setActiveTab('servis_talepleri')}
                   style={activeTab === 'servis_talepleri' ? styles.navItemActive : styles.navItem}
                 >
                   🔔 Servis Talepleri {acikServisTalebiSayisi > 0 ? `(${acikServisTalebiSayisi})` : ''}
@@ -16011,7 +16035,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('sadakat') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('sadakat')}
+                  onClick={() => setActiveTab('sadakat')}
                   style={activeTab === 'sadakat' ? styles.navItemActive : styles.navItem}
                 >
                   🎁 Sadakat
@@ -16021,7 +16045,7 @@ Toplam Ciro: {toplam}
               {tabGorunur('kiosk') && (
                 <button
                   type="button"
-                  onClick={() => panelSekmesineGec('kiosk')}
+                  onClick={() => setActiveTab('kiosk')}
                   style={activeTab === 'kiosk' ? styles.navItemActive : styles.navItem}
                 >
                   🧍 Kiosk
@@ -16033,28 +16057,28 @@ Toplam Ciro: {toplam}
                   <div style={styles.navSectionTitle}>Integra Admin</div>
                   <button
                     type="button"
-                    onClick={() => panelSekmesineGec('super_admin')}
+                    onClick={() => setActiveTab('super_admin')}
                     style={activeTab === 'super_admin' ? styles.navItemActive : styles.navItem}
                   >
                     👑 Tüm integra Müşterileri
                   </button>
                   <button
                     type="button"
-                    onClick={() => panelSekmesineGec('admin_basari')}
+                    onClick={() => setActiveTab('admin_basari')}
                     style={activeTab === 'admin_basari' ? styles.navItemActive : styles.navItem}
                   >
                     📈 Müşteri Başarı
                   </button>
                   <button
                     type="button"
-                    onClick={() => panelSekmesineGec('admin_lisans')}
+                    onClick={() => setActiveTab('admin_lisans')}
                     style={activeTab === 'admin_lisans' ? styles.navItemActive : styles.navItem}
                   >
                     💳 Lisans & Ödeme {adminLisansOzet.geciken > 0 ? `(${adminLisansOzet.geciken})` : ''}
                   </button>
                   <button
                     type="button"
-                    onClick={() => panelSekmesineGec('admin_moduller')}
+                    onClick={() => setActiveTab('admin_moduller')}
                     style={activeTab === 'admin_moduller' ? styles.navItemActive : styles.navItem}
                   >
                     🧩 Modül Yetkileri
@@ -16062,7 +16086,7 @@ Toplam Ciro: {toplam}
                   <button
                     type="button"
                     onClick={async () => {
-                      panelSekmesineGec('admin_destek');
+                      setActiveTab('admin_destek');
                       await destekTalepleriniSupabasedenCek();
                     }}
                     style={activeTab === 'admin_destek' ? styles.navItemActive : styles.navItem}
@@ -16087,17 +16111,15 @@ Toplam Ciro: {toplam}
                 setActiveTab('masalar');
                 setEmail('');
                 setPassword('');
-                setMobilMenuAcik(false);
               }}
               style={styles.logoutBtn}
             >
               Çıkış Yap
             </button>
           </div>
-          )}
 
           {/* MAIN */}
-          <div style={isMobile ? styles.mainContentMobile : styles.mainContent}>
+          <div style={isMobile ? { ...styles.mainContentDrawer, padding: '86px 12px 14px' } : styles.mainContentDrawer}>
             <div
               style={{
                 backgroundColor: '#ffffff',
@@ -16902,19 +16924,21 @@ Toplam Ciro: {toplam}
                             </div>
                           )}
 
-                          <div
-                            style={{
-                              backgroundColor: '#fff',
-                              border: '1px solid #bbf7d0',
-                              color: '#047857',
-                              borderRadius: '10px',
-                              padding: '8px 10px',
-                              fontSize: '12px',
-                              fontWeight: '900',
-                            }}
-                          >
-                            Ürüne dokununca seçili adet/not/ekstra fiyatla direkt masaya eklenir.
-                          </div>
+                          {seciliMenuUrunu && (
+                            <div
+                              style={{
+                                backgroundColor: '#fff',
+                                border: '1px solid #fed7aa',
+                                color: '#c2410c',
+                                borderRadius: '10px',
+                                padding: '8px 10px',
+                                fontSize: '12px',
+                                fontWeight: '900',
+                              }}
+                            >
+                              Seçili ürün ayarları: {seciliMenuUrunu.ad} / {seciliMenuUrunu.fiyat} TL. Aynı ürüne tekrar dokununca bu not/seçeneklerle eklenir.
+                            </div>
+                          )}
                         </div>
 
                         <input
@@ -16982,14 +17006,12 @@ Toplam Ciro: {toplam}
                         <div
                           style={{
                             ...styles.panelAddBtn,
+                            backgroundColor: '#0f172a',
                             cursor: 'default',
-                            backgroundColor: '#ecfdf5',
-                            color: '#047857',
-                            border: '1px solid #bbf7d0',
-                            boxShadow: 'none',
+                            textAlign: 'center',
                           }}
                         >
-                          Karttan Ekle
+                          Ürüne Dokun → Masaya Ekle
                         </div>
                       </div>
                       )}
@@ -22492,6 +22514,99 @@ const styles = {
     padding: '10px 12px',
   },
 
+  dashboardLayoutDrawer: {
+    display: 'block',
+    width: '100%',
+    minHeight: '100vh',
+    margin: 0,
+    padding: 0,
+    background: 'radial-gradient(circle at 22% 0%, rgba(255,107,53,0.10), transparent 30%), linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+    overflowX: 'hidden',
+  },
+
+  menuFab: {
+    position: 'fixed',
+    top: '18px',
+    left: '18px',
+    zIndex: 1500,
+    width: '62px',
+    height: '62px',
+    borderRadius: '999px',
+    border: '1px solid rgba(255,255,255,0.30)',
+    background: 'rgba(15,23,42,0.72)',
+    backdropFilter: 'blur(16px)',
+    boxShadow: '0 24px 70px -30px rgba(15,23,42,0.65)',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '7px',
+    cursor: 'pointer',
+  },
+
+  menuFabLine: {
+    width: '28px',
+    height: '4px',
+    borderRadius: '999px',
+    backgroundColor: '#fff',
+    display: 'block',
+  },
+
+  sidebarOverlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 1400,
+    border: 'none',
+    background: 'rgba(15,23,42,0.48)',
+    backdropFilter: 'blur(3px)',
+    cursor: 'pointer',
+  },
+
+  sidebarDrawer: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 'min(310px, 86vw)',
+    maxWidth: '86vw',
+    background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 58%, #111827 100%)',
+    color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '74px 18px 18px',
+    boxSizing: 'border-box',
+    boxShadow: '30px 0 90px -45px rgba(15,23,42,0.95)',
+    zIndex: 1501,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    transition: 'transform 220ms ease',
+  },
+
+  sidebarCloseBtn: {
+    position: 'absolute',
+    top: '16px',
+    right: '16px',
+    width: '38px',
+    height: '38px',
+    borderRadius: '999px',
+    border: '1px solid rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: '24px',
+    lineHeight: 1,
+    fontWeight: '900',
+  },
+
+  mainContentDrawer: {
+    width: '100%',
+    minHeight: '100vh',
+    padding: '28px 28px 28px 98px',
+    overflowY: 'auto',
+    boxSizing: 'border-box',
+    minWidth: 0,
+  },
+
   landingViewport: {
     width: '100%',
     minHeight: '100vh',
@@ -23245,55 +23360,6 @@ const styles = {
     boxShadow: '22px 0 55px -45px rgba(15,23,42,0.75)',
   },
 
-  mobileMenuToggle: {
-    position: 'fixed',
-    left: '14px',
-    top: 'calc(14px + env(safe-area-inset-top, 0px))',
-    width: '58px',
-    height: '58px',
-    borderRadius: '999px',
-    border: '1px solid rgba(255,255,255,0.18)',
-    background: 'rgba(15,23,42,0.82)',
-    backdropFilter: 'blur(14px)',
-    WebkitBackdropFilter: 'blur(14px)',
-    color: '#fff',
-    fontSize: '28px',
-    fontWeight: '900',
-    cursor: 'pointer',
-    zIndex: 80,
-    boxShadow: '0 18px 45px -22px rgba(15,23,42,0.75)',
-  },
-
-  mobileMenuBackdrop: {
-    position: 'fixed',
-    inset: 0,
-    backgroundColor: 'rgba(15,23,42,0.42)',
-    backdropFilter: 'blur(3px)',
-    WebkitBackdropFilter: 'blur(3px)',
-    zIndex: 60,
-  },
-
-  sidebarMobileDrawer: {
-    position: 'fixed',
-    top: 'calc(86px + env(safe-area-inset-top, 0px))',
-    left: '14px',
-    bottom: '14px',
-    width: 'min(82vw, 330px)',
-    minWidth: 0,
-    overflowY: 'auto',
-    overflowX: 'hidden',
-    background: 'linear-gradient(180deg, rgba(15,23,42,0.96), rgba(30,41,59,0.96))',
-    color: '#fff',
-    display: 'flex',
-    flexDirection: 'column',
-    padding: '18px',
-    boxSizing: 'border-box',
-    borderRadius: '28px',
-    border: '1px solid rgba(255,255,255,0.10)',
-    zIndex: 70,
-    boxShadow: '0 28px 75px -28px rgba(15,23,42,0.95)',
-  },
-
   sidebarMobile: {
     width: '100%',
     minWidth: 0,
@@ -23331,8 +23397,8 @@ const styles = {
   },
 
   navGroupMobile: {
-    display: 'flex',
-    flexDirection: 'column',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: '8px',
     flex: '0 0 auto',
   },
@@ -23387,7 +23453,7 @@ const styles = {
   mainContentMobile: {
     width: '100%',
     flex: '0 0 auto',
-    padding: '84px 14px 14px',
+    padding: '14px',
     overflowY: 'visible',
     overflowX: 'hidden',
     boxSizing: 'border-box',
