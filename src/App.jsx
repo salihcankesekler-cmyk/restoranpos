@@ -822,12 +822,74 @@ Toplam Ciro: {toplam}
   const [zRaporlari, setZRaporlari] = useState([]);
   const [kuryeAdiInputs, setKuryeAdiInputs] = useState({});
 
+  // güçlendirme paketi: işlem geçmişi, detay yetkiler, fiş önizleme ve yedekleme için kullanılan kod
+  const [guclendirmeSekmesi, setGuclendirmeSekmesi] = useState('islem');
+  const [fisOnizlemeTuru, setFisOnizlemeTuru] = useState('adisyon');
+  const [fisOnizlemeGenislik, setFisOnizlemeGenislik] = useState('80');
+  const [gunSonuKilitleri, setGunSonuKilitleri] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('integra_gun_sonu_kilitleri') || '{}');
+    } catch {
+      return {};
+    }
+  });
+  const [personelDetayYetkiKayitlari, setPersonelDetayYetkiKayitlari] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('integra_personel_detay_yetkileri') || '{}');
+    } catch {
+      return {};
+    }
+  });
+  const [demoTalepKayitlari, setDemoTalepKayitlari] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('integra_demo_talepleri') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [demoTalepFormu, setDemoTalepFormu] = useState({
+    adSoyad: '',
+    isletmeAdi: '',
+    telefon: '',
+    sehir: '',
+    isletmeTipi: 'Restoran',
+    not: '',
+  });
+  const [baglantiOnline, setBaglantiOnline] = useState(() => {
+    if (typeof navigator === 'undefined') return true;
+    return navigator.onLine !== false;
+  });
+
   const [selectedMasaId, setSelectedMasaId] = useState(null);
   const selectedMasaIdRef = useRef(null);
 
   useEffect(() => {
     selectedMasaIdRef.current = selectedMasaId;
   }, [selectedMasaId]);
+
+  useEffect(() => {
+    localStorage.setItem('integra_gun_sonu_kilitleri', JSON.stringify(gunSonuKilitleri || {}));
+  }, [gunSonuKilitleri]);
+
+  useEffect(() => {
+    localStorage.setItem('integra_personel_detay_yetkileri', JSON.stringify(personelDetayYetkiKayitlari || {}));
+  }, [personelDetayYetkiKayitlari]);
+
+  useEffect(() => {
+    localStorage.setItem('integra_demo_talepleri', JSON.stringify(demoTalepKayitlari || []));
+  }, [demoTalepKayitlari]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onlineYap = () => setBaglantiOnline(true);
+    const offlineYap = () => setBaglantiOnline(false);
+    window.addEventListener('online', onlineYap);
+    window.addEventListener('offline', offlineYap);
+    return () => {
+      window.removeEventListener('online', onlineYap);
+      window.removeEventListener('offline', offlineYap);
+    };
+  }, []);
 
   // mobilde masaya tıklanınca tam ekran adisyon panelini açıp kapatan kod
   const [mobilAdisyonAcik, setMobilAdisyonAcik] = useState(false);
@@ -2600,6 +2662,233 @@ Toplam Ciro: {toplam}
     return kayit;
   };
 
+  const personelDetayYetkiSecenekleri = [
+    { key: 'odeme_al', label: 'Ödeme alabilir' },
+    { key: 'indirim_yap', label: 'İndirim yapabilir' },
+    { key: 'adisyon_duzenle', label: 'Adisyon düzenleyebilir' },
+    { key: 'kapali_adisyon_ac', label: 'Kapalı adisyon açabilir' },
+    { key: 'fiyat_degistir', label: 'Ürün fiyatı değiştirebilir' },
+    { key: 'rapor_gor', label: 'Raporları görebilir' },
+    { key: 'kasa_gor', label: 'Kasayı görebilir' },
+    { key: 'masa_yonet', label: 'Masa/bölüm ekleyebilir' },
+    { key: 'urun_yonet', label: 'Menü ürünü yönetebilir' },
+  ];
+
+  const goreveGoreVarsayilanDetayYetkileri = (gorev = 'Garson') => {
+    const metin = String(gorev || '').toLocaleLowerCase('tr-TR');
+    if (metin.includes('müdür') || metin.includes('mudur')) return personelDetayYetkiSecenekleri.map(y => y.key);
+    if (metin.includes('kasiyer')) return ['odeme_al', 'adisyon_duzenle', 'rapor_gor', 'kasa_gor'];
+    if (metin.includes('mutfak')) return ['rapor_gor'];
+    if (metin.includes('kurye')) return ['adisyon_duzenle'];
+    return ['adisyon_duzenle', 'masa_yonet'];
+  };
+
+  const personelDetayYetkileriniHazirla = (personel = {}) => {
+    const kayitli = personelDetayYetkiKayitlari?.[String(personel.id)] || personel.detayYetkileri;
+    const kaynak = Array.isArray(kayitli) && kayitli.length > 0 ? kayitli : goreveGoreVarsayilanDetayYetkileri(personel.gorev || 'Garson');
+    const izinli = personelDetayYetkiSecenekleri.map(y => y.key);
+    return Array.from(new Set(kaynak.filter(y => izinli.includes(y))));
+  };
+
+  const personelDetayYetkisiniDegistir = (personel, yetkiKey, secili) => {
+    if (!personel?.id) return;
+    const mevcut = personelDetayYetkileriniHazirla(personel);
+    const yeniYetkiler = secili
+      ? Array.from(new Set([...mevcut, yetkiKey]))
+      : mevcut.filter(y => y !== yetkiKey);
+
+    setPersonelDetayYetkiKayitlari(prev => ({
+      ...(prev || {}),
+      [String(personel.id)]: yeniYetkiler,
+    }));
+
+    setPersoneller(prev => (Array.isArray(prev) ? prev : []).map(p => String(p.id) === String(personel.id) ? { ...p, detayYetkileri: yeniYetkiler } : p));
+    islemLoguEkle('Personel Yetki', `${personel.ad || 'Personel'} detay yetkileri güncellendi.`);
+  };
+
+  const aktifKullaniciDetayYetkisiVar = (yetkiKey) => {
+    if (!user || user.role === 'owner' || user.role === 'super_admin') return true;
+    const personel = aktifPersoneller.find(p => p.email && user.email && String(p.email).toLocaleLowerCase('tr-TR') === String(user.email).toLocaleLowerCase('tr-TR'));
+    const yetkiler = personel ? personelDetayYetkileriniHazirla(personel) : goreveGoreVarsayilanDetayYetkileri(user?.personelGorev || 'Garson');
+    return yetkiler.includes(yetkiKey);
+  };
+
+  const islemYetkisiKontrolEt = (yetkiKey, mesaj) => {
+    if (aktifKullaniciDetayYetkisiVar(yetkiKey)) return true;
+    alert(mesaj || 'Bu işlem için personel yetkiniz yok. İşletme sahibinden yetki isteyin.');
+    return false;
+  };
+
+  const gunSonuKilitAnahtari = (tarih = new Date().toISOString().split('T')[0]) => `${mevcutRestaurantId || 'genel'}_${tarih}`;
+
+  const gunSonuKilidiAktifMi = (tarih = new Date().toISOString().split('T')[0]) => {
+    return Boolean(gunSonuKilitleri?.[gunSonuKilitAnahtari(tarih)]);
+  };
+
+  const gunSonuKilidiniDegistir = (tarih, kilitli) => {
+    const hedefTarih = tarih || new Date().toISOString().split('T')[0];
+    const anahtar = gunSonuKilitAnahtari(hedefTarih);
+    setGunSonuKilitleri(prev => ({ ...(prev || {}), [anahtar]: Boolean(kilitli) }));
+    islemLoguEkle('Gün Sonu Kilidi', `${hedefTarih} tarihi ${kilitli ? 'kilitlendi' : 'tekrar açıldı'}.`);
+    alert(kilitli ? 'Gün sonu kilidi aktif edildi.' : 'Gün sonu kilidi kaldırıldı.');
+  };
+
+  const csvHucre = (deger) => `"${String(deger ?? '').replace(/"/g, '""')}"`;
+  const csvSatiri = (liste = []) => liste.map(csvHucre).join(';');
+
+  const dosyaIndir = (dosyaAdi, icerik, mime = 'text/plain;charset=utf-8') => {
+    const blob = new Blob([icerik], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = dosyaAdi;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const islemGecmisiCsvIndir = () => {
+    const satirlar = [csvSatiri(['Tarih', 'Tip', 'Açıklama', 'Kullanıcı'])];
+    (Array.isArray(islemLoglari) ? islemLoglari : [])
+      .filter(l => String(l.restaurantId || '') === String(mevcutRestaurantId || ''))
+      .forEach(l => satirlar.push(csvSatiri([l.createdAt || '', l.tip || '', l.aciklama || '', l.kullanici || ''])));
+    dosyaIndir(`islem-gecmisi-${mevcutRestaurantId || 'genel'}.csv`, satirlar.join('\n'), 'text/csv;charset=utf-8');
+  };
+
+  const yedekJsonIndir = () => {
+    const yedek = {
+      tarih: new Date().toISOString(),
+      restaurantId: mevcutRestaurantId,
+      masalar: tumRestoranMasalari,
+      menuUrunleri: aktifMenu,
+      menuGruplari: (Array.isArray(menuGruplari) ? menuGruplari : []).filter(g => String(g.restaurantId || '') === String(mevcutRestaurantId || '')),
+      satisGecmisi: (Array.isArray(satisGecmisi) ? satisGecmisi : []).filter(s => String(s.restaurantId || '') === String(mevcutRestaurantId || '')),
+      cariMusteriler: (Array.isArray(cariMusteriler) ? cariMusteriler : []).filter(c => String(c.restaurantId || '') === String(mevcutRestaurantId || '')),
+      stokMalzemeleri: aktifStokMalzemeleri,
+      zRaporlari: (Array.isArray(zRaporlari) ? zRaporlari : []).filter(z => String(z.restaurantId || '') === String(mevcutRestaurantId || '')),
+      islemLoglari: (Array.isArray(islemLoglari) ? islemLoglari : []).filter(l => String(l.restaurantId || '') === String(mevcutRestaurantId || '')),
+    };
+    dosyaIndir(`integra-yedek-${mevcutRestaurantId || 'genel'}-${new Date().toISOString().split('T')[0]}.json`, JSON.stringify(yedek, null, 2), 'application/json;charset=utf-8');
+    islemLoguEkle('Yedek', 'İşletme veri yedeği indirildi.');
+  };
+
+  const satisCsvIndir = () => {
+    const satirlar = [csvSatiri(['Tarih', 'Ürün', 'Adet', 'Birim Fiyat', 'Toplam', 'Maliyet', 'Ödeme', 'Masa'])];
+    (Array.isArray(satisGecmisi) ? satisGecmisi : [])
+      .filter(s => String(s.restaurantId || '') === String(mevcutRestaurantId || ''))
+      .forEach(s => satirlar.push(csvSatiri([s.tarih || '', s.ad || '', s.adet || 0, s.fiyat || 0, Number(s.fiyat || 0) * Number(s.adet || 1), s.toplamMaliyet || s.toplam_maliyet || 0, s.odemeTipi || s.odeme_tipi || '', s.masaAdi || s.masa_adi || ''])));
+    dosyaIndir(`satis-yedegi-${mevcutRestaurantId || 'genel'}.csv`, satirlar.join('\n'), 'text/csv;charset=utf-8');
+  };
+
+  const fisOnizlemeMetniOlustur = () => {
+    const genislik = fisOnizlemeGenislik === '58' ? 32 : 42;
+    const cizgi = '-'.repeat(genislik);
+    const masa = activeMasa || tumRestoranMasalari.find(m => m.dolu) || tumRestoranMasalari[0] || {};
+    const urunler = Array.isArray(masa.siparisler) && masa.siparisler.length > 0 ? masa.siparisler : [{ ad: 'Örnek Ürün', adet: 1, fiyat: 120 }];
+    const toplam = urunler.reduce((t, u) => t + Number(u.fiyat || 0) * Number(u.adet || 1), 0);
+    const satir = (sol, sag = '') => {
+      const s = String(sol || '').slice(0, genislik - 10);
+      const r = String(sag || '');
+      const bosluk = Math.max(genislik - s.length - r.length, 1);
+      return `${s}${' '.repeat(bosluk)}${r}`;
+    };
+
+    const baslik = fisOnizlemeTuru === 'mutfak' ? 'MUTFAK FISI' : fisOnizlemeTuru === 'paket' ? 'PAKET FISI' : fisOnizlemeTuru === 'odeme' ? 'ODEME FISI' : 'ADISYON FISI';
+    return [
+      baslik,
+      cizgi,
+      `Masa: ${masa.ad || 'Masa'}`,
+      `Tarih: ${new Date().toLocaleString('tr-TR')}`,
+      cizgi,
+      ...urunler.map(u => satir(`${Number(u.adet || 1)}x ${u.ad || u.urunAdi || 'Ürün'}`, `${Number(Number(u.fiyat || 0) * Number(u.adet || 1)).toFixed(2)}`)),
+      cizgi,
+      satir('Toplam', `${Number(masa.tutar || toplam).toFixed(2)} TL`),
+      '',
+      String(fisAyarlari?.fisAltNotu || 'Tesekkur ederiz.').slice(0, genislik),
+    ].join('\n');
+  };
+
+  const fisOnizlemeMetniniKopyala = async () => {
+    const metin = fisOnizlemeMetniOlustur();
+    try {
+      await navigator.clipboard.writeText(metin);
+      alert('Fiş önizleme metni kopyalandı.');
+    } catch {
+      window.prompt('Fiş metnini kopyalayın:', metin);
+    }
+  };
+
+  const demoTalebiniKaydet = () => {
+    if (!demoTalepFormu.adSoyad || !demoTalepFormu.telefon) {
+      alert('Demo talebi için ad soyad ve telefon zorunlu.');
+      return;
+    }
+    const kayit = {
+      id: `demo-${Date.now()}`,
+      ...demoTalepFormu,
+      durum: 'Yeni',
+      createdAt: new Date().toISOString(),
+    };
+    setDemoTalepKayitlari(prev => [kayit, ...(Array.isArray(prev) ? prev : [])]);
+    setDemoTalepFormu({ adSoyad: '', isletmeAdi: '', telefon: '', sehir: '', isletmeTipi: 'Restoran', not: '' });
+    islemLoguEkle('Demo Talebi', `${kayit.isletmeAdi || kayit.adSoyad} demo talebi oluşturuldu.`);
+    alert('Demo talebi kaydedildi.');
+  };
+
+  const demoVeriKurulumunuOlustur = () => {
+    if (!mevcutRestaurantId) return;
+    const zaman = Date.now();
+    const yeniMasalar = ['Masa 1', 'Masa 2', 'Masa 3', 'Bahçe 1', 'Teras 1'].filter(ad => !tumRestoranMasalari.some(m => String(m.ad || '').toLocaleLowerCase('tr-TR') === ad.toLocaleLowerCase('tr-TR'))).map((ad, index) => ({
+      id: `demo-masa-${zaman}-${index}`,
+      restaurantId: mevcutRestaurantId,
+      ad,
+      bolum: ad.includes('Bahçe') ? 'Bahçe' : ad.includes('Teras') ? 'Teras' : 'Salon',
+      dolu: false,
+      tutar: 0,
+      siparisler: [],
+      odemeler: [],
+    }));
+
+    const demoGruplar = ['Ana Yemekler', 'İçecekler', 'Tatlılar'].filter(ad => !(Array.isArray(menuGruplari) ? menuGruplari : []).some(g => String(g.restaurantId || '') === String(mevcutRestaurantId || '') && String(g.ad || '').toLocaleLowerCase('tr-TR') === ad.toLocaleLowerCase('tr-TR'))).map((ad, index) => ({
+      id: `demo-grup-${zaman}-${index}`,
+      restaurantId: mevcutRestaurantId,
+      ad,
+      departman: ad === 'İçecekler' ? 'Bar' : 'Mutfak',
+      kdvOrani: ad === 'İçecekler' ? 20 : 10,
+      mutfagaGitsin: true,
+      mutfakEkraninaGitsin: true,
+      yaziciyaGitsin: true,
+    }));
+
+    const demoUrunler = [
+      { ad: 'Günün Yemeği', fiyat: 180, menuGrubu: 'Ana Yemekler', departman: 'Mutfak' },
+      { ad: 'Ayran', fiyat: 45, menuGrubu: 'İçecekler', departman: 'Bar' },
+      { ad: 'Sütlaç', fiyat: 90, menuGrubu: 'Tatlılar', departman: 'Mutfak' },
+    ].filter(u => !aktifMenu.some(m => String(m.ad || '').toLocaleLowerCase('tr-TR') === u.ad.toLocaleLowerCase('tr-TR'))).map((u, index) => ({
+      id: `demo-urun-${zaman}-${index}`,
+      restaurantId: mevcutRestaurantId,
+      fiyat: u.fiyat,
+      kategori: u.menuGrubu,
+      kdvOrani: u.departman === 'Bar' ? 20 : 10,
+      mutfagaGitsin: true,
+      mutfakEkraninaGitsin: true,
+      yaziciyaGitsin: true,
+      qrMenudeGorunsun: true,
+      satistaAktif: true,
+      stokTakip: false,
+      resimUrl: '',
+      menuNotlari: [],
+      ...u,
+    }));
+
+    if (yeniMasalar.length > 0) setMasalar(prev => [...(Array.isArray(prev) ? prev : []), ...yeniMasalar]);
+    if (demoGruplar.length > 0) setMenuGruplari(prev => [...(Array.isArray(prev) ? prev : []), ...demoGruplar]);
+    if (demoUrunler.length > 0) setMenuUrunleri(prev => [...(Array.isArray(prev) ? prev : []), ...demoUrunler]);
+    islemLoguEkle('Kurulum', 'Demo kurulum verileri eklendi.');
+    alert('Demo kurulum verileri eklendi. Supabase kaydı için gerçek masa/ürün ekleme butonlarını kullanarak kalıcı hale getirebilirsiniz.');
+  };
+
   const QR_SERVIS_TALEBI_JSON_PREFIX = '__INTEGRA_QR_SERVIS_TALEBI__';
 
   const servisTalebiGomuluPayloadCoz = (satir = {}) => {
@@ -3645,6 +3934,7 @@ Toplam Ciro: {toplam}
     { key: 'kurulum', label: '🚀 Kurulum Sihirbazı' },
     { key: 'sistem_durumu', label: '🛠️ Sistem Durumu' },
     { key: 'ayarlar', label: '⚙️ Ayarlar' },
+    { key: 'guclendirme', label: '🧰 Güçlendirme' },
     { key: 'giderler', label: '🧾 Giderler' },
     { key: 'iadeler', label: '↩️ İade / İkram' },
     { key: 'rezervasyonlar', label: '📅 Rezervasyon' },
@@ -3788,7 +4078,7 @@ Toplam Ciro: {toplam}
 
   // sekmenin kullanıcı için görünür olup olmadığını kontrol eden kod
   const tabGorunur = (tabKey) => {
-    if (tabKey === 'sistem_durumu' || tabKey === 'ayarlar') return Boolean(user);
+    if (['sistem_durumu', 'ayarlar', 'guclendirme', 'islem_gecmisi', 'yedekleme', 'fis_onizleme'].includes(tabKey)) return Boolean(user);
     return kullaniciSekmeleri.includes(tabKey);
   };
 
@@ -7453,6 +7743,7 @@ Toplam Ciro: {toplam}
 
   // açık masanın genel toplam indirimini Supabase'e kaydeden kod
   const adisyonToplamIndirimiKaydet = async () => {
+    if (!islemYetkisiKontrolEt('indirim_yap', 'Bu personelin indirim yapma yetkisi yok.')) return;
     const masa = activeMasa;
 
     if (!masa || !masa.dolu || !Array.isArray(masa.siparisler) || masa.siparisler.length === 0) {
@@ -7506,6 +7797,11 @@ Toplam Ciro: {toplam}
 
   // nakit veya kredi kartı ile parçalı ödeme alan ve ödeme tamamlanınca hesabı kapatan fonksiyon
   const odemeAl = async (odemeTipi) => {
+    if (!islemYetkisiKontrolEt('odeme_al', 'Bu personelin ödeme alma yetkisi yok.')) return;
+    if (gunSonuKilidiAktifMi(new Date().toISOString().split('T')[0])) {
+      alert('Bugünün gün sonu kilidi aktif. Yeni ödeme almak için Güçlendirme > Gün Sonu Kilidi bölümünden kilidi kaldırın.');
+      return;
+    }
     const masa = activeMasa;
 
     if (!masa || !masa.siparisler || masa.siparisler.length === 0) {
@@ -8317,6 +8613,11 @@ Toplam Ciro: {toplam}
 
   // paket servis siparişini nakit veya kart ile kapatıp satış raporuna işleyen kod
   const paketSiparisiKapat = async (paket, odemeTipi) => {
+    if (!islemYetkisiKontrolEt('odeme_al', 'Bu personelin paket ödeme kapatma yetkisi yok.')) return;
+    if (gunSonuKilidiAktifMi(new Date().toISOString().split('T')[0])) {
+      alert('Bugünün gün sonu kilidi aktif. Paket sipariş kapatmak için kilidi kaldırın.');
+      return;
+    }
     if (!paket || !paket.id) {
       alert('Paket sipariş bulunamadı.');
       return;
@@ -9998,6 +10299,11 @@ Toplam Ciro: {toplam}
 
   // hızlı satışı kapatıp raporlara işleyen kod
   const hizliSatisKapat = async (odemeTipiOverride = null, cariOverride = null) => {
+    if (!islemYetkisiKontrolEt('odeme_al', 'Bu personelin hızlı satış kapatma yetkisi yok.')) return;
+    if (gunSonuKilidiAktifMi(new Date().toISOString().split('T')[0])) {
+      alert('Bugünün gün sonu kilidi aktif. Hızlı satış için kilidi kaldırın.');
+      return;
+    }
     if (!Array.isArray(hizliSatisUrunler) || hizliSatisUrunler.length === 0) {
       alert('Hızlı satış için ürün seçin.');
       return;
@@ -10512,6 +10818,10 @@ Toplam Ciro: {toplam}
     };
 
     setZRaporlari([yeniZRaporu, ...zRaporlari]);
+    setGunSonuKilitleri(prev => ({
+      ...(prev || {}),
+      [gunSonuKilitAnahtari(seciliTarih)]: true,
+    }));
     setKasaGercekTutar('');
 
     if (typeof satisGecmisiniSupabasedenCek === 'function') await satisGecmisiniSupabasedenCek(mevcutRestaurantId);
@@ -16028,6 +16338,14 @@ Toplam Ciro: {toplam}
                 ⚙️ Ayarlar
               </button>
 
+              <button
+                type="button"
+                onClick={() => setActiveTab('guclendirme')}
+                style={activeTab === 'guclendirme' ? styles.navItemActive : styles.navItem}
+              >
+                🧰 Güçlendirme Paketi
+              </button>
+
 
               <div style={styles.navSectionTitle}>Satış Kanalları</div>
               {tabGorunur('hizli_satis') && (
@@ -16232,6 +16550,8 @@ Toplam Ciro: {toplam}
                 <span>•</span>
                 <span>Supabase: {supabaseBaglantiDurumu}</span>
                 <span>•</span>
+                <span style={{ color: baglantiOnline ? '#16a34a' : '#dc2626' }}>Tarayıcı: {baglantiOnline ? 'Çevrim içi' : 'Kopuk'}</span>
+                <span>•</span>
                 <span>Son yenileme: {sonVeriYenilemeZamani ? saatYaz(sonVeriYenilemeZamani) : 'Henüz yok'}</span>
               </div>
 
@@ -16353,7 +16673,7 @@ Toplam Ciro: {toplam}
                   <div style={styles.contentHeader}>
                     <h2 style={styles.pageTitle}>Canlı Salon Planı</h2>
 
-                    {user?.role !== 'waiter' && (
+                    {aktifKullaniciDetayYetkisiVar('masa_yonet') && (
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <form onSubmit={masaBolumuEkle} style={{ display: 'flex', gap: '8px' }}>
                           <input
@@ -19844,6 +20164,233 @@ Toplam Ciro: {toplam}
                 </div>
 
 
+              </div>
+            )}
+
+            {activeTab === 'guclendirme' && (
+              <div>
+                <div style={styles.contentHeader}>
+                  <div>
+                    <h2 style={styles.pageTitle}>🧰 Güçlendirme Paketi</h2>
+                    <div style={{ color: '#64748b', fontSize: '13px', marginTop: '6px', fontWeight: '700' }}>
+                      İşlem geçmişi, personel yetkileri, gün sonu kilidi, fiş önizleme, yedekleme ve kurulum araçları.
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => panelVerileriniYenile({ bildirim: true })} style={styles.btnOrange}>🔄 Verileri Yenile</button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  {[
+                    ['islem', '📜 İşlem Geçmişi'],
+                    ['yetki', '🔐 Personel Yetkileri'],
+                    ['gunsonu', '🔒 Gün Sonu Kilidi'],
+                    ['fis', '🧾 Fiş Önizleme'],
+                    ['yedek', '💾 Yedek / Dışa Aktar'],
+                    ['demo', '📩 Demo Talepleri'],
+                    ['qr', '🎨 QR Tasarım'],
+                    ['lisans', '💳 Lisans Özeti'],
+                  ].map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setGuclendirmeSekmesi(key)}
+                      style={{
+                        border: guclendirmeSekmesi === key ? '1px solid #ff6b35' : '1px solid #e2e8f0',
+                        backgroundColor: guclendirmeSekmesi === key ? '#fff7ed' : '#fff',
+                        color: guclendirmeSekmesi === key ? '#c2410c' : '#334155',
+                        padding: '10px 12px',
+                        borderRadius: '999px',
+                        cursor: 'pointer',
+                        fontWeight: '950',
+                        fontSize: '12px',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {guclendirmeSekmesi === 'islem' && (
+                  <div style={styles.panelCard}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
+                      <h3 style={{ margin: 0, color: '#1e293b' }}>📜 İşlem Geçmişi</h3>
+                      <button type="button" onClick={islemGecmisiCsvIndir} style={styles.btnOrange}>CSV İndir</button>
+                    </div>
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {(Array.isArray(islemLoglari) ? islemLoglari : [])
+                        .filter(l => String(l.restaurantId || '') === String(mevcutRestaurantId || ''))
+                        .slice(0, 40)
+                        .map(log => (
+                          <div key={log.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}>
+                            <div style={{ color: '#0f172a', fontWeight: '950', fontSize: '13px' }}>{log.tip || 'İşlem'} · {log.kullanici || '-'}</div>
+                            <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>{log.aciklama || '-'}</div>
+                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '6px', fontWeight: '800' }}>{log.createdAt ? new Date(log.createdAt).toLocaleString('tr-TR') : '-'}</div>
+                          </div>
+                        ))}
+                      {(Array.isArray(islemLoglari) ? islemLoglari : []).filter(l => String(l.restaurantId || '') === String(mevcutRestaurantId || '')).length === 0 && (
+                        <div style={{ color: '#64748b', fontWeight: '800', fontSize: '13px' }}>Henüz işlem kaydı yok.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {guclendirmeSekmesi === 'yetki' && (
+                  <div style={styles.panelCard}>
+                    <h3 style={{ margin: '0 0 10px', color: '#1e293b' }}>🔐 Personel Detay Yetkileri</h3>
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '750', marginBottom: '14px' }}>
+                      İşletme sahibi ve süper admin tüm işlemleri yapabilir. Personel için kritik işlemleri buradan açıp kapatabilirsiniz.
+                    </div>
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      {aktifPersoneller.map(p => {
+                        const detayYetkiler = personelDetayYetkileriniHazirla(p);
+                        return (
+                          <div key={p.id} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', backgroundColor: '#fff' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                              <div>
+                                <div style={{ color: '#0f172a', fontWeight: '950' }}>{p.ad || p.email || 'Personel'}</div>
+                                <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '750' }}>{p.gorev || 'Garson'} · {p.email || '-'}</div>
+                              </div>
+                              <button type="button" onClick={() => {
+                                setPersonelDetayYetkiKayitlari(prev => ({ ...(prev || {}), [String(p.id)]: personelDetayYetkiSecenekleri.map(y => y.key) }));
+                                alert('Bu personel için tüm detay yetkileri açıldı.');
+                              }} style={{ ...styles.addBtnMini, backgroundColor: '#0f172a' }}>Tümünü Aç</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              {personelDetayYetkiSecenekleri.map(secenek => {
+                                const aktif = detayYetkiler.includes(secenek.key);
+                                return (
+                                  <button
+                                    key={secenek.key}
+                                    type="button"
+                                    onClick={() => personelDetayYetkisiniDegistir(p, secenek.key, !aktif)}
+                                    style={ayarToggleButonuStili(aktif)}
+                                  >
+                                    {aktif ? '✅' : '⬜'} {secenek.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {aktifPersoneller.length === 0 && <div style={{ color: '#64748b', fontWeight: '800', fontSize: '13px' }}>Kayıtlı personel bulunamadı.</div>}
+                    </div>
+                  </div>
+                )}
+
+                {guclendirmeSekmesi === 'gunsonu' && (
+                  <div style={styles.panelCard}>
+                    <h3 style={{ margin: '0 0 10px', color: '#1e293b' }}>🔒 Gün Sonu Kilidi</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                      <div style={styles.statsCard}>
+                        <div style={styles.statsTitle}>Seçili rapor tarihi</div>
+                        <div style={{ ...styles.statsValue, fontSize: '22px' }}>{raporTarihi}</div>
+                      </div>
+                      <div style={styles.statsCard}>
+                        <div style={styles.statsTitle}>Kilit durumu</div>
+                        <div style={{ ...styles.statsValue, color: gunSonuKilidiAktifMi(raporTarihi) ? '#dc2626' : '#16a34a', fontSize: '22px' }}>
+                          {gunSonuKilidiAktifMi(raporTarihi) ? 'Kilitli' : 'Açık'}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px' }}>
+                      <button type="button" onClick={() => gunSonuKilidiniDegistir(raporTarihi, true)} style={styles.btnOrange}>Tarihi Kilitle</button>
+                      <button type="button" onClick={() => gunSonuKilidiniDegistir(raporTarihi, false)} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Kilidi Kaldır</button>
+                    </div>
+                    <div style={{ marginTop: '12px', color: '#64748b', fontWeight: '750', fontSize: '12px', lineHeight: 1.6 }}>
+                      Gün sonu alındığında seçili gün otomatik kilitlenir. Kilitliyken yeni ödeme, paket kapatma ve hızlı satış kapanışı engellenir.
+                    </div>
+                  </div>
+                )}
+
+                {guclendirmeSekmesi === 'fis' && (
+                  <div style={styles.panelCard}>
+                    <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>🧾 Fiş Önizleme</h3>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                      {['adisyon', 'odeme', 'mutfak', 'paket'].map(tur => (
+                        <button key={tur} type="button" onClick={() => setFisOnizlemeTuru(tur)} style={ayarToggleButonuStili(fisOnizlemeTuru === tur, 'blue')}>{tur.toUpperCase()}</button>
+                      ))}
+                      {['58', '80'].map(genislik => (
+                        <button key={genislik} type="button" onClick={() => setFisOnizlemeGenislik(genislik)} style={ayarToggleButonuStili(fisOnizlemeGenislik === genislik)}>{genislik}mm</button>
+                      ))}
+                      <button type="button" onClick={fisOnizlemeMetniniKopyala} style={styles.addBtnMini}>Metni Kopyala</button>
+                    </div>
+                    <pre style={{ backgroundColor: '#0f172a', color: '#f8fafc', borderRadius: '14px', padding: '16px', overflowX: 'auto', fontFamily: 'Consolas, Menlo, monospace', fontSize: fisOnizlemeGenislik === '58' ? '12px' : '13px', lineHeight: 1.45, whiteSpace: 'pre' }}>{fisOnizlemeMetniOlustur()}</pre>
+                  </div>
+                )}
+
+                {guclendirmeSekmesi === 'yedek' && (
+                  <div style={styles.panelCard}>
+                    <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>💾 Yedekleme / Dışa Aktarma</h3>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={yedekJsonIndir} style={styles.btnOrange}>Tam JSON Yedek İndir</button>
+                      <button type="button" onClick={satisCsvIndir} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Satış CSV İndir</button>
+                      <button type="button" onClick={islemGecmisiCsvIndir} style={{ ...styles.btnOrange, backgroundColor: '#475569' }}>İşlem Log CSV İndir</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '14px' }}>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Masa</div><div style={styles.statsValue}>{tumRestoranMasalari.length}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Ürün</div><div style={styles.statsValue}>{aktifMenu.length}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Cari</div><div style={styles.statsValue}>{(Array.isArray(cariMusteriler) ? cariMusteriler : []).filter(c => String(c.restaurantId || '') === String(mevcutRestaurantId || '')).length}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Stok</div><div style={styles.statsValue}>{aktifStokMalzemeleri.length}</div></div>
+                    </div>
+                  </div>
+                )}
+
+                {guclendirmeSekmesi === 'demo' && (
+                  <div style={styles.panelCard}>
+                    <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>📩 Demo Talebi ve Kurulum Modu</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                      <input placeholder="Ad Soyad" value={demoTalepFormu.adSoyad} onChange={e => setDemoTalepFormu(prev => ({ ...prev, adSoyad: e.target.value }))} style={styles.input} />
+                      <input placeholder="İşletme Adı" value={demoTalepFormu.isletmeAdi} onChange={e => setDemoTalepFormu(prev => ({ ...prev, isletmeAdi: e.target.value }))} style={styles.input} />
+                      <input placeholder="Telefon" value={demoTalepFormu.telefon} onChange={e => setDemoTalepFormu(prev => ({ ...prev, telefon: e.target.value }))} style={styles.input} />
+                      <input placeholder="Şehir" value={demoTalepFormu.sehir} onChange={e => setDemoTalepFormu(prev => ({ ...prev, sehir: e.target.value }))} style={styles.input} />
+                      <select value={demoTalepFormu.isletmeTipi} onChange={e => setDemoTalepFormu(prev => ({ ...prev, isletmeTipi: e.target.value }))} style={styles.input}>
+                        <option>Restoran</option><option>Kafe</option><option>Fast food</option><option>Paket servis</option><option>Diğer</option>
+                      </select>
+                      <input placeholder="Not" value={demoTalepFormu.not} onChange={e => setDemoTalepFormu(prev => ({ ...prev, not: e.target.value }))} style={styles.input} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                      <button type="button" onClick={demoTalebiniKaydet} style={styles.btnOrange}>Demo Talebi Kaydet</button>
+                      <button type="button" onClick={demoVeriKurulumunuOlustur} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Örnek Kurulum Verisi Ekle</button>
+                    </div>
+                    <div style={{ marginTop: '14px', display: 'grid', gap: '8px' }}>
+                      {demoTalepKayitlari.slice(0, 5).map(talep => (
+                        <div key={talep.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', fontSize: '12px', color: '#334155', fontWeight: '800' }}>
+                          {talep.createdAt ? new Date(talep.createdAt).toLocaleString('tr-TR') : '-'} · {talep.adSoyad} · {talep.telefon} · {talep.isletmeAdi || '-'}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {guclendirmeSekmesi === 'qr' && (
+                  <div style={styles.panelCard}>
+                    <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>🎨 QR Menü Tasarım Ayarları</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                      <input placeholder="Logo URL" value={qrMenuAyarlari.logoUrl || ''} onChange={e => setQrMenuAyarlari(prev => ({ ...prev, logoUrl: e.target.value }))} style={styles.input} />
+                      <input placeholder="Kapak başlığı" value={qrMenuAyarlari.kapakBasligi || ''} onChange={e => setQrMenuAyarlari(prev => ({ ...prev, kapakBasligi: e.target.value }))} style={styles.input} />
+                      <input placeholder="Tema rengi (#ff6b35)" value={qrMenuAyarlari.temaRengi || ''} onChange={e => setQrMenuAyarlari(prev => ({ ...prev, temaRengi: e.target.value }))} style={styles.input} />
+                      <input placeholder="WhatsApp sipariş telefonu" value={qrMenuAyarlari.whatsappTelefon || ''} onChange={e => setQrMenuAyarlari(prev => ({ ...prev, whatsappTelefon: e.target.value }))} style={styles.input} />
+                      <input placeholder="Açık/kapalı saat bilgisi" value={qrMenuAyarlari.calismaSaatleri || ''} onChange={e => setQrMenuAyarlari(prev => ({ ...prev, calismaSaatleri: e.target.value }))} style={styles.input} />
+                    </div>
+                    <button type="button" onClick={() => { localStorage.setItem('integra_qr_menu_ayarlari', JSON.stringify(qrMenuAyarlari)); alert('QR menü tasarım ayarları kaydedildi.'); }} style={{ ...styles.btnOrange, marginTop: '12px' }}>QR Ayarlarını Kaydet</button>
+                  </div>
+                )}
+
+                {guclendirmeSekmesi === 'lisans' && (
+                  <div style={styles.panelCard}>
+                    <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>💳 Lisans / Ödeme Takip Özeti</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Paket</div><div style={{ ...styles.statsValue, fontSize: '21px' }}>{user?.modulPaketi || user?.paketAdi || 'Profesyonel'}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Lisans</div><div style={{ ...styles.statsValue, fontSize: '21px' }}>{aktifKullaniciLisansRozeti?.etiket || 'Aktif'}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Son ödeme</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{user?.sonOdemeTarihi || '-'}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Lisans bitiş</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{user?.lisansBitisTarihi || user?.lisansBitis || '-'}</div></div>
+                    </div>
+                    <div style={{ marginTop: '12px', color: '#64748b', fontSize: '12px', fontWeight: '750', lineHeight: 1.6 }}>
+                      Detaylı lisans yönetimi süper admin tarafındaki Lisans & Ödeme ekranından yapılır. Bu bölüm işletmeye hızlı özet verir.
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
