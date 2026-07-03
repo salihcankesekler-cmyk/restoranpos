@@ -16632,17 +16632,18 @@ Toplam Ciro: {toplam}
                 <div style={isMobile ? styles.mobilAdisyonTamEkran : styles.adisyonPanel}>
                   {isMobile ? (
                     <div style={styles.mobilAdisyonUstBar}>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={styles.mobilAdisyonMasaAdi}>🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'}</div>
-                      </div>
-
                       <button
                         type="button"
+                        aria-label="Adisyon panelini kapat"
                         onClick={() => setMobilAdisyonAcik(false)}
                         style={styles.mobilAdisyonKapatBtn}
                       >
-                        ✕
+                        ✕ Kapat
                       </button>
+
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={styles.mobilAdisyonMasaAdi}>🧾 {activeMasa ? activeMasa.ad : 'Masa Seçilmedi'}</div>
+                      </div>
                     </div>
                   ) : (
                     <div style={styles.desktopAdisyonUstBar}>
@@ -23690,9 +23691,10 @@ const styles = {
     zIndex: 9999,
     width: '100vw',
     height: '100dvh',
+    minHeight: '100dvh',
     maxWidth: '100vw',
     backgroundColor: '#fff',
-    padding: '12px',
+    padding: 'calc(env(safe-area-inset-top, 0px) + 10px) calc(env(safe-area-inset-right, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 12px) calc(env(safe-area-inset-left, 0px) + 12px)',
     display: 'flex',
     flexDirection: 'column',
     border: 'none',
@@ -23700,16 +23702,17 @@ const styles = {
     boxSizing: 'border-box',
     overflowY: 'auto',
     overflowX: 'hidden',
+    WebkitOverflowScrolling: 'touch',
   },
 
   mobilAdisyonUstBar: {
     position: 'sticky',
     top: 0,
-    zIndex: 2,
+    zIndex: 20,
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: '10px',
-    padding: '8px 0 10px',
+    padding: '8px 0 12px',
     backgroundColor: '#fff',
     borderBottom: '1px solid #e2e8f0',
     marginBottom: '10px',
@@ -23738,21 +23741,27 @@ const styles = {
   },
 
   mobilAdisyonKapatBtn: {
-    width: '38px',
-    height: '38px',
-    border: 'none',
+    minWidth: '92px',
+    height: '44px',
+    border: '1px solid #fecaca',
     borderRadius: '999px',
     backgroundColor: '#fee2e2',
     color: '#b91c1c',
     cursor: 'pointer',
-    fontSize: '18px',
+    fontSize: '14px',
     fontWeight: '900',
-    flex: '0 0 38px',
+    flex: '0 0 auto',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 14px',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
   },
 
   mobilAdisyonSekmeKutusu: {
     position: 'sticky',
-    top: '62px',
+    top: '66px',
     zIndex: 2,
     display: 'grid',
     gridTemplateColumns: '1fr 1fr 1fr',
