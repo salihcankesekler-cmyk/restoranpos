@@ -810,6 +810,12 @@ Toplam Ciro: {toplam}
   const [duzenlenenUrunQrMenudeGorunsun, setDuzenlenenUrunQrMenudeGorunsun] = useState(true);
   const [yeniUrunSatistaAktif, setYeniUrunSatistaAktif] = useState(true);
   const [duzenlenenUrunSatistaAktif, setDuzenlenenUrunSatistaAktif] = useState(true);
+  const [yeniUrunMutfakEkraninaGitsin, setYeniUrunMutfakEkraninaGitsin] = useState(true);
+  const [yeniUrunYaziciyaGitsin, setYeniUrunYaziciyaGitsin] = useState(true);
+  const [yeniUrunDepartman, setYeniUrunDepartman] = useState('Mutfak');
+  const [duzenlenenUrunMutfakEkraninaGitsin, setDuzenlenenUrunMutfakEkraninaGitsin] = useState(true);
+  const [duzenlenenUrunYaziciyaGitsin, setDuzenlenenUrunYaziciyaGitsin] = useState(true);
+  const [duzenlenenUrunDepartman, setDuzenlenenUrunDepartman] = useState('Mutfak');
   const [kasaGercekTutar, setKasaGercekTutar] = useState('');
 
   // gün sonu kapatıldıktan sonra kasa bölümünde saklanacak Z raporlarını tutan kod
@@ -934,6 +940,30 @@ Toplam Ciro: {toplam}
   const urunQrMenudeGorunurMu = (urun = {}) => {
     const qrDurumu = urun?.qrMenudeGorunsun ?? urun?.qr_menude_gorunsun ?? urun?.qrMenuAktif ?? urun?.qr_menu_aktif ?? true;
     return qrDurumu !== false && urunSatistaAktifMi(urun);
+  };
+
+  // ürün ekleme ekranındaki zor select alanları yerine tek tıkla aç/kapat butonları için kullanılan kod
+  const ayarToggleButonuStili = (aktif, tip = 'yes', disabled = false) => {
+    const aktifTema = tip === 'danger'
+      ? { arka: '#fee2e2', renk: '#991b1b', kenar: '#fecaca' }
+      : tip === 'blue'
+        ? { arka: '#dbeafe', renk: '#1d4ed8', kenar: '#bfdbfe' }
+        : { arka: '#dcfce7', renk: '#15803d', kenar: '#bbf7d0' };
+    const pasifTema = { arka: '#f8fafc', renk: '#64748b', kenar: '#e2e8f0' };
+    const tema = aktif ? aktifTema : pasifTema;
+
+    return {
+      border: `1px solid ${tema.kenar}`,
+      backgroundColor: tema.arka,
+      color: tema.renk,
+      padding: '9px 11px',
+      borderRadius: '999px',
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      fontWeight: '900',
+      fontSize: '12px',
+      opacity: disabled ? 0.55 : 1,
+      whiteSpace: 'nowrap',
+    };
   };
 
   // bilgisayardan seçilen ürün görselini uygulamada saklanabilir hale çeviren kod
@@ -1757,6 +1787,13 @@ Toplam Ciro: {toplam}
     aktifMenuGruplari.find(g => g.ad === aktifMenuGrubu) ||
     aktifMenuGruplari[0] ||
     { ad: 'Genel', departman: 'Mutfak', kdvOrani: 10, mutfagaGitsin: true, mutfakEkraninaGitsin: true, yaziciyaGitsin: true };
+
+  // grup değişince yeni ürün formundaki mutfak/yazıcı varsayılanlarını o gruba göre hazırlayan kod
+  useEffect(() => {
+    setYeniUrunDepartman(yaziciDepartmaniniNormalizeEt(aktifGrup?.departman || 'Mutfak'));
+    setYeniUrunMutfakEkraninaGitsin(mutfakEkraniAktifMi(aktifGrup));
+    setYeniUrunYaziciyaGitsin(fisYaziciAktifMi(aktifGrup));
+  }, [aktifGrup?.id, aktifGrup?.ad, aktifGrup?.departman, aktifGrup?.mutfagaGitsin, aktifGrup?.mutfakEkraninaGitsin, aktifGrup?.mutfak_ekranina_gitsin, aktifGrup?.yaziciyaGitsin, aktifGrup?.yaziciya_gitsin]);
 
   // aktif seçili menü grubundaki ürünleri filtreleyen kod
   const aktifMenuGrubuUrunleri = aktifMenu.filter(u => {
@@ -3601,6 +3638,7 @@ Toplam Ciro: {toplam}
     { key: 'isletme_profili', label: '🏢 İşletme Profili' },
     { key: 'kurulum', label: '🚀 Kurulum Sihirbazı' },
     { key: 'sistem_durumu', label: '🛠️ Sistem Durumu' },
+    { key: 'ayarlar', label: '⚙️ Ayarlar' },
     { key: 'giderler', label: '🧾 Giderler' },
     { key: 'iadeler', label: '↩️ İade / İkram' },
     { key: 'rezervasyonlar', label: '📅 Rezervasyon' },
@@ -3744,7 +3782,7 @@ Toplam Ciro: {toplam}
 
   // sekmenin kullanıcı için görünür olup olmadığını kontrol eden kod
   const tabGorunur = (tabKey) => {
-    if (tabKey === 'sistem_durumu') return Boolean(user);
+    if (tabKey === 'sistem_durumu' || tabKey === 'ayarlar') return Boolean(user);
     return kullaniciSekmeleri.includes(tabKey);
   };
 
@@ -4568,12 +4606,9 @@ Toplam Ciro: {toplam}
 
     setMasalar(temizMasalar);
 
-    // Canlı senkron sonrası seçili masa korunur. Sadece seçili masa gerçekten silindiyse/boşsa ilk masaya geçilir.
-    setSelectedMasaId(prevSeciliMasaId => {
-      if (temizMasalar.length === 0) return null;
-      if (prevSeciliMasaId && temizMasalar.some(m => String(m.id) === String(prevSeciliMasaId))) return prevSeciliMasaId;
-      return temizMasalar[0].id;
-    });
+    if (temizMasalar.length > 0 && !selectedMasaId) {
+      setSelectedMasaId(temizMasalar[0].id);
+    }
   };
 
   // masa bölümlerini Supabase'den çeken kod
@@ -11109,8 +11144,8 @@ Toplam Ciro: {toplam}
 
     setMasalar(masalar.filter(m => m.id !== masa.id));
 
-    if (String(selectedMasaId) === String(masa.id)) {
-      const kalanMasalar = masalar.filter(m => String(m.id) !== String(masa.id));
+    if (selectedMasaId === masa.id) {
+      const kalanMasalar = masalar.filter(m => m.id !== masa.id);
       setSelectedMasaId(kalanMasalar.length > 0 ? kalanMasalar[0].id : null);
     }
 
@@ -12288,12 +12323,12 @@ Toplam Ciro: {toplam}
           maliyet: sayiyaCevir(yeniUrunMaliyeti || 0),
           kategori: urunGrubu.ad,
           menu_grubu: urunGrubu.ad,
-          departman: urunGrubu.departman || 'Mutfak',
+          departman: yeniUrunDepartman || urunGrubu.departman || 'Mutfak',
           kdv_orani: Number(urunGrubu.kdvOrani || 10),
           menu_notlari: [],
-          mutfaga_gitsin: mutfakEkraniAktifMi(urunGrubu),
-          mutfak_ekranina_gitsin: mutfakEkraniAktifMi(urunGrubu),
-          yaziciya_gitsin: fisYaziciAktifMi(urunGrubu),
+          mutfaga_gitsin: yeniUrunMutfakEkraninaGitsin,
+          mutfak_ekranina_gitsin: yeniUrunMutfakEkraninaGitsin,
+          yaziciya_gitsin: yeniUrunYaziciyaGitsin,
           stok_takip: false,
           stok_adedi: 0,
           kritik_stok: 0,
@@ -12343,6 +12378,9 @@ Toplam Ciro: {toplam}
     setYeniUrunResimUrl('');
     setYeniUrunQrMenudeGorunsun(true);
     setYeniUrunSatistaAktif(true);
+    setYeniUrunDepartman(yaziciDepartmaniniNormalizeEt(urunGrubu.departman || 'Mutfak'));
+    setYeniUrunMutfakEkraninaGitsin(mutfakEkraniAktifMi(urunGrubu));
+    setYeniUrunYaziciyaGitsin(fisYaziciAktifMi(urunGrubu));
     if (e.currentTarget && typeof e.currentTarget.reset === 'function') {
       e.currentTarget.reset();
     }
@@ -12356,6 +12394,9 @@ Toplam Ciro: {toplam}
     setDuzenlenenUrunResimUrl(urunGosterimResmi(urun));
     setDuzenlenenUrunQrMenudeGorunsun(urunQrMenudeGorunurMu(urun));
     setDuzenlenenUrunSatistaAktif(urunSatistaAktifMi(urun));
+    setDuzenlenenUrunDepartman(yaziciDepartmaniniNormalizeEt(urun.departman || 'Mutfak'));
+    setDuzenlenenUrunMutfakEkraninaGitsin(mutfakEkraniAktifMi(urun));
+    setDuzenlenenUrunYaziciyaGitsin(fisYaziciAktifMi(urun));
   };
 
   // ürün düzenleme modunu iptal eden kod
@@ -12367,6 +12408,9 @@ Toplam Ciro: {toplam}
     setDuzenlenenUrunResimUrl('');
     setDuzenlenenUrunQrMenudeGorunsun(true);
     setDuzenlenenUrunSatistaAktif(true);
+    setDuzenlenenUrunDepartman('Mutfak');
+    setDuzenlenenUrunMutfakEkraninaGitsin(true);
+    setDuzenlenenUrunYaziciyaGitsin(true);
   };
 
   // ürün adını ve fiyatını Supabase'de güncelleyen, hazır notları koruyan kod
@@ -12390,12 +12434,12 @@ Toplam Ciro: {toplam}
         aktif: duzenlenenUrunSatistaAktif,
         kategori: eskiUrun?.menuGrubu || eskiUrun?.kategori || aktifGrup.ad || 'Genel',
         menu_grubu: eskiUrun?.menuGrubu || eskiUrun?.kategori || aktifGrup.ad || 'Genel',
-        departman: eskiUrun?.departman || aktifGrup.departman || 'Mutfak',
+        departman: duzenlenenUrunDepartman || eskiUrun?.departman || aktifGrup.departman || 'Mutfak',
         kdv_orani: Number(eskiUrun?.kdvOrani || aktifGrup.kdvOrani || 10),
         menu_notlari: Array.isArray(eskiUrun?.menuNotlari) ? eskiUrun.menuNotlari : [],
-        mutfaga_gitsin: mutfakEkraniAktifMi(eskiUrun),
-        mutfak_ekranina_gitsin: mutfakEkraniAktifMi(eskiUrun),
-        yaziciya_gitsin: fisYaziciAktifMi(eskiUrun),
+        mutfaga_gitsin: duzenlenenUrunMutfakEkraninaGitsin,
+        mutfak_ekranina_gitsin: duzenlenenUrunMutfakEkraninaGitsin,
+        yaziciya_gitsin: duzenlenenUrunYaziciyaGitsin,
       })
       .eq('id', id)
       .eq('restaurant_id', mevcutRestaurantId)
@@ -13334,10 +13378,8 @@ Toplam Ciro: {toplam}
   // paket servis ekranında seçili ürünü bulmak için kullanılan kod
   const paketSeciliMenuUrunu = aktifMenu.find(u => String(u.id) === String(paketSeciliUrunId));
   // seçili masayı tüm bölümler içinden bulan kod
-  // Canlı senkron yenilemesinde id tipi number/string değişebildiği için seçili masa güvenli karşılaştırılır.
-  // Seçili masa geçici olarak bulunamazsa ilk masaya düşürmeyiz; böylece Masa 2/3 açıkken sağ panel Masa 1'e kaymaz.
   const activeMasa = Array.isArray(tumRestoranMasalari)
-    ? tumRestoranMasalari.find(m => String(m.id) === String(selectedMasaId)) || (!selectedMasaId ? (aktifMasalar[0] || tumRestoranMasalari[0]) : null)
+    ? tumRestoranMasalari.find(m => m.id === selectedMasaId) || aktifMasalar[0] || tumRestoranMasalari[0]
     : null;
 
   // ürün eklerken sağ panelde anlık fiyat/indirim sonucunu gösteren kod
@@ -15959,6 +16001,14 @@ Toplam Ciro: {toplam}
                 🛠️ Sistem Durumu
               </button>
 
+              <button
+                type="button"
+                onClick={() => setActiveTab('ayarlar')}
+                style={activeTab === 'ayarlar' ? styles.navItemActive : styles.navItem}
+              >
+                ⚙️ Ayarlar
+              </button>
+
 
               <div style={styles.navSectionTitle}>Satış Kanalları</div>
               {tabGorunur('hizli_satis') && (
@@ -16284,7 +16334,7 @@ Toplam Ciro: {toplam}
                   <div style={styles.contentHeader}>
                     <h2 style={styles.pageTitle}>Canlı Salon Planı</h2>
 
-                    {tabGorunur('masalar') && (
+                    {user?.role !== 'waiter' && (
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <form onSubmit={masaBolumuEkle} style={{ display: 'flex', gap: '8px' }}>
                           <input
@@ -16455,7 +16505,7 @@ Toplam Ciro: {toplam}
                                 ? '#6366f1'
                                 : hedefOlabilirMi
                                   ? '#10b981'
-                                  : String(m.id) === String(selectedMasaId || aktifMasalar[0]?.id)
+                                  : m.id === (selectedMasaId || aktifMasalar[0]?.id)
                                     ? '#ff6b35'
                                     : 'transparent',
                               backgroundColor: kaynakMasaMi
@@ -19306,44 +19356,13 @@ Toplam Ciro: {toplam}
               </div>
             )}
 
-            {/* menü ürün grupları, ürün ekleme, düzenleme ve silme ekranını gösteren kod */}
-            {activeTab === 'menu' && (
+            {/* yazıcı, fiş ve Printer Agent ayarlarını ayrı sekmede gösteren kod */}
+            {activeTab === 'ayarlar' && (
               <div style={styles.panelCard}>
-                <h2 style={styles.pageTitle}>Restoran Menü Yönetimi — Gruplu Sistem</h2>
-
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
-                  Ürünleri Ana Yemekler, İçecekler, Tatlılar gibi gruplara ayırabilirsiniz. Ürünler departman, KDV ve mutfak ayarını bağlı olduğu gruptan alır.
+                <h2 style={styles.pageTitle}>⚙️ Ayarlar</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px', lineHeight: 1.55 }}>
+                  Fiş yazıcıları, Printer Agent kurulumu, fiş şablonları ve işletme yazdırma kuralları artık bu ekrandan yönetilir.
                 </p>
-
-                <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                    <div>
-                      <h3 style={{ margin: '0 0 5px', color: '#0f172a', fontSize: '16px' }}>📱 QR Menü / Satış Durumu</h3>
-                      <p style={{ color: '#475569', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
-                        Ürünü satıştan kaldırırsan QR menüden de otomatik gizlenir. Sadece QR'da gizlemek istersen “QR Kapalı” yap.
-                      </p>
-                    </div>
-                    <button type="button" onClick={() => setActiveTab('qr_menu')} style={{ ...styles.btnOrange, backgroundColor: '#2563eb' }}>QR Menü Önizle</button>
-                  </div>
-
-                  {aktifMenu.length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Ürün ekledikten sonra QR/satış durumları burada görünür.</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
-                      {aktifMenu.map(u => (
-                        <div key={`qr-durum-${u.id}`} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr auto auto auto', gap: '8px', alignItems: 'center' }}>
-                          <div>
-                            <strong style={{ color: '#0f172a' }}>{u.ad}</strong>
-                            <div style={{ color: '#64748b', fontSize: '11px' }}>{u.menuGrubu || u.kategori || 'Genel'} / {u.fiyat} TL</div>
-                          </div>
-                          <span style={{ backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: '900', textAlign: 'center' }}>{urunSatistaAktifMi(u) ? 'Satışta' : 'Satıştan kalktı'}</span>
-                          <button type="button" onClick={() => urunSatisDurumunuAyarla(u, !urunSatistaAktifMi(u))} style={{ border: 'none', backgroundColor: urunSatistaAktifMi(u) ? '#fee2e2' : '#dcfce7', color: urunSatistaAktifMi(u) ? '#991b1b' : '#15803d', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>{urunSatistaAktifMi(u) ? 'Satıştan Kaldır' : 'Satışa Al'}</button>
-                          <button type="button" disabled={!urunSatistaAktifMi(u)} onClick={() => urunQrMenuDurumunuAyarla(u, !urunQrMenudeGorunurMu(u))} style={{ border: 'none', backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', borderRadius: '8px', padding: '8px 10px', cursor: urunSatistaAktifMi(u) ? 'pointer' : 'not-allowed', fontWeight: '900', fontSize: '12px', opacity: urunSatistaAktifMi(u) ? 1 : 0.6 }}>{urunQrMenudeGorunurMu(u) ? 'QR Kapalı Yap' : 'QR Aç'}</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
                 {/* firma bilgisi ve adisyon/mutfak yazıcı ayarlarını yöneten kod */}
                 <div
@@ -19804,6 +19823,57 @@ Toplam Ciro: {toplam}
                   </div>
                 </div>
 
+
+              </div>
+            )}
+
+            {/* menü ürün grupları, ürün ekleme, düzenleme ve silme ekranını gösteren kod */}
+            {activeTab === 'menu' && (
+              <div style={styles.panelCard}>
+                <h2 style={styles.pageTitle}>Restoran Menü Yönetimi — Gruplu Sistem</h2>
+
+                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                  Ürünleri Ana Yemekler, İçecekler, Tatlılar gibi gruplara ayırabilirsiniz. Ürünler departman, KDV ve mutfak ayarını bağlı olduğu gruptan alır.
+                </p>
+
+                <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 5px', color: '#0f172a', fontSize: '16px' }}>📱 QR Menü / Satış Durumu</h3>
+                      <p style={{ color: '#475569', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
+                        Ürünü satıştan kaldırırsan QR menüden de otomatik gizlenir. Sadece QR'da gizlemek istersen “QR Kapalı” yap.
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setActiveTab('qr_menu')} style={{ ...styles.btnOrange, backgroundColor: '#2563eb' }}>QR Menü Önizle</button>
+                  </div>
+
+                  {aktifMenu.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Ürün ekledikten sonra QR/satış durumları burada görünür.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+                      {aktifMenu.map(u => (
+                        <div key={`qr-durum-${u.id}`} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr auto auto auto', gap: '8px', alignItems: 'center' }}>
+                          <div>
+                            <strong style={{ color: '#0f172a' }}>{u.ad}</strong>
+                            <div style={{ color: '#64748b', fontSize: '11px' }}>{u.menuGrubu || u.kategori || 'Genel'} / {u.fiyat} TL</div>
+                          </div>
+                          <span style={{ backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: '900', textAlign: 'center' }}>{urunSatistaAktifMi(u) ? 'Satışta' : 'Satıştan kalktı'}</span>
+                          <button type="button" onClick={() => urunSatisDurumunuAyarla(u, !urunSatistaAktifMi(u))} style={{ border: 'none', backgroundColor: urunSatistaAktifMi(u) ? '#fee2e2' : '#dcfce7', color: urunSatistaAktifMi(u) ? '#991b1b' : '#15803d', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>{urunSatistaAktifMi(u) ? 'Satıştan Kaldır' : 'Satışa Al'}</button>
+                          <button type="button" disabled={!urunSatistaAktifMi(u)} onClick={() => urunQrMenuDurumunuAyarla(u, !urunQrMenudeGorunurMu(u))} style={{ border: 'none', backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', borderRadius: '8px', padding: '8px 10px', cursor: urunSatistaAktifMi(u) ? 'pointer' : 'not-allowed', fontWeight: '900', fontSize: '12px', opacity: urunSatistaAktifMi(u) ? 1 : 0.6 }}>{urunQrMenudeGorunurMu(u) ? 'QR Kapalı Yap' : 'QR Aç'}</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 5px', color: '#1e293b', fontSize: '16px' }}>⚙️ Yazıcı ve fiş ayarları Ayarlar sekmesine taşındı</h3>
+                    <p style={{ color: '#64748b', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>Menü ekranını sade tutmak için Printer Agent kurulumu, fiş dizaynı ve yazıcı ayarlarını sol menüdeki Ayarlar bölümünden yönetebilirsin.</p>
+                  </div>
+                  <button type="button" onClick={() => setActiveTab('ayarlar')} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Ayarlar'a Git</button>
+                </div>
+
                 {/* yeni menü grubu ekleme alanı */}
                 <form
                   onSubmit={menuGrubuEkle}
@@ -20114,15 +20184,25 @@ Toplam Ciro: {toplam}
                     )}
                   </div>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '900', color: '#334155', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 10px' }}>
-                    <input type="checkbox" checked={yeniUrunSatistaAktif} onChange={e => { setYeniUrunSatistaAktif(e.target.checked); if (!e.target.checked) setYeniUrunQrMenudeGorunsun(false); }} />
-                    Satışta aktif
-                  </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '900', color: '#334155', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 10px' }}>
-                    <input type="checkbox" checked={yeniUrunQrMenudeGorunsun && yeniUrunSatistaAktif} disabled={!yeniUrunSatistaAktif} onChange={e => setYeniUrunQrMenudeGorunsun(e.target.checked)} />
-                    QR menüde görünsün
-                  </label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', flex: '1 1 100%' }}>
+                    <button type="button" onClick={() => { setYeniUrunSatistaAktif(prev => { if (prev) setYeniUrunQrMenudeGorunsun(false); return !prev; }); }} style={ayarToggleButonuStili(yeniUrunSatistaAktif)}>
+                      {yeniUrunSatistaAktif ? '✅ Satışta' : '🚫 Satış kapalı'}
+                    </button>
+                    <button type="button" disabled={!yeniUrunSatistaAktif} onClick={() => setYeniUrunQrMenudeGorunsun(prev => !prev)} style={ayarToggleButonuStili(yeniUrunQrMenudeGorunsun && yeniUrunSatistaAktif, 'blue', !yeniUrunSatistaAktif)}>
+                      {yeniUrunQrMenudeGorunsun && yeniUrunSatistaAktif ? '📱 QR açık' : '📵 QR kapalı'}
+                    </button>
+                    <button type="button" onClick={() => setYeniUrunMutfakEkraninaGitsin(prev => !prev)} style={ayarToggleButonuStili(yeniUrunMutfakEkraninaGitsin)}>
+                      {yeniUrunMutfakEkraninaGitsin ? '👨‍🍳 Mutfakta görünsün' : '🚫 Mutfakta görünmesin'}
+                    </button>
+                    <button type="button" onClick={() => setYeniUrunYaziciyaGitsin(prev => !prev)} style={ayarToggleButonuStili(yeniUrunYaziciyaGitsin, 'danger')}>
+                      {yeniUrunYaziciyaGitsin ? '🖨️ Fiş bassın' : '🚫 Fiş basmasın'}
+                    </button>
+                    <select value={yeniUrunDepartman} onChange={e => setYeniUrunDepartman(e.target.value)} style={{ ...styles.input, minWidth: '190px', flex: '0 0 210px', fontWeight: '900' }}>
+                      {yaziciDepartmaniSecenekleri.map(secenek => (
+                        <option key={secenek.value} value={secenek.value}>{secenek.label}</option>
+                      ))}
+                    </select>
+                  </div>
 
                   <button type="submit" style={styles.btnOrange}>
                     {aktifGrup.ad || 'Gruba'} Ürün Ekle
@@ -20190,15 +20270,25 @@ Toplam Ciro: {toplam}
                             )}
                           </div>
 
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '900', color: '#334155', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 10px' }}>
-                            <input type="checkbox" checked={duzenlenenUrunSatistaAktif} onChange={e => { setDuzenlenenUrunSatistaAktif(e.target.checked); if (!e.target.checked) setDuzenlenenUrunQrMenudeGorunsun(false); }} />
-                            Satışta aktif
-                          </label>
-
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '900', color: '#334155', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 10px' }}>
-                            <input type="checkbox" checked={duzenlenenUrunQrMenudeGorunsun && duzenlenenUrunSatistaAktif} disabled={!duzenlenenUrunSatistaAktif} onChange={e => setDuzenlenenUrunQrMenudeGorunsun(e.target.checked)} />
-                            QR menüde görünsün
-                          </label>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', flex: '1 1 100%' }}>
+                            <button type="button" onClick={() => { setDuzenlenenUrunSatistaAktif(prev => { if (prev) setDuzenlenenUrunQrMenudeGorunsun(false); return !prev; }); }} style={ayarToggleButonuStili(duzenlenenUrunSatistaAktif)}>
+                              {duzenlenenUrunSatistaAktif ? '✅ Satışta' : '🚫 Satış kapalı'}
+                            </button>
+                            <button type="button" disabled={!duzenlenenUrunSatistaAktif} onClick={() => setDuzenlenenUrunQrMenudeGorunsun(prev => !prev)} style={ayarToggleButonuStili(duzenlenenUrunQrMenudeGorunsun && duzenlenenUrunSatistaAktif, 'blue', !duzenlenenUrunSatistaAktif)}>
+                              {duzenlenenUrunQrMenudeGorunsun && duzenlenenUrunSatistaAktif ? '📱 QR açık' : '📵 QR kapalı'}
+                            </button>
+                            <button type="button" onClick={() => setDuzenlenenUrunMutfakEkraninaGitsin(prev => !prev)} style={ayarToggleButonuStili(duzenlenenUrunMutfakEkraninaGitsin)}>
+                              {duzenlenenUrunMutfakEkraninaGitsin ? '👨‍🍳 Mutfakta görünsün' : '🚫 Mutfakta görünmesin'}
+                            </button>
+                            <button type="button" onClick={() => setDuzenlenenUrunYaziciyaGitsin(prev => !prev)} style={ayarToggleButonuStili(duzenlenenUrunYaziciyaGitsin, 'danger')}>
+                              {duzenlenenUrunYaziciyaGitsin ? '🖨️ Fiş bassın' : '🚫 Fiş basmasın'}
+                            </button>
+                            <select value={duzenlenenUrunDepartman} onChange={e => setDuzenlenenUrunDepartman(e.target.value)} style={{ ...styles.input, minWidth: '190px', flex: '0 0 210px', fontWeight: '900' }}>
+                              {yaziciDepartmaniSecenekleri.map(secenek => (
+                                <option key={secenek.value} value={secenek.value}>{secenek.label}</option>
+                              ))}
+                            </select>
+                          </div>
 
                           <button
                             type="button"
@@ -20260,15 +20350,13 @@ Toplam Ciro: {toplam}
                               {urunQrMenudeGorunurMu(u) ? '📱 QR açık' : '📵 QR kapalı'}
                             </span>
 
-                            <select value={urunSatistaAktifMi(u) ? 'true' : 'false'} onChange={e => urunSatisDurumunuAyarla(u, e.target.value === 'true')} style={{ border: '1px solid #cbd5e1', backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '8px', cursor: 'pointer', fontWeight: '900', fontSize: '12px', outline: 'none' }}>
-                              <option value="true">✅ Satışta aktif</option>
-                              <option value="false">🚫 Satıştan kaldır</option>
-                            </select>
+                            <button type="button" onClick={() => urunSatisDurumunuAyarla(u, !urunSatistaAktifMi(u))} style={ayarToggleButonuStili(urunSatistaAktifMi(u))}>
+                              {urunSatistaAktifMi(u) ? '✅ Satışta' : '🚫 Satış kapalı'}
+                            </button>
 
-                            <select value={urunQrMenudeGorunurMu(u) ? 'true' : 'false'} disabled={!urunSatistaAktifMi(u)} onChange={e => urunQrMenuDurumunuAyarla(u, e.target.value === 'true')} style={{ border: '1px solid #cbd5e1', backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', padding: '7px 9px', borderRadius: '8px', cursor: urunSatistaAktifMi(u) ? 'pointer' : 'not-allowed', fontWeight: '900', fontSize: '12px', outline: 'none', opacity: urunSatistaAktifMi(u) ? 1 : 0.65 }}>
-                              <option value="true">📱 QR menüde görünsün</option>
-                              <option value="false">📵 QR menüde görünmesin</option>
-                            </select>
+                            <button type="button" disabled={!urunSatistaAktifMi(u)} onClick={() => urunQrMenuDurumunuAyarla(u, !urunQrMenudeGorunurMu(u))} style={ayarToggleButonuStili(urunQrMenudeGorunurMu(u), 'blue', !urunSatistaAktifMi(u))}>
+                              {urunQrMenudeGorunurMu(u) ? '📱 QR açık' : '📵 QR kapalı'}
+                            </button>
 
                             <span
                               style={{
@@ -20283,43 +20371,13 @@ Toplam Ciro: {toplam}
                               {mutfakYaziciDurumEtiketi(u)}
                             </span>
 
-                            <select
-                              value={mutfakEkraniAktifMi(u) ? 'true' : 'false'}
-                              onChange={e => urunMutfakDurumunuAyarla(u, e.target.value === 'true')}
-                              style={{
-                                border: '1px solid #cbd5e1',
-                                backgroundColor: mutfakEkraniAktifMi(u) ? '#dcfce7' : '#f1f5f9',
-                                color: mutfakEkraniAktifMi(u) ? '#15803d' : '#475569',
-                                padding: '7px 9px',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontWeight: '800',
-                                fontSize: '12px',
-                                outline: 'none',
-                              }}
-                            >
-                              <option value="true">👨‍🍳 Ekranda görünsün</option>
-                              <option value="false">🚫 Ekranda görünmesin</option>
-                            </select>
+                            <button type="button" onClick={() => urunMutfakDurumunuAyarla(u, !mutfakEkraniAktifMi(u))} style={ayarToggleButonuStili(mutfakEkraniAktifMi(u))}>
+                              {mutfakEkraniAktifMi(u) ? '👨‍🍳 Mutfakta görünsün' : '🚫 Mutfak kapalı'}
+                            </button>
 
-                            <select
-                              value={fisYaziciAktifMi(u) ? 'true' : 'false'}
-                              onChange={e => urunFisYaziciDurumunuAyarla(u, e.target.value === 'true')}
-                              style={{
-                                border: '1px solid #cbd5e1',
-                                backgroundColor: fisYaziciAktifMi(u) ? '#fee2e2' : '#f1f5f9',
-                                color: fisYaziciAktifMi(u) ? '#b91c1c' : '#475569',
-                                padding: '7px 9px',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontWeight: '800',
-                                fontSize: '12px',
-                                outline: 'none',
-                              }}
-                            >
-                              <option value="true">🖨️ Yazıcı bassın</option>
-                              <option value="false">🚫 Yazıcı basmasın</option>
-                            </select>
+                            <button type="button" onClick={() => urunFisYaziciDurumunuAyarla(u, !fisYaziciAktifMi(u))} style={ayarToggleButonuStili(fisYaziciAktifMi(u), 'danger')}>
+                              {fisYaziciAktifMi(u) ? '🖨️ Fiş bassın' : '🚫 Fiş basmasın'}
+                            </button>
 
                             {/* ürünün hangi yazıcıya gideceğini seçen kod */}
                             <select
