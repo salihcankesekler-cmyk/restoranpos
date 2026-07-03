@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 
 class AppErrorBoundary extends React.Component {
@@ -823,6 +823,12 @@ Toplam Ciro: {toplam}
   const [kuryeAdiInputs, setKuryeAdiInputs] = useState({});
 
   const [selectedMasaId, setSelectedMasaId] = useState(null);
+  const selectedMasaIdRef = useRef(null);
+
+  useEffect(() => {
+    selectedMasaIdRef.current = selectedMasaId;
+  }, [selectedMasaId]);
+
   // mobilde masaya tıklanınca tam ekran adisyon panelini açıp kapatan kod
   const [mobilAdisyonAcik, setMobilAdisyonAcik] = useState(false);
   const [mobilAdisyonSekmesi, setMobilAdisyonSekmesi] = useState('urun');
@@ -4606,9 +4612,19 @@ Toplam Ciro: {toplam}
 
     setMasalar(temizMasalar);
 
-    if (temizMasalar.length > 0 && !selectedMasaId) {
-      setSelectedMasaId(temizMasalar[0].id);
-    }
+    // Canlı senkron/manuel yenileme sırasında seçili masa kaybolmasın.
+    // Önceki sürümde closure içindeki selectedMasaId boş kalınca yenileme sonrası
+    // sağ adisyon paneli salonun ilk masasına dönüyordu.
+    setSelectedMasaId(prevSelectedMasaId => {
+      const aktifSecim = prevSelectedMasaId ?? selectedMasaIdRef.current;
+
+      if (aktifSecim !== null && aktifSecim !== undefined && aktifSecim !== '') {
+        const ayniMasa = temizMasalar.find(m => String(m.id) === String(aktifSecim));
+        if (ayniMasa) return ayniMasa.id;
+      }
+
+      return temizMasalar.length > 0 ? temizMasalar[0].id : null;
+    });
   };
 
   // masa bölümlerini Supabase'den çeken kod
@@ -11144,8 +11160,8 @@ Toplam Ciro: {toplam}
 
     setMasalar(masalar.filter(m => m.id !== masa.id));
 
-    if (selectedMasaId === masa.id) {
-      const kalanMasalar = masalar.filter(m => m.id !== masa.id);
+    if (String(selectedMasaId) === String(masa.id)) {
+      const kalanMasalar = masalar.filter(m => String(m.id) !== String(masa.id));
       setSelectedMasaId(kalanMasalar.length > 0 ? kalanMasalar[0].id : null);
     }
 
@@ -13379,7 +13395,10 @@ Toplam Ciro: {toplam}
   const paketSeciliMenuUrunu = aktifMenu.find(u => String(u.id) === String(paketSeciliUrunId));
   // seçili masayı tüm bölümler içinden bulan kod
   const activeMasa = Array.isArray(tumRestoranMasalari)
-    ? tumRestoranMasalari.find(m => m.id === selectedMasaId) || aktifMasalar[0] || tumRestoranMasalari[0]
+    ? (
+        tumRestoranMasalari.find(m => String(m.id) === String(selectedMasaId ?? '')) ||
+        (!selectedMasaId ? (aktifMasalar[0] || tumRestoranMasalari[0]) : null)
+      )
     : null;
 
   // ürün eklerken sağ panelde anlık fiyat/indirim sonucunu gösteren kod
@@ -16505,7 +16524,7 @@ Toplam Ciro: {toplam}
                                 ? '#6366f1'
                                 : hedefOlabilirMi
                                   ? '#10b981'
-                                  : m.id === (selectedMasaId || aktifMasalar[0]?.id)
+                                  : String(m.id) === String(selectedMasaId || '')
                                     ? '#ff6b35'
                                     : 'transparent',
                               backgroundColor: kaynakMasaMi
