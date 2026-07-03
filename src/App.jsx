@@ -13701,6 +13701,10 @@ Toplam Ciro: {toplam}
 
   // adisyon panelinde seçili ürünü bulmak için kullanılan kod
   const seciliMenuUrunu = aktifMenu.find(u => String(u.id) === String(seciliUrunId));
+  const seciliMenuUrunuHazirNotlari = seciliMenuUrunu && Array.isArray(seciliMenuUrunu.menuNotlari)
+    ? seciliMenuUrunu.menuNotlari
+    : [];
+  const seciliMenuUrunuHazirNotVarMi = seciliMenuUrunuHazirNotlari.length > 0;
   // paket servis ekranında seçili ürünü bulmak için kullanılan kod
   const paketSeciliMenuUrunu = aktifMenu.find(u => String(u.id) === String(paketSeciliUrunId));
   // seçili masayı tüm bölümler içinden bulan kod
@@ -13848,6 +13852,27 @@ Toplam Ciro: {toplam}
     setSeciliUrunSatisFiyati('');
     setSeciliUrunIndirimYuzde('');
     setSeciliUrunIndirimTutari('');
+  };
+
+  // hazır not/seçenek tanımlı ürünlerde önce ürünü seçip not seçmeye izin veren kod
+  const adisyondaUrunKartaBas = (urun) => {
+    if (!urun) return;
+
+    const hazirNotVarMi = Array.isArray(urun.menuNotlari) && urun.menuNotlari.length > 0;
+    const ayniUrunSeciliMi = String(seciliUrunId || '') === String(urun.id || '');
+
+    if (hazirNotVarMi) {
+      if (!ayniUrunSeciliMi) {
+        adisyondaUrunSec(urun);
+      }
+      return;
+    }
+
+    if (!ayniUrunSeciliMi) {
+      adisyondaUrunSec(urun);
+    }
+
+    masayaSeciliUrunuEkle(urun);
   };
 
   // paket servis ekranında ürün kartına basılınca ürünü seçen kod
@@ -17298,7 +17323,7 @@ Toplam Ciro: {toplam}
                                   <button
                                     key={u.id}
                                     type="button"
-                                    onClick={() => { adisyondaUrunSec(u); masayaSeciliUrunuEkle(u); }}
+                                    onClick={() => adisyondaUrunKartaBas(u)}
                                     style={{
                                       border: seciliMi ? '2px solid #ff6b35' : '1px solid #e2e8f0',
                                       backgroundColor: seciliMi ? '#fff7ed' : '#fff',
@@ -17339,16 +17364,18 @@ Toplam Ciro: {toplam}
                           {seciliMenuUrunu && (
                             <div
                               style={{
-                                backgroundColor: '#fff',
-                                border: '1px solid #fed7aa',
-                                color: '#c2410c',
+                                backgroundColor: seciliMenuUrunuHazirNotVarMi ? '#eff6ff' : '#fff',
+                                border: seciliMenuUrunuHazirNotVarMi ? '1px solid #bfdbfe' : '1px solid #fed7aa',
+                                color: seciliMenuUrunuHazirNotVarMi ? '#1d4ed8' : '#c2410c',
                                 borderRadius: '10px',
                                 padding: '8px 10px',
                                 fontSize: '12px',
                                 fontWeight: '900',
                               }}
                             >
-                              Ürüne dokununca direkt masaya eklenir. Seçili ürün: {seciliMenuUrunu.ad} / {seciliMenuUrunu.fiyat} TL
+                              {seciliMenuUrunuHazirNotVarMi
+                                ? `Hazır not seçeneği var. Önce seçeneği seç, sonra Seçili Ürünü Masaya Ekle butonuna bas: ${seciliMenuUrunu.ad} / ${seciliMenuUrunu.fiyat} TL`
+                                : `Ürüne dokununca direkt masaya eklenir. Seçili ürün: ${seciliMenuUrunu.ad} / ${seciliMenuUrunu.fiyat} TL`}
                             </div>
                           )}
                         </div>
@@ -17366,7 +17393,7 @@ Toplam Ciro: {toplam}
                         />
 
                         {/* seçilen ürüne özel hazır not/seçenekleri gösteren kod */}
-                        {seciliMenuUrunu && Array.isArray(seciliMenuUrunu.menuNotlari) && seciliMenuUrunu.menuNotlari.length > 0 && (
+                        {seciliMenuUrunu && seciliMenuUrunuHazirNotVarMi && (
                           <select
                             value={seciliUrunHazirNotId}
                             onChange={e => {
@@ -17381,7 +17408,7 @@ Toplam Ciro: {toplam}
                           >
                             <option value="">Standart / seçenek yok</option>
 
-                            {seciliMenuUrunu.menuNotlari.map(n => (
+                            {seciliMenuUrunuHazirNotlari.map(n => (
                               <option key={n.id} value={String(n.id)}>
                                 {n.ad} {Number(n.fiyat || 0) > 0 ? `(+${n.fiyat} TL)` : ''}
                               </option>
@@ -17415,17 +17442,33 @@ Toplam Ciro: {toplam}
                           }}
                         />
 
-                        <div
-                          style={{
-                            ...styles.panelAddBtn,
-                            backgroundColor: '#f8fafc',
-                            color: '#475569',
-                            cursor: 'default',
-                            textAlign: 'center',
-                          }}
-                        >
-                          Ürüne Dokun → Masaya Ekle
-                        </div>
+                        {seciliMenuUrunuHazirNotVarMi ? (
+                          <button
+                            type="button"
+                            onClick={() => masayaSeciliUrunuEkle()}
+                            style={{
+                              ...styles.panelAddBtn,
+                              backgroundColor: '#2563eb',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              textAlign: 'center',
+                            }}
+                          >
+                            Seçili Ürünü Masaya Ekle
+                          </button>
+                        ) : (
+                          <div
+                            style={{
+                              ...styles.panelAddBtn,
+                              backgroundColor: '#f8fafc',
+                              color: '#475569',
+                              cursor: 'default',
+                              textAlign: 'center',
+                            }}
+                          >
+                            Ürüne Dokun → Masaya Ekle
+                          </div>
+                        )}
                       </div>
                       )}
 
