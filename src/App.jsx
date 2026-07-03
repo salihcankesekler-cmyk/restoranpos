@@ -4568,9 +4568,12 @@ Toplam Ciro: {toplam}
 
     setMasalar(temizMasalar);
 
-    if (temizMasalar.length > 0 && !selectedMasaId) {
-      setSelectedMasaId(temizMasalar[0].id);
-    }
+    // Canlı senkron sonrası seçili masa korunur. Sadece seçili masa gerçekten silindiyse/boşsa ilk masaya geçilir.
+    setSelectedMasaId(prevSeciliMasaId => {
+      if (temizMasalar.length === 0) return null;
+      if (prevSeciliMasaId && temizMasalar.some(m => String(m.id) === String(prevSeciliMasaId))) return prevSeciliMasaId;
+      return temizMasalar[0].id;
+    });
   };
 
   // masa bölümlerini Supabase'den çeken kod
@@ -11106,8 +11109,8 @@ Toplam Ciro: {toplam}
 
     setMasalar(masalar.filter(m => m.id !== masa.id));
 
-    if (selectedMasaId === masa.id) {
-      const kalanMasalar = masalar.filter(m => m.id !== masa.id);
+    if (String(selectedMasaId) === String(masa.id)) {
+      const kalanMasalar = masalar.filter(m => String(m.id) !== String(masa.id));
       setSelectedMasaId(kalanMasalar.length > 0 ? kalanMasalar[0].id : null);
     }
 
@@ -13331,8 +13334,10 @@ Toplam Ciro: {toplam}
   // paket servis ekranında seçili ürünü bulmak için kullanılan kod
   const paketSeciliMenuUrunu = aktifMenu.find(u => String(u.id) === String(paketSeciliUrunId));
   // seçili masayı tüm bölümler içinden bulan kod
+  // Canlı senkron yenilemesinde id tipi number/string değişebildiği için seçili masa güvenli karşılaştırılır.
+  // Seçili masa geçici olarak bulunamazsa ilk masaya düşürmeyiz; böylece Masa 2/3 açıkken sağ panel Masa 1'e kaymaz.
   const activeMasa = Array.isArray(tumRestoranMasalari)
-    ? tumRestoranMasalari.find(m => m.id === selectedMasaId) || aktifMasalar[0] || tumRestoranMasalari[0]
+    ? tumRestoranMasalari.find(m => String(m.id) === String(selectedMasaId)) || (!selectedMasaId ? (aktifMasalar[0] || tumRestoranMasalari[0]) : null)
     : null;
 
   // ürün eklerken sağ panelde anlık fiyat/indirim sonucunu gösteren kod
@@ -16279,7 +16284,7 @@ Toplam Ciro: {toplam}
                   <div style={styles.contentHeader}>
                     <h2 style={styles.pageTitle}>Canlı Salon Planı</h2>
 
-                    {user?.role !== 'waiter' && (
+                    {tabGorunur('masalar') && (
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <form onSubmit={masaBolumuEkle} style={{ display: 'flex', gap: '8px' }}>
                           <input
@@ -16450,7 +16455,7 @@ Toplam Ciro: {toplam}
                                 ? '#6366f1'
                                 : hedefOlabilirMi
                                   ? '#10b981'
-                                  : m.id === (selectedMasaId || aktifMasalar[0]?.id)
+                                  : String(m.id) === String(selectedMasaId || aktifMasalar[0]?.id)
                                     ? '#ff6b35'
                                     : 'transparent',
                               backgroundColor: kaynakMasaMi
