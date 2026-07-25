@@ -16,15 +16,16 @@ async function marketOturumunuDogrula() {
 }
 
 export async function marketVerileriniGetir(restaurantId) {
-  const [urunler, faturalar, sayimlar] = await Promise.all([
+  const [urunler, faturalar, sayimlar, cariler] = await Promise.all([
     supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('urun_adi'),
     supabase.from('market_alis_faturalari').select('*, market_alis_fatura_kalemleri(*)').eq('restaurant_id', restaurantId).order('fatura_tarihi', { ascending: false }).limit(50),
     supabase.from('market_sayimlari').select('*, market_sayim_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(20),
+    supabase.from('cari_musteriler').select('id, ad, telefon, bakiye').eq('restaurant_id', restaurantId).order('ad'),
   ]);
 
   const error = urunler.error || faturalar.error || sayimlar.error;
   if (error) throw marketHatasi(error);
-  return { urunler: urunler.data || [], faturalar: faturalar.data || [], sayimlar: sayimlar.data || [] };
+  return { urunler: urunler.data || [], faturalar: faturalar.data || [], sayimlar: sayimlar.data || [], cariler: cariler.data || [] };
 }
 
 export async function marketUrunuKaydet(restaurantId, urun) {
@@ -43,9 +44,13 @@ export async function marketUrunuKaydet(restaurantId, urun) {
     stok_miktari: Number(urun.stokMiktari || 0),
     minimum_stok: Number(urun.minimumStok || 0),
     raf_konumu: String(urun.rafKonumu || '').trim() || null,
+    hizli_satis: Boolean(urun.hizliSatis),
     aktif: true,
   };
-  const { data, error } = await supabase.from('market_urunleri').insert([payload]).select().single();
+  const sorgu = urun.id
+    ? supabase.from('market_urunleri').update(payload).eq('id', urun.id).eq('restaurant_id', restaurantId)
+    : supabase.from('market_urunleri').insert([payload]);
+  const { data, error } = await sorgu.select().single();
   if (error) throw marketHatasi(error);
   return data;
 }
@@ -135,8 +140,6 @@ export async function marketFiyatlariniGuncelle(restaurantId, urunler) {
 
 export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi) {
   await marketOturumunuDogrula();
-  const yetersiz = sepet.find(k => Number(k.adet) > Number(k.stok_miktari || 0));
-  if (yetersiz) throw new Error(`${yetersiz.urun_adi} için yeterli stok yok.`);
   const toplam = sepet.reduce((t, k) => t + Number(k.adet) * Number(k.satis_fiyati), 0);
   const { data: satis, error: satisError } = await supabase.from('market_satislari').insert([{
     restaurant_id: restaurantId,
@@ -159,7 +162,6 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi) {
 
   for (const kalem of sepet) {
     const yeniStok = Number(kalem.stok_miktari || 0) - Number(kalem.adet);
-    if (yeniStok < 0) throw new Error(`${kalem.urun_adi} için yeterli stok yok.`);
     const { error } = await supabase.from('market_urunleri')
       .update({ stok_miktari: yeniStok })
       .eq('id', kalem.id).eq('restaurant_id', restaurantId);

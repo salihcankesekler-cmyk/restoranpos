@@ -12,11 +12,11 @@ import './market.css';
 const bosUrun = {
   barkod: '', urunAdi: '', stokKodu: '', kategori: 'Genel', marka: '',
   birim: 'Adet', kdvOrani: 20, alisFiyati: '', satisFiyati: '',
-  stokMiktari: '', minimumStok: '', rafKonumu: '',
+  stokMiktari: '', minimumStok: '', rafKonumu: '', hizliSatis: false,
 };
 
 const bosFatura = () => ({
-  tedarikciAdi: '', faturaNo: '', faturaTarihi: new Date().toISOString().slice(0, 10),
+  cariId: '', tedarikciAdi: '', faturaNo: '', faturaTarihi: new Date().toISOString().slice(0, 10),
   barkod: '', miktar: 1, alisFiyati: '', kalemler: [],
 });
 
@@ -29,6 +29,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   const [urunler, setUrunler] = useState([]);
   const [faturalar, setFaturalar] = useState([]);
   const [sayimlar, setSayimlar] = useState([]);
+  const [cariler, setCariler] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hata, setHata] = useState('');
   const [arama, setArama] = useState('');
@@ -36,10 +37,14 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   const [fatura, setFatura] = useState(bosFatura);
   const [satisBarkodu, setSatisBarkodu] = useState('');
   const [sepet, setSepet] = useState([]);
+  const [satisGrubu, setSatisGrubu] = useState('Kısayollar');
   const [sayim, setSayim] = useState({});
   const [sayimBarkodu, setSayimBarkodu] = useState('');
   const [zamOrani, setZamOrani] = useState('10');
   const [fiyatKategori, setFiyatKategori] = useState('Tümü');
+  const [fiyatIslemTipi, setFiyatIslemTipi] = useState('yuzde');
+  const [fiyatUrunId, setFiyatUrunId] = useState('');
+  const [fiyatTlDegeri, setFiyatTlDegeri] = useState('');
   const [etiketUrunleri, setEtiketUrunleri] = useState([]);
   const barkodRef = useRef(null);
 
@@ -56,6 +61,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       setUrunler(data.urunler);
       setFaturalar(data.faturalar);
       setSayimlar(data.sayimlar);
+      setCariler(data.cariler || []);
     } catch (error) {
       setHata(error.message);
     } finally {
@@ -72,6 +78,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
         setUrunler(data.urunler);
         setFaturalar(data.faturalar);
         setSayimlar(data.sayimlar);
+        setCariler(data.cariler || []);
         setHata('');
       })
       .catch(error => {
@@ -112,21 +119,67 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       await marketUrunuKaydet(restaurantId, urunFormu);
       setUrunFormu(bosUrun);
       await verileriYukle();
-      bildir('Market ürünü kaydedildi.', 'success');
+      bildir(urunFormu.id ? 'Market ürünü güncellendi.' : 'Market ürünü kaydedildi.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
+  };
+
+  const urunuSepeteEkle = urun => {
+    const mevcut = sepet.find(k => String(k.id) === String(urun.id));
+    const yeniAdet = Number(mevcut?.adet || 0) + 1;
+    setSepet(prev => mevcut
+      ? prev.map(k => String(k.id) === String(urun.id) ? { ...k, adet: yeniAdet } : k)
+      : [...prev, { ...urun, adet: 1 }]);
   };
 
   const satisaEkle = event => {
     event.preventDefault();
     const urun = urunler.find(item => String(item.barkod) === satisBarkodu.trim());
     if (!urun) return bildir('Barkod ürün listesinde bulunamadı.', 'warning');
-    const mevcut = sepet.find(k => String(k.id) === String(urun.id));
-    const yeniAdet = Number(mevcut?.adet || 0) + 1;
-    if (yeniAdet > Number(urun.stok_miktari || 0)) return bildir(`${urun.urun_adi} için yeterli stok yok.`, 'warning');
-    setSepet(prev => mevcut
-      ? prev.map(k => String(k.id) === String(urun.id) ? { ...k, adet: yeniAdet } : k)
-      : [...prev, { ...urun, adet: 1 }]);
+    urunuSepeteEkle(urun);
     setSatisBarkodu('');
+  };
+
+  const urunuDuzenle = urun => {
+    setUrunFormu({
+      id: urun.id,
+      barkod: urun.barkod || '',
+      urunAdi: urun.urun_adi || '',
+      stokKodu: urun.stok_kodu || '',
+      kategori: urun.kategori || 'Genel',
+      marka: urun.marka || '',
+      birim: urun.birim || 'Adet',
+      kdvOrani: Number(urun.kdv_orani || 0),
+      alisFiyati: urun.alis_fiyati ?? '',
+      satisFiyati: urun.satis_fiyati ?? '',
+      stokMiktari: urun.stok_miktari ?? '',
+      minimumStok: urun.minimum_stok ?? '',
+      rafKonumu: urun.raf_konumu || '',
+      hizliSatis: Boolean(urun.hizli_satis),
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const kisayolDegistir = async urun => {
+    try {
+      await marketUrunuKaydet(restaurantId, {
+        id: urun.id,
+        barkod: urun.barkod,
+        urunAdi: urun.urun_adi,
+        stokKodu: urun.stok_kodu,
+        kategori: urun.kategori,
+        marka: urun.marka,
+        birim: urun.birim,
+        kdvOrani: urun.kdv_orani,
+        alisFiyati: urun.alis_fiyati,
+        satisFiyati: urun.satis_fiyati,
+        stokMiktari: urun.stok_miktari,
+        minimumStok: urun.minimum_stok,
+        rafKonumu: urun.raf_konumu,
+        hizliSatis: !urun.hizli_satis,
+      });
+      await verileriYukle();
+      bildir(urun.hizli_satis ? 'Ürün kısayollardan çıkarıldı.' : 'Ürün satış kısayoluna eklendi.', 'success');
+    } catch (error) { bildir(error.message, 'error'); }
   };
 
   const satisiTamamla = async odemeTipi => {
@@ -194,11 +247,28 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     } catch (error) { bildir(error.message, 'error'); }
   };
 
+  const fiyatOnizlemeHesapla = urun => {
+    const oran = Number(zamOrani || 0);
+    const tlDegeri = Number(fiyatTlDegeri || 0);
+    const mevcut = Number(urun.satis_fiyati || 0);
+    const hesaplanan = fiyatIslemTipi === 'yuzde'
+      ? mevcut * (1 + oran / 100)
+      : fiyatIslemTipi === 'tl_ekle'
+        ? mevcut + tlDegeri
+        : tlDegeri;
+    return Math.max(Math.round(hesaplanan * 100) / 100, 0);
+  };
+
   const fiyatlariUygula = async () => {
     const oran = Number(zamOrani || 0);
-    const hedefler = urunler.filter(u => fiyatKategori === 'Tümü' || u.kategori === fiyatKategori)
-      .map(u => ({ ...u, yeniFiyat: Math.round(Number(u.satis_fiyati || 0) * (1 + oran / 100) * 100) / 100 }));
-    if (!hedefler.length || oran === 0) return bildir('Kategori ve sıfırdan farklı oran girin.', 'warning');
+    const tlDegeri = Number(fiyatTlDegeri || 0);
+    const hedefKaynak = fiyatUrunId
+      ? urunler.filter(u => String(u.id) === String(fiyatUrunId))
+      : urunler.filter(u => fiyatKategori === 'Tümü' || u.kategori === fiyatKategori);
+    const hedefler = hedefKaynak.map(u => ({ ...u, yeniFiyat: fiyatOnizlemeHesapla(u) }));
+    if (!hedefler.length) return bildir('Güncellenecek ürün bulunamadı.', 'warning');
+    if (fiyatIslemTipi === 'yuzde' && oran === 0) return bildir('Sıfırdan farklı yüzde oranı girin.', 'warning');
+    if (fiyatIslemTipi !== 'yuzde' && (String(fiyatTlDegeri).trim() === '' || !Number.isFinite(tlDegeri))) return bildir('Geçerli bir TL değeri girin.', 'warning');
     try {
       await marketFiyatlariniGuncelle(restaurantId, hedefler);
       setEtiketUrunleri(hedefler.map(u => u.id));
@@ -247,8 +317,19 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
         <div className="market-card">
           <div className="market-heading"><div><span>HIZLI KASA</span><h2>Barkodlu satış</h2></div><strong>{para(sepet.reduce((t, k) => t + Number(k.adet) * Number(k.satis_fiyati), 0))}</strong></div>
           <form className="market-scan simple" onSubmit={satisaEkle}><label>Barkod<input ref={barkodRef} value={satisBarkodu} onChange={e => setSatisBarkodu(e.target.value)} placeholder="Barkodu okutun ve Enter'a basın" /></label><button className="market-primary" type="submit">Sepete Ekle</button></form>
+          <div className="market-group-tabs">
+            <button type="button" className={satisGrubu === 'Kısayollar' ? 'active' : ''} onClick={() => setSatisGrubu('Kısayollar')}>⭐ Kısayollar</button>
+            <button type="button" className={satisGrubu === 'Tümü' ? 'active' : ''} onClick={() => setSatisGrubu('Tümü')}>Tümü</button>
+            {kategoriler.map(kategori => <button type="button" key={kategori} className={satisGrubu === kategori ? 'active' : ''} onClick={() => setSatisGrubu(kategori)}>{kategori}</button>)}
+          </div>
+          <div className="market-product-grid">
+            {urunler.filter(u => satisGrubu === 'Tümü' || (satisGrubu === 'Kısayollar' ? u.hizli_satis : u.kategori === satisGrubu)).map(u =>
+              <button type="button" key={u.id} onClick={() => urunuSepeteEkle(u)}><span>{u.kategori || 'Genel'}</span><strong>{u.urun_adi}</strong><b>{para(u.satis_fiyati)}</b><small>Stok: {u.stok_miktari}</small></button>
+            )}
+            {satisGrubu === 'Kısayollar' && !urunler.some(u => u.hizli_satis) && <p className="market-empty">Ürünler ekranından yıldız kısayolu ekleyebilirsiniz.</p>}
+          </div>
           <div className="market-table"><table><thead><tr><th>Ürün</th><th>Adet</th><th>Fiyat</th><th>Toplam</th><th></th></tr></thead><tbody>
-            {sepet.map(k => <tr key={k.id}><td><strong>{k.urun_adi}</strong><small>{k.barkod}</small></td><td><input aria-label={`${k.urun_adi} adedi`} type="number" min="1" max={k.stok_miktari} value={k.adet} onChange={e => setSepet(p => p.map(x => x.id === k.id ? { ...x, adet: Math.max(1, Math.min(Number(e.target.value), Number(x.stok_miktari))) } : x))} style={{ width: '70px', padding: '7px', border: '1px solid #cbd5e1', borderRadius: '8px' }} /></td><td>{para(k.satis_fiyati)}</td><td><strong>{para(Number(k.adet) * Number(k.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => setSepet(p => p.filter(x => x.id !== k.id))}>Sil</button></td></tr>)}
+            {sepet.map(k => <tr key={k.id}><td><strong>{k.urun_adi}</strong><small>{k.barkod}</small></td><td><input aria-label={`${k.urun_adi} adedi`} type="number" min="1" value={k.adet} onChange={e => setSepet(p => p.map(x => x.id === k.id ? { ...x, adet: Math.max(1, Number(e.target.value) || 1) } : x))} style={{ width: '70px', padding: '7px', border: '1px solid #cbd5e1', borderRadius: '8px' }} /></td><td>{para(k.satis_fiyati)}</td><td><strong>{para(Number(k.adet) * Number(k.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => setSepet(p => p.filter(x => x.id !== k.id))}>Sil</button></td></tr>)}
           </tbody></table></div>
         </div>
         <div className="market-card">
@@ -261,26 +342,40 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
 
       {!yukleniyor && sekme === 'urunler' && <div className="market-grid-form">
         <form className="market-card market-form" onSubmit={urunKaydet}>
-          <div className="market-heading"><div><span>ÜRÜN KARTI</span><h2>Yeni barkodlu ürün</h2></div></div>
+          <div className="market-heading"><div><span>ÜRÜN KARTI</span><h2>{urunFormu.id ? 'Ürünü ve stoğu düzenle' : 'Yeni barkodlu ürün'}</h2></div>{urunFormu.id && <button className="market-remove" type="button" onClick={() => setUrunFormu(bosUrun)}>Vazgeç</button>}</div>
           <label>Barkod<input autoFocus value={urunFormu.barkod} onChange={e => setUrunFormu({ ...urunFormu, barkod: e.target.value })} placeholder="869…" /></label>
           <label>Ürün adı<input value={urunFormu.urunAdi} onChange={e => setUrunFormu({ ...urunFormu, urunAdi: e.target.value })} /></label>
-          <div className="market-row"><label>Kategori<input value={urunFormu.kategori} onChange={e => setUrunFormu({ ...urunFormu, kategori: e.target.value })} /></label><label>Marka<input value={urunFormu.marka} onChange={e => setUrunFormu({ ...urunFormu, marka: e.target.value })} /></label></div>
+          <div className="market-row"><label>Kategori<input list="market-kategorileri" value={urunFormu.kategori} onChange={e => setUrunFormu({ ...urunFormu, kategori: e.target.value })} /><datalist id="market-kategorileri">{kategoriler.map(kategori => <option key={kategori} value={kategori} />)}</datalist></label><label>Marka<input value={urunFormu.marka} onChange={e => setUrunFormu({ ...urunFormu, marka: e.target.value })} /></label></div>
           <div className="market-row"><label>Alış fiyatı<input type="number" step="0.01" value={urunFormu.alisFiyati} onChange={e => setUrunFormu({ ...urunFormu, alisFiyati: e.target.value })} /></label><label>Satış fiyatı<input type="number" step="0.01" value={urunFormu.satisFiyati} onChange={e => setUrunFormu({ ...urunFormu, satisFiyati: e.target.value })} /></label></div>
           <div className="market-row"><label>Başlangıç stoğu<input type="number" step="0.001" value={urunFormu.stokMiktari} onChange={e => setUrunFormu({ ...urunFormu, stokMiktari: e.target.value })} /></label><label>Minimum stok<input type="number" step="0.001" value={urunFormu.minimumStok} onChange={e => setUrunFormu({ ...urunFormu, minimumStok: e.target.value })} /></label></div>
-          <div className="market-row"><label>KDV<select value={urunFormu.kdvOrani} onChange={e => setUrunFormu({ ...urunFormu, kdvOrani: e.target.value })}><option value="1">%1</option><option value="10">%10</option><option value="20">%20</option></select></label><label>Raf konumu<input value={urunFormu.rafKonumu} onChange={e => setUrunFormu({ ...urunFormu, rafKonumu: e.target.value })} placeholder="A-03" /></label></div>
-          <button className="market-primary" type="submit">Ürünü Kaydet</button>
+          <div className="market-row"><label>KDV<select value={urunFormu.kdvOrani} onChange={e => setUrunFormu({ ...urunFormu, kdvOrani: e.target.value })}><option value="0">%0</option><option value="1">%1</option><option value="10">%10</option><option value="20">%20</option></select></label><label>Raf konumu<input value={urunFormu.rafKonumu} onChange={e => setUrunFormu({ ...urunFormu, rafKonumu: e.target.value })} placeholder="A-03" /></label></div>
+          <label className="market-check"><input type="checkbox" checked={urunFormu.hizliSatis} onChange={e => setUrunFormu({ ...urunFormu, hizliSatis: e.target.checked })} /> Barkodlu satış ekranında kısayol olarak göster</label>
+          <button className="market-primary" type="submit">{urunFormu.id ? 'Değişiklikleri Kaydet' : 'Ürünü Kaydet'}</button>
         </form>
         <div className="market-card">
           <div className="market-toolbar"><div><span>ÜRÜN LİSTESİ</span><h2>{filtreliUrunler.length} ürün</h2></div><input value={arama} onChange={e => setArama(e.target.value)} placeholder="Barkod, ürün veya kategori ara" /></div>
-          <div className="market-table"><table><thead><tr><th>Barkod / Ürün</th><th>Kategori</th><th>Stok</th><th>Alış</th><th>Satış</th><th>Kâr</th></tr></thead><tbody>
-            {filtreliUrunler.map(u => { const kar = Number(u.satis_fiyati) - Number(u.alis_fiyati); return <tr key={u.id}><td><strong>{u.urun_adi}</strong><small>{u.barkod}</small></td><td>{u.kategori}</td><td className={Number(u.stok_miktari) <= Number(u.minimum_stok) ? 'red' : ''}>{u.stok_miktari} {u.birim}</td><td>{para(u.alis_fiyati)}</td><td><strong>{para(u.satis_fiyati)}</strong></td><td className={kar < 0 ? 'red' : 'green'}>{para(kar)}</td></tr>; })}
+          <div className="market-table"><table><thead><tr><th>Barkod / Ürün</th><th>Kategori</th><th>Stok</th><th>Alış</th><th>Satış</th><th>Kâr</th><th>İşlem</th></tr></thead><tbody>
+            {filtreliUrunler.map(u => { const kar = Number(u.satis_fiyati) - Number(u.alis_fiyati); return <tr key={u.id}><td><strong>{u.urun_adi}</strong><small>{u.barkod}</small></td><td>{u.kategori}</td><td className={Number(u.stok_miktari) <= Number(u.minimum_stok) ? 'red' : ''}>{u.stok_miktari} {u.birim}</td><td>{para(u.alis_fiyati)}</td><td><strong>{para(u.satis_fiyati)}</strong></td><td className={kar < 0 ? 'red' : 'green'}>{para(kar)}</td><td><div className="market-inline-actions"><button type="button" onClick={() => urunuDuzenle(u)}>Düzenle</button><button type="button" className={u.hizli_satis ? 'active' : ''} onClick={() => kisayolDegistir(u)}>{u.hizli_satis ? '★ Kısayol' : '☆ Kısayol'}</button></div></td></tr>; })}
           </tbody></table></div>
         </div>
       </div>}
 
       {!yukleniyor && sekme === 'alis' && <div className="market-card">
         <div className="market-heading"><div><span>STOK GİRİŞİ</span><h2>Yeni alış faturası</h2></div><strong>{para(faturaToplamlari.genelToplam)}</strong></div>
-        <div className="market-row three"><label>Tedarikçi<input value={fatura.tedarikciAdi} onChange={e => setFatura({ ...fatura, tedarikciAdi: e.target.value })} /></label><label>Fatura no<input value={fatura.faturaNo} onChange={e => setFatura({ ...fatura, faturaNo: e.target.value })} /></label><label>Tarih<input type="date" value={fatura.faturaTarihi} onChange={e => setFatura({ ...fatura, faturaTarihi: e.target.value })} /></label></div>
+        <div className="market-row three">
+          <label>Tedarikçi / Cari
+            <select value={fatura.cariId} onChange={e => {
+              const secilen = cariler.find(c => String(c.id) === String(e.target.value));
+              setFatura({ ...fatura, cariId: e.target.value, tedarikciAdi: secilen?.ad || '' });
+            }}>
+              <option value="">Manuel tedarikçi adı</option>
+              {cariler.map(cari => <option value={cari.id} key={cari.id}>{cari.ad}{cari.telefon ? ` · ${cari.telefon}` : ''}</option>)}
+            </select>
+            {!fatura.cariId && <input value={fatura.tedarikciAdi} onChange={e => setFatura({ ...fatura, tedarikciAdi: e.target.value })} placeholder="Tedarikçi adı" />}
+          </label>
+          <label>Fatura no<input value={fatura.faturaNo} onChange={e => setFatura({ ...fatura, faturaNo: e.target.value })} /></label>
+          <label>Tarih<input type="date" value={fatura.faturaTarihi} onChange={e => setFatura({ ...fatura, faturaTarihi: e.target.value })} /></label>
+        </div>
         <form className="market-scan" onSubmit={faturayaEkle}><label>Barkod<input ref={barkodRef} value={fatura.barkod} onChange={e => setFatura({ ...fatura, barkod: e.target.value })} placeholder="Okutun ve Enter'a basın" /></label><label>Miktar<input type="number" min="0.001" step="0.001" value={fatura.miktar} onChange={e => setFatura({ ...fatura, miktar: e.target.value })} /></label><label>Alış fiyatı<input type="number" min="0" step="0.01" value={fatura.alisFiyati} onChange={e => setFatura({ ...fatura, alisFiyati: e.target.value })} placeholder="Kayıtlı fiyat" /></label><button className="market-primary" type="submit">Kalem Ekle</button></form>
         <div className="market-table"><table><thead><tr><th>Ürün</th><th>Miktar</th><th>Alış</th><th>KDV</th><th>Toplam</th><th></th></tr></thead><tbody>
           {fatura.kalemler.map(k => <tr key={k.urunId}><td><strong>{k.urunAdi}</strong><small>{k.barkod}</small></td><td>{k.miktar}</td><td>{para(k.alisFiyati)}</td><td>%{k.kdvOrani}</td><td>{para(k.satirToplami)}</td><td><button className="market-remove" type="button" onClick={() => setFatura(p => ({ ...p, kalemler: p.kalemler.filter(x => x.urunId !== k.urunId) }))}>Sil</button></td></tr>)}
@@ -299,10 +394,18 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
 
       {!yukleniyor && sekme === 'fiyat' && <div className="market-card">
         <div className="market-heading"><div><span>TOPLU İŞLEM</span><h2>Fiyat güncelleme merkezi</h2></div></div>
-        <div className="market-price-controls"><label>Kategori<select value={fiyatKategori} onChange={e => setFiyatKategori(e.target.value)}><option>Tümü</option>{kategoriler.map(k => <option key={k}>{k}</option>)}</select></label><label>Değişim oranı (%)<input type="number" step="0.01" value={zamOrani} onChange={e => setZamOrani(e.target.value)} /></label><button className="market-primary" type="button" onClick={fiyatlariUygula}>Fiyatları Güncelle</button></div>
-        <p className="market-note">Negatif oran indirim uygular. Güncellenen ürünler etiket kuyruğuna eklenir.</p>
+        <div className="market-price-controls">
+          <label>İşlem türü<select value={fiyatIslemTipi} onChange={e => setFiyatIslemTipi(e.target.value)}><option value="yuzde">Yüzde artır / azalt</option><option value="tl_ekle">Sabit TL ekle / çıkar</option><option value="yeni_fiyat">Doğrudan yeni fiyat</option></select></label>
+          <label>Tek ürün (isteğe bağlı)<select value={fiyatUrunId} onChange={e => setFiyatUrunId(e.target.value)}><option value="">Kategoriye / tümüne uygula</option>{urunler.map(u => <option value={u.id} key={u.id}>{u.urun_adi} · {para(u.satis_fiyati)}</option>)}</select></label>
+          {!fiyatUrunId && <label>Kategori<select value={fiyatKategori} onChange={e => setFiyatKategori(e.target.value)}><option>Tümü</option>{kategoriler.map(k => <option key={k}>{k}</option>)}</select></label>}
+          {fiyatIslemTipi === 'yuzde'
+            ? <label>Değişim oranı (%)<input type="number" step="0.01" value={zamOrani} onChange={e => setZamOrani(e.target.value)} placeholder="-10 veya 15" /></label>
+            : <label>{fiyatIslemTipi === 'tl_ekle' ? 'Eklenecek/çıkarılacak TL' : 'Yeni satış fiyatı'}<input type="number" step="0.01" value={fiyatTlDegeri} onChange={e => setFiyatTlDegeri(e.target.value)} placeholder={fiyatIslemTipi === 'tl_ekle' ? '-5 veya 20' : 'Yeni fiyat'} /></label>}
+          <button className="market-primary" type="button" onClick={fiyatlariUygula}>Fiyatları Güncelle</button>
+        </div>
+        <p className="market-note">Tek ürün seçersen yalnızca o ürün değişir. Negatif yüzde veya TL değeri fiyatı düşürür. Güncellenen ürünler etiket kuyruğuna eklenir.</p>
         <div className="market-table"><table><thead><tr><th>Ürün</th><th>Mevcut</th><th>Yeni</th><th>Fark</th></tr></thead><tbody>
-          {urunler.filter(u => fiyatKategori === 'Tümü' || u.kategori === fiyatKategori).map(u => { const yeni = Number(u.satis_fiyati) * (1 + Number(zamOrani || 0) / 100); return <tr key={u.id}><td><strong>{u.urun_adi}</strong><small>{u.barkod}</small></td><td>{para(u.satis_fiyati)}</td><td><strong>{para(yeni)}</strong></td><td className={yeni >= Number(u.satis_fiyati) ? 'green' : 'red'}>{para(yeni - Number(u.satis_fiyati))}</td></tr>; })}
+          {urunler.filter(u => fiyatUrunId ? String(u.id) === String(fiyatUrunId) : fiyatKategori === 'Tümü' || u.kategori === fiyatKategori).map(u => { const yeni = fiyatOnizlemeHesapla(u); return <tr key={u.id}><td><strong>{u.urun_adi}</strong><small>{u.barkod}</small></td><td>{para(u.satis_fiyati)}</td><td><strong>{para(yeni)}</strong></td><td className={yeni >= Number(u.satis_fiyati) ? 'green' : 'red'}>{para(yeni - Number(u.satis_fiyati))}</td></tr>; })}
         </tbody></table></div>
       </div>}
 
