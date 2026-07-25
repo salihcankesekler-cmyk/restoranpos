@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 
+const MarketApp = React.lazy(() => import('./market/MarketApp'));
+
 class AppErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -3915,6 +3917,7 @@ Toplam Ciro: {toplam}
 
   // personel ekran yetkilerinde kullanılacak sekme seçeneklerini tutan kod
   const personelSekmeSecenekleri = [
+    { key: 'market', label: '🏪 Market Yönetimi' },
     { key: 'masalar', label: '🪑 Masalar' },
     { key: 'mutfak', label: '👨‍🍳 Mutfak' },
     { key: 'paket', label: '🛵 Paket Servis' },
@@ -3972,6 +3975,12 @@ Toplam Ciro: {toplam}
   // satış paketlerine göre hazır modül/sekme şablonlarını hazırlayan kod
   const modulPaketSablonlari = [
     {
+      key: 'Market',
+      label: 'Integra Market',
+      aciklama: 'Barkodlu ürün, alış faturası, sayım, fiyat ve etiket yönetimi.',
+      sekmeler: ['market', 'hizli_satis', 'stok', 'kasa', 'cari', 'raporlar', 'giderler', 'iadeler', 'garsonlar', 'isletme_profili', 'kurulum', 'sistem_durumu'],
+    },
+    {
       key: 'Baslangic',
       label: 'Başlangıç',
       aciklama: 'Masa, mutfak, hızlı satış ve temel rapor isteyen küçük işletmeler.',
@@ -3998,14 +4007,14 @@ Toplam Ciro: {toplam}
     {
       key: 'Premium',
       label: 'Premium / Tüm Modüller',
-      aciklama: 'Tüm sekmeler açık. Demo, satış sunumu ve tam paket müşteriler için.',
-      sekmeler: tumIsletmeSekmeYetkileri(),
+      aciklama: 'Tüm restoran sekmeleri açık. Demo, satış sunumu ve tam paket müşteriler için.',
+      sekmeler: tumIsletmeSekmeYetkileri().filter(sekme => sekme !== 'market'),
     },
     {
       key: 'Kurumsal',
       label: 'Kurumsal / Özel',
-      aciklama: 'Tüm modüller açık; özel entegrasyon ve kurumsal kullanım için.',
-      sekmeler: tumIsletmeSekmeYetkileri(),
+      aciklama: 'Tüm restoran modülleri açık; özel entegrasyon ve kurumsal kullanım için.',
+      sekmeler: tumIsletmeSekmeYetkileri().filter(sekme => sekme !== 'market'),
     },
   ];
 
@@ -4091,6 +4100,7 @@ Toplam Ciro: {toplam}
       : isletmeSekmeleriniHazirla(null, 'Premium');
 
     if (rol === 'owner') {
+      if (aktifIsletmeSekmeleri.includes('market') && !aktifIsletmeSekmeleri.includes('masalar')) return 'market';
       return aktifIsletmeSekmeleri.includes('raporlar') ? 'raporlar' : aktifIsletmeSekmeleri[0] || 'masalar';
     }
 
@@ -6121,9 +6131,10 @@ Toplam Ciro: {toplam}
           kayit_notu: kayitNotu,
           basvuru_paketi: kayitPaketi,
           paket_adi: kayitPaketi,
+          isletme_tipi: kayitPaketi === 'Market' ? 'Market' : 'Restoran',
           aylik_ucret: 0,
           lisans_durumu: 'Onay Bekliyor',
-          kullanici_limiti: kayitPaketi === 'Profesyonel' ? 3 : 0,
+          kullanici_limiti: ['Profesyonel', 'Market'].includes(kayitPaketi) ? 3 : 0,
           durum: 'Onay Bekliyor',
           rol: 'owner',
         },
@@ -11770,7 +11781,8 @@ Toplam Ciro: {toplam}
 
     if (alan === 'paketAdi') {
       guncelleme.basvuru_paketi = temizDeger;
-      if (temizDeger === 'Profesyonel') {
+      guncelleme.isletme_tipi = temizDeger === 'Market' ? 'Market' : 'Restoran';
+      if (['Profesyonel', 'Market'].includes(temizDeger)) {
         guncelleme.aylik_ucret = Number(restoran.aylikUcret || 699) || 699;
         guncelleme.kullanici_limiti = Number(restoran.kullaniciLimiti || 3) || 3;
       }
@@ -15463,10 +15475,10 @@ Toplam Ciro: {toplam}
             }}
           >
             <div style={styles.heroContent}>
-              <span style={styles.heroBadge}>✨ Bulut tabanlı restoran POS • QR menü • Reçete & maliyet • Mobil uyumlu</span>
-              <h1 style={styles.heroTitle}>Restoran, kafe ve paket servisi tek panelden yönetin.</h1>
+              <span style={styles.heroBadge}>✨ Restoran POS • Integra Market • Barkod & stok • Mobil uyumlu</span>
+              <h1 style={styles.heroTitle}>Restoranınızı veya marketinizi tek panelden yönetin.</h1>
               <p style={styles.heroSubtitle}>
-                Integra POS; masa adisyonu, QR menü siparişi, paket servis, reçete-maliyet, cari/veresiye, stok ve gün sonu raporlarını modern bir işletme panelinde toplar.
+                Integra POS; restoranlar için masa ve mutfak akışını, marketler için barkodlu satış, alış faturası, sayım, fiyat ve etiket yönetimini modern bir işletme panelinde toplar.
               </p>
 
               <div style={styles.heroActionGroup}>
@@ -15623,9 +15635,9 @@ Toplam Ciro: {toplam}
           <section id="kimler" style={{ padding: '72px 4%', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
             <div style={styles.sectionHeadWrap}>
               <span style={styles.sectionBadge}>Kimler için?</span>
-              <h2 style={styles.sectionTitle}>Restoran, kafe ve paket servis için ticari POS altyapısı</h2>
+              <h2 style={styles.sectionTitle}>Yeme-içme ve perakende işletmeleri için ticari POS altyapısı</h2>
               <p style={styles.sectionSubtitle}>
-                Masa servisinden gel-al satışa, paket servisten gün sonu kasasına kadar günlük operasyonu tek sistemde toplayın.
+                Masa servisinden barkodlu satışa, paket servisten stok sayımına kadar günlük operasyonu tek sistemde toplayın.
               </p>
             </div>
 
@@ -15637,6 +15649,8 @@ Toplam Ciro: {toplam}
                 ['🥔', 'Kumpirci / büfe', 'Seçenekli ürün ve not sistemi'],
                 ['🍰', 'Tatlıcı', 'Departman ve KDV takibi'],
                 ['🛵', 'Paket servis', 'Paket ekranına hazır altyapı'],
+                ['🏪', 'Market / Tekel', 'Barkodlu satış, stok ve etiket'],
+                ['🧺', 'Şarküteri / Büfe', 'Alış faturası, sayım ve fiyat yönetimi'],
               ].map(([icon, title, text]) => (
                 <div key={title} style={{ ...styles.featureItem, padding: '22px' }}>
                   <div style={{ fontSize: '30px', marginBottom: '10px' }}>{icon}</div>
@@ -15653,7 +15667,7 @@ Toplam Ciro: {toplam}
               <span style={styles.sectionBadge}>Modüller</span>
               <h2 style={styles.sectionTitle}>İşletmenin günlük ihtiyacı tek sistemde</h2>
               <p style={styles.sectionSubtitle}>
-                Garson, mutfak, kasa ve patron ekranlarını birbirine bağlayan modüler POS yapısı.
+                Restoran, market, kasa ve yönetim ekranlarını birbirine bağlayan modüler POS yapısı.
               </p>
             </div>
 
@@ -15667,6 +15681,8 @@ Toplam Ciro: {toplam}
                 ['📊', 'Raporlama', 'Günlük, aylık ve tarih aralıklı rapor; gün sonu çıktısı ve ödeme kırılımı.'],
                 ['🧾', 'Fiş & Adisyon Yazdırma', 'Hesap öncesi adisyon, ödeme sonrası fiş ve gün sonu raporu yazdırma.'],
                 ['👥', 'Personel Kullanımı', 'Patron, garson, mutfak ve admin akışlarını ayrı ekranlarla yönetin.'],
+                ['▥', 'Barkodlu Market Satışı', 'USB veya Bluetooth barkod okuyucuyla ürünü hızla bulun, satışı tamamlayın ve stoğu otomatik düşürün.'],
+                ['📋', 'Alış, Sayım & Etiket', 'Alış faturasıyla stok artırın, barkodla sayım yapın, toplu fiyat güncelleyip raf etiketi basın.'],
               ].map(([icon, title, text]) => (
                 <div key={title} style={styles.featureItem}>
                   <div style={styles.featureIcon}>{icon}</div>
@@ -16155,6 +16171,7 @@ Toplam Ciro: {toplam}
                 style={styles.authInput}
               >
                 <option value="Profesyonel">Profesyonel - İletişime Geçin</option>
+                <option value="Market">Integra Market - Barkod, stok ve etiket</option>
                 <option value="Kurumsal">Kurumsal / Özel Çözüm - İletişime Geçin</option>
               </select>
               <input
@@ -16245,6 +16262,15 @@ Toplam Ciro: {toplam}
 
             <nav style={styles.navGroup} onClick={e => { if (e.target?.tagName === 'BUTTON') setSolMenuAcik(false); }}>
               <div style={styles.navSectionTitle}>Günlük Operasyon</div>
+              {tabGorunur('market') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('market')}
+                  style={activeTab === 'market' ? styles.navItemActive : styles.navItem}
+                >
+                  🏪 Integra Market
+                </button>
+              )}
               {tabGorunur('raporlar') && (
                 <button
                   type="button"
@@ -16616,6 +16642,15 @@ Toplam Ciro: {toplam}
               </div>
             )}
             {/* sistem durumu ve acil müdahale ekranını gösteren kod */}
+            {activeTab === 'market' && (
+              <React.Suspense fallback={<div style={{ padding: '24px', color: '#64748b', fontWeight: '800' }}>Market modülü hazırlanıyor…</div>}>
+                <MarketApp
+                  restaurantId={mevcutRestaurantId}
+                  restaurantName={user?.restaurant}
+                  notify={bildirimGoster}
+                />
+              </React.Suspense>
+            )}
             {activeTab === 'sistem_durumu' && (
               <div>
                 <div style={styles.contentHeader}>
@@ -22759,6 +22794,7 @@ Toplam Ciro: {toplam}
                                 onChange={e => restoranLisansAlanGuncelle(r, 'paketAdi', e.target.value)}
                                 style={styles.input}
                               >
+                                <option>Market</option>
                                 <option>Profesyonel</option>
                                 <option>Kurumsal</option>
                                 <option>Özel Paket</option>
