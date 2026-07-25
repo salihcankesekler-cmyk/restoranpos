@@ -8,6 +8,13 @@ function marketHatasi(error) {
     : error.message || 'Market işlemi tamamlanamadı.');
 }
 
+async function marketOturumunuDogrula() {
+  const { data } = await supabase.auth.getSession();
+  if (!data?.session?.user) {
+    throw new Error('Market için güvenli Supabase oturumu bulunamadı. Hesaptan çıkış yapın, e-posta doğrulamasını tamamlayın ve tekrar giriş yapın.');
+  }
+}
+
 export async function marketVerileriniGetir(restaurantId) {
   const [urunler, faturalar, sayimlar] = await Promise.all([
     supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('urun_adi'),
@@ -21,6 +28,7 @@ export async function marketVerileriniGetir(restaurantId) {
 }
 
 export async function marketUrunuKaydet(restaurantId, urun) {
+  await marketOturumunuDogrula();
   const payload = {
     restaurant_id: restaurantId,
     barkod: String(urun.barkod || '').trim(),
@@ -43,6 +51,7 @@ export async function marketUrunuKaydet(restaurantId, urun) {
 }
 
 export async function marketAlisFaturasiKaydet(restaurantId, fatura) {
+  await marketOturumunuDogrula();
   const { data: baslik, error: baslikError } = await supabase
     .from('market_alis_faturalari')
     .insert([{
@@ -84,6 +93,7 @@ export async function marketAlisFaturasiKaydet(restaurantId, fatura) {
 }
 
 export async function marketSayimiKaydet(restaurantId, sayim) {
+  await marketOturumunuDogrula();
   const { data: baslik, error: baslikError } = await supabase.from('market_sayimlari').insert([{
     restaurant_id: restaurantId,
     sayim_adi: sayim.sayimAdi,
@@ -114,6 +124,7 @@ export async function marketSayimiKaydet(restaurantId, sayim) {
 }
 
 export async function marketFiyatlariniGuncelle(restaurantId, urunler) {
+  await marketOturumunuDogrula();
   for (const urun of urunler) {
     const { error } = await supabase.from('market_urunleri')
       .update({ satis_fiyati: Number(urun.yeniFiyat) })
@@ -123,6 +134,7 @@ export async function marketFiyatlariniGuncelle(restaurantId, urunler) {
 }
 
 export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi) {
+  await marketOturumunuDogrula();
   const yetersiz = sepet.find(k => Number(k.adet) > Number(k.stok_miktari || 0));
   if (yetersiz) throw new Error(`${yetersiz.urun_adi} için yeterli stok yok.`);
   const toplam = sepet.reduce((t, k) => t + Number(k.adet) * Number(k.satis_fiyati), 0);
