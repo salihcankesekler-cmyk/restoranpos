@@ -5416,8 +5416,7 @@ Toplam Ciro: {toplam}
     const marketYetkiliHesap = hesapSekmeleri.includes('market');
 
     if (marketYetkiliHesap && (!authKullanici || !authOturumuVar)) {
-      alert('Market güvenli oturumu oluşturuldu. E-posta adresinize gelen Supabase doğrulama bağlantısını açıp tekrar giriş yapın.');
-      return;
+      alert('Market hesabı için e-posta doğrulaması henüz tamamlanmamış olabilir. Panele giriş yapılacak; market verisi kaydedilemezse doğrulama e-postasını onaylayıp tekrar giriş yapın.');
     }
 
     const parentRestaurantId = data.parentRestaurantId || data.parent_restaurant_id || data.id;
