@@ -4684,6 +4684,20 @@ Toplam Ciro: {toplam}
 
   // süper admin için restoran listesini Supabase'den çeken kod
   const restoranlariSupabasedenCek = async () => {
+    // Market RLS kurallarının kullanıcıyı tanıyabilmesi için Supabase Auth oturumu açar.
+    // Henüz Auth'a taşınmamış eski hesaplar, doğru eski şifreyle ilk girişte otomatik eşleştirilir.
+    let authKullanici = null;
+    let authOturumuVar = false;
+    const { data: authGirisData } = await supabase.auth.signInWithPassword({
+      email: String(email || '').trim().toLowerCase(),
+      password,
+    });
+
+    if (authGirisData?.user) {
+      authKullanici = authGirisData.user;
+      authOturumuVar = Boolean(authGirisData.session);
+    }
+
     const { data, error } = await supabase
       .from('restaurants')
       .select('*')
@@ -5367,6 +5381,42 @@ Toplam Ciro: {toplam}
 
     if (data.durum !== 'Aktif') {
       alert('Hesabınız henüz aktif değil. Lütfen admin onayını bekleyin.');
+      return;
+    }
+
+    if (!authKullanici) {
+      const { data: authKayitData, error: authKayitError } = await supabase.auth.signUp({
+        email: String(email || '').trim().toLowerCase(),
+        password,
+      });
+
+      if (!authKayitError && authKayitData?.user) {
+        authKullanici = authKayitData.user;
+        authOturumuVar = Boolean(authKayitData.session);
+      }
+    }
+
+    if (authKullanici?.id && String(data.auth_user_id || '') !== String(authKullanici.id)) {
+      const { error: authEslemeError } = await supabase
+        .from('restaurants')
+        .update({ auth_user_id: authKullanici.id })
+        .eq('id', data.id);
+
+      if (authEslemeError) {
+        console.warn('Supabase Auth işletme eşleştirmesi yapılamadı:', authEslemeError.message);
+      } else {
+        data.auth_user_id = authKullanici.id;
+      }
+    }
+
+    const hesapSekmeleri = isletmeSekmeleriniHazirla(
+      data.aktif_sekmeler,
+      data.modul_paketi || data.paket_adi || data.basvuru_paketi || 'Premium'
+    );
+    const marketYetkiliHesap = hesapSekmeleri.includes('market');
+
+    if (marketYetkiliHesap && (!authKullanici || !authOturumuVar)) {
+      alert('Market güvenli oturumu oluşturuldu. E-posta adresinize gelen Supabase doğrulama bağlantısını açıp tekrar giriş yapın.');
       return;
     }
 
@@ -16560,7 +16610,8 @@ Toplam Ciro: {toplam}
               <div style={{ color: '#cbd5e1', fontSize: '11px', lineHeight: 1.45 }}>Canlı destek: 0532 501 42 77</div>
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
+                await supabase.auth.signOut();
                 localStorage.removeItem('integra_user');
                 localStorage.removeItem('integra_activeTab');
                 localStorage.setItem('integra_screen', 'login');
