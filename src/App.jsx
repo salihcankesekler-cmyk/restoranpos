@@ -4684,20 +4684,6 @@ Toplam Ciro: {toplam}
 
   // süper admin için restoran listesini Supabase'den çeken kod
   const restoranlariSupabasedenCek = async () => {
-    // Market RLS kurallarının kullanıcıyı tanıyabilmesi için Supabase Auth oturumu açar.
-    // Henüz Auth'a taşınmamış eski hesaplar, doğru eski şifreyle ilk girişte otomatik eşleştirilir.
-    let authKullanici = null;
-    let authOturumuVar = false;
-    const { data: authGirisData } = await supabase.auth.signInWithPassword({
-      email: String(email || '').trim().toLowerCase(),
-      password,
-    });
-
-    if (authGirisData?.user) {
-      authKullanici = authGirisData.user;
-      authOturumuVar = Boolean(authGirisData.session);
-    }
-
     const { data, error } = await supabase
       .from('restaurants')
       .select('*')
@@ -5364,6 +5350,20 @@ Toplam Ciro: {toplam}
       }
 
       return;
+    }
+
+    // Market RLS kurallarının kullanıcıyı tanıyabilmesi için Supabase Auth oturumu açar.
+    // Henüz Auth'a taşınmamış eski hesaplar, doğru eski şifreyle ilk girişte otomatik eşleştirilir.
+    let authKullanici = null;
+    let authOturumuVar = false;
+    const { data: authGirisData } = await supabase.auth.signInWithPassword({
+      email: String(email || '').trim().toLowerCase(),
+      password,
+    });
+
+    if (authGirisData?.user) {
+      authKullanici = authGirisData.user;
+      authOturumuVar = Boolean(authGirisData.session);
     }
 
     const { data, error } = await supabase
