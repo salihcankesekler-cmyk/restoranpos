@@ -14,6 +14,7 @@ import {
   marketKasaVardiyasiKapat,
   marketSayimiKaydet,
   marketSatisIadeEt,
+  marketSatisFisiniKuyrugaEkle,
   marketSatisiKaydet,
   marketUrunStokFiyatGuncelle,
   marketUrunleriniTopluKaydet,
@@ -48,65 +49,71 @@ const para = value => new Intl.NumberFormat('tr-TR', {
   style: 'currency', currency: 'TRY', maximumFractionDigits: 2,
 }).format(Number(value || 0));
 
-const htmlGuvenli = value => String(value ?? '')
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
-  .replaceAll("'", '&#039;');
-
 const miktarYaz = value => Number(value || 0).toLocaleString('tr-TR', {
   minimumFractionDigits: Number.isInteger(Number(value || 0)) ? 0 : 3,
   maximumFractionDigits: 3,
 });
 
-const satisFisiBelgesi = (satis, restaurantName) => {
+const fisParasi = value => `${Number(value || 0).toLocaleString('tr-TR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})} TL`;
+
+const TERMAL_FIS_GENISLIGI = 42;
+const termalCizgi = karakter => karakter.repeat(TERMAL_FIS_GENISLIGI);
+const termalOrtala = value => {
+  const metin = String(value || '').trim().slice(0, TERMAL_FIS_GENISLIGI);
+  return `${' '.repeat(Math.max(Math.floor((TERMAL_FIS_GENISLIGI - metin.length) / 2), 0))}${metin}`;
+};
+const termalSatir = (sol, sag) => {
+  const solMetin = String(sol || '').trim();
+  const sagMetin = String(sag || '').trim();
+  const bosluk = TERMAL_FIS_GENISLIGI - solMetin.length - sagMetin.length;
+  return bosluk > 0 ? `${solMetin}${' '.repeat(bosluk)}${sagMetin}` : `${solMetin}\r\n${sagMetin.padStart(TERMAL_FIS_GENISLIGI)}`;
+};
+const termalMetniBol = value => {
+  const kelimeler = String(value || '').trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
+  const satirlar = [];
+  kelimeler.forEach(kelime => {
+    const sonSatir = satirlar.at(-1) || '';
+    if (!sonSatir || `${sonSatir} ${kelime}`.length > TERMAL_FIS_GENISLIGI) satirlar.push(kelime.slice(0, TERMAL_FIS_GENISLIGI));
+    else satirlar[satirlar.length - 1] = `${sonSatir} ${kelime}`;
+  });
+  return satirlar.length ? satirlar : ['Ürün'];
+};
+
+const satisFisiMetni = (satis, restaurantName) => {
   const kalemler = Array.isArray(satis?.market_satis_kalemleri) ? satis.market_satis_kalemleri : [];
   const brutToplam = Number(satis?.brut_toplam ?? satis?.toplam_tutar ?? 0);
   const indirimToplami = Number(satis?.indirim_toplami || 0);
   const netToplam = Number(satis?.toplam_tutar ?? (brutToplam - indirimToplami));
   const tarih = new Date(satis?.created_at || Date.now()).toLocaleString('tr-TR');
   const fisNo = String(satis?.id || '').slice(-10).toLocaleUpperCase('tr-TR') || '-';
-  const kalemHtml = kalemler.map(kalem => `
-    <tr>
-      <td><strong>${htmlGuvenli(kalem.urun_adi || 'Ürün')}</strong><small>${htmlGuvenli(kalem.barkod || '')}</small></td>
-      <td>${htmlGuvenli(miktarYaz(kalem.adet))} × ${htmlGuvenli(para(kalem.birim_fiyat))}</td>
-      <td>${htmlGuvenli(para(kalem.toplam_tutar))}</td>
-    </tr>
-  `).join('');
+  const urunSatirlari = kalemler.flatMap(kalem => [
+    ...termalMetniBol(`${miktarYaz(kalem.adet)} x ${kalem.urun_adi || 'Ürün'}`),
+    termalSatir(`Birim ${fisParasi(kalem.birim_fiyat)}`, fisParasi(kalem.toplam_tutar)),
+    kalem.barkod ? `Barkod: ${kalem.barkod}` : '',
+    termalCizgi('-'),
+  ]).filter(Boolean);
 
-  return `<!doctype html>
-  <html lang="tr">
-    <head>
-      <meta charset="utf-8" />
-      <title>Satış Fişi ${htmlGuvenli(fisNo)}</title>
-      <style>
-        @page{size:auto;margin:3mm}
-        *{box-sizing:border-box}
-        body{width:72mm;margin:0 auto;color:#000;background:#fff;font:11px/1.35 Arial,sans-serif}
-        header{text-align:center;padding-bottom:8px;border-bottom:1px dashed #000}
-        header h1{margin:0 0 3px;font-size:17px} header strong{font-size:12px}
-        .meta{display:grid;grid-template-columns:1fr auto;gap:3px 8px;padding:7px 0;border-bottom:1px dashed #000}
-        table{width:100%;border-collapse:collapse}td{padding:6px 2px;border-bottom:1px dotted #888;vertical-align:top}
-        td:first-child{width:48%}td:nth-child(2){text-align:center;white-space:nowrap}td:last-child{text-align:right;white-space:nowrap;font-weight:700}
-        td strong,td small{display:block}td small{font-size:9px;margin-top:2px}
-        .totals{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:8px 2px;border-bottom:1px dashed #000}
-        .totals b{text-align:right}.total{font-size:15px;font-weight:800}
-        footer{text-align:center;padding-top:8px;font-size:9px}footer strong{display:block;font-size:11px;margin-bottom:3px}
-      </style>
-    </head>
-    <body>
-      <header><h1>${htmlGuvenli(restaurantName || 'Integra Market')}</h1><strong>SATIŞ FİŞİ</strong></header>
-      <div class="meta"><span>Tarih</span><b>${htmlGuvenli(tarih)}</b><span>Fiş no</span><b>${htmlGuvenli(fisNo)}</b><span>Ödeme</span><b>${htmlGuvenli(satis?.odeme_tipi || '-')}</b>${satis?.cari_adi ? `<span>Cari</span><b>${htmlGuvenli(satis.cari_adi)}</b>` : ''}</div>
-      <table><tbody>${kalemHtml}</tbody></table>
-      <div class="totals">
-        <span>Brüt toplam</span><b>${htmlGuvenli(para(brutToplam))}</b>
-        ${indirimToplami > 0 ? `<span>İndirim</span><b>−${htmlGuvenli(para(indirimToplami))}</b>` : ''}
-        <span class="total">TOPLAM</span><b class="total">${htmlGuvenli(para(netToplam))}</b>
-      </div>
-      <footer><strong>Teşekkür ederiz.</strong>Bu belge satış bilgi fişidir; mali belge yerine geçmez.</footer>
-    </body>
-  </html>`;
+  return [
+    termalOrtala(restaurantName || 'Integra Market'),
+    termalOrtala('MARKET SATIŞ FİŞİ'),
+    termalCizgi('='),
+    `Tarih: ${tarih}`,
+    `Fiş No: ${fisNo}`,
+    `Ödeme: ${satis?.odeme_tipi || '-'}`,
+    satis?.cari_adi ? `Cari: ${satis.cari_adi}` : '',
+    termalCizgi('-'),
+    ...urunSatirlari,
+    termalSatir('Brüt Toplam', fisParasi(brutToplam)),
+    indirimToplami > 0 ? termalSatir('İndirim', `-${fisParasi(indirimToplami)}`) : '',
+    termalCizgi('='),
+    termalSatir('TOPLAM', fisParasi(netToplam)),
+    termalCizgi('='),
+    termalOrtala('Teşekkür ederiz.'),
+    termalOrtala('Mali belge yerine geçmez.'),
+  ].filter(Boolean).join('\r\n');
 };
 
 const tarihYaz = value => {
@@ -1048,44 +1055,20 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     window.setTimeout(() => barkodRef.current?.focus(), 80);
   };
 
-  const satisFisiniYazdir = satis => {
+  const satisFisiniYazdir = async (satis, sessiz = false) => {
     if (!yetkiyiDogrula('fis_yazdir', 'Bu personelin satış fişi yazdırma yetkisi yok.')) return;
-    const cerceve = document.createElement('iframe');
-    cerceve.setAttribute('aria-hidden', 'true');
-    Object.assign(cerceve.style, {
-      position: 'fixed',
-      width: '1px',
-      height: '1px',
-      right: '0',
-      bottom: '0',
-      border: '0',
-      opacity: '0',
-      pointerEvents: 'none',
-    });
-    let guvenlikZamanlayicisi;
-    const temizle = () => {
-      window.clearTimeout(guvenlikZamanlayicisi);
-      cerceve.remove();
-    };
-    cerceve.addEventListener('load', () => {
-      try {
-        cerceve.contentWindow?.addEventListener('afterprint', temizle, { once: true });
-        cerceve.contentWindow?.focus();
-        cerceve.contentWindow?.print();
-        guvenlikZamanlayicisi = window.setTimeout(temizle, 60000);
-      } catch {
-        temizle();
-        bildir('Fiş yazdırma penceresi açılamadı. Tarayıcının yazdırma iznini kontrol edin.', 'warning');
-      }
-    }, { once: true });
-    cerceve.srcdoc = satisFisiBelgesi(satis, restaurantName);
-    document.body.appendChild(cerceve);
+    try {
+      await marketSatisFisiniKuyrugaEkle(restaurantId, satis, satisFisiMetni(satis, restaurantName));
+      if (!sessiz) bildir('Fiş varsayılan Windows yazıcısına gönderildi.', 'success');
+    } catch (error) {
+      bildir(error.message, 'warning');
+    }
   };
 
-  const satisFisiKarariniUygula = satis => {
+  const satisFisiKarariniUygula = async satis => {
     if (fisDavranisi === 'yazdirma' || !yetkiVar('fis_yazdir')) return;
     if (fisDavranisi === 'sor' && !window.confirm('Satış tamamlandı. Fiş yazdırılsın mı?')) return;
-    satisFisiniYazdir(satis);
+    await satisFisiniYazdir(satis, true);
   };
 
   const satisiTamamla = async odemeTipi => {
@@ -1140,7 +1123,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           ? { ...cari, bakiye: Number(cari.bakiye || 0) + toplam }
           : cari));
       }
-      satisFisiKarariniUygula({
+      void satisFisiKarariniUygula({
         ...yeniSatis,
         created_at: yeniSatis.created_at || new Date().toISOString(),
         odeme_tipi: yeniSatis.odeme_tipi || odemeTipi,
