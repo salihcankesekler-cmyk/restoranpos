@@ -1779,6 +1779,17 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}>▶ Bekleyenler ({bekleyenSepetler.length})</button>
             <button type="button" className="market-clear-cart" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={satisSepetiniTemizle}>Sepeti Temizle</button>
           </div>
+          <aside className="market-pos-action-rail" aria-label="Hızlı satış işlemleri">
+            <button type="button" className={satisCariId ? 'active' : ''} onClick={() => { setSatisCariArama(''); setSatisCariPenceresi(true); }}><span>👤</span><b>Cari</b><small>{seciliSatisCarisi?.ad || 'Seçilmedi'}</small></button>
+            <button type="button" onClick={() => { setSekme('raporlar'); setRaporSekmesi('fisler'); }}><span>🧾</span><b>Fiş Listesi</b></button>
+            <button type="button" disabled={!sepet.length} onClick={() => {
+              if (yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) setGenelIndirimPenceresi(true);
+              else bildir('Bu personelin indirim veya fiyat değiştirme yetkisi yok.', 'warning');
+            }}><span>±</span><b>Fiyat / İndirim</b><small>F4</small></button>
+            <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('kaydet')}><span>⏸</span><b>Beklet</b><small>F5</small></button>
+            <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}><span>▶</span><b>Bekleyen</b><small>{bekleyenSepetler.length} fiş</small></button>
+            <button type="button" className="danger" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={satisSepetiniTemizle}><span>×</span><b>Fiş İptal</b></button>
+          </aside>
           {!sepet.length ? <div className="market-cart-empty"><strong>Satışa hazır</strong><span>Barkodu okutun veya ürün listesinden seçim yapın.</span></div> :
             <div className="market-table market-cart-table"><table><thead><tr><th>Ürün</th><th>Adet</th><th>Toplam</th><th></th></tr></thead><tbody>
               {sepet.map(kalem => {
