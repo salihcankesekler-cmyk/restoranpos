@@ -48,6 +48,67 @@ const para = value => new Intl.NumberFormat('tr-TR', {
   style: 'currency', currency: 'TRY', maximumFractionDigits: 2,
 }).format(Number(value || 0));
 
+const htmlGuvenli = value => String(value ?? '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;');
+
+const miktarYaz = value => Number(value || 0).toLocaleString('tr-TR', {
+  minimumFractionDigits: Number.isInteger(Number(value || 0)) ? 0 : 3,
+  maximumFractionDigits: 3,
+});
+
+const satisFisiBelgesi = (satis, restaurantName) => {
+  const kalemler = Array.isArray(satis?.market_satis_kalemleri) ? satis.market_satis_kalemleri : [];
+  const brutToplam = Number(satis?.brut_toplam ?? satis?.toplam_tutar ?? 0);
+  const indirimToplami = Number(satis?.indirim_toplami || 0);
+  const netToplam = Number(satis?.toplam_tutar ?? (brutToplam - indirimToplami));
+  const tarih = new Date(satis?.created_at || Date.now()).toLocaleString('tr-TR');
+  const fisNo = String(satis?.id || '').slice(-10).toLocaleUpperCase('tr-TR') || '-';
+  const kalemHtml = kalemler.map(kalem => `
+    <tr>
+      <td><strong>${htmlGuvenli(kalem.urun_adi || 'Ürün')}</strong><small>${htmlGuvenli(kalem.barkod || '')}</small></td>
+      <td>${htmlGuvenli(miktarYaz(kalem.adet))} × ${htmlGuvenli(para(kalem.birim_fiyat))}</td>
+      <td>${htmlGuvenli(para(kalem.toplam_tutar))}</td>
+    </tr>
+  `).join('');
+
+  return `<!doctype html>
+  <html lang="tr">
+    <head>
+      <meta charset="utf-8" />
+      <title>Satış Fişi ${htmlGuvenli(fisNo)}</title>
+      <style>
+        @page{size:auto;margin:3mm}
+        *{box-sizing:border-box}
+        body{width:72mm;margin:0 auto;color:#000;background:#fff;font:11px/1.35 Arial,sans-serif}
+        header{text-align:center;padding-bottom:8px;border-bottom:1px dashed #000}
+        header h1{margin:0 0 3px;font-size:17px} header strong{font-size:12px}
+        .meta{display:grid;grid-template-columns:1fr auto;gap:3px 8px;padding:7px 0;border-bottom:1px dashed #000}
+        table{width:100%;border-collapse:collapse}td{padding:6px 2px;border-bottom:1px dotted #888;vertical-align:top}
+        td:first-child{width:48%}td:nth-child(2){text-align:center;white-space:nowrap}td:last-child{text-align:right;white-space:nowrap;font-weight:700}
+        td strong,td small{display:block}td small{font-size:9px;margin-top:2px}
+        .totals{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:8px 2px;border-bottom:1px dashed #000}
+        .totals b{text-align:right}.total{font-size:15px;font-weight:800}
+        footer{text-align:center;padding-top:8px;font-size:9px}footer strong{display:block;font-size:11px;margin-bottom:3px}
+      </style>
+    </head>
+    <body>
+      <header><h1>${htmlGuvenli(restaurantName || 'Integra Market')}</h1><strong>SATIŞ FİŞİ</strong></header>
+      <div class="meta"><span>Tarih</span><b>${htmlGuvenli(tarih)}</b><span>Fiş no</span><b>${htmlGuvenli(fisNo)}</b><span>Ödeme</span><b>${htmlGuvenli(satis?.odeme_tipi || '-')}</b>${satis?.cari_adi ? `<span>Cari</span><b>${htmlGuvenli(satis.cari_adi)}</b>` : ''}</div>
+      <table><tbody>${kalemHtml}</tbody></table>
+      <div class="totals">
+        <span>Brüt toplam</span><b>${htmlGuvenli(para(brutToplam))}</b>
+        ${indirimToplami > 0 ? `<span>İndirim</span><b>−${htmlGuvenli(para(indirimToplami))}</b>` : ''}
+        <span class="total">TOPLAM</span><b class="total">${htmlGuvenli(para(netToplam))}</b>
+      </div>
+      <footer><strong>Teşekkür ederiz.</strong>Bu belge satış bilgi fişidir; mali belge yerine geçmez.</footer>
+    </body>
+  </html>`;
+};
+
 const tarihYaz = value => {
   if (!value) return '-';
   return new Date(`${String(value).slice(0, 10)}T12:00:00`).toLocaleDateString('tr-TR');
@@ -183,6 +244,10 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const [urunIndirimFormu, setUrunIndirimFormu] = useState(null);
   const [satisGrubu, setSatisGrubu] = useState('');
   const [satisCariId, setSatisCariId] = useState('');
+  const [fisDavranisi, setFisDavranisi] = useState(() => {
+    const kayitli = localStorage.getItem(`integra-market-fis-${restaurantId}`);
+    return ['yazdir', 'yazdirma', 'sor'].includes(kayitli) ? kayitli : 'sor';
+  });
   const [fiyatBekleyenUrun, setFiyatBekleyenUrun] = useState(null);
   const [anlikSatisFiyati, setAnlikSatisFiyati] = useState('');
   const [gramajBekleyenUrun, setGramajBekleyenUrun] = useState(null);
@@ -299,6 +364,10 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   useEffect(() => {
     localStorage.setItem(`integra-market-terazi-${restaurantId}`, JSON.stringify(teraziAyarlari));
   }, [restaurantId, teraziAyarlari]);
+
+  useEffect(() => {
+    localStorage.setItem(`integra-market-fis-${restaurantId}`, fisDavranisi);
+  }, [fisDavranisi, restaurantId]);
 
   const gorunenGruplar = useMemo(
     () => gruplar.filter(grup => grup.satis_ekraninda_goster),
@@ -979,6 +1048,46 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     window.setTimeout(() => barkodRef.current?.focus(), 80);
   };
 
+  const satisFisiniYazdir = satis => {
+    if (!yetkiyiDogrula('fis_yazdir', 'Bu personelin satış fişi yazdırma yetkisi yok.')) return;
+    const cerceve = document.createElement('iframe');
+    cerceve.setAttribute('aria-hidden', 'true');
+    Object.assign(cerceve.style, {
+      position: 'fixed',
+      width: '1px',
+      height: '1px',
+      right: '0',
+      bottom: '0',
+      border: '0',
+      opacity: '0',
+      pointerEvents: 'none',
+    });
+    let guvenlikZamanlayicisi;
+    const temizle = () => {
+      window.clearTimeout(guvenlikZamanlayicisi);
+      cerceve.remove();
+    };
+    cerceve.addEventListener('load', () => {
+      try {
+        cerceve.contentWindow?.addEventListener('afterprint', temizle, { once: true });
+        cerceve.contentWindow?.focus();
+        cerceve.contentWindow?.print();
+        guvenlikZamanlayicisi = window.setTimeout(temizle, 60000);
+      } catch {
+        temizle();
+        bildir('Fiş yazdırma penceresi açılamadı. Tarayıcının yazdırma iznini kontrol edin.', 'warning');
+      }
+    }, { once: true });
+    cerceve.srcdoc = satisFisiBelgesi(satis, restaurantName);
+    document.body.appendChild(cerceve);
+  };
+
+  const satisFisiKarariniUygula = satis => {
+    if (fisDavranisi === 'yazdirma' || !yetkiVar('fis_yazdir')) return;
+    if (fisDavranisi === 'sor' && !window.confirm('Satış tamamlandı. Fiş yazdırılsın mı?')) return;
+    satisFisiniYazdir(satis);
+  };
+
   const satisiTamamla = async odemeTipi => {
     if (satisKaydiSuruyorRef.current) return;
     if (!sepet.length) return bildir('Satış sepeti boş.', 'warning');
@@ -1031,6 +1140,15 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           ? { ...cari, bakiye: Number(cari.bakiye || 0) + toplam }
           : cari));
       }
+      satisFisiKarariniUygula({
+        ...yeniSatis,
+        created_at: yeniSatis.created_at || new Date().toISOString(),
+        odeme_tipi: yeniSatis.odeme_tipi || odemeTipi,
+        cari_adi: yeniSatis.cari_adi || seciliSatisCarisi?.ad || '',
+        brut_toplam: yeniSatis.brut_toplam ?? sepetToplamlari.brutToplam,
+        indirim_toplami: yeniSatis.indirim_toplami ?? (sepetToplamlari.urunIndirimTutari + sepetToplamlari.genelIndirimTutari),
+        toplam_tutar: yeniSatis.toplam_tutar ?? beklenenToplam,
+      });
       void verileriYukle(true);
       window.setTimeout(() => barkodRef.current?.focus(), 80);
     } catch (error) {
@@ -1534,6 +1652,16 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             <button className={sepetToplamlari.genelIndirimTutari > 0 ? 'market-discount-trigger active' : 'market-discount-trigger'} type="button" disabled={!sepet.length} onClick={() => yetkiyiDogrula('indirim_yap', 'Bu personelin iskonto yapma yetkisi yok.') && setGenelIndirimPenceresi(true)}><kbd>F4</kbd> {sepetToplamlari.genelIndirimTutari > 0 ? `İskonto −${para(sepetToplamlari.genelIndirimTutari)}` : '＋ İskonto'}</button>
             <div className="market-cart-summary"><span>Brüt<strong>{para(sepetToplamlari.brutToplam)}</strong></span>{sepetToplamlari.urunIndirimTutari > 0 && <span>Ürün / ikram<strong>−{para(sepetToplamlari.urunIndirimTutari)}</strong></span>}{sepetToplamlari.genelIndirimTutari > 0 && <span>İskonto<strong>−{para(sepetToplamlari.genelIndirimTutari)}</strong></span>}<span className="total">Ödenecek<strong>{para(sepetToplamlari.netToplam)}</strong></span></div>
           </div>
+          <div className="market-receipt-preference">
+            <span>🧾 Satış sonrası fiş</span>
+            <div role="group" aria-label="Satış sonrası fiş davranışı">
+              {[
+                ['yazdir', 'Yazdır'],
+                ['yazdirma', 'Yazdırma'],
+                ['sor', 'Sor'],
+              ].map(([deger, etiket]) => <button type="button" key={deger} className={fisDavranisi === deger ? 'active' : ''} disabled={deger !== 'yazdirma' && !yetkiVar('fis_yazdir')} title={deger !== 'yazdirma' && !yetkiVar('fis_yazdir') ? 'Fiş yazdırma yetkisi gerekli' : ''} onClick={() => setFisDavranisi(deger)}>{etiket}</button>)}
+            </div>
+          </div>
           <div className="market-payment-buttons"><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}><kbd>F1</kbd>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}><kbd>F2</kbd>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}><kbd>F3</kbd>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
           <p className="market-note">Veresiye işlem için cari seçimi zorunludur. Nakit ve kart satışlarında cari seçimi isteğe bağlıdır.</p>
         </div>
@@ -2005,6 +2133,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               })}
               {Number(satis.indirim_toplami || 0) > 0 && <div className="market-receipt-discount-summary"><span>Brüt toplam</span><b>{para(satis.brut_toplam)}</b><span>Ürün indirimleri</span><b>−{para(satis.urun_indirim_toplami)}</b><span>Sepet indirimi</span><b>−{para(satis.genel_indirim_toplami)}</b></div>}
               <div className="market-receipt-total"><span>Net Toplam<small>{Number(satis.iade_toplami || 0) > 0 ? `${para(satis.iade_toplami)} iade edildi` : ''}</small></span><strong>{para(satis.raporToplam)}</strong></div>
+              {yetkiVar('fis_yazdir') && <div className="market-receipt-print-actions"><button className="market-receipt-button" type="button" onClick={() => satisFisiniYazdir(satis)}>🖨 Fişi Yazdır</button></div>}
               {satis.durum !== 'İptal' && <div className="market-return-actions"><input value={iadeAciklama} onChange={event => setIadeAciklama(event.target.value)} placeholder="İade / iptal açıklaması" /><button type="button" disabled={iadeIsleniyor} onClick={() => satisIadesiniKaydet(satis, false)}>Seçilenleri İade Et</button><button className="danger" type="button" disabled={iadeIsleniyor} onClick={() => satisIadesiniKaydet(satis, true)}>Satışı İptal Et</button></div>}
             </div></td></tr>}
           </Fragment>)}</tbody></table></div>}

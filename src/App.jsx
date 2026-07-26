@@ -2666,6 +2666,7 @@ Toplam Ciro: {toplam}
 
   const personelDetayYetkiSecenekleri = [
     { key: 'odeme_al', label: 'Ödeme alabilir' },
+    { key: 'fis_yazdir', label: 'Satış fişi yazdırabilir' },
     { key: 'indirim_yap', label: 'İndirim yapabilir' },
     { key: 'adisyon_duzenle', label: 'Adisyon düzenleyebilir' },
     { key: 'kapali_adisyon_ac', label: 'Kapalı adisyon açabilir' },
@@ -2679,7 +2680,7 @@ Toplam Ciro: {toplam}
   const goreveGoreVarsayilanDetayYetkileri = (gorev = 'Garson') => {
     const metin = String(gorev || '').toLocaleLowerCase('tr-TR');
     if (metin.includes('müdür') || metin.includes('mudur')) return personelDetayYetkiSecenekleri.map(y => y.key);
-    if (metin.includes('kasiyer')) return ['odeme_al', 'adisyon_duzenle', 'rapor_gor', 'kasa_gor'];
+    if (metin.includes('kasiyer')) return ['odeme_al', 'fis_yazdir', 'adisyon_duzenle', 'rapor_gor', 'kasa_gor'];
     if (metin.includes('mutfak')) return ['rapor_gor'];
     if (metin.includes('kurye')) return ['adisyon_duzenle'];
     return ['adisyon_duzenle', 'masa_yonet'];
