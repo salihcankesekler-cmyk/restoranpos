@@ -654,41 +654,6 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
   return { ...satis, market_satis_kalemleri: satisKalemleri || [] };
 }
 
-export async function marketSatisFisiniKuyrugaEkle(restaurantId, satis, icerikText) {
-  await marketOturumunuDogrula();
-  const temizIcerik = String(icerikText || '').trim();
-  if (!temizIcerik) throw new Error('Yazdırılacak satış fişi içeriği oluşturulamadı.');
-
-  const { data, error } = await supabase.from('yazdirma_kuyrugu').insert([{
-    restaurant_id: restaurantId,
-    yazici_tipi: 'adisyon',
-    fis_tipi: 'hesap',
-    baslik: 'Market Satış Fişi',
-    icerik_text: temizIcerik,
-    payload_json: {
-      modul: 'market',
-      satis_id: satis?.id || null,
-      odeme_tipi: satis?.odeme_tipi || null,
-      toplam_tutar: Number(satis?.toplam_tutar || 0),
-    },
-    kaynak_tablo: 'market_satislari',
-    kaynak_id: satis?.id ? String(satis.id) : null,
-    durum: 'Bekliyor',
-    yazdirildi: false,
-  }]).select().single();
-
-  if (error) {
-    if (['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error.code)) {
-      throw new Error('Doğrudan yazdırma kuyruğu hazır değil. Yazıcı ayarlarından Printer Agent kurulumunu tamamlayın.');
-    }
-    if (error.code === '42501') {
-      throw new Error('Satış fişi yazdırma kuyruğuna erişim yetkisi bulunamadı.');
-    }
-    throw marketHatasi(error);
-  }
-  return data;
-}
-
 export async function marketSatisIadeEt(restaurantId, satisId, kalemler, aciklama = '', tamIptal = false) {
   await marketOturumunuDogrula();
   const { data, error } = await supabase.rpc('market_satis_iade_atomik', {
