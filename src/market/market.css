@@ -2104,3 +2104,133 @@
     grid-row:7;
   }
 }
+
+/* Etiket ekranı: çoklu okutma, toplu yeni fiyat ve serbest ölçü */
+.market-label-actions{
+  flex-wrap:wrap;
+}
+.market-label-size-manual{
+  display:flex;
+  align-items:flex-end;
+  gap:4px;
+  padding:4px 6px;
+  border:1px solid #cbd5e1;
+  border-radius:7px;
+  background:#f8fafc;
+}
+.market-label-size-manual label{
+  gap:2px;
+}
+.market-label-size-manual input{
+  width:62px;
+  height:30px;
+  box-sizing:border-box;
+  border:1px solid #cbd5e1;
+  border-radius:5px;
+  padding:0 6px;
+  background:#fff;
+  font:800 11px/1 inherit;
+  text-align:center;
+}
+.market-label-size-manual>span{
+  padding-bottom:7px;
+  color:#64748b;
+  font-weight:950;
+}
+.market-save-prices{
+  min-height:36px;
+  border:0;
+  border-radius:7px;
+  padding:7px 11px;
+  background:#047857;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.market-save-prices:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+.market-label-search{
+  height:40px;
+  border-width:2px;
+  border-color:#fdba74;
+}
+.market-label-columns,
+.market-label-row{
+  grid-template-columns:26px minmax(190px,1fr) 58px 105px 105px 120px;
+}
+.market-label-new-price{
+  width:100%;
+  min-width:0;
+  height:34px;
+  box-sizing:border-box;
+  border:2px solid #fdba74;
+  border-radius:6px;
+  padding:0 8px;
+  background:#fff7ed;
+  color:#9a3412;
+  font:900 12px/1 inherit;
+  text-align:right;
+}
+.market-label-new-price:focus{
+  border-color:#f97316;
+  outline:2px solid #ffedd5;
+}
+
+@media(max-width:900px){
+  .market-label-actions{
+    align-items:stretch;
+  }
+  .market-label-columns,
+  .market-label-row{
+    grid-template-columns:24px minmax(150px,1fr) 52px 90px 90px 105px;
+  }
+}
+
+@media(max-width:700px){
+  .market-label-actions{
+    flex-direction:row;
+  }
+  .market-label-size-manual{
+    order:1;
+  }
+  .market-label-actions .market-save-prices,
+  .market-label-actions .market-primary{
+    flex:1 1 170px;
+  }
+  .market-label-list{
+    overflow-x:auto;
+  }
+  .market-label-row{
+    min-width:620px;
+    grid-template-columns:24px minmax(170px,1fr) 52px 90px 90px 110px;
+  }
+}
+
+@media print{
+  .market-print-labels.size-custom{
+    grid-template-columns:repeat(auto-fill,var(--market-label-width));
+  }
+  .market-print-labels.size-custom article{
+    width:var(--market-label-width);
+    height:var(--market-label-height);
+    overflow:hidden;
+    padding:1.5mm;
+  }
+  .market-print-labels.size-custom article strong{
+    max-width:100%;
+    margin:1mm 0;
+    overflow:hidden;
+    font-size:9pt;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .market-print-labels.size-custom article b{
+    font-size:15pt;
+  }
+  .market-print-labels.size-custom .market-barcode-svg{
+    height:7mm;
+  }
+}
