@@ -12,6 +12,8 @@ const opsiyonelTabloEksikMi = error =>
   !error || ['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error.code)
   || String(error.message || '').includes('schema cache');
 
+const miktarYuvarla = value => Math.round((Number(value || 0) + Number.EPSILON) * 1000) / 1000;
+
 async function stokHareketiEkle(payload) {
   const { error } = await supabase.from('market_stok_hareketleri').insert([payload]);
   if (error && !opsiyonelTabloEksikMi(error)) throw marketHatasi(error);
@@ -553,9 +555,35 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
   await marketOturumunuDogrula();
   const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()
     || `00000000-0000-4000-8000-${String(Date.now()).slice(-12).padStart(12, '0')}`;
+  const yuvarlanmisSepet = sepet.map(kalem => ({ ...kalem, adet: miktarYuvarla(kalem.adet) }));
+  const hamAraToplam = yuvarlanmisSepet.reduce((toplam, kalem) =>
+    toplam + Number(kalem.adet || 0) * Number(kalem.satis_fiyati || 0), 0);
+  const fiyatArtisiMi = indirim.yon === 'arttir';
+  const fiyatAyarDegeri = Math.max(Number(indirim.deger || 0), 0);
+  const genelArtisTutari = fiyatArtisiMi
+    ? (indirim.tur === 'tutar'
+      ? fiyatAyarDegeri
+      : hamAraToplam * Math.min(fiyatAyarDegeri, 100) / 100)
+    : 0;
+  // Mevcut atomik satış fonksiyonu indirim kabul ediyor. Toplam artışını satırlara
+  // oransal dağıtarak aynı atomik stok, cari ve mükerrer işlem korumasını sürdürüyoruz.
+  const islemSepeti = genelArtisTutari > 0 && hamAraToplam > 0
+    ? yuvarlanmisSepet.map(kalem => {
+      const adet = Math.max(Number(kalem.adet || 0), 0.001);
+      const satirToplami = adet * Number(kalem.satis_fiyati || 0);
+      const artisPayi = genelArtisTutari * satirToplami / hamAraToplam;
+      const yeniBirimFiyat = (satirToplami + artisPayi) / adet;
+      return {
+        ...kalem,
+        satis_fiyati: yeniBirimFiyat,
+        liste_fiyati: Math.max(Number(kalem.liste_fiyati ?? kalem.satis_fiyati ?? 0), yeniBirimFiyat),
+      };
+    })
+    : yuvarlanmisSepet;
+  const uygulanacakIndirim = fiyatArtisiMi ? { yon: 'azalt', tur: 'tutar', deger: 0 } : indirim;
   const { data: indirimliAtomikSatis, error: indirimliAtomikHata } = await supabase.rpc('market_satis_kaydet_indirimli_atomik', {
     p_restaurant_id: Number(restaurantId),
-    p_kalemler: sepet.map(kalem => ({
+    p_kalemler: islemSepeti.map(kalem => ({
       id: kalem.id,
       adet: Number(kalem.adet),
       liste_fiyati: Number(kalem.liste_fiyati ?? kalem.satis_fiyati),
@@ -564,21 +592,21 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     p_odeme_tipi: odemeTipi,
     p_cari_id: cariId ? String(cariId) : null,
     p_islem_anahtari: guvenliIslemAnahtari,
-    p_indirim_turu: indirim.tur || 'yuzde',
-    p_indirim_degeri: Number(indirim.deger || 0),
+    p_indirim_turu: uygulanacakIndirim.tur || 'yuzde',
+    p_indirim_degeri: Number(uygulanacakIndirim.deger || 0),
   });
   if (!indirimliAtomikHata) return indirimliAtomikSatis;
   const indirimliRpcEksik = ['42883', 'PGRST202'].includes(indirimliAtomikHata.code)
     || String(indirimliAtomikHata.message || '').includes('market_satis_kaydet_indirimli_atomik');
   if (!indirimliRpcEksik) throw marketHatasi(indirimliAtomikHata);
 
-  const araToplam = sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet) * Number(kalem.satis_fiyati), 0);
-  const indirimDegeri = Math.max(Number(indirim.deger || 0), 0);
-  const hesaplananGenelIndirim = indirim.tur === 'tutar'
+  const araToplam = islemSepeti.reduce((toplam, kalem) => toplam + Number(kalem.adet) * Number(kalem.satis_fiyati), 0);
+  const indirimDegeri = Math.max(Number(uygulanacakIndirim.deger || 0), 0);
+  const hesaplananGenelIndirim = uygulanacakIndirim.tur === 'tutar'
     ? indirimDegeri
     : araToplam * Math.min(indirimDegeri, 100) / 100;
   const genelIndirimTutari = Math.min(hesaplananGenelIndirim, araToplam);
-  const sepetKaydi = sepet.map(kalem => {
+  const sepetKaydi = islemSepeti.map(kalem => {
     const satirToplami = Number(kalem.adet) * Number(kalem.satis_fiyati);
     const indirimPayi = araToplam > 0 ? genelIndirimTutari * satirToplami / araToplam : 0;
     return {
