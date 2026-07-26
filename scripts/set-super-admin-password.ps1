@@ -1,6 +1,11 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+$utf8Encoding = New-Object System.Text.UTF8Encoding($false)
+[Console]::InputEncoding = $utf8Encoding
+[Console]::OutputEncoding = $utf8Encoding
+$OutputEncoding = $utf8Encoding
+
 function ConvertTo-PlainText {
   param(
     [Parameter(Mandatory = $true)]
@@ -57,7 +62,7 @@ $newPasswordRepeat = $null
 $payload = $null
 
 try {
-  $secretKey = ConvertTo-PlainText -SecureValue $secretSecure
+  $secretKey = (ConvertTo-PlainText -SecureValue $secretSecure).Trim()
   $newPassword = ConvertTo-PlainText -SecureValue $passwordSecure
   $newPasswordRepeat = ConvertTo-PlainText -SecureValue $passwordRepeatSecure
 
@@ -104,7 +109,15 @@ try {
   $process.WaitForExit()
 
   if ($process.ExitCode -ne 0) {
-    throw ($errorOutput.Trim() -replace '\s+at\s+.*', '')
+    $guvenliHata = $errorOutput -split "\r?\n" |
+      Where-Object { $_ -like 'HATA:*' } |
+      Select-Object -Last 1
+
+    if (-not $guvenliHata) {
+      $guvenliHata = 'HATA: Supabase isteği başarısız oldu. Secret Key ve internet bağlantısını kontrol edin.'
+    }
+
+    throw $guvenliHata
   }
 
   Write-Host ''

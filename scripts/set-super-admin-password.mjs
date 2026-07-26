@@ -9,9 +9,20 @@ async function main() {
 
   const girdi = JSON.parse(Buffer.concat(stdinParcalar).toString('utf8'));
   const supabaseUrl = String(girdi.supabaseUrl || '').trim();
-  const supabaseSecretKey = String(girdi.supabaseSecretKey || '').trim();
+  let supabaseSecretKey = String(girdi.supabaseSecretKey || '').trim();
   const authUserId = String(girdi.authUserId || '').trim();
   const yeniSifre = String(girdi.yeniSifre || '');
+
+  if (
+    (supabaseSecretKey.startsWith('"') && supabaseSecretKey.endsWith('"')) ||
+    (supabaseSecretKey.startsWith("'") && supabaseSecretKey.endsWith("'"))
+  ) {
+    supabaseSecretKey = supabaseSecretKey.slice(1, -1);
+  }
+
+  supabaseSecretKey = supabaseSecretKey
+    .replace(/^Bearer\s+/i, '')
+    .replace(/\s+/g, '');
 
   if (!supabaseUrl || !supabaseSecretKey || !authUserId || !yeniSifre) {
     throw new Error('Supabase bağlantısı, Secret Key, kullanıcı UUID ve yeni şifre zorunludur.');
@@ -19,6 +30,15 @@ async function main() {
 
   if (supabaseSecretKey.startsWith('sb_publishable_')) {
     throw new Error('Publishable Key kullanılamaz. Supabase Secret Key veya legacy service_role anahtarı gerekir.');
+  }
+
+  const modernSecretKey = /^sb_secret_[A-Za-z0-9_-]{20,}$/.test(supabaseSecretKey);
+  const legacyServiceRoleKey = /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(supabaseSecretKey);
+
+  if (!modernSecretKey && !legacyServiceRoleKey) {
+    throw new Error(
+      'Secret Key biçimi geçersiz. API Keys ekranında Secret Key için Reveal/Copy ile yalnızca tam anahtar değerini kopyalayın.'
+    );
   }
 
   const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
