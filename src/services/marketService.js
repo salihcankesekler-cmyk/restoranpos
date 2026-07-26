@@ -75,14 +75,15 @@ async function cariHareketiniKaldir(restaurantId, cariId, kaynak, kaynakId) {
 }
 
 export async function marketVerileriniGetir(restaurantId) {
-  const [urunler, gruplar, faturalar, sayimlar, cariler] = await Promise.all([
+  const [urunler, gruplar, faturalar, sayimlar, cariler, satislar] = await Promise.all([
     supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('urun_adi'),
     supabase.from('market_gruplari').select('*').eq('restaurant_id', restaurantId).order('sira').order('grup_adi'),
     supabase.from('market_alis_faturalari').select('*, market_alis_fatura_kalemleri(*)').eq('restaurant_id', restaurantId).order('fatura_tarihi', { ascending: false }).limit(50),
     supabase.from('market_sayimlari').select('*, market_sayim_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(20),
     supabase.from('cari_musteriler').select('id, ad, telefon, bakiye, not_metni, hareketler').eq('restaurant_id', restaurantId).order('ad'),
+    supabase.from('market_satislari').select('*, market_satis_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(1000),
   ]);
-  const error = urunler.error || gruplar.error || faturalar.error || sayimlar.error;
+  const error = urunler.error || gruplar.error || faturalar.error || sayimlar.error || satislar.error;
   if (error) throw marketHatasi(error);
   return {
     urunler: urunler.data || [],
@@ -90,6 +91,7 @@ export async function marketVerileriniGetir(restaurantId) {
     faturalar: faturalar.data || [],
     sayimlar: sayimlar.data || [],
     cariler: cariler.data || [],
+    satislar: satislar.data || [],
   };
 }
 
