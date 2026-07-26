@@ -712,6 +712,9 @@ Toplam Ciro: {toplam}
   const [hizliSatisIndirimTutari, setHizliSatisIndirimTutari] = useState('');
   const [hizliSatisCariMusteriId, setHizliSatisCariMusteriId] = useState('');
   const [hizliSatisCariArama, setHizliSatisCariArama] = useState('');
+  const [hizliSatisSeciliMiktar, setHizliSatisSeciliMiktar] = useState('1');
+  const [hizliSatisDetayIndex, setHizliSatisDetayIndex] = useState(null);
+  const [hizliSatisIndirimAcik, setHizliSatisIndirimAcik] = useState(false);
 
   // gider takibi için kullanılan kod
   const [giderler, setGiderler] = useState([]);
@@ -4169,7 +4172,9 @@ Toplam Ciro: {toplam}
     .filter(u => {
       const urunGrubu = u.menuGrubu || u.kategori || 'Genel';
       const urunAdi = String(u.ad || '').toLocaleLowerCase('tr-TR');
-      const grupUyuyor = urunGrubu === (aktifHizliSatisGrup.ad || aktifHizliSatisMenuGrubu || 'Genel');
+      const grupUyuyor = hizliSatisUrunAramaMetni
+        ? true
+        : urunGrubu === (aktifHizliSatisGrup.ad || aktifHizliSatisMenuGrubu || 'Genel');
       const aramaUyuyor = !hizliSatisUrunAramaMetni || urunAdi.includes(hizliSatisUrunAramaMetni);
       return grupUyuyor && aramaUyuyor;
     })
@@ -10248,8 +10253,11 @@ Toplam Ciro: {toplam}
   };
 
   // hızlı satış ürününü sepete ekleyen kod
-  const hizliSatisUrunEkle = (urun) => {
+  const hizliSatisUrunEkle = (urun, miktarOverride = null) => {
     if (!urun) return;
+    const girilenMiktar = miktarOverride ?? hizliSatisSeciliMiktar;
+    const miktarYuvarla = deger => Math.round(Number(deger || 0) * 1000) / 1000;
+    const eklenecekMiktar = miktarYuvarla(Math.max(sayiyaCevir(girilenMiktar || 1), 0.001));
 
     setHizliSatisUrunler(prev => {
       const liste = Array.isArray(prev) ? [...prev] : [];
@@ -10258,7 +10266,7 @@ Toplam Ciro: {toplam}
       if (index > -1) {
         liste[index] = {
           ...liste[index],
-          adet: Number(liste[index].adet || 0) + 1,
+          adet: miktarYuvarla(Number(liste[index].adet || 0) + eklenecekMiktar),
         };
       } else {
         liste.push({
@@ -10269,7 +10277,7 @@ Toplam Ciro: {toplam}
           ekstraUcret: 0,
           hazirNotId: '',
           maliyet: Number(urun.maliyet || 0),
-          adet: 1,
+          adet: eklenecekMiktar,
           not: '',
           ikram: false,
           menuGrubu: urun.menuGrubu || urun.kategori || 'Genel',
@@ -10284,6 +10292,7 @@ Toplam Ciro: {toplam}
 
       return liste;
     });
+    setHizliSatisSeciliMiktar('1');
   };
 
   // hızlı satış ürün adedini değiştiren kod
@@ -10293,9 +10302,29 @@ Toplam Ciro: {toplam}
       if (!liste[index]) return liste;
       const yeniAdet = Number(liste[index].adet || 1) + degisim;
       if (yeniAdet <= 0) return liste.filter((_, i) => i !== index);
-      liste[index] = { ...liste[index], adet: yeniAdet };
+      liste[index] = { ...liste[index], adet: Math.round(yeniAdet * 1000) / 1000 };
       return liste;
     });
+  };
+
+  const hizliSatisAdetAyarla = (index, yeniDeger) => {
+    const yeniAdet = Math.max(sayiyaCevir(yeniDeger || 0), 0);
+    setHizliSatisUrunler(prev => {
+      const liste = Array.isArray(prev) ? [...prev] : [];
+      if (!liste[index]) return liste;
+      if (yeniAdet <= 0) return liste.filter((_, i) => i !== index);
+      liste[index] = { ...liste[index], adet: Math.round(yeniAdet * 1000) / 1000 };
+      return liste;
+    });
+  };
+
+  const hizliSatisSepetiTemizle = () => {
+    if (hizliSatisUrunler.length === 0) return;
+    if (!window.confirm('Hızlı satış sepetindeki tüm ürünler silinsin mi?')) return;
+    setHizliSatisUrunler([]);
+    setHizliSatisDetayIndex(null);
+    setHizliSatisIndirimYuzde('');
+    setHizliSatisIndirimTutari('');
   };
 
   // hızlı satış ürün notunu değiştiren kod
@@ -19488,218 +19517,55 @@ Toplam Ciro: {toplam}
 
             {/* hızlı satış / gel-al ekranını gösteren kod */}
             {activeTab === 'hizli_satis' && (
-              <div style={styles.panelCard}>
-                <h2 style={styles.pageTitle}>⚡ Hızlı Satış / Gel-Al</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
-                  Masa veya paket açmadan hızlı ürün seçip nakit/kart satış kapatabilirsiniz.
-                </p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr', gap: '18px' }}>
+              <div className="quick-pos-page">
+                <div className="quick-pos-heading">
                   <div>
-                    <div style={isMobile ? { ...styles.yatayKaydirmaSekmeleri, marginBottom: '12px' } : { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                      {aktifMenuGruplari.map(grup => (
-                        <button
-                          key={grup.ad}
-                          type="button"
-                          onClick={() => setAktifHizliSatisMenuGrubu(grup.ad)}
-                          style={{
-                            border: 'none',
-                            backgroundColor: aktifHizliSatisMenuGrubu === grup.ad ? '#ff6b35' : '#e2e8f0',
-                            color: aktifHizliSatisMenuGrubu === grup.ad ? '#fff' : '#334155',
-                            padding: '9px 13px',
-                            borderRadius: '999px',
-                            cursor: 'pointer',
-                            fontWeight: '900',
-                            fontSize: '12px',
-                            flex: '0 0 auto',
-                          }}
-                        >
-                          {grup.ad}
-                        </button>
-                      ))}
-                    </div>
-
-                    <input
-                      type="text"
-                      placeholder="Ürün ara..."
-                      value={hizliSatisUrunArama}
-                      onChange={e => setHizliSatisUrunArama(e.target.value)}
-                      style={{ ...styles.input, width: '100%', boxSizing: 'border-box', marginBottom: '12px' }}
-                    />
-
-                    <div style={isMobile ? styles.mesaGridMobile : styles.mesaGrid}>
-                      {aktifHizliSatisGrubuUrunleri.map(urun => (
-                        <button
-                          key={urun.id}
-                          type="button"
-                          onClick={() => hizliSatisUrunEkle(urun)}
-                          style={{
-                            ...styles.mesaCard,
-                            textAlign: 'left',
-                            borderColor: urun.favori ? '#f59e0b' : 'transparent',
-                            backgroundColor: '#fff',
-                          }}
-                        >
-                          {urunGosterimResmi(urun) && (
-                            <img
-                              src={urunGosterimResmi(urun)}
-                              alt={urun.ad}
-                              onError={e => { e.currentTarget.style.display = 'none'; }}
-                              style={{ width: '100%', height: '82px', objectFit: 'cover', borderRadius: '10px', marginBottom: '8px', backgroundColor: '#f1f5f9' }}
-                            />
-                          )}
-                          <div style={{ fontWeight: '900', color: '#1e293b' }}>{urun.favori ? '⭐ ' : ''}{urun.ad}</div>
-                          <div style={{ color: '#ff6b35', fontWeight: '900', marginTop: '8px' }}>{urun.fiyat} TL</div>
-                          <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>{urun.menuGrubu || 'Genel'}</div>
-                        </button>
-                      ))}
-                    </div>
+                    <span className="quick-pos-kicker">BARKODSUZ SATIŞ</span>
+                    <h2>Hızlı Satış</h2>
+                    <p>Grubu seçin, miktarı belirleyin ve ürüne dokunun.</p>
                   </div>
+                  <div className="quick-pos-heading-stats">
+                    <div><span>Kalem</span><strong>{hizliSatisUrunler.length}</strong></div>
+                    <div><span>Miktar</span><strong>{paraYuvarla(hizliSatisUrunler.reduce((toplam, u) => toplam + Number(u.adet || 0), 0))}</strong></div>
+                    <div className="quick-pos-heading-total"><span>Toplam</span><strong>{paraYuvarla(hizliSatisToplam)} TL</strong></div>
+                  </div>
+                </div>
 
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px' }}>
-                    <h3 style={{ marginTop: 0, color: '#1e293b' }}>Hızlı Satış Sepeti</h3>
-                    {hizliSatisUrunler.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: '13px' }}>Sepet boş.</div>
-                    ) : (
-                      hizliSatisUrunler.map((u, index) => (
-                        <div key={`${u.urunId}-${index}`} style={{ ...styles.receiptRow, alignItems: 'flex-start', gap: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: '800', color: '#1e293b' }}>
-                              {u.adet}x {u.ad} {u.ikram ? '🎁 İkram' : ''}
-                            </div>
-                            {Array.isArray(u.menuNotlari) && u.menuNotlari.length > 0 && (
-                              <select
-                                value={u.hazirNotId || ''}
-                                onChange={e => hizliSatisHazirNotSec(index, e.target.value)}
-                                style={{
-                                  ...styles.input,
-                                  minWidth: '100%',
-                                  width: '100%',
-                                  boxSizing: 'border-box',
-                                  padding: '7px 8px',
-                                  fontSize: '12px',
-                                  marginTop: '5px',
-                                }}
-                              >
-                                <option value="">Hazır not seç</option>
-                                {u.menuNotlari.map(n => (
-                                  <option key={n.id || n.ad} value={String(n.id || n.ad)}>
-                                    {n.ad} {Number(n.fiyat || 0) > 0 ? `(+${n.fiyat} TL)` : ''}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-
-                            <input
-                              type="text"
-                              placeholder="Ürün notu"
-                              value={u.not || ''}
-                              onChange={e => hizliSatisUrunNotuDegistir(index, e.target.value)}
-                              style={{
-                                ...styles.input,
-                                minWidth: '100%',
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                padding: '7px 8px',
-                                fontSize: '12px',
-                                marginTop: '5px',
-                              }}
-                            />
-
-                            {Number(u.ekstraUcret || 0) > 0 && (
-                              <div style={{ fontSize: '11px', color: '#ff6b35', fontWeight: '900', marginTop: '4px' }}>
-                                Hazır not ekstra: +{u.ekstraUcret} TL / adet
-                              </div>
-                            )}
-
-                            {u.fiyatDegistirildi && (
-                              <div style={{ fontSize: '11px', color: '#0f766e', fontWeight: '900', marginTop: '4px' }}>
-                                Satış fiyatı değiştirildi: {u.fiyat} TL / adet
-                              </div>
-                            )}
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                            <strong>{Number(u.fiyat || 0) * Number(u.adet || 1)} TL</strong>
-                            {!u.ikram && Number(u.fiyat || 0) > 0 && (
-                              <button type="button" onClick={() => hizliSatisBirUrunIkramEt(index)} style={{ ...styles.deleteItemBtn, color: '#f59e0b', fontWeight: '900' }}>🎁</button>
-                            )}
-                            {!u.ikram && (
-                              <button type="button" onClick={() => hizliSatisUrunFiyatiDegistir(index)} style={{ ...styles.deleteItemBtn, color: '#0f766e', fontWeight: '900' }}>💸</button>
-                            )}
-                            <button type="button" onClick={() => hizliSatisAdetDegistir(index, -1)} style={styles.deleteItemBtn}>−</button>
-                            <button type="button" onClick={() => hizliSatisAdetDegistir(index, 1)} style={styles.deleteItemBtn}>+</button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        placeholder="İndirim %"
-                        value={hizliSatisIndirimYuzde}
-                        onChange={e => setHizliSatisIndirimYuzde(e.target.value)}
-                        style={{ ...styles.input, minWidth: '100%', width: '100%', boxSizing: 'border-box' }}
-                      />
-
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="İndirim TL"
-                        value={hizliSatisIndirimTutari}
-                        onChange={e => setHizliSatisIndirimTutari(e.target.value)}
-                        style={{ ...styles.input, minWidth: '100%', width: '100%', boxSizing: 'border-box' }}
-                      />
+                <div className="quick-pos-layout">
+                  <section className="quick-pos-cart">
+                    <div className="quick-pos-section-title">
+                      <div>
+                        <span>AKTİF FİŞ</span>
+                        <strong>Sepet</strong>
+                      </div>
+                      <button type="button" onClick={hizliSatisSepetiTemizle} disabled={hizliSatisUrunler.length === 0}>Temizle</button>
                     </div>
 
-                    {hizliSatisToplamIndirim > 0 && (
-                      <div style={{ color: '#ef4444', fontWeight: '900', fontSize: '13px', marginTop: '8px' }}>
-                        Toplam indirim: -{hizliSatisToplamIndirim} TL
+                    <div className="quick-pos-customer">
+                      <label>Cari / müşteri</label>
+                      <div className="quick-pos-search-field">
+                        <span>👤</span>
+                        <input
+                          type="text"
+                          placeholder="Cari adı veya telefon..."
+                          value={hizliSatisCariArama}
+                          onChange={e => {
+                            setHizliSatisCariArama(e.target.value);
+                            setHizliSatisCariMusteriId('');
+                          }}
+                        />
+                        {hizliSatisCariMusteriId && <b>✓</b>}
                       </div>
-                    )}
-
-                    <div style={{ ...styles.totalRow, marginTop: '12px' }}>
-                      <span>Toplam:</span>
-                      <strong style={{ color: '#ff6b35', fontSize: '22px' }}>{hizliSatisToplam} TL</strong>
-                    </div>
-
-                    {hizliSatisUrunler.length > 0 && (
-                      <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 10px', fontSize: '12px', color: '#475569', fontWeight: '900', marginTop: '8px' }}>
-                        KDV Matrahı: {hizliSatisKdvOzeti.matrahToplam} TL / KDV: {hizliSatisKdvOzeti.kdvToplam} TL
-                      </div>
-                    )}
-
-                    <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px' }}>
-                      <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Cari / Veresiye</div>
-                      <input
-                        type="text"
-                        placeholder="Cari müşteri ara..."
-                        value={hizliSatisCariArama}
-                        onChange={e => {
-                          setHizliSatisCariArama(e.target.value);
-                          setHizliSatisCariMusteriId('');
-                        }}
-                        style={{ ...styles.input, width: '100%', minWidth: '100%', boxSizing: 'border-box' }}
-                      />
 
                       {hizliSatisCariArama && !hizliSatisCariMusteriId && (
-                        <div style={{ marginTop: '6px', display: 'grid', gap: '6px', maxHeight: '170px', overflowY: 'auto' }}>
+                        <div className="quick-pos-customer-results">
                           {filtreliHizliSatisCariMusterileri.length === 0 ? (
-                            <div style={{ color: '#94a3b8', fontSize: '12px' }}>Cari müşteri bulunamadı.</div>
+                            <div className="quick-pos-no-result">Cari müşteri bulunamadı.</div>
                           ) : (
                             filtreliHizliSatisCariMusterileri.map(cari => (
-                              <button
-                                key={cari.id}
-                                type="button"
-                                onClick={() => hizliSatisCariMusterisiSec(cari.id)}
-                                style={{ border: '1px solid #e2e8f0', borderRadius: '10px', backgroundColor: '#f8fafc', padding: '8px 10px', textAlign: 'left', cursor: 'pointer' }}
-                              >
-                                <strong>{cari.ad}</strong>
-                                {cari.telefon ? <span style={{ color: '#64748b' }}> • {cari.telefon}</span> : null}
-                                <span style={{ color: '#ef4444', fontWeight: '900', float: 'right' }}>{Number(cari.bakiye || 0)} TL</span>
+                              <button key={cari.id} type="button" onClick={() => hizliSatisCariMusterisiSec(cari.id)}>
+                                <span><strong>{cari.ad}</strong><small>{cari.telefon || 'Telefon yok'}</small></span>
+                                <b>{Number(cari.bakiye || 0)} TL</b>
                               </button>
                             ))
                           )}
@@ -19707,42 +19573,203 @@ Toplam Ciro: {toplam}
                       )}
                     </div>
 
-                    <input
-                      type="number"
-                      placeholder={`${hizliSatisToplam} TL alındı`}
-                      value={hizliSatisAlinanTutar}
-                      onChange={e => setHizliSatisAlinanTutar(e.target.value)}
-                      style={{ ...styles.input, width: '100%', minWidth: '100%', boxSizing: 'border-box', marginTop: '8px' }}
-                    />
+                    <div className="quick-pos-cart-list">
+                      {hizliSatisUrunler.length === 0 ? (
+                        <div className="quick-pos-empty-cart">
+                          <div>🛒</div>
+                          <strong>Sepet henüz boş</strong>
+                          <span>Sağ taraftan ürüne dokunarak satışa başlayın.</span>
+                        </div>
+                      ) : (
+                        hizliSatisUrunler.map((u, index) => (
+                          <div key={`${u.urunId}-${index}`} className={`quick-pos-cart-line ${u.ikram ? 'is-complimentary' : ''}`}>
+                            <div className="quick-pos-cart-line-head">
+                              <div>
+                                <strong>{u.ad}</strong>
+                                <span>{u.ikram ? 'İkram' : `${Number(u.fiyat || 0)} TL / adet`}</span>
+                              </div>
+                              <b>{paraYuvarla(Number(u.fiyat || 0) * Number(u.adet || 1))} TL</b>
+                            </div>
 
-                    {Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0) > 0 && (
-                      <div style={{ color: '#10b981', fontWeight: '900', fontSize: '13px', marginTop: '8px' }}>
-                        Para üstü: {Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0)} TL
-                      </div>
-                    )}
+                            <div className="quick-pos-line-actions">
+                              <button type="button" className="qty" onClick={() => hizliSatisAdetDegistir(index, -1)}>−</button>
+                              <input
+                                type="number"
+                                min="0.001"
+                                step="0.001"
+                                value={u.adet}
+                                onChange={e => hizliSatisAdetAyarla(index, e.target.value)}
+                              />
+                              <button type="button" className="qty" onClick={() => hizliSatisAdetDegistir(index, 1)}>+</button>
+                              {!u.ikram && (
+                                <button type="button" className="price" onClick={() => hizliSatisUrunFiyatiDegistir(index)}>
+                                  {Number(u.fiyat || 0)} TL
+                                </button>
+                              )}
+                              {!u.ikram && Number(u.fiyat || 0) > 0 && (
+                                <button type="button" title="İkram" onClick={() => hizliSatisBirUrunIkramEt(index)}>🎁</button>
+                              )}
+                              <button
+                                type="button"
+                                title="Not ve seçenek"
+                                className={hizliSatisDetayIndex === index ? 'active' : ''}
+                                onClick={() => setHizliSatisDetayIndex(prev => prev === index ? null : index)}
+                              >
+                                •••
+                              </button>
+                              <button type="button" title="Satırı sil" className="danger" onClick={() => hizliSatisAdetDegistir(index, -Number(u.adet || 1))}>×</button>
+                            </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px', marginTop: '10px' }}>
-                      <button
-                        type="button"
-                        onClick={hizliSatisAdisyonYazdir}
-                        style={{ ...styles.checkoutBtn, backgroundColor: '#0f766e', marginTop: 0 }}
-                      >
-                        🧾 Adisyon
-                      </button>
-
-                      <button type="button" onClick={() => hizliSatisKapat('Nakit')} style={{ ...styles.checkoutBtn, marginTop: 0 }}>
-                        💵 Nakit Al
-                      </button>
-
-                      <button type="button" onClick={() => hizliSatisKapat('Kredi Kartı')} style={{ ...styles.checkoutBtn, backgroundColor: '#2563eb', marginTop: 0 }}>
-                        💳 Kredi Kartı
-                      </button>
-
-                      <button type="button" onClick={() => hizliSatisKapat('Cari')} style={{ ...styles.checkoutBtn, backgroundColor: '#7c3aed', marginTop: 0 }}>
-                        📒 Cariye Yaz
-                      </button>
+                            {hizliSatisDetayIndex === index && (
+                              <div className="quick-pos-line-detail">
+                                {Array.isArray(u.menuNotlari) && u.menuNotlari.length > 0 && (
+                                  <select value={u.hazirNotId || ''} onChange={e => hizliSatisHazirNotSec(index, e.target.value)}>
+                                    <option value="">Hazır seçenek / not</option>
+                                    {u.menuNotlari.map(n => (
+                                      <option key={n.id || n.ad} value={String(n.id || n.ad)}>
+                                        {n.ad} {Number(n.fiyat || 0) > 0 ? `(+${n.fiyat} TL)` : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                                <input type="text" placeholder="Ürün notu..." value={u.not || ''} onChange={e => hizliSatisUrunNotuDegistir(index, e.target.value)} />
+                                {(Number(u.ekstraUcret || 0) > 0 || u.fiyatDegistirildi) && (
+                                  <small>
+                                    {Number(u.ekstraUcret || 0) > 0 ? `Ekstra +${u.ekstraUcret} TL. ` : ''}
+                                    {u.fiyatDegistirildi ? 'Satış fiyatı değiştirildi.' : ''}
+                                  </small>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
                     </div>
-                  </div>
+
+                    <div className="quick-pos-cart-footer">
+                      <div className="quick-pos-cart-tools">
+                        <button type="button" className={hizliSatisIndirimAcik ? 'active' : ''} onClick={() => setHizliSatisIndirimAcik(prev => !prev)}>
+                          🏷️ İskonto
+                        </button>
+                        <button type="button" onClick={hizliSatisAdisyonYazdir}>🧾 Adisyon</button>
+                      </div>
+
+                      {hizliSatisIndirimAcik && (
+                        <div className="quick-pos-discount">
+                          <label><span>Yüzde</span><input type="number" min="0" max="100" placeholder="%" value={hizliSatisIndirimYuzde} onChange={e => setHizliSatisIndirimYuzde(e.target.value)} /></label>
+                          <label><span>Tutar</span><input type="number" min="0" placeholder="TL" value={hizliSatisIndirimTutari} onChange={e => setHizliSatisIndirimTutari(e.target.value)} /></label>
+                        </div>
+                      )}
+
+                      <div className="quick-pos-totals">
+                        <div><span>Ara toplam</span><strong>{paraYuvarla(hizliSatisAraToplam)} TL</strong></div>
+                        {hizliSatisToplamIndirim > 0 && <div className="discount"><span>İskonto</span><strong>−{paraYuvarla(hizliSatisToplamIndirim)} TL</strong></div>}
+                        <div className="grand-total"><span>TOPLAM</span><strong>{paraYuvarla(hizliSatisToplam)} TL</strong></div>
+                        {hizliSatisUrunler.length > 0 && <small>Matrah {hizliSatisKdvOzeti.matrahToplam} TL · KDV {hizliSatisKdvOzeti.kdvToplam} TL</small>}
+                      </div>
+
+                      <div className="quick-pos-cash">
+                        <label>Alınan tutar</label>
+                        <input type="number" placeholder={`${paraYuvarla(hizliSatisToplam)} TL`} value={hizliSatisAlinanTutar} onChange={e => setHizliSatisAlinanTutar(e.target.value)} />
+                        <div>
+                          <span>Para üstü</span>
+                          <strong>{paraYuvarla(Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0))} TL</strong>
+                        </div>
+                      </div>
+
+                      <div className="quick-pos-payment-grid">
+                        <button type="button" className="cash" onClick={() => hizliSatisKapat('Nakit')}><small>F1</small><span>💵 Nakit</span></button>
+                        <button type="button" className="card" onClick={() => hizliSatisKapat('Kredi Kartı')}><small>F2</small><span>💳 Kart</span></button>
+                        <button type="button" className="account" onClick={() => hizliSatisKapat('Cari')}><small>F3</small><span>📒 Cari</span></button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <nav className="quick-pos-groups" aria-label="Ürün grupları">
+                    <div className="quick-pos-groups-title">GRUPLAR</div>
+                    {aktifMenuGruplari.map((grup, index) => (
+                      <button
+                        key={grup.ad}
+                        type="button"
+                        onClick={() => {
+                          setAktifHizliSatisMenuGrubu(grup.ad);
+                          setHizliSatisUrunArama('');
+                        }}
+                        className={aktifHizliSatisMenuGrubu === grup.ad && !hizliSatisUrunArama ? 'active' : ''}
+                        style={{ '--quick-group-color': ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'][index % 6] }}
+                      >
+                        <span>{grup.ad}</span>
+                        <small>{aktifMenu.filter(u => (u.menuGrubu || u.kategori || 'Genel') === grup.ad).length}</small>
+                      </button>
+                    ))}
+                  </nav>
+
+                  <section className="quick-pos-products">
+                    <div className="quick-pos-product-toolbar">
+                      <div className="quick-pos-product-search">
+                        <span>⌕</span>
+                        <input type="text" placeholder="Ürün adıyla ara..." value={hizliSatisUrunArama} onChange={e => setHizliSatisUrunArama(e.target.value)} />
+                        {hizliSatisUrunArama && <button type="button" onClick={() => setHizliSatisUrunArama('')}>×</button>}
+                      </div>
+
+                      <div className="quick-pos-quantity">
+                        <span>Sonraki ürün miktarı</span>
+                        <div>
+                          {[0.5, 1, 1.5, 2, 3, 5].map(miktar => (
+                            <button key={miktar} type="button" className={Number(hizliSatisSeciliMiktar) === miktar ? 'active' : ''} onClick={() => setHizliSatisSeciliMiktar(String(miktar))}>
+                              {miktar}
+                            </button>
+                          ))}
+                          <input type="number" min="0.001" step="0.001" value={hizliSatisSeciliMiktar} onChange={e => setHizliSatisSeciliMiktar(e.target.value)} aria-label="Özel miktar" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="quick-pos-product-context">
+                      <div>
+                        <strong>{hizliSatisUrunArama ? 'Arama sonuçları' : aktifHizliSatisGrup.ad}</strong>
+                        <span>{aktifHizliSatisGrubuUrunleri.length} ürün</span>
+                      </div>
+                      <small>Ürüne dokunduğunuzda <b>{sayiyaCevir(hizliSatisSeciliMiktar || 1)}</b> adet sepete eklenir.</small>
+                    </div>
+
+                    <div className="quick-pos-product-grid">
+                      {aktifHizliSatisGrubuUrunleri.length === 0 ? (
+                        <div className="quick-pos-empty-products">
+                          <span>⌕</span>
+                          <strong>Bu grupta ürün bulunamadı</strong>
+                          <small>Başka grup seçin veya arama metnini temizleyin.</small>
+                        </div>
+                      ) : (
+                        aktifHizliSatisGrubuUrunleri.map((urun, index) => (
+                          <button
+                            key={urun.id}
+                            type="button"
+                            className={`quick-pos-product-card ${urun.favori ? 'is-favorite' : ''}`}
+                            onClick={() => hizliSatisUrunEkle(urun)}
+                            style={{ '--quick-product-accent': ['#ef4444', '#2563eb', '#059669', '#d97706', '#7c3aed'][index % 5] }}
+                          >
+                            <div className="quick-pos-product-visual">
+                              {urunGosterimResmi(urun) ? (
+                                <img src={urunGosterimResmi(urun)} alt={urun.ad} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                              ) : (
+                                <div className="quick-pos-product-placeholder">
+                                  <span>{String(urun.ad || 'Ü').trim().charAt(0).toLocaleUpperCase('tr-TR')}</span>
+                                  <small>{urun.menuGrubu || 'Genel'}</small>
+                                </div>
+                              )}
+                              {urun.favori && <b className="quick-pos-favorite">★</b>}
+                              {Number(hizliSatisSeciliMiktar || 1) !== 1 && <b className="quick-pos-amount-badge">×{hizliSatisSeciliMiktar}</b>}
+                            </div>
+                            <div className="quick-pos-product-info">
+                              <strong>{urun.ad}</strong>
+                              <span>{Number(urun.fiyat || 0).toLocaleString('tr-TR')} TL</span>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </section>
                 </div>
               </div>
             )}
