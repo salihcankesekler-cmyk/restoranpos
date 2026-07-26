@@ -1,2 +1,5 @@
 [functions.admin-mail-gonder]
 verify_jwt = false
+
+[functions.admin-isletme-kullanicilari]
+verify_jwt = false

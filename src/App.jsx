@@ -238,6 +238,16 @@ function IntegraApp() {
   const [adminLisansArama, setAdminLisansArama] = useState('');
   const [adminBasariArama, setAdminBasariArama] = useState('');
   const [adminBasariFiltresi, setAdminBasariFiltresi] = useState('Tümü');
+  const [adminIsletmeKullanicilari, setAdminIsletmeKullanicilari] = useState([]);
+  const [adminIsletmeKullaniciArama, setAdminIsletmeKullaniciArama] = useState('');
+  const [adminIsletmeKullanicilariYukleniyor, setAdminIsletmeKullanicilariYukleniyor] = useState(false);
+  const [adminIsletmeDuzenlenenId, setAdminIsletmeDuzenlenenId] = useState(null);
+  const [adminIsletmeAuthFormu, setAdminIsletmeAuthFormu] = useState({
+    email: '',
+    password: '',
+    passwordTekrar: '',
+  });
+  const [adminIsletmeSifreGoster, setAdminIsletmeSifreGoster] = useState(false);
   const [onboardingGizli, setOnboardingGizli] = useState(() => localStorage.getItem('integra_onboarding_gizli') === '1');
   const [user, setUser] = useState(kayitliUser);
   const [yeniGarsonAdi, setYeniGarsonAdi] = useState('');
@@ -929,12 +939,8 @@ Toplam Ciro: {toplam}
   const [duzenlenenMasaId, setDuzenlenenMasaId] = useState(null);
   const [duzenlenenMasaAdi, setDuzenlenenMasaAdi] = useState('');
 
-  // demo data
-  const [restoranlar, setRestoranlar] = useState([
-    { id: 1, ad: 'Gaziantep Lahmacun & Kebap', email: 'sahip@integra.com', sifre: '123456', durum: 'Aktif', rol: 'owner' },
-    { id: 2, ad: 'Gaziantep Lahmacun (Garson)', email: 'garson@integra.com', sifre: '123456', durum: 'Aktif', rol: 'waiter', parentRestaurantId: 1 },
-    { id: 3, ad: 'Nişantaşı Brasserie & Cafe', email: 'cafe@integra.com', sifre: '123456', durum: 'Onay Bekliyor', rol: 'owner' },
-  ]);
+  // Süper admin firma listesi yalnızca Supabase'den yüklenir; kaynak kodda demo hesap tutulmaz.
+  const [restoranlar, setRestoranlar] = useState([]);
 
   const [masalar, setMasalar] = useState([
     { id: 101, restaurantId: 1, ad: 'Masa 1', dolu: true, tutar: 400, siparisler: [{ ad: 'Adana Kebap', fiyat: 280, adet: 1 }, { ad: 'Künefe', fiyat: 120, adet: 1 }], odemeler: [] },
@@ -4079,7 +4085,7 @@ Toplam Ciro: {toplam}
   // giriş yapan kullanıcının görebileceği sekmeleri hazırlayan kod
   const kullaniciSekmeleri = (() => {
     if (user?.role === 'super_admin') {
-      return ['super_admin', 'admin_basari', 'admin_lisans', 'admin_moduller', 'admin_destek'];
+      return ['super_admin', 'admin_isletme_girisleri', 'admin_basari', 'admin_lisans', 'admin_moduller', 'admin_destek'];
     }
 
     const isletmeAktifSekmeleri = isletmeSekmeleriniHazirla(user?.aktifSekmeler, user?.modulPaketi || user?.paketAdi || 'Premium');
@@ -4437,6 +4443,24 @@ Toplam Ciro: {toplam}
   };
 
   const sahipRestoranlar = restoranlar.filter(r => r.rol === 'owner');
+  const adminIsletmeKullaniciAramaMetni = String(adminIsletmeKullaniciArama || '')
+    .toLocaleLowerCase('tr-TR')
+    .trim();
+  const adminIsletmeKullaniciListe = (Array.isArray(adminIsletmeKullanicilari) ? adminIsletmeKullanicilari : [])
+    .filter(kayit => {
+      if (!adminIsletmeKullaniciAramaMetni) return true;
+      const arananAlan = `${kayit.isletmeAdi || ''} ${kayit.yetkiliAdi || ''} ${kayit.email || ''} ${kayit.telefon || ''}`
+        .toLocaleLowerCase('tr-TR');
+      return arananAlan.includes(adminIsletmeKullaniciAramaMetni);
+    });
+  const adminIsletmeKullaniciOzet = {
+    toplam: adminIsletmeKullanicilari.length,
+    authBagli: adminIsletmeKullanicilari.filter(kayit => kayit.authBagli).length,
+    gecisBekleyen: adminIsletmeKullanicilari.filter(kayit => !kayit.authBagli).length,
+    pasif: adminIsletmeKullanicilari.filter(
+      kayit => kayit.authPasif || kayit.durum !== 'Aktif'
+    ).length,
+  };
   const adminLisansAramaMetni = String(adminLisansArama || '').toLocaleLowerCase('tr-TR').trim();
 
   const adminLisansListe = sahipRestoranlar.filter(r => {
@@ -4706,6 +4730,167 @@ Toplam Ciro: {toplam}
     const temizListe = (Array.isArray(data) ? data : []).map(restoranSatiriniHazirla);
 
     setRestoranlar(temizListe);
+  };
+
+  // Supabase Edge Function hata yanıtını kullanıcıya okunabilir hale getirir.
+  const edgeFunctionHataMesajiniBul = async (error, varsayilanMesaj) => {
+    let mesaj = error?.message || varsayilanMesaj;
+
+    try {
+      if (error?.context && typeof error.context.json === 'function') {
+        const payload = await error.context.json();
+        mesaj = payload?.error || payload?.message || mesaj;
+      }
+    } catch {
+      // Yanıt JSON değilse Supabase istemcisinin güvenli hata mesajı kullanılır.
+    }
+
+    return mesaj || varsayilanMesaj;
+  };
+
+  // Yalnızca işletme sahibi (owner) hesaplarını güvenli Edge Function üzerinden listeler.
+  const adminIsletmeKullanicilariniCek = async ({ bildirim = false } = {}) => {
+    setAdminIsletmeKullanicilariYukleniyor(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-isletme-kullanicilari', {
+        body: { action: 'list_owners' },
+      });
+
+      if (error) {
+        throw new Error(await edgeFunctionHataMesajiniBul(error, 'İşletme girişleri alınamadı.'));
+      }
+
+      if (!data?.ok || !Array.isArray(data?.owners)) {
+        throw new Error(data?.error || 'İşletme girişleri için geçersiz sunucu yanıtı alındı.');
+      }
+
+      setAdminIsletmeKullanicilari(data.owners);
+      if (bildirim) bildirimGoster('İşletme yetkilisi girişleri güncellendi.', 'success');
+    } catch (error) {
+      console.error('İşletme kullanıcıları alınamadı:', error);
+      bildirimGoster(error?.message || 'İşletme girişleri alınamadı.', 'error');
+    } finally {
+      setAdminIsletmeKullanicilariYukleniyor(false);
+    }
+  };
+
+  const adminIsletmeAuthFormunuAc = kayit => {
+    setAdminIsletmeDuzenlenenId(kayit.restaurantId);
+    setAdminIsletmeAuthFormu({
+      email: kayit.email || kayit.kayitEmaili || '',
+      password: '',
+      passwordTekrar: '',
+    });
+    setAdminIsletmeSifreGoster(false);
+  };
+
+  const adminIsletmeAuthFormunuKapat = () => {
+    setAdminIsletmeDuzenlenenId(null);
+    setAdminIsletmeAuthFormu({ email: '', password: '', passwordTekrar: '' });
+    setAdminIsletmeSifreGoster(false);
+  };
+
+  // İşletme yetkilisini Supabase Auth'a bağlar veya e-posta/parolasını güvenli sunucuda günceller.
+  const adminIsletmeAuthKaydet = async kayit => {
+    const temizEmail = String(adminIsletmeAuthFormu.email || '').trim().toLowerCase();
+    const yeniSifre = String(adminIsletmeAuthFormu.password || '');
+    const yeniSifreTekrar = String(adminIsletmeAuthFormu.passwordTekrar || '');
+
+    if (!temizEmail) {
+      bildirimGoster('İşletme yetkilisi e-postasını girin.', 'warning');
+      return;
+    }
+
+    if (!kayit.authBagli && yeniSifre.length < 8) {
+      bildirimGoster('İlk Supabase bağlantısında en az 8 karakterli yeni şifre zorunludur.', 'warning');
+      return;
+    }
+
+    if (yeniSifre && yeniSifre.length < 8) {
+      bildirimGoster('Yeni şifre en az 8 karakter olmalıdır.', 'warning');
+      return;
+    }
+
+    if (yeniSifre !== yeniSifreTekrar) {
+      bildirimGoster('Yeni şifreler birbiriyle aynı değil.', 'warning');
+      return;
+    }
+
+    setAdminIsletmeKullanicilariYukleniyor(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-isletme-kullanicilari', {
+        body: {
+          action: 'upsert_owner_auth',
+          restaurantId: kayit.restaurantId,
+          email: temizEmail,
+          password: yeniSifre || undefined,
+        },
+      });
+
+      if (error) {
+        throw new Error(await edgeFunctionHataMesajiniBul(error, 'İşletme girişi güncellenemedi.'));
+      }
+
+      if (!data?.ok) {
+        throw new Error(data?.error || 'İşletme girişi güncellenemedi.');
+      }
+
+      adminIsletmeAuthFormunuKapat();
+      await Promise.all([
+        adminIsletmeKullanicilariniCek(),
+        restoranlariSupabasedenCek(),
+      ]);
+      bildirimGoster(data?.message || 'İşletme yetkilisi Supabase hesabı güncellendi.', 'success');
+    } catch (error) {
+      console.error('İşletme Auth güncelleme hatası:', error);
+      bildirimGoster(error?.message || 'İşletme girişi güncellenemedi.', 'error');
+    } finally {
+      setAdminIsletmeKullanicilariYukleniyor(false);
+    }
+  };
+
+  // İşletme sahibi Auth hesabını ve uygulama durumunu birlikte açar veya kapatır.
+  const adminIsletmeAuthDurumDegistir = async kayit => {
+    const suAnAktif = kayit.durum === 'Aktif' && !kayit.authPasif;
+    const yeniAktif = !suAnAktif;
+    const onayMesaji = yeniAktif
+      ? `${kayit.isletmeAdi} işletme girişini aktifleştirmek istiyor musunuz?`
+      : `${kayit.isletmeAdi} işletme girişini pasifleştirmek istiyor musunuz?`;
+
+    if (!window.confirm(onayMesaji)) return;
+
+    setAdminIsletmeKullanicilariYukleniyor(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-isletme-kullanicilari', {
+        body: {
+          action: 'set_owner_active',
+          restaurantId: kayit.restaurantId,
+          aktif: yeniAktif,
+        },
+      });
+
+      if (error) {
+        throw new Error(await edgeFunctionHataMesajiniBul(error, 'İşletme durumu değiştirilemedi.'));
+      }
+
+      if (!data?.ok) {
+        throw new Error(data?.error || 'İşletme durumu değiştirilemedi.');
+      }
+
+      await Promise.all([
+        adminIsletmeKullanicilariniCek(),
+        restoranlariSupabasedenCek(),
+      ]);
+      bildirimGoster(data?.message || 'İşletme durumu güncellendi.', 'success');
+    } catch (error) {
+      console.error('İşletme Auth durum hatası:', error);
+      bildirimGoster(error?.message || 'İşletme durumu değiştirilemedi.', 'error');
+    } finally {
+      setAdminIsletmeKullanicilariYukleniyor(false);
+    }
   };
 
   // süper admin bildirimlerini Supabase'den çeken kod
@@ -5356,12 +5541,15 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    // Market RLS kurallarının kullanıcıyı tanıyabilmesi için Supabase Auth oturumu açar.
-    // Henüz Auth'a taşınmamış eski hesaplar, doğru eski şifreyle ilk girişte otomatik eşleştirilir.
+    // Süper admin ve işletme sahipleri için önce Supabase Auth oturumu açılır.
+    // Panelden oluşturulan personel hesapları Supabase Auth'a bağlanmaz.
     let authKullanici = null;
     let authOturumuVar = false;
+    let data = null;
+    let error = null;
+    const temizGirisEmaili = String(email || '').trim().toLowerCase();
     const { data: authGirisData } = await supabase.auth.signInWithPassword({
-      email: String(email || '').trim().toLowerCase(),
+      email: temizGirisEmaili,
       password,
     });
 
@@ -5373,17 +5561,38 @@ Toplam Ciro: {toplam}
         superAdminOturumunuAc(authKullanici);
         return;
       }
+
+      // Supabase Auth'a taşınmış işletme sahibi hesabını UUID üzerinden bulur.
+      const { data: authIsletme, error: authIsletmeError } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('auth_user_id', authKullanici.id)
+        .eq('rol', 'owner')
+        .maybeSingle();
+
+      if (authIsletmeError) {
+        console.error('Auth işletme eşleştirmesi okunamadı:', authIsletmeError);
+      } else if (authIsletme) {
+        data = authIsletme;
+      }
     }
 
-    const { data, error } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('email', email)
-      .eq('password', password)
-      .single();
+    // Henüz Auth'a taşınmamış owner hesabı ve işletme içi personel için eski giriş geçiş sürecinde korunur.
+    if (!data) {
+      const legacyGiris = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('email', temizGirisEmaili)
+        .eq('password', password)
+        .maybeSingle();
+
+      data = legacyGiris.data;
+      error = legacyGiris.error;
+    }
 
     if (error || !data) {
       console.error('Giriş hatası:', error);
+      if (authKullanici) await supabase.auth.signOut();
       alert('E-posta veya şifre hatalı.');
       return;
     }
@@ -5396,13 +5605,28 @@ Toplam Ciro: {toplam}
     }
 
     if (data.durum !== 'Aktif') {
+      if (authKullanici) await supabase.auth.signOut();
       alert('Hesabınız henüz aktif değil. Lütfen admin onayını bekleyin.');
       return;
     }
 
-    if (!authKullanici) {
+    // Auth'a taşınmış işletme sahibi eski veritabanı şifresiyle giriş yapamaz.
+    if (data.rol === 'owner' && data.auth_user_id && !authKullanici) {
+      alert('E-posta veya şifre hatalı. Bu işletme Supabase güvenli giriş sistemine taşınmıştır.');
+      return;
+    }
+
+    // Panel personeli için açılmış eski/yanlış Auth oturumu varsa kapatılır.
+    if (data.rol !== 'owner' && authKullanici) {
+      await supabase.auth.signOut();
+      authKullanici = null;
+      authOturumuVar = false;
+    }
+
+    // Yalnızca henüz taşınmamış işletme sahipleri ilk doğru girişte Supabase Auth'a geçirilir.
+    if (data.rol === 'owner' && !authKullanici) {
       const { data: authKayitData, error: authKayitError } = await supabase.auth.signUp({
-        email: String(email || '').trim().toLowerCase(),
+        email: temizGirisEmaili,
         password,
       });
 
@@ -5412,7 +5636,11 @@ Toplam Ciro: {toplam}
       }
     }
 
-    if (authKullanici?.id && String(data.auth_user_id || '') !== String(authKullanici.id)) {
+    if (
+      data.rol === 'owner' &&
+      authKullanici?.id &&
+      String(data.auth_user_id || '') !== String(authKullanici.id)
+    ) {
       const { error: authEslemeError } = await supabase
         .from('restaurants')
         .update({ auth_user_id: authKullanici.id })
@@ -5573,6 +5801,11 @@ Toplam Ciro: {toplam}
 
     if (!hesap) {
       alert('Bu e-posta ve telefon bilgisiyle eşleşen hesap bulunamadı.');
+      return;
+    }
+
+    if (hesap.rol === 'owner' && hesap.auth_user_id) {
+      alert('Bu işletme yetkilisi Supabase güvenli giriş sistemindedir. Yeni şifreyi Integra süper admin kullanıcı yönetiminden belirleyebilirsiniz.');
       return;
     }
 
@@ -6168,8 +6401,8 @@ Toplam Ciro: {toplam}
 
     const { data: existingUser } = await supabase
       .from('restaurants')
-      .select('*')
-      .eq('email', email)
+      .select('id')
+      .eq('email', String(email || '').trim().toLowerCase())
       .maybeSingle();
 
     if (existingUser) {
@@ -6177,14 +6410,32 @@ Toplam Ciro: {toplam}
       return;
     }
 
+    // Yeni işletme yetkilisi doğrudan Supabase Auth'a kaydedilir.
+    // Gerçek parola restaurants tablosuna hiçbir zaman yazılmaz.
+    const temizKayitEmaili = String(email || '').trim().toLowerCase();
+    const { data: authKayitData, error: authKayitError } = await supabase.auth.signUp({
+      email: temizKayitEmaili,
+      password,
+    });
+
+    if (authKayitError || !authKayitData?.user) {
+      console.error('İşletme Auth kayıt hatası:', authKayitError);
+      alert('Güvenli işletme hesabı oluşturulamadı: ' + (authKayitError?.message || 'Supabase Auth kullanıcı kaydı bulunamadı.'));
+      return;
+    }
+
+    const authUserId = authKayitData.user.id;
+    const kullanilamazLegacySifre = `AUTH_ONLY_${crypto.randomUUID()}`;
+
     const { data: yeniRestoran, error } = await supabase
       .from('restaurants')
       .insert([
         {
           name: restaurantName,
           restaurant_name: restaurantName,
-          email: email,
-          password: password,
+          email: temizKayitEmaili,
+          password: kullanilamazLegacySifre,
+          auth_user_id: authUserId,
           yetkili_adi: kayitYetkiliAdi,
           firma_telefon: kayitTelefon,
           firma_adres: kayitAdres,
@@ -6204,6 +6455,7 @@ Toplam Ciro: {toplam}
 
     if (error) {
       console.error('Kayıt hatası:', error);
+      await supabase.auth.signOut();
       alert('Kayıt oluşturulamadı: ' + error.message);
       return;
     }
@@ -6242,6 +6494,7 @@ Toplam Ciro: {toplam}
 
     if (masaError) {
       console.error('Masa oluşturma hatası:', masaError);
+      await supabase.auth.signOut();
       alert('Restoran kaydı oluşturuldu ama masalar eklenemedi: ' + masaError.message);
       return;
     }
@@ -6281,7 +6534,8 @@ Toplam Ciro: {toplam}
       },
     });
 
-    alert('Kayıt başarılı. Başvurunuz bize ulaştı. Admin onayından sonra giriş yapabilirsiniz.');
+    await supabase.auth.signOut();
+    alert('Kayıt başarılı. Başvurunuz bize ulaştı. Admin onayından sonra güvenli Supabase hesabınızla giriş yapabilirsiniz.');
 
     setRestaurantName('');
     setKayitYetkiliAdi('');
@@ -6373,6 +6627,33 @@ Toplam Ciro: {toplam}
 
   // süper adminin restoran durumunu aktif veya kapalı yapmasını sağlayan kod
   const restoranDurumDegistir = async (id, yeniDurum) => {
+    const hedefHesap = restoranlar.find(r => String(r.id) === String(id));
+
+    if (hedefHesap?.rol === 'owner') {
+      const { data, error: edgeError } = await supabase.functions.invoke('admin-isletme-kullanicilari', {
+        body: {
+          action: 'set_owner_active',
+          restaurantId: id,
+          aktif: yeniDurum === 'Aktif',
+        },
+      });
+
+      if (edgeError || !data?.ok) {
+        const mesaj = edgeError
+          ? await edgeFunctionHataMesajiniBul(edgeError, 'İşletme durumu güncellenemedi.')
+          : data?.error || 'İşletme durumu güncellenemedi.';
+        alert(mesaj);
+        return;
+      }
+
+      await restoranlariSupabasedenCek();
+      if (adminIsletmeKullanicilari.length > 0) {
+        await adminIsletmeKullanicilariniCek();
+      }
+      alert(data?.message || 'İşletme durumu güncellendi.');
+      return;
+    }
+
     const { data, error } = await supabase
       .from('restaurants')
       .update({ durum: yeniDurum, lisans_durumu: yeniDurum })
@@ -13600,6 +13881,9 @@ Toplam Ciro: {toplam}
         await restoranlariSupabasedenCek();
         if (typeof adminBildirimleriniSupabasedenCek === 'function') await adminBildirimleriniSupabasedenCek();
         if (typeof destekTalepleriniSupabasedenCek === 'function') await destekTalepleriniSupabasedenCek();
+        if (activeTab === 'admin_isletme_girisleri' && typeof adminIsletmeKullanicilariniCek === 'function') {
+          await adminIsletmeKullanicilariniCek();
+        }
       } else {
         const aktifRestaurantId = user.role === 'waiter' ? user.parentRestaurantId : user.restaurantId;
 
@@ -14470,6 +14754,9 @@ Toplam Ciro: {toplam}
           await restoranlariSupabasedenCek();
           await adminBildirimleriniSupabasedenCek();
           await destekTalepleriniSupabasedenCek();
+          if (activeTab === 'admin_isletme_girisleri') {
+            await adminIsletmeKullanicilariniCek();
+          }
           return;
         }
 
@@ -15099,7 +15386,14 @@ Toplam Ciro: {toplam}
       baslik: 'Tüm işletmeleri ve başvuruları yönet',
       aciklama: 'Yeni işletmeleri onaylayın, hesap durumlarını kontrol edin ve müşteri destek sürecini takip edin.',
       adimlar: ['Yeni başvuruları incele', 'Aktif/pasif durumunu yönet', 'Modül paketini kontrol et'],
-      aksiyonlar: [{ label: 'Lisanslar', tab: 'admin_lisans' }, { label: 'Modül yetkileri', tab: 'admin_moduller' }],
+      aksiyonlar: [{ label: 'İşletme girişleri', tab: 'admin_isletme_girisleri' }, { label: 'Lisanslar', tab: 'admin_lisans' }, { label: 'Modül yetkileri', tab: 'admin_moduller' }],
+    },
+    admin_isletme_girisleri: {
+      rozet: 'Güvenli giriş',
+      baslik: 'İşletme yetkililerinin Supabase hesaplarını yönet',
+      aciklama: 'Yalnızca işletme sahiplerini Auth sistemine bağlayın; e-posta, parola ve hesap durumunu güvenli sunucu işlemleriyle güncelleyin.',
+      adimlar: ['Auth bağlantısı bekleyen işletmeyi seç', 'E-posta ve yeni şifreyi kaydet', 'Giriş durumunu doğrula'],
+      aksiyonlar: [{ label: 'Tüm müşteriler', tab: 'super_admin' }],
     },
     admin_lisans: {
       rozet: 'Gelir takibi',
@@ -16602,6 +16896,16 @@ Toplam Ciro: {toplam}
                     style={activeTab === 'super_admin' ? styles.navItemActive : styles.navItem}
                   >
                     👑 Tüm integra Müşterileri
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setActiveTab('admin_isletme_girisleri');
+                      await adminIsletmeKullanicilariniCek();
+                    }}
+                    style={activeTab === 'admin_isletme_girisleri' ? styles.navItemActive : styles.navItem}
+                  >
+                    🔐 İşletme Girişleri
                   </button>
                   <button
                     type="button"
@@ -22524,6 +22828,182 @@ Toplam Ciro: {toplam}
                   </div>
                 )}
 
+              </div>
+            )}
+
+            {/* yalnızca işletme sahiplerinin Supabase Auth girişlerini yöneten süper admin ekranı */}
+            {activeTab === 'admin_isletme_girisleri' && (
+              <div style={styles.panelCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  <div>
+                    <h2 style={styles.pageTitle}>🔐 İşletme Yetkilisi Girişleri</h2>
+                    <p style={{ color: '#64748b', marginTop: '-6px', marginBottom: 0 }}>
+                      Yalnızca işletme sahibi hesapları Supabase Authentication ile yönetilir. Panelden açılan personeller bu listeye dahil edilmez.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => adminIsletmeKullanicilariniCek({ bildirim: true })}
+                    disabled={adminIsletmeKullanicilariYukleniyor}
+                    style={{ ...styles.btnOrange, opacity: adminIsletmeKullanicilariYukleniyor ? 0.65 : 1 }}
+                  >
+                    {adminIsletmeKullanicilariYukleniyor ? '⏳ Kontrol ediliyor' : '🔄 Girişleri Yenile'}
+                  </button>
+                </div>
+
+                <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px', padding: '12px 14px', color: '#1e40af', fontSize: '12px', lineHeight: 1.6, marginBottom: '16px' }}>
+                  <strong>Güvenli yönetim:</strong> Mevcut parola hiçbir zaman gösterilmez. Buradan yalnızca yeni parola belirlenir. Supabase Secret Key tarayıcıya gönderilmez; işlem yetkili Edge Function içinde yapılır.
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+                  <div style={{ ...styles.statCard, margin: 0 }}><span>İşletme Yetkilisi</span><strong>{adminIsletmeKullaniciOzet.toplam}</strong></div>
+                  <div style={{ ...styles.statCard, margin: 0 }}><span>Supabase Bağlı</span><strong>{adminIsletmeKullaniciOzet.authBagli}</strong></div>
+                  <div style={{ ...styles.statCard, margin: 0 }}><span>Geçiş Bekleyen</span><strong>{adminIsletmeKullaniciOzet.gecisBekleyen}</strong></div>
+                  <div style={{ ...styles.statCard, margin: 0 }}><span>Pasif Giriş</span><strong>{adminIsletmeKullaniciOzet.pasif}</strong></div>
+                </div>
+
+                <input
+                  type="search"
+                  value={adminIsletmeKullaniciArama}
+                  onChange={e => setAdminIsletmeKullaniciArama(e.target.value)}
+                  placeholder="İşletme, yetkili, e-posta veya telefon ara..."
+                  style={{ ...styles.input, width: '100%', marginBottom: '14px' }}
+                />
+
+                {adminIsletmeKullanicilariYukleniyor && adminIsletmeKullanicilari.length === 0 ? (
+                  <div style={{ padding: '28px', textAlign: 'center', color: '#64748b' }}>İşletme yetkilileri güvenli sunucudan alınıyor...</div>
+                ) : adminIsletmeKullaniciListe.length === 0 ? (
+                  <div style={{ padding: '28px', textAlign: 'center', color: '#64748b', border: '1px dashed #cbd5e1', borderRadius: '14px' }}>
+                    Gösterilecek işletme yetkilisi bulunamadı.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '10px' }}>
+                    {adminIsletmeKullaniciListe.map(kayit => {
+                      const formAcik = String(adminIsletmeDuzenlenenId) === String(kayit.restaurantId);
+                      const hesapAktif = kayit.durum === 'Aktif' && !kayit.authPasif;
+
+                      return (
+                        <div key={kayit.restaurantId} style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '13px', backgroundColor: '#fff' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>🏢 {kayit.isletmeAdi}</div>
+                              <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
+                                {kayit.yetkiliAdi || 'Yetkili adı yok'} · {kayit.email || 'E-posta yok'}{kayit.telefon ? ` · ${kayit.telefon}` : ''}
+                              </div>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: '900',
+                                  padding: '4px 7px',
+                                  borderRadius: '999px',
+                                  color: kayit.authBagli ? '#166534' : '#9a3412',
+                                  backgroundColor: kayit.authBagli ? '#dcfce7' : '#ffedd5',
+                                }}>
+                                  {kayit.authBagli ? '✓ Supabase Auth bağlı' : '⚠ Auth geçişi bekliyor'}
+                                </span>
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: '900',
+                                  padding: '4px 7px',
+                                  borderRadius: '999px',
+                                  color: hesapAktif ? '#166534' : '#991b1b',
+                                  backgroundColor: hesapAktif ? '#dcfce7' : '#fee2e2',
+                                }}>
+                                  {hesapAktif ? 'Aktif giriş' : 'Pasif giriş'}
+                                </span>
+                                {kayit.authBagli && (
+                                  <span style={{ fontSize: '10px', fontWeight: '900', padding: '4px 7px', borderRadius: '999px', color: kayit.emailOnayli ? '#1e40af' : '#92400e', backgroundColor: kayit.emailOnayli ? '#dbeafe' : '#fef3c7' }}>
+                                    {kayit.emailOnayli ? 'E-posta onaylı' : 'E-posta onaysız'}
+                                  </span>
+                                )}
+                              </div>
+                              {kayit.authBagli && (
+                                <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '7px' }}>
+                                  Son giriş: {kayit.sonGiris ? tarihSaatYaz(kayit.sonGiris) : 'Henüz giriş yapılmadı'}
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                onClick={() => formAcik ? adminIsletmeAuthFormunuKapat() : adminIsletmeAuthFormunuAc(kayit)}
+                                style={styles.filterBtn}
+                              >
+                                {formAcik ? 'Vazgeç' : kayit.authBagli ? '✏️ E-posta / Şifre' : '🔗 Auth’a Bağla'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => adminIsletmeAuthDurumDegistir(kayit)}
+                                disabled={adminIsletmeKullanicilariYukleniyor}
+                                style={hesapAktif ? styles.actionBtnBlock : styles.actionBtnApprove}
+                              >
+                                {hesapAktif ? '🛑 Pasifleştir' : '✔️ Aktifleştir'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {formAcik && (
+                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(220px, 1.2fr) minmax(180px, 1fr) minmax(180px, 1fr)', gap: '9px' }}>
+                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '11px', fontWeight: '900' }}>
+                                  Giriş e-postası
+                                  <input
+                                    type="email"
+                                    value={adminIsletmeAuthFormu.email}
+                                    onChange={e => setAdminIsletmeAuthFormu(prev => ({ ...prev, email: e.target.value }))}
+                                    autoComplete="off"
+                                    style={styles.input}
+                                  />
+                                </label>
+                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '11px', fontWeight: '900' }}>
+                                  {kayit.authBagli ? 'Yeni şifre (isteğe bağlı)' : 'Yeni şifre'}
+                                  <input
+                                    type={adminIsletmeSifreGoster ? 'text' : 'password'}
+                                    value={adminIsletmeAuthFormu.password}
+                                    onChange={e => setAdminIsletmeAuthFormu(prev => ({ ...prev, password: e.target.value }))}
+                                    placeholder={kayit.authBagli ? 'Boşsa mevcut şifre değişmez' : 'En az 8 karakter'}
+                                    autoComplete="new-password"
+                                    style={styles.input}
+                                  />
+                                </label>
+                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '11px', fontWeight: '900' }}>
+                                  Yeni şifre tekrar
+                                  <input
+                                    type={adminIsletmeSifreGoster ? 'text' : 'password'}
+                                    value={adminIsletmeAuthFormu.passwordTekrar}
+                                    onChange={e => setAdminIsletmeAuthFormu(prev => ({ ...prev, passwordTekrar: e.target.value }))}
+                                    placeholder="Şifreyi tekrar yazın"
+                                    autoComplete="new-password"
+                                    style={styles.input}
+                                  />
+                                </label>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '11px', color: '#64748b', cursor: 'pointer' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={adminIsletmeSifreGoster}
+                                    onChange={e => setAdminIsletmeSifreGoster(e.target.checked)}
+                                  />
+                                  Yazarken şifreyi göster
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => adminIsletmeAuthKaydet(kayit)}
+                                  disabled={adminIsletmeKullanicilariYukleniyor}
+                                  style={{ ...styles.btnOrange, padding: '9px 13px', opacity: adminIsletmeKullanicilariYukleniyor ? 0.65 : 1 }}
+                                >
+                                  {adminIsletmeKullanicilariYukleniyor ? 'Kaydediliyor...' : 'Güvenli Girişi Kaydet'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
