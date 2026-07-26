@@ -715,6 +715,27 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     setSatisAdedi('1');
   };
 
+  const odemeKisayolTusunuCalistir = event => {
+    if (sekme !== 'satis' || satisKaydediliyor || bekleyenSepetIsleniyor || fiyatBekleyenUrun || gramajBekleyenUrun
+      || urunIndirimFormu || genelIndirimPenceresi || bekleyenSepetPenceresi) return;
+    const odemeTipi = { F1: 'Nakit', F2: 'Kredi Kartı', F3: 'Cari / Veresiye' }[event.key];
+    if (odemeTipi) {
+      event.preventDefault();
+      satisiTamamla(odemeTipi);
+      return;
+    }
+    if (event.key === 'F4') {
+      event.preventDefault();
+      if (!sepet.length) return bildir('İskonto uygulanacak sepet boş.', 'warning');
+      if (yetkiyiDogrula('indirim_yap', 'Bu personelin iskonto yapma yetkisi yok.')) setGenelIndirimPenceresi(true);
+      return;
+    }
+    if (event.key !== 'F5') return;
+    event.preventDefault();
+    if (!sepet.length) return bildir('Beklemeye alınacak sepet boş.', 'warning');
+    void sepetiBeklemeyeAl(undefined, '');
+  };
+
   const gramajliUrunuSepeteEkle = event => {
     event.preventDefault();
     const gram = Number(satisGramaji);
@@ -759,14 +780,14 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     setSatisAdedi('1');
   };
 
-  const sepetiBeklemeyeAl = async event => {
-    event.preventDefault();
+  const sepetiBeklemeyeAl = async (event, sepetAdi = bekleyenSepetAdi) => {
+    event?.preventDefault();
     if (!sepet.length) return bildir('Beklemeye alınacak sepet boş.', 'warning');
     setBekleyenSepetIsleniyor(true);
     try {
       const seciliCari = cariler.find(cari => String(cari.id) === String(satisCariId));
       const kayit = await marketBekleyenSepetiKaydet(restaurantId, {
-        sepetAdi: bekleyenSepetAdi,
+        sepetAdi,
         cariId: satisCariId,
         cariAdi: seciliCari?.ad,
         kalemler: sepet,
@@ -1287,7 +1308,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   ];
 
   return (
-    <section className="market-shell">
+    <section className="market-shell" onKeyDown={odemeKisayolTusunuCalistir}>
       <nav className="market-tabs" aria-label="Market modülü">{nav.map(([key, label]) =>
         <button type="button" key={key} className={sekme === key ? 'active' : ''} onClick={() => setSekme(key)}>{label}</button>
       )}<button type="button" className="market-tab-refresh" onClick={() => verileriYukle(false)} aria-label="Verileri yenile">↻</button></nav>
@@ -1324,7 +1345,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
         <div className="market-card market-checkout">
           <div className="market-heading"><div><span>SEPET VE ÖDEME</span><h2>{sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet), 0)} ürün</h2></div><strong>{para(sepetToplamlari.netToplam)}</strong></div>
           <div className="market-park-toolbar">
-            <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('kaydet')}>⏸ Sepeti Beklet</button>
+            <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('kaydet')}><kbd>F5</kbd> ⏸ Sepeti Beklet</button>
             <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}>▶ Bekleyenler ({bekleyenSepetler.length})</button>
           </div>
           {!sepet.length ? <div className="market-cart-empty">Sepet boş. Soldan ürüne dokunarak satışa ekleyin.</div> :
@@ -1336,10 +1357,10 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               })}
             </tbody></table></div>}
           <div className="market-cart-discount">
-            <button className={sepetToplamlari.genelIndirimTutari > 0 ? 'market-discount-trigger active' : 'market-discount-trigger'} type="button" disabled={!sepet.length} onClick={() => yetkiyiDogrula('indirim_yap', 'Bu personelin iskonto yapma yetkisi yok.') && setGenelIndirimPenceresi(true)}>{sepetToplamlari.genelIndirimTutari > 0 ? `İskonto −${para(sepetToplamlari.genelIndirimTutari)}` : '＋ İskonto'}</button>
+            <button className={sepetToplamlari.genelIndirimTutari > 0 ? 'market-discount-trigger active' : 'market-discount-trigger'} type="button" disabled={!sepet.length} onClick={() => yetkiyiDogrula('indirim_yap', 'Bu personelin iskonto yapma yetkisi yok.') && setGenelIndirimPenceresi(true)}><kbd>F4</kbd> {sepetToplamlari.genelIndirimTutari > 0 ? `İskonto −${para(sepetToplamlari.genelIndirimTutari)}` : '＋ İskonto'}</button>
             <div className="market-cart-summary"><span>Brüt<strong>{para(sepetToplamlari.brutToplam)}</strong></span>{sepetToplamlari.urunIndirimTutari > 0 && <span>Ürün / ikram<strong>−{para(sepetToplamlari.urunIndirimTutari)}</strong></span>}{sepetToplamlari.genelIndirimTutari > 0 && <span>İskonto<strong>−{para(sepetToplamlari.genelIndirimTutari)}</strong></span>}<span className="total">Ödenecek<strong>{para(sepetToplamlari.netToplam)}</strong></span></div>
           </div>
-          <div className="market-payment-buttons"><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
+          <div className="market-payment-buttons"><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}><kbd>F1</kbd>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}><kbd>F2</kbd>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}><kbd>F3</kbd>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
           <p className="market-note">Veresiye işlem için cari seçimi zorunludur. Nakit ve kart satışlarında cari seçimi isteğe bağlıdır.</p>
         </div>
         {fiyatBekleyenUrun && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Satış fiyatı gir">
