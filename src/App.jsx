@@ -21945,6 +21945,7 @@ Toplam Ciro: {toplam}
                   <span style={{ color: '#64748b' }}>Bu sayı süper admin tarafından lisans bölümünden belirlenir.</span>
                 </div>
 
+                {user?.role === 'owner' ? (
                 <form onSubmit={personelEkle} style={styles.inlineForm}>
                   <input
                     type="text"
@@ -22040,6 +22041,11 @@ Toplam Ciro: {toplam}
                     {personelIslemiYukleniyor ? 'Kaydediliyor...' : 'Personel Ekle'}
                   </button>
                 </form>
+                ) : (
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '12px', padding: '10px 12px', fontSize: '12px', fontWeight: '800' }}>
+                    Personel ekleme, giriş bilgisi ve yetki değişikliklerini yalnızca işletme sahibi yapabilir.
+                  </div>
+                )}
 
                 <h3 style={{ fontSize: '15px', color: '#1e293b', marginTop: '20px' }}>
                   Kayıtlı Personeller
@@ -22076,6 +22082,7 @@ Toplam Ciro: {toplam}
                             {p.durum || 'Aktif'}
                           </span>
                         </div>
+                        {user?.role === 'owner' && (
                         <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '9px' }}>
                           <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelGirisFormunuAc(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: '#1e293b' }}>
                             🔑 Giriş Bilgileri
@@ -22084,8 +22091,9 @@ Toplam Ciro: {toplam}
                             {p.durum === 'Aktif' ? 'Pasifleştir' : 'Aktifleştir'}
                           </button>
                         </div>
+                        )}
 
-                        {String(personelGirisDuzenlenenId) === String(p.id) && (
+                        {user?.role === 'owner' && String(personelGirisDuzenlenenId) === String(p.id) && (
                           <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'grid', gap: '7px' }}>
                             <strong style={{ fontSize: '12px', color: '#334155' }}>Güvenli personel girişi</strong>
                             <input type="email" placeholder="Personel e-postası" value={personelGirisFormu.email} onChange={e => setPersonelGirisFormu(prev => ({ ...prev, email: e.target.value }))} style={styles.input} />
@@ -22134,6 +22142,7 @@ Toplam Ciro: {toplam}
                             >
                               <input
                                 type="checkbox"
+                                disabled={user?.role !== 'owner'}
                                 checked={yetkiListesiniHazirla(p.tabYetkileri, p.gorev).includes(secenek.key)}
                                 onChange={e => personelYetkisiniDegistir(p, secenek.key, e.target.checked)}
                               />
