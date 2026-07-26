@@ -435,18 +435,17 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
   if (!indirimliRpcEksik) throw marketHatasi(indirimliAtomikHata);
 
   const araToplam = sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet) * Number(kalem.satis_fiyati), 0);
-  const minimumNetToplam = sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet) * 0.01, 0);
   const indirimDegeri = Math.max(Number(indirim.deger || 0), 0);
   const hesaplananGenelIndirim = indirim.tur === 'tutar'
     ? indirimDegeri
-    : araToplam * Math.min(indirimDegeri, 99.99) / 100;
-  const genelIndirimTutari = Math.min(hesaplananGenelIndirim, Math.max(araToplam - minimumNetToplam, 0));
+    : araToplam * Math.min(indirimDegeri, 100) / 100;
+  const genelIndirimTutari = Math.min(hesaplananGenelIndirim, araToplam);
   const sepetKaydi = sepet.map(kalem => {
     const satirToplami = Number(kalem.adet) * Number(kalem.satis_fiyati);
     const indirimPayi = araToplam > 0 ? genelIndirimTutari * satirToplami / araToplam : 0;
     return {
       ...kalem,
-      satis_fiyati: Number(kalem.adet) > 0 ? Math.max((satirToplami - indirimPayi) / Number(kalem.adet), 0.01) : 0,
+      satis_fiyati: Number(kalem.adet) > 0 ? Math.max((satirToplami - indirimPayi) / Number(kalem.adet), 0) : 0,
     };
   });
   const { data: atomikSatis, error: atomikHata } = await supabase.rpc('market_satis_kaydet_atomik', {
