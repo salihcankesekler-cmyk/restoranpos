@@ -66,6 +66,9 @@ const kritikUrunMu = urun => {
   return kritikStok || kalanGun <= 30;
 };
 
+const kilogramUrunuMu = urun =>
+  ['kg', 'kilogram'].includes(String(urun?.birim || '').trim().toLocaleLowerCase('tr-TR'));
+
 const varsayilanTeraziAyarlari = {
   aktif: false,
   onEk: '20',
@@ -178,6 +181,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const [satisCariId, setSatisCariId] = useState('');
   const [fiyatBekleyenUrun, setFiyatBekleyenUrun] = useState(null);
   const [anlikSatisFiyati, setAnlikSatisFiyati] = useState('');
+  const [gramajBekleyenUrun, setGramajBekleyenUrun] = useState(null);
+  const [satisGramaji, setSatisGramaji] = useState('');
   const [cariFormu, setCariFormu] = useState(bosCari);
   const [cariFormYeri, setCariFormYeri] = useState('');
   const [finansCariId, setFinansCariId] = useState('');
@@ -701,8 +706,23 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   };
 
   const secilenUrunuSepeteEkle = urun => {
+    if (kilogramUrunuMu(urun)) {
+      setGramajBekleyenUrun(urun);
+      setSatisGramaji('');
+      return;
+    }
     urunuFiyatKontrolluEkle(urun, satisAdedi);
     setSatisAdedi('1');
+  };
+
+  const gramajliUrunuSepeteEkle = event => {
+    event.preventDefault();
+    const gram = Number(satisGramaji);
+    if (!Number.isFinite(gram) || gram <= 0) return bildir('Sıfırdan büyük bir gramaj girin.', 'warning');
+    urunuFiyatKontrolluEkle(gramajBekleyenUrun, gram / 1000);
+    setGramajBekleyenUrun(null);
+    setSatisGramaji('');
+    window.setTimeout(() => barkodRef.current?.focus(), 80);
   };
 
   const teraziBarkodunuCoz = barkod => {
@@ -1295,7 +1315,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           <div className="market-sale-products">
             {satisUrunleri.map(urun => <button type="button" key={urun.id} onClick={() => secilenUrunuSepeteEkle(urun)}>
               <span><strong>{urun.urun_adi}</strong><small>{urun.barkod} · Stok {urun.stok_miktari}</small></span>
-              <b>{Number(urun.satis_fiyati || 0) > 0 ? para(urun.satis_fiyati) : 'Satışta fiyat gir'}</b>
+              <b>{Number(urun.satis_fiyati || 0) > 0 ? `${para(urun.satis_fiyati)}${kilogramUrunuMu(urun) ? ' / kg' : ''}` : 'Satışta fiyat gir'}</b>
               <i>＋</i>
             </button>)}
             {gorunenGruplar.length > 0 && !satisUrunleri.length && <p className="market-empty">Bu grupta aramaya uygun ürün bulunamadı.</p>}
@@ -1312,7 +1332,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               {sepet.map(kalem => {
                 const satirId = sepetSatirAnahtari(kalem);
                 const indirimli = Number(kalem.liste_fiyati ?? kalem.satis_fiyati) > Number(kalem.satis_fiyati);
-                return <tr key={satirId}><td><strong>{kalem.urun_adi}</strong><small>{indirimli && <del>{para(kalem.liste_fiyati)}</del>}<button className={Number(kalem.satis_fiyati) === 0 ? 'market-cart-price complimentary' : 'market-cart-price'} type="button" onClick={() => urunFiyatiPenceresiniAc(kalem, satirId)}>{Number(kalem.satis_fiyati) === 0 ? 'İKRAM' : para(kalem.satis_fiyati)}</button></small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - 1)}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step="0.001" value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + 1)}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => sepetSatiriniSil(satirId)}>×</button></td></tr>;
+                return <tr key={satirId}><td><strong>{kalem.urun_adi}</strong><small>{kilogramUrunuMu(kalem) && <span className="market-cart-weight">{Math.round(Number(kalem.adet) * 1000)} g · </span>}{indirimli && <del>{para(kalem.liste_fiyati)}</del>}<button className={Number(kalem.satis_fiyati) === 0 ? 'market-cart-price complimentary' : 'market-cart-price'} type="button" onClick={() => urunFiyatiPenceresiniAc(kalem, satirId)}>{Number(kalem.satis_fiyati) === 0 ? 'İKRAM' : `${para(kalem.satis_fiyati)}${kilogramUrunuMu(kalem) ? ' / kg' : ''}`}</button></small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - (kilogramUrunuMu(kalem) ? 0.1 : 1))}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step={kilogramUrunuMu(kalem) ? '0.001' : '1'} value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + (kilogramUrunuMu(kalem) ? 0.1 : 1))}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => sepetSatiriniSil(satirId)}>×</button></td></tr>;
               })}
             </tbody></table></div>}
           <div className="market-cart-discount">
@@ -1330,6 +1350,16 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             <label>Fiyat (TL)<input type="number" min="0.01" step="0.01" value={anlikSatisFiyati} onChange={event => setAnlikSatisFiyati(event.target.value)} autoFocus /></label>
             <small>{fiyatBekleyenUrun.adet} adet sepete eklenecek.</small>
             <div><button className="market-remove" type="button" onClick={() => setFiyatBekleyenUrun(null)}>Vazgeç</button><button className="market-primary" type="submit">Fiyatı Uygula</button></div>
+          </form>
+        </div>}
+        {gramajBekleyenUrun && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Ürün gramajını gir">
+          <form onSubmit={gramajliUrunuSepeteEkle}>
+            <span>TERAZİLİ ÜRÜN</span>
+            <h2>{gramajBekleyenUrun.urun_adi}</h2>
+            <p>Satılacak gramajı yazın. Tutar kilogram fiyatından otomatik hesaplanır.</p>
+            <label>Gramaj (gram)<input type="number" min="1" step="1" value={satisGramaji} onChange={event => setSatisGramaji(event.target.value)} placeholder="Örn. 350" autoFocus /></label>
+            <div className="market-weight-preview"><span>Kilogram fiyatı<strong>{para(gramajBekleyenUrun.satis_fiyati)}</strong></span><span>Hesaplanan tutar<strong>{para(Number(satisGramaji || 0) / 1000 * Number(gramajBekleyenUrun.satis_fiyati || 0))}</strong></span></div>
+            <div><button className="market-remove" type="button" onClick={() => { setGramajBekleyenUrun(null); setSatisGramaji(''); }}>Vazgeç</button><button className="market-primary" type="submit">Sepete Ekle</button></div>
           </form>
         </div>}
         {urunIndirimFormu && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Ürün fiyatını değiştir">
@@ -1412,7 +1442,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             });
           }}><option value="">Grup seçin</option>{gruplar.map(grup => <option key={grup.id} value={grup.id}>{grup.grup_adi}</option>)}</select></label>
           {!gruplar.length && <button className="market-link-button" type="button" onClick={() => setSekme('gruplar')}>Önce grup açın</button>}
-          <label>Marka<input value={urunFormu.marka} onChange={event => setUrunFormu({ ...urunFormu, marka: event.target.value })} /></label>
+          <div className="market-row"><label>Marka<input value={urunFormu.marka} onChange={event => setUrunFormu({ ...urunFormu, marka: event.target.value })} /></label><label>Satış birimi<select value={urunFormu.birim} onChange={event => setUrunFormu({ ...urunFormu, birim: event.target.value })}><option value="Adet">Adet</option><option value="Kg">Kg (terazili)</option><option value="Litre">Litre</option><option value="Paket">Paket</option><option value="Koli">Koli</option></select></label></div>
           <div className="market-row"><label>Alış fiyatı<input type="number" min="0" step="0.01" value={urunFormu.alisFiyati} onChange={event => setUrunFormu({ ...urunFormu, alisFiyati: event.target.value })} /></label><label>Satış fiyatı<input type="number" min="0" step="0.01" value={urunFormu.satisFiyati} onChange={event => setUrunFormu({ ...urunFormu, satisFiyati: event.target.value })} /></label></div>
           <div className="market-row"><label>Stok<input type="number" step="0.001" value={urunFormu.stokMiktari} onChange={event => setUrunFormu({ ...urunFormu, stokMiktari: event.target.value })} /></label><label>Minimum stok<input type="number" step="0.001" value={urunFormu.minimumStok} onChange={event => setUrunFormu({ ...urunFormu, minimumStok: event.target.value })} /></label></div>
           <div className="market-row"><label>KDV<select value={urunFormu.kdvOrani} onChange={event => setUrunFormu({ ...urunFormu, kdvOrani: event.target.value })}><option value="0">%0</option><option value="1">%1</option><option value="10">%10</option><option value="20">%20</option></select></label><label>Raf konumu<input value={urunFormu.rafKonumu} onChange={event => setUrunFormu({ ...urunFormu, rafKonumu: event.target.value })} placeholder="A-03" /></label></div>
