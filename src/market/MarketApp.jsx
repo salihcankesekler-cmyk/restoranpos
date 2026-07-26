@@ -30,7 +30,10 @@ const bosUrun = {
   stokMiktari: '', minimumStok: '', rafKonumu: '', sonKullanmaTarihi: '', lotNo: '',
 };
 
-const bosGrup = { grupAdi: '', kdvOrani: 20, satisEkranindaGoster: true, sira: 0 };
+const bosGrup = {
+  grupAdi: '', kdvOrani: 20, satisEkranindaGoster: true, sira: 0,
+  grupRengi: '#c2410c', urunRengi: '#0f172a',
+};
 const bosCari = { ad: '', telefon: '', notMetni: '' };
 const bosFinansHareketi = () => ({
   islemTipi: 'tahsilat',
@@ -55,6 +58,13 @@ const miktarYaz = value => Number(value || 0).toLocaleString('tr-TR', {
 });
 
 const miktarYuvarla = value => Math.round((Number(value || 0) + Number.EPSILON) * 1000) / 1000;
+
+const kontrastYaziRengi = renk => {
+  const temizRenk = String(renk || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(temizRenk)) return '#ffffff';
+  const [kirmizi, yesil, mavi] = [0, 2, 4].map(index => Number.parseInt(temizRenk.slice(index, index + 2), 16));
+  return (kirmizi * 299 + yesil * 587 + mavi * 114) / 1000 > 155 ? '#0f172a' : '#ffffff';
+};
 
 const fisParasi = value => `${Number(value || 0).toLocaleString('tr-TR', {
   minimumFractionDigits: 2,
@@ -389,6 +399,10 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const aktifSatisGrubu = gorunenGruplar.some(grup => String(grup.id) === String(satisGrubu))
     ? satisGrubu
     : gorunenGruplar[0]?.id || '';
+  const grupHaritasi = useMemo(
+    () => new Map(gruplar.map(grup => [String(grup.id), grup])),
+    [gruplar]
+  );
 
   const filtreliUrunler = useMemo(() => {
     const metin = arama.trim().toLocaleLowerCase('tr-TR');
@@ -405,12 +419,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     return urunler.filter(urun => {
       // Arama yapılırken kasiyer grupları tek tek gezmek zorunda kalmasın.
       if (!metin && String(urun.grup_id) !== String(aktifSatisGrubu)) return false;
-      if (metin && !gorunenGruplar.some(grup => String(grup.id) === String(urun.grup_id))) return false;
       if (!metin) return true;
       return [urun.urun_adi, urun.barkod, urun.stok_kodu, urun.marka]
         .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin));
     });
-  }, [aktifSatisGrubu, gorunenGruplar, satisArama, urunler]);
+  }, [aktifSatisGrubu, satisArama, urunler]);
 
   const sepetToplamlari = useMemo(() => {
     const brutToplam = sepet.reduce((toplam, kalem) =>
@@ -771,6 +784,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
         satisEkranindaGoster: !grup.satis_ekraninda_goster,
         sira: grup.sira,
         kdvOrani: Number(grup.kdv_orani ?? 20),
+        grupRengi: grup.grup_rengi || '#c2410c',
+        urunRengi: grup.urun_rengi || '#0f172a',
       });
       setGruplar(prev => prev.map(item => String(item.id) === String(grup.id)
         ? { ...item, satis_ekraninda_goster: !item.satis_ekraninda_goster }
@@ -1731,7 +1746,13 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       {!yukleniyor && sekme === 'satis' && <div className="market-pos-layout market-pos-practical">
         <div className="market-card market-catalog">
           <div className="market-group-tabs">
-            {gorunenGruplar.map(grup => <button type="button" key={grup.id} className={String(aktifSatisGrubu) === String(grup.id) ? 'active' : ''} onClick={() => setSatisGrubu(grup.id)}>{grup.grup_adi}</button>)}
+            {gorunenGruplar.map(grup => <button
+              type="button"
+              key={grup.id}
+              className={String(aktifSatisGrubu) === String(grup.id) ? 'active' : ''}
+              style={{ '--market-group-color': grup.grup_rengi || '#c2410c', '--market-group-text': kontrastYaziRengi(grup.grup_rengi || '#c2410c') }}
+              onClick={() => setSatisGrubu(grup.id)}
+            >{grup.grup_adi}</button>)}
           </div>
           <div className="market-pos-product-panel">
             <div className="market-pos-entrybar">
@@ -1744,22 +1765,25 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
                 <input className="market-sale-search" value={satisArama} onChange={event => setSatisArama(event.target.value)} placeholder="Ürün bul" />
                 {satisArama && <button type="button" onClick={() => setSatisArama('')} aria-label="Aramayı temizle">×</button>}
               </div>
-              <button
-                type="button"
-                className={satisCariId ? 'market-customer-trigger active' : 'market-customer-trigger'}
-                onClick={() => { setSatisCariArama(''); setSatisCariPenceresi(true); }}
-                title={seciliSatisCarisi ? `Seçili cari: ${seciliSatisCarisi.ad}` : 'Cari listesini aç'}
-                aria-label={seciliSatisCarisi ? `Seçili cari ${seciliSatisCarisi.ad}. Cari listesini aç` : 'Cari listesini aç'}
-              ><span>👤</span><small>{seciliSatisCarisi?.ad || 'Cari'}</small>{satisCariId && <i>✓</i>}</button>
             </div>
-            {!gorunenGruplar.length && <p className="market-empty">Satış ekranında gösterilen grup yok. Gruplar bölümünden en az bir grubu görünür yapın.</p>}
+            {!gorunenGruplar.length && !satisArama.trim() && <p className="market-empty">Satış ekranında gösterilen grup yok. Gruplar bölümünden en az bir grubu görünür yapın veya ürün arayın.</p>}
             <div className="market-sale-products">
-              {satisUrunleri.map(urun => <button type="button" key={urun.id} className={kritikUrunMu(urun) ? 'is-critical' : ''} onClick={() => secilenUrunuSepeteEkle(urun)}>
-                <span><strong>{urun.urun_adi}</strong><small>{urun.barkod || 'Barkodsuz'} · Stok {miktarYaz(urun.stok_miktari)}</small></span>
-                <b>{Number(urun.satis_fiyati || 0) > 0 ? `${para(urun.satis_fiyati)}${kilogramUrunuMu(urun) ? ' / kg' : ''}` : 'Satışta fiyat gir'}</b>
-                <i>＋</i>
-              </button>)}
-              {gorunenGruplar.length > 0 && !satisUrunleri.length && <p className="market-empty">Bu grupta aramaya uygun ürün bulunamadı.</p>}
+              {satisUrunleri.map(urun => {
+                const urunGrubu = grupHaritasi.get(String(urun.grup_id));
+                const urunRengi = urunGrubu?.urun_rengi || '#0f172a';
+                return <button
+                  type="button"
+                  key={urun.id}
+                  className={kritikUrunMu(urun) ? 'is-critical' : ''}
+                  style={{ '--market-product-color': urunRengi, '--market-product-text': kontrastYaziRengi(urunRengi) }}
+                  onClick={() => secilenUrunuSepeteEkle(urun)}
+                >
+                  <span><strong>{urun.urun_adi}</strong><small>{urun.barkod || 'Barkodsuz'} · Stok {miktarYaz(urun.stok_miktari)}</small></span>
+                  <b>{Number(urun.satis_fiyati || 0) > 0 ? `${para(urun.satis_fiyati)}${kilogramUrunuMu(urun) ? ' / kg' : ''}` : 'Satışta fiyat gir'}</b>
+                  <i>＋</i>
+                </button>;
+              })}
+              {!satisUrunleri.length && <p className="market-empty">{satisArama.trim() ? 'Tüm ürünlerde aramaya uygun kayıt bulunamadı.' : 'Bu grupta ürün bulunamadı.'}</p>}
             </div>
           </div>
           <aside className="market-pos-number-rail" aria-label="Dokunmatik adet tuş takımı">
@@ -1788,17 +1812,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}><span>▶</span><b>Bekleyen</b><small>{bekleyenSepetler.length} fiş</small></button>
             <button type="button" className="danger" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={satisSepetiniTemizle}><span>×</span><b>Fiş İptal</b></button>
           </aside>
-          <div className="market-cart-command-strip">
-            <button type="button" className="danger" disabled={!sepet.length} onClick={satisSepetiniTemizle}><span>🗑</span>Sil</button>
-            <button type="button" disabled={!sepet.length} onClick={() => {
-              if (yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) setGenelIndirimPenceresi(true);
-              else bildir('Bu personelin indirim veya fiyat değiştirme yetkisi yok.', 'warning');
-            }}><span>%</span>İndirim</button>
-            <button type="button" className={satisCariId ? 'active' : ''} onClick={() => { setSatisCariArama(''); setSatisCariPenceresi(true); }}><span>👤</span>Cari</button>
-            <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('kaydet')}><span>⏸</span>Beklet</button>
-            <button type="button" className={bekleyenSepetler.length ? 'active' : ''} onClick={() => setBekleyenSepetPenceresi('liste')}><span>▶</span>Bekleyen</button>
-            <button type="button" onClick={() => { setSekme('raporlar'); setRaporSekmesi('fisler'); }}><span>🧾</span>Fişler</button>
-          </div>
           {!sepet.length ? <div className="market-cart-empty"><strong>Satışa hazır</strong><span>Barkodu okutun veya ürün listesinden seçim yapın.</span></div> :
             <div className="market-table market-cart-table"><table><thead><tr><th>Ürün</th><th>Adet</th><th>Toplam</th><th></th></tr></thead><tbody>
               {sepet.map(kalem => {
@@ -1807,22 +1820,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
                 return <tr key={satirId}><td><strong>{kalem.urun_adi}</strong><small>{kilogramUrunuMu(kalem) && <span className="market-cart-weight">{Math.round(Number(kalem.adet) * 1000)} g · </span>}{indirimli && <del>{para(kalem.liste_fiyati)}</del>}<button className={Number(kalem.satis_fiyati) === 0 ? 'market-cart-price complimentary' : 'market-cart-price'} type="button" onClick={() => urunFiyatiPenceresiniAc(kalem, satirId)}>{Number(kalem.satis_fiyati) === 0 ? 'İKRAM' : `${para(kalem.satis_fiyati)}${kilogramUrunuMu(kalem) ? ' / kg' : ''}`}</button></small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - (kilogramUrunuMu(kalem) ? 0.1 : 1))}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step={kilogramUrunuMu(kalem) ? '0.001' : '1'} value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + (kilogramUrunuMu(kalem) ? 0.1 : 1))}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => sepetSatiriniSil(satirId)}>×</button></td></tr>;
               })}
             </tbody></table></div>}
-          <div className="market-cart-discount">
-            <button className={sepetToplamlari.genelFiyatAyarTutari > 0 ? 'market-discount-trigger active' : 'market-discount-trigger'} type="button" disabled={!sepet.length} onClick={() => {
-              if (yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) setGenelIndirimPenceresi(true);
-              else bildir('Bu personelin indirim veya fiyat değiştirme yetkisi yok.', 'warning');
-            }}><kbd>F4</kbd> {sepetToplamlari.genelArtisTutari > 0 ? `Artış +${para(sepetToplamlari.genelArtisTutari)}` : sepetToplamlari.genelIndirimTutari > 0 ? `İndirim −${para(sepetToplamlari.genelIndirimTutari)}` : '± Fiyat Ayarı'}</button>
+          <div className="market-cart-discount market-cart-totals-only">
             <div className="market-cart-summary"><span>Brüt<strong>{para(sepetToplamlari.brutToplam)}</strong></span>{sepetToplamlari.urunIndirimTutari > 0 && <span>Ürün / ikram<strong>−{para(sepetToplamlari.urunIndirimTutari)}</strong></span>}{sepetToplamlari.genelIndirimTutari > 0 && <span>İndirim<strong>−{para(sepetToplamlari.genelIndirimTutari)}</strong></span>}{sepetToplamlari.genelArtisTutari > 0 && <span className="increase">Fiyat artışı<strong>+{para(sepetToplamlari.genelArtisTutari)}</strong></span>}<span className="total">Ödenecek<strong>{para(sepetToplamlari.netToplam)}</strong></span></div>
-          </div>
-          <div className="market-receipt-preference">
-            <span>🧾 Satış sonrası fiş <a href="/integra-printer-agent-kurulum.zip" download>Yazıcı kurulumu</a></span>
-            <div role="group" aria-label="Satış sonrası fiş davranışı">
-              {[
-                ['yazdir', 'Yazdır'],
-                ['yazdirma', 'Yazdırma'],
-                ['sor', 'Sor'],
-              ].map(([deger, etiket]) => <button type="button" key={deger} className={fisDavranisi === deger ? 'active' : ''} disabled={deger !== 'yazdirma' && !yetkiVar('fis_yazdir')} title={deger !== 'yazdirma' && !yetkiVar('fis_yazdir') ? 'Fiş yazdırma yetkisi gerekli' : ''} onClick={() => setFisDavranisi(deger)}>{etiket}</button>)}
-            </div>
           </div>
           <div className="market-payment-buttons"><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}><kbd>F1</kbd>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}><kbd>F2</kbd>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}><kbd>F3</kbd>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
           <p className="market-note">Veresiye işlem için cari seçimi zorunludur. Nakit ve kart satışlarında cari seçimi isteğe bağlıdır.</p>
@@ -1940,16 +1939,22 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           <div className="market-heading"><div><span>GRUP KARTI</span><h2>{grupFormu.id ? 'Grubu düzenle' : 'Yeni grup aç'}</h2></div>{grupFormu.id && <button className="market-remove" type="button" onClick={() => setGrupFormu(bosGrup)}>Vazgeç</button>}</div>
           <label>Grup adı<input value={grupFormu.grupAdi} onChange={event => setGrupFormu({ ...grupFormu, grupAdi: event.target.value })} placeholder="Örn. İçecekler" autoFocus /></label>
           <div className="market-row"><label>Varsayılan KDV<select value={grupFormu.kdvOrani} onChange={event => setGrupFormu({ ...grupFormu, kdvOrani: event.target.value })}><option value="0">%0</option><option value="1">%1</option><option value="10">%10</option><option value="20">%20</option></select></label><label>Sıra<input type="number" value={grupFormu.sira} onChange={event => setGrupFormu({ ...grupFormu, sira: event.target.value })} /></label></div>
+          <div className="market-group-color-fields">
+            <label>Grup düğmesi rengi<span><input type="color" value={/^#[0-9a-f]{6}$/i.test(grupFormu.grupRengi) ? grupFormu.grupRengi : '#c2410c'} onChange={event => setGrupFormu({ ...grupFormu, grupRengi: event.target.value })} /><input value={grupFormu.grupRengi} onChange={event => setGrupFormu({ ...grupFormu, grupRengi: event.target.value })} maxLength="7" /></span></label>
+            <label>Ürün kutusu rengi<span><input type="color" value={/^#[0-9a-f]{6}$/i.test(grupFormu.urunRengi) ? grupFormu.urunRengi : '#0f172a'} onChange={event => setGrupFormu({ ...grupFormu, urunRengi: event.target.value })} /><input value={grupFormu.urunRengi} onChange={event => setGrupFormu({ ...grupFormu, urunRengi: event.target.value })} maxLength="7" /></span></label>
+            <div className="market-group-color-preview"><span style={{ backgroundColor: grupFormu.grupRengi, color: kontrastYaziRengi(grupFormu.grupRengi) }}>Grup</span><strong style={{ backgroundColor: grupFormu.urunRengi, color: kontrastYaziRengi(grupFormu.urunRengi) }}>Örnek Ürün<br /><small>{para(25)}</small></strong></div>
+          </div>
           <label className="market-check"><input type="checkbox" checked={grupFormu.satisEkranindaGoster} onChange={event => setGrupFormu({ ...grupFormu, satisEkranindaGoster: event.target.checked })} /> Satış ekranında kısayol olarak göster</label>
           <button className="market-primary" type="submit">{grupFormu.id ? 'Grubu Güncelle' : 'Grubu Aç'}</button>
         </form>
         <div className="market-card">
           <div className="market-heading"><div><span>GRUPLAR</span><h2>{gruplar.length} grup</h2></div></div>
           <div className="market-group-list">{gruplar.map(grup => <div key={grup.id}>
+            <i className="market-group-color-chip" style={{ background: `linear-gradient(90deg, ${grup.grup_rengi || '#c2410c'} 0 50%, ${grup.urun_rengi || '#0f172a'} 50%)` }} />
             <span><strong>{grup.grup_adi}</strong><small>{urunler.filter(urun => String(urun.grup_id) === String(grup.id)).length} ürün · KDV %{Number(grup.kdv_orani ?? 20)} · Sıra {grup.sira}</small></span>
             <div className="market-inline-actions">
               <button type="button" className={grup.satis_ekraninda_goster ? 'active' : ''} onClick={() => grupGorunurlugunuDegistir(grup)}>{grup.satis_ekraninda_goster ? '👁 Görünüyor' : '⊘ Gizli'}</button>
-              <button type="button" aria-label={`${grup.grup_adi} grubunu düzenle`} onClick={() => setGrupFormu({ id: grup.id, grupAdi: grup.grup_adi, kdvOrani: Number(grup.kdv_orani ?? 20), satisEkranindaGoster: grup.satis_ekraninda_goster, sira: grup.sira })}>✎ Düzenle</button>
+              <button type="button" aria-label={`${grup.grup_adi} grubunu düzenle`} onClick={() => setGrupFormu({ id: grup.id, grupAdi: grup.grup_adi, kdvOrani: Number(grup.kdv_orani ?? 20), satisEkranindaGoster: grup.satis_ekraninda_goster, sira: grup.sira, grupRengi: grup.grup_rengi || '#c2410c', urunRengi: grup.urun_rengi || '#0f172a' })}>✎ Düzenle</button>
             </div>
           </div>)}</div>
         </div>
@@ -1976,6 +1981,17 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           <div className="market-row"><label>Son kullanma tarihi<input type="date" value={urunFormu.sonKullanmaTarihi} onChange={event => setUrunFormu({ ...urunFormu, sonKullanmaTarihi: event.target.value })} /></label><label>Parti / Lot No<input value={urunFormu.lotNo} onChange={event => setUrunFormu({ ...urunFormu, lotNo: event.target.value })} /></label></div>
         </form>
         <div className="market-card">
+          <div className="market-product-sales-settings">
+            <div><span>SATIŞ AYARI</span><strong>Satış sonrası fiş</strong><small>Bu seçim barkodlu satışların tamamında uygulanır.</small></div>
+            <div role="group" aria-label="Satış sonrası fiş davranışı">
+              {[
+                ['yazdir', 'Yazdır'],
+                ['yazdirma', 'Yazdırma'],
+                ['sor', 'Sor'],
+              ].map(([deger, etiket]) => <button type="button" key={deger} className={fisDavranisi === deger ? 'active' : ''} disabled={deger !== 'yazdirma' && !yetkiVar('fis_yazdir')} title={deger !== 'yazdirma' && !yetkiVar('fis_yazdir') ? 'Fiş yazdırma yetkisi gerekli' : ''} onClick={() => setFisDavranisi(deger)}>{etiket}</button>)}
+            </div>
+            <a href="/integra-printer-agent-kurulum.zip" download>Yazıcı kurulumu</a>
+          </div>
           <div className="market-bulk-import">
             <div><span>TOPLU ÜRÜN AKTARIMI</span><strong>Excel uyumlu CSV</strong><small>Yeni gruplar otomatik açılır; aynı barkodlu ürünler güncellenir.</small></div>
             <div className="market-bulk-actions"><button type="button" onClick={urunSablonunuIndir}>Şablon İndir</button><label>CSV Seç<input type="file" accept=".csv,.txt,text/csv" onChange={topluUrunDosyasiniOku} /></label></div>

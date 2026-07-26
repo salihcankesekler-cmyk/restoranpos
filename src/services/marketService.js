@@ -213,19 +213,29 @@ export async function marketUrunleriniTopluKaydet(restaurantId, satirlar, mevcut
 
 export async function marketGrubuKaydet(restaurantId, grup) {
   await marketOturumunuDogrula();
+  const renk = (deger, varsayilan) => /^#[0-9a-f]{6}$/i.test(String(deger || ''))
+    ? String(deger).toLowerCase()
+    : varsayilan;
   const payload = {
     restaurant_id: restaurantId,
     grup_adi: String(grup.grupAdi || '').trim(),
     kdv_orani: Number(grup.kdvOrani ?? 20),
     satis_ekraninda_goster: Boolean(grup.satisEkranindaGoster),
     sira: Number(grup.sira || 0),
+    grup_rengi: renk(grup.grupRengi, '#c2410c'),
+    urun_rengi: renk(grup.urunRengi, '#0f172a'),
   };
   if (!payload.grup_adi) throw new Error('Grup adı zorunludur.');
   const sorgu = grup.id
     ? supabase.from('market_gruplari').update(payload).eq('id', grup.id).eq('restaurant_id', restaurantId)
     : supabase.from('market_gruplari').insert([payload]);
   const { data, error } = await sorgu.select().single();
-  if (error) throw marketHatasi(error);
+  if (error) {
+    const renkKolonuEksik = ['42703', 'PGRST204'].includes(error.code)
+      && /grup_rengi|urun_rengi/i.test(`${error.message || ''} ${error.details || ''}`);
+    if (renkKolonuEksik) throw new Error('Grup renkleri SQL’i eksik. Supabase SQL Editor içinde 20260726_market_group_colors.sql dosyasını çalıştırın.');
+    throw marketHatasi(error);
+  }
   if (grup.id) {
     const { error: urunError } = await supabase
       .from('market_urunleri')
