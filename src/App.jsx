@@ -16630,7 +16630,7 @@ Toplam Ciro: {toplam}
 
           {/* MAIN */}
           <div style={isMobile ? styles.mainContentMobile : styles.mainContentFull}>
-            <div
+            {activeTab !== 'market' && <div
               style={{
                 backgroundColor: '#ffffff',
                 border: '1px solid #e2e8f0',
@@ -16673,9 +16673,9 @@ Toplam Ciro: {toplam}
               >
                 {manuelYenilemeYapiliyor ? '⏳ Yenileniyor' : '🔄 Verileri Yenile'}
               </button>
-            </div>
-            {renderEkranRehberi()}
-            {rehberGizli ? (
+            </div>}
+            {activeTab !== 'market' && renderEkranRehberi()}
+            {activeTab !== 'market' && rehberGizli ? (
               <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideShowBtn}>💡 Ekran rehberini göster</button>
             ) : null}
             {aktifKullaniciLisansRozeti && ['Yaklaşıyor', 'Ödeme Gecikti', 'Ödeme Bekliyor'].includes(aktifKullaniciLisansRozeti.etiket) && (
