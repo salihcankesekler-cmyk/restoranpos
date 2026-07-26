@@ -214,9 +214,6 @@ function IntegraApp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sifremiUnuttumEmail, setSifremiUnuttumEmail] = useState('');
-  const [sifremiUnuttumTelefon, setSifremiUnuttumTelefon] = useState('');
-  const [sifremiUnuttumYeniSifre, setSifremiUnuttumYeniSifre] = useState('');
-  const [sifremiUnuttumYeniSifreTekrar, setSifremiUnuttumYeniSifreTekrar] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
   const [kayitYetkiliAdi, setKayitYetkiliAdi] = useState('');
   const [kayitTelefon, setKayitTelefon] = useState('');
@@ -259,6 +256,13 @@ function IntegraApp() {
   const [personeller, setPersoneller] = useState([]);
   const [yeniPersonelGorevi, setYeniPersonelGorevi] = useState('Garson');
   const [yeniPersonelTelefon, setYeniPersonelTelefon] = useState('');
+  const [personelIslemiYukleniyor, setPersonelIslemiYukleniyor] = useState(false);
+  const [personelGirisDuzenlenenId, setPersonelGirisDuzenlenenId] = useState(null);
+  const [personelGirisFormu, setPersonelGirisFormu] = useState({
+    email: '',
+    password: '',
+    passwordTekrar: '',
+  });
 
   // yeni personel için seçili ekran yetkilerini tutan kod
   const [yeniPersonelYetkileri, setYeniPersonelYetkileri] = useState(['masalar', 'menu']);
@@ -2548,11 +2552,9 @@ Toplam Ciro: {toplam}
 
     try {
       const [restoranSonuc, grupSonuc, urunSonuc, masaSonuc] = await Promise.all([
-        supabase
-          .from('restaurants')
-          .select('*')
-          .eq('id', restaurantId)
-          .maybeSingle(),
+        supabase.rpc('integra_qr_menu_isletmesi', {
+          p_restaurant_id: restaurantId,
+        }),
         supabase
           .from('menu_gruplari')
           .select('*')
@@ -4748,6 +4750,21 @@ Toplam Ciro: {toplam}
     return mesaj || varsayilanMesaj;
   };
 
+  // Owner/personel hesap işlemlerini güvenli sunucu fonksiyonundan çalıştırır.
+  const isletmeHesapIslemi = async (body, varsayilanMesaj = 'Hesap işlemi tamamlanamadı.') => {
+    const { data, error } = await supabase.functions.invoke('isletme-hesaplari', { body });
+
+    if (error) {
+      throw new Error(await edgeFunctionHataMesajiniBul(error, varsayilanMesaj));
+    }
+
+    if (!data?.ok) {
+      throw new Error(data?.error || varsayilanMesaj);
+    }
+
+    return data;
+  };
+
   // Yalnızca işletme sahibi (owner) hesaplarını güvenli Edge Function üzerinden listeler.
   const adminIsletmeKullanicilariniCek = async ({ bildirim = false } = {}) => {
     setAdminIsletmeKullanicilariYukleniyor(true);
@@ -5017,59 +5034,48 @@ Toplam Ciro: {toplam}
 
   // restoran sahibine bağlı garson hesaplarını Supabase'den çeken kod
   const garsonlariSupabasedenCek = async (restaurantId) => {
-    const { data, error } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('parent_restaurant_id', restaurantId)
-      .eq('rol', 'waiter')
-      .order('id', { ascending: true });
-
-    if (error) {
-      console.error('Garsonlar çekilemedi:', error);
-      return;
-    }
-
-    const temizGarsonlar = data.map(g => ({
-      id: g.id,
-      ad: g.waiter_name || g.name || g.restaurant_name,
-      email: g.email,
-      durum: g.durum || 'Aktif',
-      rol: g.rol,
-      parentRestaurantId: g.parent_restaurant_id,
-    }));
-
-    setGarsonlar(temizGarsonlar);
+    await personelleriSupabasedenCek(restaurantId);
   };
 
 
   // restoran personel listesini Supabase'den çeken kod
   const personelleriSupabasedenCek = async (restaurantId) => {
-    const { data, error } = await supabase
-      .from('personeller')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .order('id', { ascending: true });
+    try {
+      const sonuc = await isletmeHesapIslemi(
+        { action: 'list_personnel' },
+        'Personel listesi güvenli sunucudan alınamadı.'
+      );
 
-    if (error) {
+      const temizPersoneller = (Array.isArray(sonuc.personnel) ? sonuc.personnel : []).map(p => ({
+        id: p.id,
+        restaurantId: p.restaurantId || restaurantId,
+        ad: p.ad || '',
+        gorev: p.gorev || 'Garson',
+        telefon: p.telefon || '',
+        email: p.email || '',
+        durum: p.durum || 'Aktif',
+        tabYetkileri: yetkiListesiniHazirla(p.tabYetkileri, p.gorev || 'Garson'),
+        authBagli: Boolean(p.authBagli),
+        createdAt: p.createdAt,
+      }));
+
+      setPersoneller(temizPersoneller);
+      setGarsonlar(temizPersoneller
+        .filter(p => p.email && p.authBagli)
+        .map(p => ({
+          id: p.id,
+          ad: p.ad,
+          email: p.email,
+          durum: p.durum,
+          rol: 'waiter',
+          parentRestaurantId: p.restaurantId,
+          tabYetkileri: p.tabYetkileri,
+        })));
+    } catch (error) {
       console.error('Personeller çekilemedi:', error);
       setPersoneller([]);
-      return;
+      setGarsonlar([]);
     }
-
-    const temizPersoneller = (Array.isArray(data) ? data : []).map(p => ({
-      id: p.id,
-      restaurantId: p.restaurant_id,
-      ad: p.ad || '',
-      gorev: p.gorev || 'Garson',
-      telefon: p.telefon || '',
-      email: p.email || '',
-      sifre: p.sifre || p.password || '',
-      durum: p.durum || 'Aktif',
-      tabYetkileri: yetkiListesiniHazirla(p.tab_yetkileri, p.gorev || 'Garson'),
-      createdAt: p.created_at,
-    }));
-
-    setPersoneller(temizPersoneller);
   };
 
 // giriş yapan restoranın masalarını Supabase'den çeken kod
@@ -5541,116 +5547,72 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    // Süper admin ve işletme sahipleri için önce Supabase Auth oturumu açılır.
-    // Panelden oluşturulan personel hesapları Supabase Auth'a bağlanmaz.
+    // Süper admin, işletme sahibi ve giriş yetkili personel yalnızca Supabase Auth ile oturum açar.
     let authKullanici = null;
     let authOturumuVar = false;
     let data = null;
-    let error = null;
     const temizGirisEmaili = String(email || '').trim().toLowerCase();
-    const { data: authGirisData } = await supabase.auth.signInWithPassword({
+    let { data: authGirisData, error: authGirisError } = await supabase.auth.signInWithPassword({
       email: temizGirisEmaili,
       password,
     });
 
-    if (authGirisData?.user) {
-      authKullanici = authGirisData.user;
-      authOturumuVar = Boolean(authGirisData.session);
+    // Eski owner/personel hesabıysa doğru şifre ilk girişte sunucuda Auth'a taşınır.
+    if (authGirisError || !authGirisData?.user) {
+      try {
+        const gecisSonucu = await isletmeHesapIslemi(
+          {
+            action: 'migrate_legacy_login',
+            email: temizGirisEmaili,
+            password,
+          },
+          'E-posta veya şifre hatalı.'
+        );
 
-      if (await superAdminYetkisiniDogrula()) {
-        superAdminOturumunuAc(authKullanici);
-        return;
-      }
-
-      // Supabase Auth'a taşınmış işletme sahibi hesabını UUID üzerinden bulur.
-      const { data: authIsletme, error: authIsletmeError } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('auth_user_id', authKullanici.id)
-        .eq('rol', 'owner')
-        .maybeSingle();
-
-      if (authIsletmeError) {
-        console.error('Auth işletme eşleştirmesi okunamadı:', authIsletmeError);
-      } else if (authIsletme) {
-        data = authIsletme;
+        if (gecisSonucu?.migrated) {
+          const tekrarGiris = await supabase.auth.signInWithPassword({
+            email: temizGirisEmaili,
+            password,
+          });
+          authGirisData = tekrarGiris.data;
+          authGirisError = tekrarGiris.error;
+        }
+      } catch (gecisError) {
+        console.warn('Eski hesap güvenli girişe taşınamadı:', gecisError?.message || gecisError);
       }
     }
 
-    // Henüz Auth'a taşınmamış owner hesabı ve işletme içi personel için eski giriş geçiş sürecinde korunur.
-    if (!data) {
-      const legacyGiris = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('email', temizGirisEmaili)
-        .eq('password', password)
-        .maybeSingle();
-
-      data = legacyGiris.data;
-      error = legacyGiris.error;
-    }
-
-    if (error || !data) {
-      console.error('Giriş hatası:', error);
-      if (authKullanici) await supabase.auth.signOut();
+    if (authGirisError || !authGirisData?.user || !authGirisData?.session) {
+      console.error('Giriş hatası:', authGirisError);
       alert('E-posta veya şifre hatalı.');
       return;
     }
 
-    // Veritabanındaki metin rolü tek başına süper admin yetkisi veremez.
-    if (data.rol === 'super_admin') {
-      await supabase.auth.signOut();
-      alert('Süper admin yetkisi güvenli oturum tarafından doğrulanamadı.');
+    authKullanici = authGirisData.user;
+    authOturumuVar = true;
+
+    if (await superAdminYetkisiniDogrula()) {
+      superAdminOturumunuAc(authKullanici);
       return;
     }
+
+    const { data: oturumProfili, error: oturumProfiliError } = await supabase.rpc(
+      'integra_oturum_profili'
+    );
+
+    if (oturumProfiliError || !oturumProfili) {
+      console.error('Güvenli hesap profili alınamadı:', oturumProfiliError);
+      await supabase.auth.signOut();
+      alert('Bu Supabase hesabı bir Integra işletmesi veya personeliyle eşleşmiyor.');
+      return;
+    }
+
+    data = oturumProfili;
 
     if (data.durum !== 'Aktif') {
-      if (authKullanici) await supabase.auth.signOut();
-      alert('Hesabınız henüz aktif değil. Lütfen admin onayını bekleyin.');
-      return;
-    }
-
-    // Auth'a taşınmış işletme sahibi eski veritabanı şifresiyle giriş yapamaz.
-    if (data.rol === 'owner' && data.auth_user_id && !authKullanici) {
-      alert('E-posta veya şifre hatalı. Bu işletme Supabase güvenli giriş sistemine taşınmıştır.');
-      return;
-    }
-
-    // Panel personeli için açılmış eski/yanlış Auth oturumu varsa kapatılır.
-    if (data.rol !== 'owner' && authKullanici) {
       await supabase.auth.signOut();
-      authKullanici = null;
-      authOturumuVar = false;
-    }
-
-    // Yalnızca henüz taşınmamış işletme sahipleri ilk doğru girişte Supabase Auth'a geçirilir.
-    if (data.rol === 'owner' && !authKullanici) {
-      const { data: authKayitData, error: authKayitError } = await supabase.auth.signUp({
-        email: temizGirisEmaili,
-        password,
-      });
-
-      if (!authKayitError && authKayitData?.user) {
-        authKullanici = authKayitData.user;
-        authOturumuVar = Boolean(authKayitData.session);
-      }
-    }
-
-    if (
-      data.rol === 'owner' &&
-      authKullanici?.id &&
-      String(data.auth_user_id || '') !== String(authKullanici.id)
-    ) {
-      const { error: authEslemeError } = await supabase
-        .from('restaurants')
-        .update({ auth_user_id: authKullanici.id })
-        .eq('id', data.id);
-
-      if (authEslemeError) {
-        console.warn('Supabase Auth işletme eşleştirmesi yapılamadı:', authEslemeError.message);
-      } else {
-        data.auth_user_id = authKullanici.id;
-      }
+      alert('Hesabınız aktif değil. İşletme yetkiliniz veya Integra yönetimiyle görüşün.');
+      return;
     }
 
     const hesapSekmeleri = isletmeSekmeleriniHazirla(
@@ -5752,10 +5714,6 @@ Toplam Ciro: {toplam}
         await personelleriSupabasedenCek(aktifRestaurantId);
       }
 
-      if (data.rol === 'owner') {
-        await garsonlariSupabasedenCek(data.id);
-      }
-
       if (typeof satisGecmisiniSupabasedenCek === 'function') {
         await satisGecmisiniSupabasedenCek(aktifRestaurantId);
       }
@@ -5763,113 +5721,28 @@ Toplam Ciro: {toplam}
       console.error('Giriş sonrası veri çekme hatası:', err);
     }
   };
-  // şifremi unuttum ekranında e-posta ve kayıtlı telefonla yeni şifre oluşturan kod
+  // Kullanıcı varlığını dışarıya açıklamadan güvenli şifre yardımı talebi oluşturur.
   const handleSifremiUnuttum = async (e) => {
     e.preventDefault();
 
     const temizEmail = String(sifremiUnuttumEmail || '').trim().toLowerCase();
-    const girilenTelefon = telefonRakamlari(sifremiUnuttumTelefon);
-    const yeniSifre = String(sifremiUnuttumYeniSifre || '').trim();
-    const yeniSifreTekrar = String(sifremiUnuttumYeniSifreTekrar || '').trim();
 
-    if (!temizEmail || !girilenTelefon || !yeniSifre || !yeniSifreTekrar) {
-      alert('Lütfen e-posta, kayıtlı telefon ve yeni şifre alanlarını doldurun.');
+    if (!temizEmail) {
+      alert('Lütfen e-posta adresinizi girin.');
       return;
     }
 
-    if (yeniSifre.length < 6) {
-      alert('Yeni şifre en az 6 karakter olmalı.');
-      return;
+    try {
+      const sonuc = await isletmeHesapIslemi(
+        { action: 'request_password_help', email: temizEmail },
+        'Şifre yardımı talebi iletilemedi.'
+      );
+      setSifremiUnuttumEmail('');
+      alert(sonuc.message || 'Hesap uygunsa şifre yardımı talebi iletildi.');
+    } catch (error) {
+      console.error('Şifre yardımı talebi hatası:', error);
+      alert(error?.message || 'Şifre yardımı talebi iletilemedi.');
     }
-
-    if (yeniSifre !== yeniSifreTekrar) {
-      alert('Yeni şifreler birbiriyle aynı değil.');
-      return;
-    }
-
-    const { data: hesap, error: hesapError } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('email', temizEmail)
-      .maybeSingle();
-
-    if (hesapError) {
-      console.error('Şifre sıfırlama hesap sorgusu hatası:', hesapError);
-      alert('Hesap kontrol edilemedi: ' + hesapError.message);
-      return;
-    }
-
-    if (!hesap) {
-      alert('Bu e-posta ve telefon bilgisiyle eşleşen hesap bulunamadı.');
-      return;
-    }
-
-    if (hesap.rol === 'owner' && hesap.auth_user_id) {
-      alert('Bu işletme yetkilisi Supabase güvenli giriş sistemindedir. Yeni şifreyi Integra süper admin kullanıcı yönetiminden belirleyebilirsiniz.');
-      return;
-    }
-
-    let telefonEslesiyor = false;
-    let personelKaydi = null;
-    const hesapTelefonu = telefonRakamlari(hesap.firma_telefon || hesap.telefon || hesap.phone || '');
-
-    if (hesapTelefonu && hesapTelefonu === girilenTelefon) {
-      telefonEslesiyor = true;
-    }
-
-    // personel/garson hesabında telefon bilgisi personeller tablosunda olabilir
-    if (!telefonEslesiyor && hesap.rol === 'waiter') {
-      const { data: personel, error: personelError } = await supabase
-        .from('personeller')
-        .select('*')
-        .eq('email', temizEmail)
-        .maybeSingle();
-
-      if (!personelError && personel) {
-        const personelTelefonu = telefonRakamlari(personel.telefon || personel.firma_telefon || '');
-
-        if (personelTelefonu && personelTelefonu === girilenTelefon) {
-          telefonEslesiyor = true;
-          personelKaydi = personel;
-        }
-      }
-    }
-
-    if (!telefonEslesiyor) {
-      alert('Bu e-posta ve telefon bilgisiyle eşleşen hesap bulunamadı.');
-      return;
-    }
-
-    const { error: sifreGuncellemeError } = await supabase
-      .from('restaurants')
-      .update({ password: yeniSifre })
-      .eq('id', hesap.id);
-
-    if (sifreGuncellemeError) {
-      console.error('Şifre güncelleme hatası:', sifreGuncellemeError);
-      alert('Şifre güncellenemedi: ' + sifreGuncellemeError.message);
-      return;
-    }
-
-    if (personelKaydi?.id) {
-      const { error: personelSifreError } = await supabase
-        .from('personeller')
-        .update({ sifre: yeniSifre })
-        .eq('id', personelKaydi.id);
-
-      if (personelSifreError) {
-        console.warn('Personel şifresi güncellenemedi:', personelSifreError.message);
-      }
-    }
-
-    setEmail(temizEmail);
-    setPassword('');
-    setSifremiUnuttumEmail('');
-    setSifremiUnuttumTelefon('');
-    setSifremiUnuttumYeniSifre('');
-    setSifremiUnuttumYeniSifreTekrar('');
-    setScreen('login');
-    alert('Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.');
   };
   // mutfak fişlerini Supabase'den çeken kod
   const mutfakFisleriniSupabasedenCek = async (restaurantId) => {
@@ -6399,125 +6272,36 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const { data: existingUser } = await supabase
-      .from('restaurants')
-      .select('id')
-      .eq('email', String(email || '').trim().toLowerCase())
-      .maybeSingle();
-
-    if (existingUser) {
-      alert('Bu e-posta ile zaten kayıt yapılmış.');
-      return;
-    }
-
-    // Yeni işletme yetkilisi doğrudan Supabase Auth'a kaydedilir.
-    // Gerçek parola restaurants tablosuna hiçbir zaman yazılmaz.
     const temizKayitEmaili = String(email || '').trim().toLowerCase();
-    const { data: authKayitData, error: authKayitError } = await supabase.auth.signUp({
-      email: temizKayitEmaili,
-      password,
-    });
 
-    if (authKayitError || !authKayitData?.user) {
-      console.error('İşletme Auth kayıt hatası:', authKayitError);
-      alert('Güvenli işletme hesabı oluşturulamadı: ' + (authKayitError?.message || 'Supabase Auth kullanıcı kaydı bulunamadı.'));
+    if (String(password || '').length < 8) {
+      alert('Güvenli hesap şifresi en az 8 karakter olmalıdır.');
       return;
     }
 
-    const authUserId = authKayitData.user.id;
-    const kullanilamazLegacySifre = `AUTH_ONLY_${crypto.randomUUID()}`;
-
-    const { data: yeniRestoran, error } = await supabase
-      .from('restaurants')
-      .insert([
+    let kayitSonucu = null;
+    try {
+      kayitSonucu = await isletmeHesapIslemi(
         {
-          name: restaurantName,
-          restaurant_name: restaurantName,
+          action: 'register_owner',
+          restaurantName,
+          yetkiliAdi: kayitYetkiliAdi,
+          telefon: kayitTelefon,
+          adres: kayitAdres,
+          notMetni: kayitNotu,
+          paket: kayitPaketi,
           email: temizKayitEmaili,
-          password: kullanilamazLegacySifre,
-          auth_user_id: authUserId,
-          yetkili_adi: kayitYetkiliAdi,
-          firma_telefon: kayitTelefon,
-          firma_adres: kayitAdres,
-          kayit_notu: kayitNotu,
-          basvuru_paketi: kayitPaketi,
-          paket_adi: kayitPaketi,
-          isletme_tipi: kayitPaketi === 'Market' ? 'Market' : 'Restoran',
-          aylik_ucret: 0,
-          lisans_durumu: 'Onay Bekliyor',
-          kullanici_limiti: ['Profesyonel', 'Market'].includes(kayitPaketi) ? 3 : 0,
-          durum: 'Onay Bekliyor',
-          rol: 'owner',
+          password,
         },
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Kayıt hatası:', error);
-      await supabase.auth.signOut();
-      alert('Kayıt oluşturulamadı: ' + error.message);
+        'Güvenli işletme başvurusu oluşturulamadı.'
+      );
+    } catch (error) {
+      console.error('Güvenli işletme kayıt hatası:', error);
+      alert(error?.message || 'Güvenli işletme başvurusu oluşturulamadı.');
       return;
     }
-
-    console.log('Yeni restoran:', yeniRestoran);
-
-    const { data: olusanMasalar, error: masaError } = await supabase
-      .from('masalar')
-      .insert([
-        {
-          restaurant_id: yeniRestoran.id,
-          ad: 'Masa 1',
-          dolu: false,
-          tutar: 0,
-          siparisler: [],
-          odemeler: [],
-        },
-        {
-          restaurant_id: yeniRestoran.id,
-          ad: 'Masa 2',
-          dolu: false,
-          tutar: 0,
-          siparisler: [],
-          odemeler: [],
-        },
-        {
-          restaurant_id: yeniRestoran.id,
-          ad: 'Masa 3',
-          dolu: false,
-          tutar: 0,
-          siparisler: [],
-          odemeler: [],
-        },
-      ])
-      .select();
-
-    if (masaError) {
-      console.error('Masa oluşturma hatası:', masaError);
-      await supabase.auth.signOut();
-      alert('Restoran kaydı oluşturuldu ama masalar eklenemedi: ' + masaError.message);
-      return;
-    }
-
-    console.log('Oluşan masalar:', olusanMasalar);
 
     const adminMesaji = `Yeni kayıt başvurusu: ${restaurantName} / Yetkili: ${kayitYetkiliAdi} / Telefon: ${kayitTelefon} / Paket: ${kayitPaketi}`;
-
-    await adminBildirimKaydiOlustur({
-      tip: 'Yeni Kayıt',
-      baslik: 'Yeni restoran başvurusu var',
-      mesaj: adminMesaji,
-      restaurantId: yeniRestoran.id,
-      metadata: {
-        restaurantName,
-        yetkiliAdi: kayitYetkiliAdi,
-        telefon: kayitTelefon,
-        adres: kayitAdres,
-        email,
-        paket: kayitPaketi,
-        not: kayitNotu,
-      },
-    });
 
     await adminMailGonder({
       tip: 'Yeni Kayıt Başvurusu',
@@ -6534,8 +6318,11 @@ Toplam Ciro: {toplam}
       },
     });
 
-    await supabase.auth.signOut();
-    alert('Kayıt başarılı. Başvurunuz bize ulaştı. Admin onayından sonra güvenli Supabase hesabınızla giriş yapabilirsiniz.');
+    alert(
+      kayitSonucu.emailDogrulamaGerekli
+        ? 'Kayıt başarılı. E-posta doğrulamasını tamamladıktan ve admin onayından sonra giriş yapabilirsiniz.'
+        : 'Kayıt başarılı. Admin onayından sonra güvenli Supabase hesabınızla giriş yapabilirsiniz.'
+    );
 
     setRestaurantName('');
     setKayitYetkiliAdi('');
@@ -11856,29 +11643,19 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const { error } = await supabase
-      .from('personeller')
-      .update({
-        tab_yetkileri: yeniYetkiler,
-      })
-      .eq('id', personel.id)
-      .eq('restaurant_id', mevcutRestaurantId);
-
-    if (error) {
+    try {
+      await isletmeHesapIslemi(
+        {
+          action: 'update_personnel_permissions',
+          personelId: personel.id,
+          tabYetkileri: yeniYetkiler,
+        },
+        'Personel yetkisi güncellenemedi.'
+      );
+    } catch (error) {
       console.error('Personel yetkisi güncellenemedi:', error);
-      alert('Personel yetkisi güncellenemedi: ' + error.message);
+      alert(error?.message || 'Personel yetkisi güncellenemedi.');
       return;
-    }
-
-    if (personel.email) {
-      await supabase
-        .from('restaurants')
-        .update({
-          tab_yetkileri: yeniYetkiler,
-          personel_gorev: personel.gorev || 'Personel',
-        })
-        .eq('email', personel.email)
-        .eq('parent_restaurant_id', mevcutRestaurantId);
     }
 
     setPersoneller(personeller.map(p => {
@@ -12227,121 +12004,38 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const { data: lisansData } = await supabase
-      .from('restaurants')
-      .select('kullanici_limiti')
-      .eq('id', mevcutRestaurantId)
-      .maybeSingle();
-
-    const kullaniciLimiti = Number(lisansData?.kullanici_limiti || user?.kullaniciLimiti || 3);
-
-    const { count: mevcutPersonelSayisi, error: sayimError } = await supabase
-      .from('personeller')
-      .select('id', { count: 'exact', head: true })
-      .eq('restaurant_id', mevcutRestaurantId)
-      .neq('durum', 'Pasif');
-
-    if (sayimError) {
-      console.error('Personel sayısı kontrol edilemedi:', sayimError);
-      alert('Personel limiti kontrol edilemedi: ' + sayimError.message);
+    if (Boolean(personelEmail) !== Boolean(personelSifre)) {
+      alert('Giriş hesabı açılacaksa e-posta ve şifre birlikte girilmelidir.');
       return;
     }
 
-    if (kullaniciLimiti > 0 && Number(mevcutPersonelSayisi || 0) >= kullaniciLimiti) {
-      alert(`Bu işletmenin lisansında en fazla ${kullaniciLimiti} personel tanımlanabilir. Yeni personel eklemek için süper adminden kullanıcı sayısını artırın.`);
+    if (personelSifre && personelSifre.length < 8) {
+      alert('Personel giriş şifresi en az 8 karakter olmalıdır.');
       return;
     }
 
-    if (personelEmail) {
-      const { data: existingUser } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('email', personelEmail)
-        .maybeSingle();
-
-      if (existingUser) {
-        alert('Bu e-posta ile zaten bir giriş hesabı var.');
-        return;
-      }
-    }
-
-    const { data: personelData, error: personelError } = await supabase
-      .from('personeller')
-      .insert([
+    setPersonelIslemiYukleniyor(true);
+    try {
+      await isletmeHesapIslemi(
         {
-          restaurant_id: mevcutRestaurantId,
+          action: 'create_personnel',
           ad: personelAdi,
           gorev: personelGorevi,
           telefon: personelTelefon,
-          email: personelEmail,
-          sifre: personelSifre,
-          durum: 'Aktif',
-          tab_yetkileri: seciliYetkiler,
+          email: personelEmail || undefined,
+          password: personelSifre || undefined,
+          tabYetkileri: seciliYetkiler,
         },
-      ])
-      .select()
-      .single();
-
-    if (personelError) {
-      console.error('Personel ekleme hatası:', personelError);
-      alert('Personel eklenemedi: ' + personelError.message);
+        'Personel güvenli biçimde eklenemedi.'
+      );
+      await personelleriSupabasedenCek(mevcutRestaurantId);
+    } catch (error) {
+      console.error('Personel ekleme hatası:', error);
+      alert(error?.message || 'Personel eklenemedi.');
+      setPersonelIslemiYukleniyor(false);
       return;
-    }
-
-    const yeniPersonel = {
-      id: personelData.id,
-      restaurantId: personelData.restaurant_id,
-      ad: personelData.ad,
-      gorev: personelData.gorev || personelGorevi,
-      telefon: personelData.telefon || '',
-      email: personelData.email || '',
-      sifre: personelData.sifre || personelData.password || '',
-      durum: personelData.durum || 'Aktif',
-      tabYetkileri: yetkiListesiniHazirla(personelData.tab_yetkileri, personelGorevi),
-      createdAt: personelData.created_at,
-    };
-
-    setPersoneller([...personeller, yeniPersonel]);
-
-    // e-posta ve şifre girildiyse personelin giriş hesabını oluşturan kod
-    if (personelEmail && personelSifre) {
-      const { data: girisData, error: girisError } = await supabase
-        .from('restaurants')
-        .insert([
-          {
-            name: personelAdi,
-            restaurant_name: `${user.restaurant} - ${personelAdi}`,
-            waiter_name: personelAdi,
-            email: personelEmail,
-            password: personelSifre,
-            durum: 'Aktif',
-            rol: 'waiter',
-            parent_restaurant_id: mevcutRestaurantId,
-            personel_id: personelData.id,
-            personel_gorev: personelGorevi,
-            tab_yetkileri: seciliYetkiler,
-          },
-        ])
-        .select()
-        .single();
-
-      if (girisError) {
-        console.error('Personel giriş hesabı oluşturulamadı:', girisError);
-        alert('Personel kaydedildi ama giriş hesabı oluşturulamadı: ' + girisError.message);
-      } else if (girisData) {
-        setGarsonlar([
-          ...garsonlar,
-          {
-            id: girisData.id,
-            ad: girisData.waiter_name || girisData.name,
-            email: girisData.email,
-            durum: girisData.durum,
-            rol: girisData.rol,
-            parentRestaurantId: girisData.parent_restaurant_id,
-            tabYetkileri: seciliYetkiler,
-          },
-        ]);
-      }
+    } finally {
+      setPersonelIslemiYukleniyor(false);
     }
 
     setYeniGarsonAdi('');
@@ -12350,6 +12044,91 @@ Toplam Ciro: {toplam}
     setYeniGarsonEmail('');
     setYeniGarsonSifre('');
     setYeniPersonelYetkileri(goreveGoreVarsayilanYetkiler('Garson'));
+  };
+
+  const personelGirisFormunuAc = (personel) => {
+    setPersonelGirisDuzenlenenId(personel.id);
+    setPersonelGirisFormu({
+      email: personel.email || '',
+      password: '',
+      passwordTekrar: '',
+    });
+  };
+
+  const personelGirisFormunuKapat = () => {
+    setPersonelGirisDuzenlenenId(null);
+    setPersonelGirisFormu({ email: '', password: '', passwordTekrar: '' });
+  };
+
+  // Personelin e-posta/parolasını gerçek şifreyi uygulamaya göstermeden Supabase Auth'ta günceller.
+  const personelGirisBilgileriniKaydet = async (personel) => {
+    const temizPersonelEmaili = String(personelGirisFormu.email || '').trim().toLowerCase();
+    const yeniSifre = String(personelGirisFormu.password || '');
+    const yeniSifreTekrar = String(personelGirisFormu.passwordTekrar || '');
+
+    if (!temizPersonelEmaili) {
+      alert('Personel e-posta adresini girin.');
+      return;
+    }
+    if (!personel.authBagli && yeniSifre.length < 8) {
+      alert('İlk güvenli giriş bağlantısında en az 8 karakterli şifre zorunludur.');
+      return;
+    }
+    if (yeniSifre && yeniSifre.length < 8) {
+      alert('Yeni şifre en az 8 karakter olmalıdır.');
+      return;
+    }
+    if (yeniSifre !== yeniSifreTekrar) {
+      alert('Yeni şifreler birbiriyle aynı değil.');
+      return;
+    }
+
+    setPersonelIslemiYukleniyor(true);
+    try {
+      const sonuc = await isletmeHesapIslemi(
+        {
+          action: 'upsert_personnel_auth',
+          personelId: personel.id,
+          email: temizPersonelEmaili,
+          password: yeniSifre || undefined,
+        },
+        'Personel giriş bilgileri güncellenemedi.'
+      );
+      personelGirisFormunuKapat();
+      await personelleriSupabasedenCek(mevcutRestaurantId);
+      bildirimGoster(sonuc.message || 'Personel giriş bilgileri güncellendi.', 'success');
+    } catch (error) {
+      console.error('Personel Auth güncelleme hatası:', error);
+      alert(error?.message || 'Personel giriş bilgileri güncellenemedi.');
+    } finally {
+      setPersonelIslemiYukleniyor(false);
+    }
+  };
+
+  const personelDurumDegistir = async (personel) => {
+    const yeniAktif = personel.durum !== 'Aktif';
+    if (!window.confirm(`${personel.ad} personelini ${yeniAktif ? 'aktifleştirmek' : 'pasifleştirmek'} istiyor musunuz?`)) {
+      return;
+    }
+
+    setPersonelIslemiYukleniyor(true);
+    try {
+      const sonuc = await isletmeHesapIslemi(
+        {
+          action: 'set_personnel_active',
+          personelId: personel.id,
+          aktif: yeniAktif,
+        },
+        'Personel durumu güncellenemedi.'
+      );
+      await personelleriSupabasedenCek(mevcutRestaurantId);
+      bildirimGoster(sonuc.message || 'Personel durumu güncellendi.', 'success');
+    } catch (error) {
+      console.error('Personel durum güncelleme hatası:', error);
+      alert(error?.message || 'Personel durumu güncellenemedi.');
+    } finally {
+      setPersonelIslemiYukleniyor(false);
+    }
   };
 
 
@@ -14722,22 +14501,46 @@ Toplam Ciro: {toplam}
     localStorage.setItem(fisAyarlariLocalKey(aktifRestaurantId), JSON.stringify(fisAyarlari));
   }, [fisAyarlari, user?.id, user?.restaurantId, user?.parentRestaurantId, user?.role]);
 
-  // Sayfa yenilendiğinde süper admin rolünü localStorage'dan değil, geçerli Supabase oturumundan geri yükler.
+  // Sayfa yenilendiğinde tarayıcı kaydını gerçek Supabase oturumuyla doğrular.
   useEffect(() => {
     let kontrolAktif = true;
 
-    const superAdminOturumunuGeriYukle = async () => {
+    const guvenliOturumuGeriYukle = async () => {
       const { data: oturumData, error: oturumError } = await supabase.auth.getSession();
 
-      if (oturumError || !oturumData?.session?.user || !kontrolAktif) return;
+      if (!kontrolAktif) return;
+
+      const yerelOturumuTemizle = () => {
+        localStorage.removeItem('integra_user');
+        localStorage.removeItem('integra_screen');
+        localStorage.removeItem('integra_activeTab');
+        setUser(null);
+        setScreen('login');
+      };
+
+      if (oturumError || !oturumData?.session?.user) {
+        if (user) yerelOturumuTemizle();
+        return;
+      }
 
       const yetkili = await superAdminYetkisiniDogrula();
-      if (!kontrolAktif || !yetkili) return;
+      if (!kontrolAktif) return;
 
-      superAdminOturumunuAc(oturumData.session.user);
+      if (yetkili) {
+        superAdminOturumunuAc(oturumData.session.user);
+        return;
+      }
+
+      const { data: profil, error: profilError } = await supabase.rpc('integra_oturum_profili');
+      if (!kontrolAktif) return;
+
+      if (profilError || !profil || profil.durum !== 'Aktif') {
+        await supabase.auth.signOut();
+        if (kontrolAktif) yerelOturumuTemizle();
+      }
     };
 
-    superAdminOturumunuGeriYukle();
+    guvenliOturumuGeriYukle();
 
     return () => {
       kontrolAktif = false;
@@ -16452,7 +16255,7 @@ Toplam Ciro: {toplam}
             <h3 style={styles.authTitle}>Şifremi Unuttum</h3>
 
             <p style={{ textAlign: 'center', color: '#64748b', fontSize: '13px', lineHeight: '1.6', margin: '0 0 16px' }}>
-              E-posta adresinizi ve kayıtlı telefon numaranızı girerek yeni şifre belirleyin.
+              İşletme yetkilileri için güvenli yardım talebi oluşturulur. Personeller yeni şifreyi kendi işletme sahibinden alır.
             </p>
 
             <form onSubmit={handleSifremiUnuttum} style={styles.form}>
@@ -16463,28 +16266,7 @@ Toplam Ciro: {toplam}
                 onChange={e => setSifremiUnuttumEmail(e.target.value)}
                 style={styles.authInput}
               />
-              <input
-                type="tel"
-                placeholder="Kayıtlı Telefon"
-                value={sifremiUnuttumTelefon}
-                onChange={e => setSifremiUnuttumTelefon(e.target.value)}
-                style={styles.authInput}
-              />
-              <input
-                type="password"
-                placeholder="Yeni Şifre"
-                value={sifremiUnuttumYeniSifre}
-                onChange={e => setSifremiUnuttumYeniSifre(e.target.value)}
-                style={styles.authInput}
-              />
-              <input
-                type="password"
-                placeholder="Yeni Şifre Tekrar"
-                value={sifremiUnuttumYeniSifreTekrar}
-                onChange={e => setSifremiUnuttumYeniSifreTekrar(e.target.value)}
-                style={styles.authInput}
-              />
-              <button type="submit" style={styles.authBtnOrange}>Şifreyi Güncelle</button>
+              <button type="submit" style={styles.authBtnOrange}>Şifre Yardımı İste</button>
             </form>
 
             <button onClick={() => setScreen('login')} style={styles.cancelReturnBtn}>
@@ -16492,7 +16274,7 @@ Toplam Ciro: {toplam}
             </button>
 
             <p style={styles.authFooter}>
-              Telefon bilgisine ulaşamıyorsanız işletme yöneticinizden veya destek ekibinden yardım isteyin.
+              Güvenlik nedeniyle burada hesap varlığı veya kayıtlı bilgiler gösterilmez.
             </p>
           </div>
         </div>
@@ -22254,8 +22036,8 @@ Toplam Ciro: {toplam}
                     </div>
                   </div>
 
-                  <button type="submit" style={styles.btnOrange}>
-                    Personel Ekle
+                  <button type="submit" disabled={personelIslemiYukleniyor} style={styles.btnOrange}>
+                    {personelIslemiYukleniyor ? 'Kaydediliyor...' : 'Personel Ekle'}
                   </button>
                 </form>
 
@@ -22263,12 +22045,12 @@ Toplam Ciro: {toplam}
                   Kayıtlı Personeller
                 </h3>
 
-                {aktifPersoneller.length === 0 ? (
+                {personeller.length === 0 ? (
                   <p style={{ color: '#94a3b8', fontSize: '13px' }}>
                     Henüz personel oluşturulmamış.
                   </p>
                 ) : (
-                  aktifPersoneller.map(p => (
+                  personeller.map(p => (
                     <div
                       key={p.id}
                       style={{
@@ -22286,6 +22068,36 @@ Toplam Ciro: {toplam}
                         <div style={{ color: '#475569', fontSize: '12px', marginTop: '6px', fontWeight: '800' }}>
                           Yetkiler: {yetkiEtiketleriYaz(p.tabYetkileri)}
                         </div>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '9px' }}>
+                          <span style={{ backgroundColor: p.authBagli ? '#dcfce7' : '#fef3c7', color: p.authBagli ? '#166534' : '#92400e', padding: '5px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '900' }}>
+                            {p.authBagli ? '🔐 Supabase Auth bağlı' : '⚠️ Giriş hesabı bağlı değil'}
+                          </span>
+                          <span style={{ backgroundColor: p.durum === 'Aktif' ? '#e0f2fe' : '#fee2e2', color: p.durum === 'Aktif' ? '#0369a1' : '#991b1b', padding: '5px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '900' }}>
+                            {p.durum || 'Aktif'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '9px' }}>
+                          <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelGirisFormunuAc(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: '#1e293b' }}>
+                            🔑 Giriş Bilgileri
+                          </button>
+                          <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelDurumDegistir(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: p.durum === 'Aktif' ? '#dc2626' : '#16a34a' }}>
+                            {p.durum === 'Aktif' ? 'Pasifleştir' : 'Aktifleştir'}
+                          </button>
+                        </div>
+
+                        {String(personelGirisDuzenlenenId) === String(p.id) && (
+                          <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'grid', gap: '7px' }}>
+                            <strong style={{ fontSize: '12px', color: '#334155' }}>Güvenli personel girişi</strong>
+                            <input type="email" placeholder="Personel e-postası" value={personelGirisFormu.email} onChange={e => setPersonelGirisFormu(prev => ({ ...prev, email: e.target.value }))} style={styles.input} />
+                            <input type="password" placeholder={p.authBagli ? 'Yeni şifre (değişmeyecekse boş)' : 'Yeni şifre'} value={personelGirisFormu.password} onChange={e => setPersonelGirisFormu(prev => ({ ...prev, password: e.target.value }))} style={styles.input} />
+                            <input type="password" placeholder="Yeni şifre tekrar" value={personelGirisFormu.passwordTekrar} onChange={e => setPersonelGirisFormu(prev => ({ ...prev, passwordTekrar: e.target.value }))} style={styles.input} />
+                            <div style={{ display: 'flex', gap: '7px' }}>
+                              <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelGirisBilgileriniKaydet(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px' }}>Kaydet</button>
+                              <button type="button" onClick={personelGirisFormunuKapat} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: '#64748b' }}>Vazgeç</button>
+                            </div>
+                            <small style={{ color: '#64748b' }}>Mevcut şifre hiçbir zaman gösterilmez; yeni şifre doğrudan Supabase Auth'a kaydedilir.</small>
+                          </div>
+                        )}
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
