@@ -671,6 +671,37 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
         })
     ).sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
   }, [sayimlar, tumUrunler]);
+  const sayimFarkGruplari = useMemo(() => {
+    const urunHaritasi = new Map(tumUrunler.map(urun => [String(urun.id), urun]));
+    return sayimlar.map(sayimKaydi => {
+      const farklar = (sayimKaydi.market_sayim_kalemleri || [])
+        .filter(kalem => Number(kalem.fark_miktari || 0) !== 0)
+        .map(kalem => {
+          const urun = urunHaritasi.get(String(kalem.urun_id));
+          return {
+            id: kalem.id,
+            urunAdi: urun?.urun_adi || 'Silinmiş / bulunamayan ürün',
+            barkod: urun?.barkod || '',
+            sistemMiktari: Number(kalem.sistem_miktari || 0),
+            sayilanMiktar: Number(kalem.sayilan_miktar || 0),
+            fark: Number(kalem.fark_miktari || 0),
+          };
+        });
+      return {
+        id: sayimKaydi.id,
+        sayimAdi: sayimKaydi.sayim_adi,
+        tarih: sayimKaydi.tamamlanma_tarihi || sayimKaydi.created_at,
+        toplamKalem: Number(sayimKaydi.toplam_kalem || 0),
+        farklar,
+      };
+    }).filter(sayimKaydi => sayimKaydi.farklar.length);
+  }, [sayimlar, tumUrunler]);
+  const sayimAramaMetni = sayimBarkodu.trim().toLocaleLowerCase('tr-TR');
+  const sayimAramaSonuclari = sayimAramaMetni
+    ? urunler.filter(urun => [urun.urun_adi, urun.barkod, urun.stok_kodu]
+      .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(sayimAramaMetni)))
+      .slice(0, 20)
+    : [];
 
   const seciliSatisCarisi = cariler.find(cari => String(cari.id) === String(satisCariId));
   const satisCariAramaMetni = satisCariArama.trim().toLocaleLowerCase('tr-TR');
@@ -1376,12 +1407,38 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     }
   };
 
+  const sayimaUrunSec = (urun, barkodOkutuldu = false) => {
+    if (!urun) return;
+    setSayim(prev => ({
+      ...prev,
+      [urun.id]: barkodOkutuldu
+        ? miktarYuvarla(Number(prev[urun.id] ?? 0) + 1)
+        : (Object.prototype.hasOwnProperty.call(prev, urun.id) ? prev[urun.id] : 0),
+    }));
+    setSayimBarkodu('');
+    window.setTimeout(() => barkodRef.current?.focus(), 30);
+  };
+
   const sayimaEkle = event => {
     event.preventDefault();
-    const urun = urunler.find(item => String(item.barkod) === sayimBarkodu.trim());
-    if (!urun) return bildir('Barkod ürün listesinde bulunamadı.', 'warning');
-    setSayim(prev => ({ ...prev, [urun.id]: Number(prev[urun.id] ?? 0) + 1 }));
-    setSayimBarkodu('');
+    const aranan = sayimBarkodu.trim();
+    if (!aranan) return;
+    const barkodluUrun = urunler.find(item => item.barkod && String(item.barkod) === aranan);
+    if (barkodluUrun) return sayimaUrunSec(barkodluUrun, true);
+    const tamAdliUrun = urunler.find(item => String(item.urun_adi || '').toLocaleLowerCase('tr-TR') === aranan.toLocaleLowerCase('tr-TR'));
+    if (tamAdliUrun) return sayimaUrunSec(tamAdliUrun);
+    if (sayimAramaSonuclari.length === 1) return sayimaUrunSec(sayimAramaSonuclari[0]);
+    if (sayimAramaSonuclari.length > 1) return bildir('Birden fazla ürün bulundu. Aşağıdaki listeden doğru ürünü seçin.', 'warning');
+    bildir('Ürün adı veya barkod ürün listesinde bulunamadı.', 'warning');
+  };
+
+  const sayimdanUrunCikar = urun => {
+    setSayim(prev => {
+      const sonraki = { ...prev };
+      delete sonraki[urun.id];
+      return sonraki;
+    });
+    bildir(`${urun.urun_adi} sayımdan çıkarıldı.`, 'info');
   };
 
   const sayimiTamamla = async () => {
@@ -2061,9 +2118,19 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       </div>}
 
       {!yukleniyor && sekme === 'sayim' && <div className="market-grid-two">
-        <div className="market-card"><div className="market-heading"><div><span>MOBİL / BARKOD</span><h2>Stok sayımı</h2></div><strong>{Object.keys(sayim).length} kalem</strong></div>
-          <form className="market-scan simple" onSubmit={sayimaEkle}><label>Barkod<input ref={barkodRef} value={sayimBarkodu} onChange={event => setSayimBarkodu(event.target.value)} placeholder="Her adet için okutun" /></label><button className="market-primary" type="submit">Sayıma Ekle</button></form>
-          <div className="market-list">{urunler.filter(urun => Object.prototype.hasOwnProperty.call(sayim, urun.id)).map(urun => <div key={urun.id}><span><strong>{urun.urun_adi}</strong><small>Sistem: {urun.stok_miktari}</small></span><label className="market-count">Sayılan<input type="number" min="0" step="0.001" value={sayim[urun.id]} onChange={event => setSayim(prev => ({ ...prev, [urun.id]: event.target.value }))} /></label></div>)}</div>
+        <div className="market-card"><div className="market-heading"><div><span>BARKOD / ÜRÜN ARAMA</span><h2>Stok sayımı</h2></div><strong>{Object.keys(sayim).length} kalem</strong></div>
+          <form className="market-scan simple market-count-search" onSubmit={sayimaEkle}><label>Ürün adı veya barkod<input ref={barkodRef} value={sayimBarkodu} onChange={event => setSayimBarkodu(event.target.value)} placeholder="Ekmek yazın veya barkod okutun" /></label><button className="market-primary" type="submit">Bul / Ekle</button></form>
+          {!!sayimAramaMetni && <div className="market-count-search-results">
+            {sayimAramaSonuclari.map(urun => {
+              const secili = Object.prototype.hasOwnProperty.call(sayim, urun.id);
+              return <button className={secili ? 'selected' : ''} type="button" key={urun.id} onClick={() => sayimaUrunSec(urun)}>
+                <span><strong>{urun.urun_adi}</strong><small>{urun.barkod || 'Barkodsuz ürün'} · Sistem: {miktarYaz(urun.stok_miktari)}</small></span>
+                <b>{secili ? 'Sayımda' : 'Seç'}</b>
+              </button>;
+            })}
+            {!sayimAramaSonuclari.length && <p className="market-empty">Bu ad veya barkodla ürün bulunamadı.</p>}
+          </div>}
+          <div className="market-list market-count-list">{urunler.filter(urun => Object.prototype.hasOwnProperty.call(sayim, urun.id)).map(urun => <div key={urun.id}><span><strong>{urun.urun_adi}</strong><small>{urun.barkod || 'Barkodsuz ürün'} · Sistem: {miktarYaz(urun.stok_miktari)}</small></span><label className="market-count">Sayılan<input type="number" min="0" step="0.001" value={sayim[urun.id]} onChange={event => setSayim(prev => ({ ...prev, [urun.id]: event.target.value }))} /></label><button className="market-count-remove" type="button" onClick={() => sayimdanUrunCikar(urun)} aria-label={`${urun.urun_adi} ürününü sayımdan çıkar`}>× İptal</button></div>)}</div>
           <button className="market-primary market-full" type="button" onClick={sayimiTamamla}>Sayımı Tamamla ve Farkları İşle</button>
         </div>
         <div className="market-card"><h2>Son sayımlar</h2>{!sayimlar.length ? <p className="market-empty">Henüz tamamlanmış sayım yok.</p> : <div className="market-list">{sayimlar.map(kayit => <div key={kayit.id}><span>{kayit.sayim_adi}<small>{kayit.toplam_kalem} ürün</small></span><strong>{kayit.farkli_kalem} fark</strong></div>)}</div>}</div>
@@ -2170,8 +2237,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
         </>}
 
         {raporSekmesi === 'sayim' && <div className="market-card">
-          <div className="market-heading"><div><span>SAYIM FARKI RAPORU</span><h2>Eski stok ve sayılan stok farkları</h2></div><strong>{sayimFarkRaporu.length} fark</strong></div>
-          {!sayimFarkRaporu.length ? <p className="market-empty">Geçmiş sayımlarda stok farkı bulunmuyor.</p> : <div className="market-table"><table><thead><tr><th>Sayım / Tarih</th><th>Ürün</th><th>Sistem Stoğu</th><th>Sayılan</th><th>Fark</th></tr></thead><tbody>{sayimFarkRaporu.map(kayit => <tr key={kayit.id}><td><strong>{kayit.sayimAdi}</strong><small>{new Date(kayit.tarih).toLocaleString('tr-TR')}</small></td><td><strong>{kayit.urunAdi}</strong><small>{kayit.barkod}</small></td><td>{kayit.sistemMiktari}</td><td>{kayit.sayilanMiktar}</td><td className={kayit.fark < 0 ? 'red' : 'green'}>{kayit.fark > 0 ? '+' : ''}{kayit.fark}</td></tr>)}</tbody></table></div>}
+          <div className="market-heading"><div><span>SAYIM RAPORLARI</span><h2>Her sayım ve içerisindeki farklar</h2></div><strong>{sayimFarkGruplari.length} sayım</strong></div>
+          {!sayimFarkGruplari.length ? <p className="market-empty">Geçmiş sayımlarda stok farkı bulunmuyor.</p> : <div className="market-count-report-list">{sayimFarkGruplari.map((sayimKaydi, index) => <details key={sayimKaydi.id} open={index === 0}>
+            <summary><span><strong>{sayimKaydi.sayimAdi}</strong><small>{new Date(sayimKaydi.tarih).toLocaleString('tr-TR')} · {sayimKaydi.toplamKalem} ürün sayıldı</small></span><b>{sayimKaydi.farklar.length} fark</b></summary>
+            <div className="market-table"><table><thead><tr><th>Ürün</th><th>Sistem Stoğu</th><th>Sayılan</th><th>Fark</th></tr></thead><tbody>{sayimKaydi.farklar.map(kayit => <tr key={kayit.id}><td><strong>{kayit.urunAdi}</strong><small>{kayit.barkod || 'Barkodsuz ürün'}</small></td><td>{miktarYaz(kayit.sistemMiktari)}</td><td>{miktarYaz(kayit.sayilanMiktar)}</td><td className={kayit.fark < 0 ? 'red' : 'green'}>{kayit.fark > 0 ? '+' : ''}{miktarYaz(kayit.fark)}</td></tr>)}</tbody></table></div>
+          </details>)}</div>}
         </div>}
 
         {raporSekmesi === 'kar' && <>
