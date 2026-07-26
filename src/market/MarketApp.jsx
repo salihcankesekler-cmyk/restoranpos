@@ -44,7 +44,7 @@ const gunAnahtari = value => {
 };
 
 export default function MarketApp({ restaurantId, restaurantName, notify }) {
-  const [sekme, setSekme] = useState('ozet');
+  const [sekme, setSekme] = useState('satis');
   const [urunler, setUrunler] = useState([]);
   const [gruplar, setGruplar] = useState([]);
   const [faturalar, setFaturalar] = useState([]);
@@ -138,13 +138,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin)));
   }, [arama, urunler]);
 
-  const ozet = useMemo(() => ({
-    urunSayisi: urunler.length,
-    stokDegeri: urunler.reduce((t, u) => t + Number(u.stok_miktari || 0) * Number(u.alis_fiyati || 0), 0),
-    kritikStok: urunler.filter(u => Number(u.stok_miktari || 0) <= Number(u.minimum_stok || 0)).length,
-    potansiyelCiro: urunler.reduce((t, u) => t + Number(u.stok_miktari || 0) * Number(u.satis_fiyati || 0), 0),
-  }), [urunler]);
-
   const satisUrunleri = useMemo(() => {
     const metin = satisArama.trim().toLocaleLowerCase('tr-TR');
     return urunler.filter(urun => {
@@ -214,6 +207,27 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       urunler: Array.from(urunDagilimi.values()).sort((a, b) => b.ciro - a.ciro),
     };
   }, [raporAraligi, satislar, urunler]);
+
+  const sayimFarkRaporu = useMemo(() => {
+    const urunHaritasi = new Map(urunler.map(urun => [String(urun.id), urun]));
+    return sayimlar.flatMap(sayimKaydi =>
+      (sayimKaydi.market_sayim_kalemleri || [])
+        .filter(kalem => Number(kalem.fark_miktari || 0) !== 0)
+        .map(kalem => {
+          const urun = urunHaritasi.get(String(kalem.urun_id));
+          return {
+            id: kalem.id,
+            sayimAdi: sayimKaydi.sayim_adi,
+            tarih: sayimKaydi.tamamlanma_tarihi || sayimKaydi.created_at,
+            urunAdi: urun?.urun_adi || 'Silinmiş / bulunamayan ürün',
+            barkod: urun?.barkod || '',
+            sistemMiktari: Number(kalem.sistem_miktari || 0),
+            sayilanMiktar: Number(kalem.sayilan_miktar || 0),
+            fark: Number(kalem.fark_miktari || 0),
+          };
+        })
+    ).sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
+  }, [sayimlar, urunler]);
 
   const seciliSatisCarisi = cariler.find(cari => String(cari.id) === String(satisCariId));
   const seciliAlisCarisi = cariler.find(cari => String(cari.id) === String(fatura.cariId));
@@ -330,10 +344,21 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     if (!sepet.length) return bildir('Satış sepeti boş.', 'warning');
     if (odemeTipi === 'Cari / Veresiye' && !satisCariId) return bildir('Veresiye satış için cari seçin.', 'warning');
     try {
-      await marketSatisiKaydet(restaurantId, sepet, odemeTipi, satisCariId);
+      const satilanKalemler = sepet.map(kalem => ({ ...kalem }));
+      const toplam = satilanKalemler.reduce((tutar, kalem) => tutar + Number(kalem.adet) * Number(kalem.satis_fiyati), 0);
+      const yeniSatis = await marketSatisiKaydet(restaurantId, satilanKalemler, odemeTipi, satisCariId);
       setSepet([]);
-      await verileriYukle(true);
-      bildir(`${odemeTipi} satış tamamlandı ve stok düşüldü.`, 'success');
+      setUrunler(prev => prev.map(urun => {
+        const satilan = satilanKalemler.find(kalem => String(kalem.id) === String(urun.id));
+        return satilan ? { ...urun, stok_miktari: Number(urun.stok_miktari || 0) - Number(satilan.adet) } : urun;
+      }));
+      setSatislar(prev => [yeniSatis, ...prev]);
+      if (odemeTipi === 'Cari / Veresiye' && satisCariId) {
+        setCariler(prev => prev.map(cari => String(cari.id) === String(satisCariId)
+          ? { ...cari, bakiye: Number(cari.bakiye || 0) + toplam }
+          : cari));
+      }
+      void verileriYukle(true);
       window.setTimeout(() => barkodRef.current?.focus(), 80);
     } catch (error) { bildir(error.message, 'error'); }
   };
@@ -477,7 +502,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   };
 
   const nav = [
-    ['ozet', '📊 Genel Bakış'],
     ['satis', '▥ Barkodlu Satış'],
     ['gruplar', '▦ Gruplar'],
     ['urunler', '📦 Ürünler'],
@@ -494,26 +518,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       )}<button type="button" className="market-tab-refresh" onClick={() => verileriYukle(false)} aria-label="Verileri yenile">↻</button></nav>
       {hata && <div className="market-alert"><strong>Kontrol gerekiyor:</strong> {hata}</div>}
       {yukleniyor && <div className="market-loading">Market verileri hazırlanıyor…</div>}
-
-      {!yukleniyor && sekme === 'ozet' && <>
-        <div className="market-stats">
-          <article><span>Toplam Ürün</span><strong>{ozet.urunSayisi}</strong><small>{gruplar.length} ürün grubu</small></article>
-          <article><span>Alış Değerli Stok</span><strong>{para(ozet.stokDegeri)}</strong><small>Mevcut maliyet</small></article>
-          <article className={ozet.kritikStok ? 'danger' : ''}><span>Kritik Stok</span><strong>{ozet.kritikStok}</strong><small>Minimum seviyede veya altında</small></article>
-          <article><span>Potansiyel Ciro</span><strong>{para(ozet.potansiyelCiro)}</strong><small>Satış fiyatı üzerinden</small></article>
-        </div>
-        <div className="market-grid-two">
-          <article className="market-card"><h2>Hızlı işlemler</h2><div className="market-actions">
-            <button type="button" onClick={() => setSekme('satis')}>▥ Satış aç</button>
-            <button type="button" onClick={() => setSekme('alis')}>🧾 Fatura gir</button>
-            <button type="button" onClick={() => setSekme('gruplar')}>▦ Grup aç</button>
-            <button type="button" onClick={() => setSekme('urunler')}>＋ Ürün ekle</button>
-          </div></article>
-          <article className="market-card"><h2>Son alış faturaları</h2>{!faturalar.length ? <p className="market-empty">Henüz alış faturası yok.</p> :
-            <div className="market-list">{faturalar.slice(0, 5).map(kayit => <div key={kayit.id}><span>{kayit.tedarikci_adi}<small>{tarihYaz(kayit.fatura_tarihi)} · {kayit.fatura_no || 'No yok'}</small></span><strong>{para(kayit.genel_toplam)}</strong></div>)}</div>}
-          </article>
-        </div>
-      </>}
 
       {!yukleniyor && sekme === 'satis' && <div className="market-pos-layout">
         <div className="market-card market-catalog">
@@ -694,6 +698,10 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
           <div className="market-heading"><div><span>SAATLİK YOĞUNLUK</span><h2>Satış saatleri</h2></div><small>Yoğun saatleri kasa planlamasında kullanabilirsiniz.</small></div>
           {!rapor.saatler.length ? <p className="market-empty">Seçilen dönemde saatlik veri bulunmuyor.</p> : <div className="market-hour-list">{rapor.saatler.map(saat => <div key={saat.saat}><span>{saat.saat}</span><div><i style={{ width: `${Math.max((saat.ciro / Math.max(...rapor.saatler.map(item => item.ciro), 1)) * 100, 3)}%` }} /></div><strong>{saat.satisAdedi} satış · {para(saat.ciro)}</strong></div>)}</div>}
           <p className="market-note">Maliyet ve brüt kâr, ürünlerin güncel alış fiyatları üzerinden tahmini olarak hesaplanır.</p>
+        </div>
+        <div className="market-card">
+          <div className="market-heading"><div><span>SAYIM FARKI RAPORU</span><h2>Eski stok ve sayılan stok farkları</h2></div><strong>{sayimFarkRaporu.length} fark</strong></div>
+          {!sayimFarkRaporu.length ? <p className="market-empty">Geçmiş sayımlarda stok farkı bulunmuyor.</p> : <div className="market-table"><table><thead><tr><th>Sayım / Tarih</th><th>Ürün</th><th>Sistem Stoğu</th><th>Sayılan</th><th>Fark</th></tr></thead><tbody>{sayimFarkRaporu.map(kayit => <tr key={kayit.id}><td><strong>{kayit.sayimAdi}</strong><small>{new Date(kayit.tarih).toLocaleString('tr-TR')}</small></td><td><strong>{kayit.urunAdi}</strong><small>{kayit.barkod}</small></td><td>{kayit.sistemMiktari}</td><td>{kayit.sayilanMiktar}</td><td className={kayit.fark < 0 ? 'red' : 'green'}>{kayit.fark > 0 ? '+' : ''}{kayit.fark}</td></tr>)}</tbody></table></div>}
         </div>
         <div className="market-card">
           <div className="market-heading"><div><span>İŞLEM GEÇMİŞİ</span><h2>Son satışlar</h2></div><strong>{rapor.satisAdedi} kayıt</strong></div>

@@ -328,7 +328,7 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
   }]).select().single();
   if (satisError) throw marketHatasi(satisError);
 
-  const { error: kalemError } = await supabase.from('market_satis_kalemleri').insert(sepet.map(k => ({
+  const { data: satisKalemleri, error: kalemError } = await supabase.from('market_satis_kalemleri').insert(sepet.map(k => ({
     restaurant_id: restaurantId,
     satis_id: satis.id,
     urun_id: k.id,
@@ -337,15 +337,15 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     adet: Number(k.adet),
     birim_fiyat: Number(k.satis_fiyati),
     toplam_tutar: Number(k.adet) * Number(k.satis_fiyati),
-  })));
+  }))).select();
   if (kalemError) throw marketHatasi(kalemError);
-  for (const kalem of sepet) {
+  await Promise.all(sepet.map(async kalem => {
     const yeniStok = Number(kalem.stok_miktari || 0) - Number(kalem.adet);
     const { error } = await supabase.from('market_urunleri')
       .update({ stok_miktari: yeniStok })
       .eq('id', kalem.id).eq('restaurant_id', restaurantId);
     if (error) throw marketHatasi(error);
-  }
+  }));
   if (secilenCariId) {
     await cariHareketiniEsitle(restaurantId, secilenCariId, {
       kaynak: 'market_satisi',
@@ -356,5 +356,5 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
       aciklama: `Market satışı · ${odemeTipi}`,
     });
   }
-  return satis;
+  return { ...satis, market_satis_kalemleri: satisKalemleri || [] };
 }
