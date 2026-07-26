@@ -14,6 +14,7 @@ import {
   marketKasaVardiyasiKapat,
   marketSayimiKaydet,
   marketSatisIadeEt,
+  marketSatisFisiniKuyrugaEkle,
   marketSatisiKaydet,
   marketUrunStokFiyatGuncelle,
   marketUrunleriniTopluKaydet,
@@ -52,13 +53,6 @@ const miktarYaz = value => Number(value || 0).toLocaleString('tr-TR', {
   minimumFractionDigits: Number.isInteger(Number(value || 0)) ? 0 : 3,
   maximumFractionDigits: 3,
 });
-
-const htmlGuvenli = value => String(value ?? '')
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
-  .replaceAll("'", '&#039;');
 
 const fisParasi = value => `${Number(value || 0).toLocaleString('tr-TR', {
   minimumFractionDigits: 2,
@@ -121,22 +115,6 @@ const satisFisiMetni = (satis, restaurantName) => {
     termalOrtala('Mali belge yerine geçmez.'),
   ].filter(Boolean).join('\r\n');
 };
-
-const satisFisiBelgesi = (satis, restaurantName) => `<!doctype html>
-<html lang="tr">
-  <head>
-    <meta charset="utf-8" />
-    <title>Market Satış Fişi</title>
-    <style>
-      @page{size:auto;margin:2mm}
-      *{box-sizing:border-box}
-      html,body{margin:0;padding:0;background:#fff;color:#000}
-      body{width:72mm;margin:0 auto}
-      pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.35 Consolas,"Courier New",monospace}
-    </style>
-  </head>
-  <body><pre>${htmlGuvenli(satisFisiMetni(satis, restaurantName))}</pre></body>
-</html>`;
 
 const tarihYaz = value => {
   if (!value) return '-';
@@ -1077,45 +1055,20 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     window.setTimeout(() => barkodRef.current?.focus(), 80);
   };
 
-  const satisFisiniYazdir = (satis, sessiz = false) => {
+  const satisFisiniYazdir = async (satis, sessiz = false) => {
     if (!yetkiyiDogrula('fis_yazdir', 'Bu personelin satış fişi yazdırma yetkisi yok.')) return;
-    const cerceve = document.createElement('iframe');
-    cerceve.setAttribute('aria-hidden', 'true');
-    Object.assign(cerceve.style, {
-      position: 'fixed',
-      width: '1px',
-      height: '1px',
-      right: '0',
-      bottom: '0',
-      border: '0',
-      opacity: '0',
-      pointerEvents: 'none',
-    });
-    let guvenlikZamanlayicisi;
-    const temizle = () => {
-      window.clearTimeout(guvenlikZamanlayicisi);
-      cerceve.remove();
-    };
-    cerceve.addEventListener('load', () => {
-      try {
-        cerceve.contentWindow?.addEventListener('afterprint', temizle, { once: true });
-        cerceve.contentWindow?.focus();
-        cerceve.contentWindow?.print();
-        guvenlikZamanlayicisi = window.setTimeout(temizle, 60000);
-        if (!sessiz) bildir('Fiş Windows varsayılan yazıcısına gönderildi.', 'success');
-      } catch {
-        temizle();
-        bildir('Sessiz yazdırma başlatılamadı. Edge kurulumunu ve varsayılan yazıcıyı kontrol edin.', 'warning');
-      }
-    }, { once: true });
-    cerceve.srcdoc = satisFisiBelgesi(satis, restaurantName);
-    document.body.appendChild(cerceve);
+    try {
+      await marketSatisFisiniKuyrugaEkle(restaurantId, satis, satisFisiMetni(satis, restaurantName));
+      if (!sessiz) bildir('Fiş Windows varsayılan yazıcısına gönderildi.', 'success');
+    } catch (error) {
+      bildir(error.message, 'warning');
+    }
   };
 
-  const satisFisiKarariniUygula = satis => {
+  const satisFisiKarariniUygula = async satis => {
     if (fisDavranisi === 'yazdirma' || !yetkiVar('fis_yazdir')) return;
     if (fisDavranisi === 'sor' && !window.confirm('Satış tamamlandı. Fiş yazdırılsın mı?')) return;
-    satisFisiniYazdir(satis, true);
+    await satisFisiniYazdir(satis, true);
   };
 
   const satisiTamamla = async odemeTipi => {
@@ -1683,7 +1636,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             <div className="market-cart-summary"><span>Brüt<strong>{para(sepetToplamlari.brutToplam)}</strong></span>{sepetToplamlari.urunIndirimTutari > 0 && <span>Ürün / ikram<strong>−{para(sepetToplamlari.urunIndirimTutari)}</strong></span>}{sepetToplamlari.genelIndirimTutari > 0 && <span>İskonto<strong>−{para(sepetToplamlari.genelIndirimTutari)}</strong></span>}<span className="total">Ödenecek<strong>{para(sepetToplamlari.netToplam)}</strong></span></div>
           </div>
           <div className="market-receipt-preference">
-            <span>🧾 Satış sonrası fiş <a href="/integra-edge-sessiz-yazdirma-kurulum.bat" download>Windows kurulumu</a> · <a href="/integra-edge-sessiz-yazdirma-kaldir.bat" download>Geri al</a></span>
+            <span>🧾 Satış sonrası fiş <a href="/integra-printer-agent-kurulum.zip" download>Yazıcı kurulumu</a></span>
             <div role="group" aria-label="Satış sonrası fiş davranışı">
               {[
                 ['yazdir', 'Yazdır'],
