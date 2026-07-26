@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import JsBarcode from 'jsbarcode';
 import {
   marketAlisFaturasiKaydet,
+  marketAlisFaturasiSil,
   marketBekleyenSepetiKaydet,
   marketBekleyenSepetiSil,
   marketCariKaydet,
@@ -169,6 +170,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const [hizliDuzenleme, setHizliDuzenleme] = useState(null);
   const [fatura, setFatura] = useState(bosFatura);
   const [acikFaturaId, setAcikFaturaId] = useState('');
+  const [silinenFaturaId, setSilinenFaturaId] = useState('');
   const [satisBarkodu, setSatisBarkodu] = useState('');
   const [satisAdedi, setSatisAdedi] = useState('1');
   const [satisArama, setSatisArama] = useState('');
@@ -1168,6 +1170,30 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const faturayiSil = async kayit => {
+    if (!yetkiyiDogrula('urun_yonet', 'Bu personelin alış faturası silme yetkisi yok.')) return;
+    const kalemSayisi = (kayit.market_alis_fatura_kalemleri || kayit.raporKalemleri || []).length;
+    const faturaTanimi = kayit.fatura_no ? `${kayit.fatura_no} numaralı alış faturası` : 'Bu alış faturası';
+    const onaylandi = window.confirm(
+      `${faturaTanimi} silinecek. ${kalemSayisi} kalemin stok girişi ve bağlı cari hareketi geri alınacak. Devam edilsin mi?`,
+    );
+    if (!onaylandi) return;
+
+    setSilinenFaturaId(String(kayit.id));
+    try {
+      await marketAlisFaturasiSil(restaurantId, kayit.id);
+      if (String(fatura.id || '') === String(kayit.id)) setFatura(bosFatura());
+      setAcikFaturaId('');
+      setAcikAlisRaporuId('');
+      await verileriYukle(true);
+      bildir('Alış faturası silindi; stok ve cari etkisi geri alındı.', 'success');
+    } catch (error) {
+      bildir(error.message, 'error');
+    } finally {
+      setSilinenFaturaId('');
+    }
+  };
+
   const sayimaEkle = event => {
     event.preventDefault();
     const urun = urunler.find(item => String(item.barkod) === sayimBarkodu.trim());
@@ -1686,7 +1712,12 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             </button>
             {acikFaturaId === kayit.id && <div className="market-invoice-detail">
               {(kayit.market_alis_fatura_kalemleri || []).map(kalem => <div key={kalem.id}><span>{kalem.urun_adi}<small>{kalem.miktar} × {para(kalem.birim_alis_fiyati)}</small></span><strong>{para(kalem.satir_toplami)}</strong></div>)}
-              <button className="market-primary" type="button" onClick={() => faturayiDuzenle(kayit)}>✎ Faturayı Düzenle</button>
+              <div className="market-invoice-actions">
+                <button className="market-primary" type="button" onClick={() => faturayiDuzenle(kayit)}>✎ Faturayı Düzenle</button>
+                <button className="market-danger-button" type="button" disabled={silinenFaturaId === String(kayit.id)} onClick={() => faturayiSil(kayit)}>
+                  {silinenFaturaId === String(kayit.id) ? 'Siliniyor…' : 'Faturayı Sil'}
+                </button>
+              </div>
             </div>}
           </article>)}</div>}
         </div>
@@ -1935,7 +1966,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           </div>
           <div className="market-card">
             {!ticariRapor.faturalar.length ? <p className="market-empty">Seçilen dönemde alış faturası bulunmuyor.</p> : <div className="market-table"><table><thead><tr><th>Tarih</th><th>Tedarikçi / Cari</th><th>Fatura No</th><th>Kalem</th><th>Durum</th><th>Toplam</th><th></th></tr></thead><tbody>{ticariRapor.faturalar.map(faturaKaydi => <Fragment key={faturaKaydi.id}>
-              <tr><td>{tarihYaz(faturaKaydi.fatura_tarihi)}</td><td><strong>{faturaKaydi.tedarikci_adi || 'Tedarikçi yok'}</strong></td><td>{faturaKaydi.fatura_no || '-'}</td><td>{faturaKaydi.raporKalemleri.length}</td><td>{faturaKaydi.durum || 'Kaydedildi'}</td><td><strong>{para(faturaKaydi.raporToplam)}</strong></td><td><button className="market-receipt-button" type="button" onClick={() => setAcikAlisRaporuId(acikAlisRaporuId === faturaKaydi.id ? '' : faturaKaydi.id)}>{acikAlisRaporuId === faturaKaydi.id ? 'Kapat' : 'İçeriği Aç'}</button></td></tr>
+              <tr><td>{tarihYaz(faturaKaydi.fatura_tarihi)}</td><td><strong>{faturaKaydi.tedarikci_adi || 'Tedarikçi yok'}</strong></td><td>{faturaKaydi.fatura_no || '-'}</td><td>{faturaKaydi.raporKalemleri.length}</td><td>{faturaKaydi.durum || 'Kaydedildi'}</td><td><strong>{para(faturaKaydi.raporToplam)}</strong></td><td><div className="market-inline-actions"><button className="market-receipt-button" type="button" onClick={() => setAcikAlisRaporuId(acikAlisRaporuId === faturaKaydi.id ? '' : faturaKaydi.id)}>{acikAlisRaporuId === faturaKaydi.id ? 'Kapat' : 'İçeriği Aç'}</button><button className="market-product-delete" type="button" disabled={silinenFaturaId === String(faturaKaydi.id)} onClick={() => faturayiSil(faturaKaydi)}>{silinenFaturaId === String(faturaKaydi.id) ? 'Siliniyor…' : 'Sil'}</button></div></td></tr>
               {acikAlisRaporuId === faturaKaydi.id && <tr className="market-receipt-row"><td colSpan="7"><div className="market-report-purchase-items">{faturaKaydi.raporKalemleri.map(kalem => <div key={kalem.id}><span><strong>{kalem.urun_adi}</strong><small>{kalem.barkod}</small></span><span>{kalem.miktar} × {para(kalem.birim_alis_fiyati)}</span><b>{para(kalem.satir_toplami)}</b></div>)}</div></td></tr>}
             </Fragment>)}</tbody></table></div>}
           </div>

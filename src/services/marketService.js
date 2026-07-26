@@ -487,6 +487,23 @@ export async function marketAlisFaturasiKaydet(restaurantId, fatura) {
   return baslik;
 }
 
+export async function marketAlisFaturasiSil(restaurantId, faturaId) {
+  await marketOturumunuDogrula();
+  const { data, error } = await supabase.rpc('market_alis_faturasi_sil_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_fatura_id: faturaId,
+  });
+  if (error) {
+    const fonksiyonEksik = ['42883', 'PGRST202'].includes(error.code)
+      || String(error.message || '').includes('market_alis_faturasi_sil_atomik');
+    if (fonksiyonEksik) {
+      throw new Error('Alış faturası silme SQL’i eksik. Supabase SQL Editor içinde 20260726_market_invoice_delete.sql dosyasını çalıştırın.');
+    }
+    throw marketHatasi(error);
+  }
+  return data;
+}
+
 export async function marketSayimiKaydet(restaurantId, sayim) {
   await marketOturumunuDogrula();
   const { data: baslik, error: baslikError } = await supabase.from('market_sayimlari').insert([{
