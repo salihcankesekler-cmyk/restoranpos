@@ -880,6 +880,18 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const urunBarkoduEnter = event => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const barkod = event.currentTarget.value.trim();
+    const kayitliUrun = urunler.find(urun => String(urun.barkod || '').trim() === barkod);
+    if (kayitliUrun) {
+      urunuDuzenle(kayitliUrun);
+      return;
+    }
+    event.currentTarget.form?.elements.namedItem('urunAdi')?.focus();
+  };
+
   const urunuSil = async urun => {
     if (!yetkiyiDogrula('urun_yonet', 'Bu personelin ürün silme yetkisi yok.')) return;
     const stokUyarisi = Number(urun.stok_miktari || 0) > 0 ? ` Ürünün mevcut stoğu ${urun.stok_miktari} ${urun.birim || ''}.` : '';
@@ -976,9 +988,9 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     }
   };
 
-  const satisSepetiniTemizle = () => {
+  const satisSepetiniTemizle = (onayIste = true) => {
     if (!sepet.length) return;
-    if (!window.confirm('Satış sepetindeki tüm ürünler silinsin mi?')) return;
+    if (onayIste && !window.confirm('Satış sepetindeki tüm ürünler silinsin mi?')) return;
     setSepet([]);
     setVerilenTutar('');
     setOdemeParcalari([]);
@@ -1069,6 +1081,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     satisAdediTuslamaRef.current = false;
     setSatisAdedi('');
     window.setTimeout(() => barkodRef.current?.focus(), 0);
+  };
+
+  const nakitKupurunuEkle = kupur => {
+    if (!sepet.length) return;
+    setVerilenTutar(onceki => String(paraYuvarla(Number(onceki || 0) + Number(kupur || 0))));
   };
 
   const secilenUrunuSepeteEkle = urun => {
@@ -1208,7 +1225,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       setUrunIndirimFormu(null);
       setBekleyenSepetAdi('');
       setBekleyenSepetPenceresi('');
-      bildir('Sepet beklemeye alındı.', 'success');
     } catch (error) {
       bildir(error.message, 'error');
     } finally {
@@ -1231,9 +1247,9 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
         : { yon: 'azalt', tur: 'yuzde', deger: '' });
       setBekleyenSepetler(prev => prev.filter(item => String(item.id) !== String(kayit.id)));
       setBekleyenSepetPenceresi('');
-      bildir(tumKalemler.length === acilacakKalemler.length
-        ? 'Bekleyen sepet satış ekranına alındı.'
-        : 'Bekleyen sepet açıldı; silinmiş ürünler sepetten çıkarıldı.', tumKalemler.length === acilacakKalemler.length ? 'success' : 'warning');
+      if (tumKalemler.length !== acilacakKalemler.length) {
+        bildir('Bekleyen sepet açıldı; silinmiş ürünler sepetten çıkarıldı.', 'warning');
+      }
     } catch (error) {
       bildir(error.message, 'error');
     } finally {
@@ -1920,6 +1936,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               {!satisUrunleri.length && <p className="market-empty">{satisArama.trim() ? 'Tüm ürünlerde aramaya uygun kayıt bulunamadı.' : 'Bu grupta ürün bulunamadı.'}</p>}
             </div>
           </div>
+          <aside className="market-pos-cash-rail" aria-label="Müşterinin verdiği nakit kupürleri">
+            <label><span>Verilen</span><strong>{Number(verilenTutar || 0).toLocaleString('tr-TR')} ₺</strong></label>
+            {[1, 5, 10, 20, 50, 100, 200].map(kupur => <button type="button" key={kupur} onClick={() => nakitKupurunuEkle(kupur)}>{kupur} ₺</button>)}
+            <button type="button" className="clear" onClick={() => setVerilenTutar('')} aria-label="Verilen tutarı temizle">C</button>
+          </aside>
           <aside className="market-pos-number-rail" aria-label="Dokunmatik adet tuş takımı">
             <label><span>Adet</span><input type="number" min="0.001" step="0.001" value={satisAdedi} onFocus={event => event.target.select()} onChange={event => { satisAdediTuslamaRef.current = true; setSatisAdedi(event.target.value); }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); barkodRef.current?.focus(); } }} /></label>
             {[1, 2, 3, 4, 5, 6].map(rakam => <button type="button" key={rakam} onClick={() => satisAdediRakaminiGir(rakam)}>{rakam}</button>)}
@@ -1933,7 +1954,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           <div className="market-park-toolbar">
             <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('kaydet')}><kbd>F5</kbd> ⏸ Sepeti Beklet</button>
             <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}>▶ Bekleyenler ({bekleyenSepetler.length})</button>
-            <button type="button" className="market-clear-cart" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={satisSepetiniTemizle}>Sepeti Temizle</button>
+            <button type="button" className="market-clear-cart" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => satisSepetiniTemizle(true)}>Sepeti Temizle</button>
           </div>
           <aside className="market-pos-action-rail" aria-label="Hızlı satış işlemleri">
             <button type="button" className={satisCariId ? 'active' : ''} onClick={() => { setSatisCariArama(''); setSatisCariPenceresi(true); }}><span>👤</span><b>Cari</b><small>{seciliSatisCarisi?.ad || 'Seçilmedi'}</small></button>
@@ -1945,7 +1966,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             }}><span>±</span><b>Fiyat / İndirim</b><small>F4</small></button>
             <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor || odemeBasladi} onClick={() => setBekleyenSepetPenceresi('kaydet')}><span>⏸</span><b>Beklet</b><small>F5</small></button>
             <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}><span>▶</span><b>Bekleyen</b><small>{bekleyenSepetler.length} fiş</small></button>
-            <button type="button" className="danger" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={satisSepetiniTemizle}><span>×</span><b>Fiş İptal</b></button>
+            <button type="button" className="danger" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => satisSepetiniTemizle(false)}><span>×</span><b>Fiş İptal</b></button>
           </aside>
           {!sepet.length ? <div className="market-cart-empty"><strong>Satışa hazır</strong><span>Barkodu okutun veya ürün listesinden seçim yapın.</span></div> :
             <div className="market-table market-cart-table"><table><thead><tr><th>Ürün</th><th>Adet</th><th>Toplam</th><th></th></tr></thead><tbody>
@@ -2109,7 +2130,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       {!yukleniyor && sekme === 'urunler' && <div className="market-grid-form">
         <form className="market-card market-form market-product-form" onSubmit={urunKaydet}>
           <div className="market-heading market-product-form-heading"><div><span>ÜRÜN KARTI</span><h2>{urunFormu.id ? 'Ürünü düzenle' : 'Yeni barkodlu ürün'}</h2></div><div className="market-product-form-actions">{urunFormu.id && <button className="market-remove" type="button" onClick={() => setUrunFormu(bosUrun)}>Vazgeç</button>}<button className="market-primary" type="submit">{urunFormu.id ? 'Kaydet' : 'Ürünü Kaydet'}</button></div></div>
-          <div className="market-row"><label>Barkod<input autoFocus value={urunFormu.barkod} onChange={event => setUrunFormu({ ...urunFormu, barkod: event.target.value })} placeholder="869…" /></label><label>Ürün adı<input value={urunFormu.urunAdi} onChange={event => setUrunFormu({ ...urunFormu, urunAdi: event.target.value })} /></label></div>
+          <div className="market-row"><label>Barkod<input autoFocus value={urunFormu.barkod} onChange={event => setUrunFormu({ ...urunFormu, barkod: event.target.value })} onKeyDown={urunBarkoduEnter} placeholder="Okutun veya yazıp Enter'a basın" /></label><label>Ürün adı<input name="urunAdi" value={urunFormu.urunAdi} onChange={event => setUrunFormu({ ...urunFormu, urunAdi: event.target.value })} /></label></div>
           <div className="market-row"><label>Stok / terazi ürün kodu<input value={urunFormu.stokKodu} onChange={event => setUrunFormu({ ...urunFormu, stokKodu: event.target.value })} placeholder="5 haneli kod" /></label><label>Ürün grubu *<select required value={urunFormu.grupId} onChange={event => {
               const grup = gruplar.find(item => String(item.id) === String(event.target.value));
               setUrunFormu({

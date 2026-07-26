@@ -1284,7 +1284,7 @@
 }
 .market-pos-practical .market-catalog{
   display:grid;
-  grid-template-columns:82px minmax(0,1fr) 44px;
+  grid-template-columns:82px minmax(0,1fr) 52px 44px;
   grid-template-rows:minmax(0,1fr);
   gap:2px;
   background:#cbd5e1;
@@ -1445,7 +1445,7 @@
 }
 .market-pos-number-rail{
   display:grid;
-  grid-column:3;
+  grid-column:4;
   grid-row:1;
   min-height:0;
   grid-template-rows:52px repeat(12,minmax(30px,1fr));
@@ -1493,6 +1493,57 @@
 }
 .market-pos-number-rail button.clear{
   background:#9a3412;
+}
+.market-pos-cash-rail{
+  display:grid;
+  grid-column:3;
+  grid-row:1;
+  min-height:0;
+  grid-template-rows:52px repeat(8,minmax(34px,1fr));
+  gap:1px;
+  overflow:hidden;
+  background:#cbd5e1;
+}
+.market-pos-cash-rail label{
+  display:flex;
+  min-width:0;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  overflow:hidden;
+  padding:2px;
+  background:#047857;
+  color:#fff;
+  text-align:center;
+}
+.market-pos-cash-rail label span{
+  font-size:7px;
+  font-weight:850;
+}
+.market-pos-cash-rail label strong{
+  max-width:100%;
+  overflow:hidden;
+  font-size:10px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.market-pos-cash-rail button{
+  min-width:0;
+  border:0;
+  padding:2px;
+  background:#059669;
+  color:#fff;
+  font-size:10px;
+  font-weight:950;
+  cursor:pointer;
+}
+.market-pos-cash-rail button:hover,
+.market-pos-cash-rail button:active{
+  background:#047857;
+}
+.market-pos-cash-rail button.clear{
+  background:#9a3412;
+  font-size:13px;
 }
 .market-pos-practical .market-checkout{
   display:grid;
@@ -1641,7 +1692,7 @@
     grid-template-columns:minmax(560px,1.2fr) minmax(460px,1fr);
   }
   .market-pos-practical .market-catalog{
-    grid-template-columns:74px minmax(0,1fr) 40px;
+    grid-template-columns:74px minmax(0,1fr) 48px 40px;
   }
   .market-pos-practical .market-sale-products{
     grid-template-columns:repeat(3,minmax(0,1fr));
@@ -1661,7 +1712,7 @@
 
 @media(max-width:640px){
   .market-pos-practical .market-catalog{
-    grid-template-columns:64px minmax(0,1fr) 38px;
+    grid-template-columns:64px minmax(0,1fr) 44px 38px;
     min-height:580px;
   }
   .market-pos-entrybar{
