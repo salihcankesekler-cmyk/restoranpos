@@ -33,11 +33,5 @@ coverage
 *.bak
 *.backup
 *_yedek*
-<<<<<<< HEAD
 
-Add-Content .gitignore "`nsupabase/.temp/"
-supabase/.temp/
-
-=======
->>>>>>> develop
 supabase/.temp/
