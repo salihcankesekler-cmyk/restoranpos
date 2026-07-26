@@ -397,12 +397,14 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const satisUrunleri = useMemo(() => {
     const metin = satisArama.trim().toLocaleLowerCase('tr-TR');
     return urunler.filter(urun => {
-      if (String(urun.grup_id) !== String(aktifSatisGrubu)) return false;
+      // Arama yapılırken kasiyer grupları tek tek gezmek zorunda kalmasın.
+      if (!metin && String(urun.grup_id) !== String(aktifSatisGrubu)) return false;
+      if (metin && !gorunenGruplar.some(grup => String(grup.id) === String(urun.grup_id))) return false;
       if (!metin) return true;
-      return [urun.urun_adi, urun.barkod, urun.marka]
+      return [urun.urun_adi, urun.barkod, urun.stok_kodu, urun.marka]
         .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin));
     });
-  }, [aktifSatisGrubu, satisArama, urunler]);
+  }, [aktifSatisGrubu, gorunenGruplar, satisArama, urunler]);
 
   const sepetToplamlari = useMemo(() => {
     const brutToplam = sepet.reduce((toplam, kalem) =>
@@ -846,6 +848,15 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       setGenelIndirim({ tur: 'yuzde', deger: '' });
       setGenelIndirimPenceresi(false);
     }
+  };
+
+  const satisSepetiniTemizle = () => {
+    if (!sepet.length) return;
+    if (!window.confirm('Satış sepetindeki tüm ürünler silinsin mi?')) return;
+    setSepet([]);
+    setUrunIndirimFormu(null);
+    setGenelIndirim({ tur: 'yuzde', deger: '' });
+    setGenelIndirimPenceresi(false);
   };
 
   const urunFiyatiniUygula = fiyatDegeri => {
@@ -1590,26 +1601,35 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       {hata && <div className="market-alert"><strong>Kontrol gerekiyor:</strong> {hata}</div>}
       {yukleniyor && <div className="market-loading">Market verileri hazırlanıyor…</div>}
 
-      {!yukleniyor && sekme === 'satis' && <div className="market-pos-layout">
+      {!yukleniyor && sekme === 'satis' && <div className="market-pos-layout market-pos-practical">
         <div className="market-card market-catalog">
-          <div className="market-heading"><div><span>ÜRÜN SEÇİMİ</span><h2>Hızlı satış</h2></div><small>{satisUrunleri.length} ürün</small></div>
+          <div className="market-heading market-sale-heading"><div><span>ÜRÜN BUL</span><h2>Barkod ve hızlı seçim</h2></div><small>{satisUrunleri.length} ürün</small></div>
           <form className="market-sale-scan" onSubmit={satisaEkle}>
-            <label>Adet<input type="number" min="0.001" step="0.001" value={satisAdedi} onFocus={event => event.target.select()} onChange={event => setSatisAdedi(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); barkodRef.current?.focus(); } }} /></label>
-            <label>Barkod<input ref={barkodRef} value={satisBarkodu} onChange={event => setSatisBarkodu(event.target.value)} placeholder="Adedi yazın, barkodu okutun" /></label>
-            <button className="market-primary" type="submit">Sepete Ekle</button>
+            <div className="market-sale-amount">
+              <label>Adet<input type="number" min="0.001" step="0.001" value={satisAdedi} onFocus={event => event.target.select()} onChange={event => setSatisAdedi(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); barkodRef.current?.focus(); } }} /></label>
+              <div className="market-sale-amount-buttons" aria-label="Hızlı adet seçimi">
+                {[1, 2, 5, 10].map(adet => <button type="button" key={adet} className={Number(satisAdedi) === adet ? 'active' : ''} onClick={() => { setSatisAdedi(String(adet)); barkodRef.current?.focus(); }}>{adet}</button>)}
+              </div>
+            </div>
+            <label className="market-barcode-field">Barkod<input ref={barkodRef} value={satisBarkodu} onChange={event => setSatisBarkodu(event.target.value)} placeholder="Barkodu okutun veya yazın" /></label>
+            <button className="market-primary market-sale-add" type="submit">＋ Ekle</button>
           </form>
           <div className="market-sale-cari">
             <label className="market-field">Cari (isteğe bağlı)<select value={satisCariId} onChange={event => setSatisCariId(event.target.value)}><option value="">Cari seçmeden satış</option>{cariler.map(cari => <option value={cari.id} key={cari.id}>{cari.ad} · {para(cari.bakiye)}</option>)}</select></label>
             {cariKayitAlani('satis')}
             {cariOzeti(seciliSatisCarisi)}
           </div>
-          <input className="market-sale-search" value={satisArama} onChange={event => setSatisArama(event.target.value)} placeholder="Ürün adı veya barkod ile ara" />
+          <div className="market-sale-searchbox">
+            <span aria-hidden="true">⌕</span>
+            <input className="market-sale-search" value={satisArama} onChange={event => setSatisArama(event.target.value)} placeholder="Ürün adı, barkod, stok kodu veya marka ara" />
+            {satisArama && <button type="button" onClick={() => setSatisArama('')} aria-label="Aramayı temizle">×</button>}
+          </div>
           <div className="market-group-tabs">
             {gorunenGruplar.map(grup => <button type="button" key={grup.id} className={String(aktifSatisGrubu) === String(grup.id) ? 'active' : ''} onClick={() => setSatisGrubu(grup.id)}>{grup.grup_adi}</button>)}
           </div>
           {!gorunenGruplar.length && <p className="market-empty">Satış ekranında gösterilen grup yok. Gruplar bölümünden en az bir grubu görünür yapın.</p>}
           <div className="market-sale-products">
-            {satisUrunleri.map(urun => <button type="button" key={urun.id} onClick={() => secilenUrunuSepeteEkle(urun)}>
+            {satisUrunleri.map(urun => <button type="button" key={urun.id} className={kritikUrunMu(urun) ? 'is-critical' : ''} onClick={() => secilenUrunuSepeteEkle(urun)}>
               <span><strong>{urun.urun_adi}</strong><small>{urun.barkod} · Stok {urun.stok_miktari}</small></span>
               <b>{Number(urun.satis_fiyati || 0) > 0 ? `${para(urun.satis_fiyati)}${kilogramUrunuMu(urun) ? ' / kg' : ''}` : 'Satışta fiyat gir'}</b>
               <i>＋</i>
@@ -1618,12 +1638,13 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           </div>
         </div>
         <div className="market-card market-checkout">
-          <div className="market-heading"><div><span>SEPET VE ÖDEME</span><h2>{sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet), 0)} ürün</h2></div><strong>{para(sepetToplamlari.netToplam)}</strong></div>
+          <div className="market-heading market-checkout-heading"><div><span>AKTİF SATIŞ</span><h2>{sepet.length} kalem · {miktarYaz(sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet), 0))} ürün</h2></div><strong>{para(sepetToplamlari.netToplam)}</strong></div>
           <div className="market-park-toolbar">
             <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('kaydet')}><kbd>F5</kbd> ⏸ Sepeti Beklet</button>
             <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}>▶ Bekleyenler ({bekleyenSepetler.length})</button>
+            <button type="button" className="market-clear-cart" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={satisSepetiniTemizle}>Sepeti Temizle</button>
           </div>
-          {!sepet.length ? <div className="market-cart-empty">Sepet boş. Soldan ürüne dokunarak satışa ekleyin.</div> :
+          {!sepet.length ? <div className="market-cart-empty"><strong>Satışa hazır</strong><span>Barkodu okutun veya ürün listesinden seçim yapın.</span></div> :
             <div className="market-table market-cart-table"><table><thead><tr><th>Ürün</th><th>Adet</th><th>Toplam</th><th></th></tr></thead><tbody>
               {sepet.map(kalem => {
                 const satirId = sepetSatirAnahtari(kalem);

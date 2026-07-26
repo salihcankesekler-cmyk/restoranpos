@@ -18,3 +18,415 @@
 .market-inline-actions .market-product-delete{border-color:#fecaca;background:#fef2f2;color:#b91c1c}.market-inline-actions .market-product-delete:disabled{opacity:.5;cursor:wait}
 .market-invoice-detail>.market-invoice-actions{display:flex;justify-content:flex-end;gap:7px;padding-top:10px}.market-invoice-actions .market-danger-button:disabled{opacity:.5;cursor:wait}
 .market-receipt-preference{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}.market-receipt-preference>span{color:#64748b;font-size:10px;font-weight:850}.market-receipt-preference>span a{margin-left:5px;color:#c2410c;text-decoration:none;border-bottom:1px dashed #fb923c}.market-receipt-preference>div{display:flex;border:1px solid #cbd5e1;border-radius:7px;overflow:hidden}.market-receipt-preference button{border:0;border-right:1px solid #cbd5e1;background:#fff;color:#475569;padding:5px 8px;font-size:10px;font-weight:850;cursor:pointer}.market-receipt-preference button:last-child{border-right:0}.market-receipt-preference button.active{background:#0f172a;color:#fff}.market-receipt-preference button:disabled{opacity:.4;cursor:not-allowed}.market-receipt-print-actions{display:flex;justify-content:flex-end;padding-top:10px}
+
+/* Barkodlu satış: sade, hızlı ve kasada sürekli kullanılabilir çalışma alanı */
+.market-pos-practical{
+  grid-template-columns:minmax(360px,.78fr) minmax(560px,1.22fr);
+  gap:8px;
+  align-items:stretch;
+}
+.market-pos-practical>.market-card{
+  height:calc(100vh - 168px);
+  min-height:610px;
+  max-height:820px;
+  border-radius:12px;
+  padding:12px;
+  box-shadow:0 10px 30px -28px #0f172a;
+}
+.market-pos-practical .market-catalog,
+.market-pos-practical .market-checkout{
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  overflow:hidden;
+}
+.market-pos-practical .market-checkout{
+  position:sticky;
+  top:0;
+  max-height:820px;
+}
+.market-pos-practical .market-heading{
+  flex:0 0 auto;
+  margin-bottom:8px;
+}
+.market-pos-practical .market-heading h2{
+  margin:2px 0 0;
+  font-size:15px;
+}
+.market-pos-practical .market-sale-heading>small{
+  border-radius:999px;
+  padding:4px 7px;
+  background:#f1f5f9;
+  color:#475569;
+  font-size:9px;
+  font-weight:900;
+}
+.market-pos-practical .market-sale-scan{
+  display:grid;
+  flex:0 0 auto;
+  grid-template-columns:minmax(158px,.85fr) minmax(170px,1.2fr) auto;
+  gap:7px;
+  align-items:end;
+  margin-bottom:7px;
+  padding:8px;
+  border:1px solid #dbe4ef;
+  border-radius:9px;
+  background:#f8fafc;
+}
+.market-pos-practical .market-sale-amount{
+  display:grid;
+  grid-template-columns:55px 1fr;
+  gap:6px;
+  align-items:end;
+}
+.market-pos-practical .market-sale-amount label,
+.market-pos-practical .market-barcode-field{
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:4px;
+  color:#475569;
+  font-size:9px;
+  font-weight:900;
+}
+.market-pos-practical .market-sale-scan input{
+  height:36px;
+  border-radius:7px;
+  padding:7px 8px;
+  font-size:12px;
+  outline:0;
+}
+.market-pos-practical .market-barcode-field input{
+  border:2px solid #fb923c;
+  background:#fff;
+  font-size:13px;
+  font-weight:800;
+}
+.market-pos-practical .market-barcode-field input:focus{
+  border-color:#ea580c;
+  box-shadow:0 0 0 3px #ffedd5;
+}
+.market-sale-amount-buttons{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:3px;
+}
+.market-sale-amount-buttons button{
+  height:36px;
+  min-width:0;
+  border:1px solid #cbd5e1;
+  border-radius:7px;
+  padding:0;
+  background:#fff;
+  color:#334155;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.market-sale-amount-buttons button.active{
+  border-color:#f97316;
+  background:#f97316;
+  color:#fff;
+}
+.market-pos-practical .market-sale-add{
+  height:36px;
+  padding:0 11px;
+  white-space:nowrap;
+}
+.market-pos-practical .market-sale-cari{
+  flex:0 0 auto;
+  margin-bottom:7px;
+  padding:6px 8px;
+  border-radius:7px;
+  background:#fff;
+}
+.market-sale-searchbox{
+  display:flex;
+  flex:0 0 auto;
+  height:36px;
+  align-items:center;
+  gap:6px;
+  margin-bottom:7px;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:0 8px;
+  background:#fff;
+}
+.market-sale-searchbox>span{
+  color:#64748b;
+  font-size:21px;
+  line-height:1;
+}
+.market-sale-searchbox .market-sale-search{
+  width:100%;
+  height:34px;
+  min-width:0;
+  margin:0;
+  border:0;
+  padding:0;
+  outline:0;
+  font-size:11px;
+}
+.market-sale-searchbox>button{
+  width:23px;
+  height:23px;
+  flex:0 0 auto;
+  border:0;
+  border-radius:50%;
+  background:#e2e8f0;
+  color:#475569;
+  cursor:pointer;
+}
+.market-pos-practical .market-group-tabs{
+  flex:0 0 auto;
+  gap:4px;
+  margin-bottom:7px;
+  padding-bottom:1px;
+}
+.market-pos-practical .market-group-tabs button{
+  border-radius:6px;
+  padding:6px 8px;
+  font-size:10px;
+}
+.market-pos-practical .market-group-tabs button.active{
+  background:#f97316;
+  border-color:#f97316;
+  color:#fff;
+}
+.market-pos-practical .market-sale-products{
+  display:grid;
+  flex:1 1 auto;
+  min-height:170px;
+  max-height:none;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-auto-rows:minmax(92px,auto);
+  gap:6px;
+  align-content:start;
+  overflow-y:auto;
+  border-top:0;
+  padding:1px 2px 4px;
+  scrollbar-width:thin;
+}
+.market-pos-practical .market-sale-products>button{
+  display:grid;
+  min-width:0;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:1fr auto;
+  gap:6px;
+  align-items:end;
+  border:1px solid #dbe4ef;
+  border-left:3px solid #94a3b8;
+  border-radius:9px;
+  padding:9px;
+  background:#fff;
+}
+.market-pos-practical .market-sale-products>button:hover{
+  border-color:#fb923c;
+  border-left-color:#f97316;
+  background:#fffaf5;
+}
+.market-pos-practical .market-sale-products>button:active{
+  transform:scale(.985);
+}
+.market-pos-practical .market-sale-products>button.is-critical{
+  border-left-color:#ef4444;
+}
+.market-pos-practical .market-sale-products>button>span{
+  grid-column:1/-1;
+  align-self:start;
+}
+.market-pos-practical .market-sale-products strong{
+  overflow:hidden;
+  color:#0f172a;
+  font-size:12px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.market-pos-practical .market-sale-products small{
+  overflow:hidden;
+  margin-top:4px;
+  font-size:9px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.market-pos-practical .market-sale-products b{
+  align-self:center;
+  color:#c2410c;
+  font-size:12px;
+}
+.market-pos-practical .market-sale-products i{
+  width:27px;
+  height:27px;
+  align-self:center;
+  border-radius:7px;
+  background:#0f172a;
+  color:#fff;
+}
+.market-checkout-heading{
+  margin:-12px -12px 8px!important;
+  padding:10px 12px;
+  border-radius:11px 11px 0 0;
+  background:#0f172a;
+  color:#fff;
+}
+.market-checkout-heading span{
+  color:#94a3b8;
+}
+.market-checkout-heading h2{
+  color:#fff;
+}
+.market-checkout-heading>strong{
+  color:#fb923c;
+  font-size:24px!important;
+}
+.market-pos-practical .market-park-toolbar{
+  flex:0 0 auto;
+  justify-content:flex-start;
+  margin:0 0 6px;
+}
+.market-pos-practical .market-park-toolbar .market-clear-cart{
+  margin-left:auto;
+  border-color:#fecaca;
+  color:#b91c1c;
+  background:#fef2f2;
+}
+.market-pos-practical .market-cart-empty{
+  display:flex;
+  flex:1 1 auto;
+  min-height:180px;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:5px;
+  border:1px dashed #cbd5e1;
+  border-radius:9px;
+  background:#f8fafc;
+}
+.market-pos-practical .market-cart-empty strong{
+  color:#334155;
+  font-size:14px;
+}
+.market-pos-practical .market-cart-empty span{
+  color:#94a3b8;
+  font-size:10px;
+}
+.market-pos-practical .market-cart-table{
+  flex:1 1 auto;
+  min-height:180px;
+  max-height:none;
+  overflow:auto;
+  border:1px solid #e2e8f0;
+  border-radius:8px;
+  scrollbar-width:thin;
+}
+.market-pos-practical .market-cart-table table{
+  min-width:560px;
+}
+.market-pos-practical .market-cart-table thead{
+  position:sticky;
+  z-index:2;
+  top:0;
+}
+.market-pos-practical .market-cart-table th{
+  padding:7px;
+  background:#f1f5f9;
+  font-size:9px;
+}
+.market-pos-practical .market-cart-table td{
+  padding:7px;
+  font-size:11px;
+}
+.market-pos-practical .market-quantity-control{
+  grid-template-columns:27px 52px 27px;
+}
+.market-pos-practical .market-quantity-control button{
+  width:27px;
+  height:28px;
+}
+.market-pos-practical .market-quantity-control input{
+  width:52px;
+  height:28px;
+}
+.market-pos-practical .market-cart-discount{
+  flex:0 0 auto;
+  margin-top:6px;
+  padding:6px 0;
+}
+.market-pos-practical .market-receipt-preference{
+  flex:0 0 auto;
+  margin-top:6px;
+}
+.market-pos-practical .market-payment-buttons{
+  flex:0 0 auto;
+  margin-top:7px;
+}
+.market-pos-practical .market-payment-buttons button{
+  min-height:50px;
+  padding:8px 5px;
+}
+.market-pos-practical>.market-checkout>.market-note{
+  flex:0 0 auto;
+  margin:5px 0 0;
+  font-size:9px;
+}
+
+@media(max-width:1100px){
+  .market-pos-practical{
+    grid-template-columns:1fr;
+  }
+  .market-pos-practical>.market-card{
+    height:auto;
+    min-height:0;
+    max-height:none;
+  }
+  .market-pos-practical .market-catalog{
+    min-height:570px;
+  }
+  .market-pos-practical .market-checkout{
+    position:static;
+    min-height:560px;
+    max-height:none;
+    overflow:visible;
+  }
+  .market-pos-practical .market-sale-products{
+    max-height:390px;
+  }
+  .market-pos-practical .market-cart-table{
+    max-height:330px;
+  }
+}
+
+@media(max-width:640px){
+  .market-pos-practical .market-sale-scan{
+    grid-template-columns:1fr;
+  }
+  .market-pos-practical .market-sale-amount{
+    grid-template-columns:64px 1fr;
+  }
+  .market-pos-practical .market-sale-add{
+    width:100%;
+  }
+  .market-pos-practical .market-sale-products{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-auto-rows:minmax(100px,auto);
+  }
+  .market-pos-practical .market-receipt-preference{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .market-pos-practical .market-payment-buttons button{
+    min-height:55px;
+  }
+}
+
+@media(max-width:420px){
+  .market-pos-practical .market-sale-products{
+    grid-template-columns:1fr;
+  }
+  .market-pos-practical .market-park-toolbar{
+    flex-wrap:wrap;
+  }
+  .market-pos-practical .market-park-toolbar .market-clear-cart{
+    margin-left:0;
+  }
+}
