@@ -16375,7 +16375,9 @@ Toplam Ciro: {toplam}
           <button
             type="button"
             onClick={() => setSolMenuAcik(true)}
-            style={styles.sidebarHamburgerFixed}
+            style={activeTab === 'market'
+              ? { ...styles.sidebarHamburgerFixed, ...styles.marketSidebarHamburger }
+              : styles.sidebarHamburgerFixed}
             aria-label="Menüyü aç"
           >
             <span style={styles.sidebarHamburgerLine}></span>
@@ -16748,7 +16750,9 @@ Toplam Ciro: {toplam}
           </div>
 
           {/* MAIN */}
-          <div style={isMobile ? styles.mainContentMobile : styles.mainContentFull}>
+          <div style={activeTab === 'market'
+            ? (isMobile ? styles.marketMainContentMobile : styles.marketMainContentFull)
+            : (isMobile ? styles.mainContentMobile : styles.mainContentFull)}>
             {activeTab !== 'market' && <div
               style={{
                 backgroundColor: '#ffffff',
@@ -16797,7 +16801,7 @@ Toplam Ciro: {toplam}
             {activeTab !== 'market' && rehberGizli ? (
               <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideShowBtn}>💡 Ekran rehberini göster</button>
             ) : null}
-            {aktifKullaniciLisansRozeti && ['Yaklaşıyor', 'Ödeme Gecikti', 'Ödeme Bekliyor'].includes(aktifKullaniciLisansRozeti.etiket) && (
+            {activeTab !== 'market' && aktifKullaniciLisansRozeti && ['Yaklaşıyor', 'Ödeme Gecikti', 'Ödeme Bekliyor'].includes(aktifKullaniciLisansRozeti.etiket) && (
               <div style={{ backgroundColor: aktifKullaniciLisansRozeti.zemin, color: aktifKullaniciLisansRozeti.renk, border: `1px solid ${aktifKullaniciLisansRozeti.renk}22`, borderRadius: '16px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <strong>💳 Lisans uyarısı: {aktifKullaniciLisansRozeti.etiket}</strong>
@@ -24378,6 +24382,15 @@ const styles = {
     backdropFilter: 'blur(16px)',
   },
 
+  marketSidebarHamburger: {
+    left: '6px',
+    top: '5px',
+    width: '38px',
+    height: '38px',
+    gap: '5px',
+    borderRadius: '10px',
+  },
+
   sidebarHamburgerLine: {
     width: '28px',
     height: '4px',
@@ -24438,6 +24451,15 @@ const styles = {
     boxSizing: 'border-box',
     minWidth: 0,
     width: '100%',
+  },
+
+  marketMainContentFull: {
+    flex: 1,
+    width: '100%',
+    minWidth: 0,
+    padding: '0 3px 4px',
+    overflowY: 'auto',
+    boxSizing: 'border-box',
   },
 
   dashboardLayout: {
@@ -24570,6 +24592,16 @@ const styles = {
     overflowX: 'hidden',
     boxSizing: 'border-box',
     minWidth: 0,
+  },
+
+  marketMainContentMobile: {
+    width: '100%',
+    flex: '0 0 auto',
+    minWidth: 0,
+    padding: 0,
+    overflowY: 'visible',
+    overflowX: 'hidden',
+    boxSizing: 'border-box',
   },
 
   posLayout: {

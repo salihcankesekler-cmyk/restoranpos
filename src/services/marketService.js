@@ -700,11 +700,12 @@ export async function marketSatisFisiniKuyrugaEkle(restaurantId, satis, icerikTe
   const { data, error } = await supabase.from('yazdirma_kuyrugu').insert([{
     restaurant_id: restaurantId,
     yazici_tipi: 'adisyon',
-    fis_tipi: 'hesap',
-    baslik: 'Market Satış Fişi',
+    fis_tipi: satis?.on_fis ? 'adisyon' : 'hesap',
+    baslik: satis?.on_fis ? 'Market Ön Fiş' : 'Market Satış Fişi',
     icerik_text: temizIcerik,
     payload_json: {
       modul: 'market',
+      on_fis: Boolean(satis?.on_fis),
       satis_id: satis?.id || null,
       odeme_tipi: satis?.odeme_tipi || null,
       toplam_tutar: Number(satis?.toplam_tutar || 0),
