@@ -100,6 +100,7 @@ export async function marketGrubuKaydet(restaurantId, grup) {
   const payload = {
     restaurant_id: restaurantId,
     grup_adi: String(grup.grupAdi || '').trim(),
+    kdv_orani: Number(grup.kdvOrani ?? 20),
     satis_ekraninda_goster: Boolean(grup.satisEkranindaGoster),
     sira: Number(grup.sira || 0),
   };
@@ -365,7 +366,14 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     toplam_tutar: Number(k.adet) * Number(k.satis_fiyati),
   }))).select();
   if (kalemError) throw marketHatasi(kalemError);
-  await Promise.all(sepet.map(async kalem => {
+  const stokToplamlari = sepet.reduce((toplamlar, kalem) => {
+    const urunId = String(kalem.id);
+    const mevcut = toplamlar.get(urunId) || { ...kalem, adet: 0 };
+    mevcut.adet += Number(kalem.adet || 0);
+    toplamlar.set(urunId, mevcut);
+    return toplamlar;
+  }, new Map());
+  await Promise.all(Array.from(stokToplamlari.values()).map(async kalem => {
     const yeniStok = Number(kalem.stok_miktari || 0) - Number(kalem.adet);
     const { error } = await supabase.from('market_urunleri')
       .update({ stok_miktari: yeniStok })
