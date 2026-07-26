@@ -50,7 +50,16 @@ export default function App() {
 function IntegraApp() {
   const kayitliUser = (() => {
     try {
-      return JSON.parse(localStorage.getItem('integra_user') || 'null');
+      const kayitliKullanici = JSON.parse(localStorage.getItem('integra_user') || 'null');
+
+      // Süper admin rolü tarayıcı kaydından geri yüklenmez.
+      // Bu rol yalnızca Supabase Auth oturumu ve sunucu tarafındaki gizli yetki listesiyle doğrulanır.
+      if (kayitliKullanici?.role === 'super_admin') {
+        localStorage.removeItem('integra_user');
+        return null;
+      }
+
+      return kayitliKullanici;
     } catch {
       return null;
     }
@@ -71,9 +80,7 @@ function IntegraApp() {
   const baslangicTab =
     kayitliUser?.role === 'waiter'
       ? 'masalar'
-      : kayitliUser?.role === 'super_admin'
-        ? (['super_admin', 'admin_basari', 'admin_lisans', 'admin_moduller', 'admin_destek'].includes(kayitliActiveTab) ? kayitliActiveTab : 'super_admin')
-        : kayitliActiveTab || 'raporlar';
+      : kayitliActiveTab || 'raporlar';
 
   // müşterinin QR menü linkiyle siteye girdiğini yakalayan kod
   const qrMenuLinkRestaurantId = (() => {
@@ -5306,50 +5313,46 @@ Toplam Ciro: {toplam}
   };
 
 
-    // login
-  // kullanıcı, garson ve süper admin giriş işlemini yöneten kod
+  // Süper admin yetkisini yalnızca sunucu tarafındaki gizli Auth kullanıcı listesi doğrular.
+  const superAdminYetkisiniDogrula = async () => {
+    const { data, error } = await supabase.rpc('integra_super_admin_mi');
+
+    if (error) {
+      console.error('Süper admin yetkisi doğrulanamadı:', error);
+      return false;
+    }
+
+    return data === true;
+  };
+
+  // Süper adminin e-posta adresini veya başka bir giriş bilgisini tarayıcı kaydına yazmadan oturumu açar.
+  const superAdminOturumunuAc = (authKullanici) => {
+    const superAdminKullanici = {
+      id: authKullanici?.id || 'supabase_super_admin',
+      restaurant: 'Integra Yönetim',
+      restaurantId: 'super_admin',
+      role: 'super_admin',
+      durum: 'Aktif',
+    };
+
+    localStorage.removeItem('integra_user');
+    localStorage.setItem('integra_screen', 'dashboard');
+    localStorage.setItem('integra_activeTab', 'super_admin');
+
+    setEmail('');
+    setPassword('');
+    setUser(superAdminKullanici);
+    setScreen('dashboard');
+    setActiveTab('super_admin');
+  };
+
+  // login
+  // kullanıcı, personel ve güvenli süper admin giriş işlemini yöneten kod
   const handleLogin = async (e) => {
     e.preventDefault();
 
     if (!email || !password) {
       alert('Lütfen e-posta ve şifre girin.');
-      return;
-    }
-
-    // Super admin demo girişi
-    if (email === 'admin@integra.com' && password === 'admin123') {
-      const superAdminKullanici = {
-        id: 'super_admin',
-        email: 'admin@integra.com',
-        restaurant: 'Integra Admin',
-        restaurantId: 'super_admin',
-        role: 'super_admin',
-        durum: 'Aktif',
-      };
-
-      localStorage.setItem('integra_user', JSON.stringify(superAdminKullanici));
-      localStorage.setItem('integra_screen', 'dashboard');
-      localStorage.setItem('integra_activeTab', 'super_admin');
-
-      setUser(superAdminKullanici);
-      setScreen('dashboard');
-      setActiveTab('super_admin');
-
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('*')
-        .order('id', { ascending: true });
-
-      if (!error && data) {
-        const temizListe = (Array.isArray(data) ? data : []).map(restoranSatiriniHazirla);
-
-        setRestoranlar(temizListe);
-        if (typeof adminBildirimleriniSupabasedenCek === 'function') await adminBildirimleriniSupabasedenCek();
-        if (typeof destekTalepleriniSupabasedenCek === 'function') await destekTalepleriniSupabasedenCek();
-      } else {
-        console.error('Admin restoran listesi çekilemedi:', error);
-      }
-
       return;
     }
 
@@ -5365,6 +5368,11 @@ Toplam Ciro: {toplam}
     if (authGirisData?.user) {
       authKullanici = authGirisData.user;
       authOturumuVar = Boolean(authGirisData.session);
+
+      if (await superAdminYetkisiniDogrula()) {
+        superAdminOturumunuAc(authKullanici);
+        return;
+      }
     }
 
     const { data, error } = await supabase
@@ -5377,6 +5385,13 @@ Toplam Ciro: {toplam}
     if (error || !data) {
       console.error('Giriş hatası:', error);
       alert('E-posta veya şifre hatalı.');
+      return;
+    }
+
+    // Veritabanındaki metin rolü tek başına süper admin yetkisi veremez.
+    if (data.rol === 'super_admin') {
+      await supabase.auth.signOut();
+      alert('Süper admin yetkisi güvenli oturum tarafından doğrulanamadı.');
       return;
     }
 
@@ -5541,11 +5556,6 @@ Toplam Ciro: {toplam}
 
     if (yeniSifre !== yeniSifreTekrar) {
       alert('Yeni şifreler birbiriyle aynı değil.');
-      return;
-    }
-
-    if (temizEmail === 'admin@integra.com') {
-      alert('Süper admin şifresi güvenlik için bu ekrandan değiştirilemez.');
       return;
     }
 
@@ -14427,6 +14437,28 @@ Toplam Ciro: {toplam}
 
     localStorage.setItem(fisAyarlariLocalKey(aktifRestaurantId), JSON.stringify(fisAyarlari));
   }, [fisAyarlari, user?.id, user?.restaurantId, user?.parentRestaurantId, user?.role]);
+
+  // Sayfa yenilendiğinde süper admin rolünü localStorage'dan değil, geçerli Supabase oturumundan geri yükler.
+  useEffect(() => {
+    let kontrolAktif = true;
+
+    const superAdminOturumunuGeriYukle = async () => {
+      const { data: oturumData, error: oturumError } = await supabase.auth.getSession();
+
+      if (oturumError || !oturumData?.session?.user || !kontrolAktif) return;
+
+      const yetkili = await superAdminYetkisiniDogrula();
+      if (!kontrolAktif || !yetkili) return;
+
+      superAdminOturumunuAc(oturumData.session.user);
+    };
+
+    superAdminOturumunuGeriYukle();
+
+    return () => {
+      kontrolAktif = false;
+    };
+  }, []);
 
   // sayfa yenilenince oturum verilerini Supabase'den tekrar yükleyen kod
   useEffect(() => {
