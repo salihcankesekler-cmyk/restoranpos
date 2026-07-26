@@ -104,6 +104,7 @@ const authKullanicisiniHazirla = async (
     metadata,
     ownerId = null,
     personelId = null,
+    mevcutAuthKullanicisiniBagla = false,
   }: {
     mevcutAuthUserId?: string | null;
     email: string;
@@ -111,6 +112,7 @@ const authKullanicisiniHazirla = async (
     metadata: Record<string, unknown>;
     ownerId?: unknown;
     personelId?: unknown;
+    mevcutAuthKullanicisiniBagla?: boolean;
   },
 ) => {
   let authUser = null;
@@ -125,6 +127,10 @@ const authKullanicisiniHazirla = async (
   }
 
   if (authUser) {
+    if (!mevcutAuthUserId && !mevcutAuthKullanicisiniBagla) {
+      throw new Error('Bu e-posta Supabase Auth üzerinde zaten kullanılıyor.');
+    }
+
     if (await superAdminAuthKullanicisiMi(adminClient, authUser.id)) {
       throw new Error('Bu e-posta güvenlik nedeniyle işletme hesabında kullanılamaz.');
     }
@@ -417,6 +423,7 @@ serve(async req => {
             restaurant_id: owner.id,
           },
           ownerId: owner.id,
+          mevcutAuthKullanicisiniBagla: true,
         });
 
         const { error } = await adminClient
@@ -506,6 +513,7 @@ serve(async req => {
             personel_id: hedefPersonel.id,
           },
           personelId: hedefPersonel.id,
+          mevcutAuthKullanicisiniBagla: true,
         });
 
         const { error: personelGuncellemeError } = await adminClient
