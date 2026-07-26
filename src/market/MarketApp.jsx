@@ -106,6 +106,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   const [satisAdedi, setSatisAdedi] = useState('1');
   const [satisArama, setSatisArama] = useState('');
   const [sepet, setSepet] = useState([]);
+  const [genelIndirim, setGenelIndirim] = useState({ tur: 'yuzde', deger: '' });
+  const [urunIndirimFormu, setUrunIndirimFormu] = useState(null);
   const [satisGrubu, setSatisGrubu] = useState('');
   const [satisCariId, setSatisCariId] = useState('');
   const [fiyatBekleyenUrun, setFiyatBekleyenUrun] = useState(null);
@@ -222,6 +224,26 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     });
   }, [aktifSatisGrubu, satisArama, urunler]);
 
+  const sepetToplamlari = useMemo(() => {
+    const brutToplam = sepet.reduce((toplam, kalem) =>
+      toplam + Number(kalem.adet || 0) * Number(kalem.liste_fiyati ?? kalem.satis_fiyati ?? 0), 0);
+    const araToplam = sepet.reduce((toplam, kalem) =>
+      toplam + Number(kalem.adet || 0) * Number(kalem.satis_fiyati || 0), 0);
+    const minimumNetToplam = sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet || 0) * 0.01, 0);
+    const istenenIndirim = Number(genelIndirim.deger || 0);
+    const hesaplananGenelIndirim = genelIndirim.tur === 'yuzde'
+      ? araToplam * Math.min(Math.max(istenenIndirim, 0), 99.99) / 100
+      : Math.max(istenenIndirim, 0);
+    const genelIndirimTutari = Math.min(hesaplananGenelIndirim, Math.max(araToplam - minimumNetToplam, 0));
+    return {
+      brutToplam,
+      urunIndirimTutari: Math.max(brutToplam - araToplam, 0),
+      araToplam,
+      genelIndirimTutari,
+      netToplam: Math.max(araToplam - genelIndirimTutari, 0),
+    };
+  }, [genelIndirim, sepet]);
+
   const filtreliEtiketUrunleri = useMemo(() => {
     const metin = etiketArama.trim().toLocaleLowerCase('tr-TR');
     if (!metin) return urunler;
@@ -311,6 +333,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       satisAdedi: secilenSatislar.length,
       urunAdedi,
       ortalamaSepet: secilenSatislar.length ? ciro / secilenSatislar.length : 0,
+      indirimToplami: secilenSatislar.reduce((toplam, satis) => toplam + Number(satis.indirim_toplami || 0), 0),
       iadeToplami: secilenSatislar.reduce((toplam, satis) => toplam + Number(satis.iade_toplami || 0), 0),
       iptalAdedi: secilenSatislar.filter(satis => satis.durum === 'İptal').length,
       tahminiMaliyet,
@@ -497,7 +520,14 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     const mevcut = sepet.find(kalem => sepetSatirAnahtari(kalem) === String(satirId));
     setSepet(prev => mevcut
       ? prev.map(kalem => sepetSatirAnahtari(kalem) === String(satirId) ? { ...kalem, adet: Number(kalem.adet) + eklenecekAdet } : kalem)
-      : [...prev, { ...urun, adet: eklenecekAdet, satir_id: String(satirId) }]);
+      : [...prev, {
+        ...urun,
+        adet: eklenecekAdet,
+        satir_id: String(satirId),
+        liste_fiyati: Number(urun.liste_fiyati ?? urun.satis_fiyati ?? 0),
+        indirim_turu: '',
+        indirim_degeri: 0,
+      }]);
   };
 
   const sepetAdediniDegistir = (satirId, yeniAdet) => {
@@ -505,6 +535,40 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     setSepet(prev => adet <= 0
       ? prev.filter(kalem => sepetSatirAnahtari(kalem) !== String(satirId))
       : prev.map(kalem => sepetSatirAnahtari(kalem) === String(satirId) ? { ...kalem, adet } : kalem));
+  };
+
+  const sepetSatiriniSil = satirId => {
+    const yeniSepet = sepet.filter(kalem => sepetSatirAnahtari(kalem) !== String(satirId));
+    setSepet(yeniSepet);
+    setUrunIndirimFormu(null);
+    if (!yeniSepet.length) setGenelIndirim({ tur: 'yuzde', deger: '' });
+  };
+
+  const urunIndiriminiUygula = () => {
+    if (!urunIndirimFormu) return;
+    const deger = Math.max(Number(urunIndirimFormu.deger || 0), 0);
+    setSepet(prev => prev.map(kalem => {
+      if (sepetSatirAnahtari(kalem) !== String(urunIndirimFormu.satirId)) return kalem;
+      const listeFiyati = Number(kalem.liste_fiyati ?? kalem.satis_fiyati ?? 0);
+      const hesaplananIndirim = urunIndirimFormu.tur === 'yuzde'
+        ? listeFiyati * Math.min(deger, 99.99) / 100
+        : deger;
+      const indirimTutari = Math.min(hesaplananIndirim, Math.max(listeFiyati - 0.01, 0));
+      return {
+        ...kalem,
+        satis_fiyati: Math.max(listeFiyati - indirimTutari, 0),
+        indirim_turu: urunIndirimFormu.tur,
+        indirim_degeri: deger,
+      };
+    }));
+    setUrunIndirimFormu(null);
+  };
+
+  const urunIndiriminiKaldir = satirId => {
+    setSepet(prev => prev.map(kalem => sepetSatirAnahtari(kalem) === String(satirId)
+      ? { ...kalem, satis_fiyati: Number(kalem.liste_fiyati || 0), indirim_turu: '', indirim_degeri: 0 }
+      : kalem));
+    setUrunIndirimFormu(null);
   };
 
   const urunuFiyatKontrolluEkle = (urun, adet) => {
@@ -552,7 +616,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       const islemImzasi = JSON.stringify({
         odemeTipi,
         satisCariId,
-        kalemler: satilanKalemler.map(kalem => [kalem.id, kalem.adet, kalem.satis_fiyati]),
+        genelIndirim,
+        kalemler: satilanKalemler.map(kalem => [kalem.id, kalem.adet, kalem.liste_fiyati, kalem.satis_fiyati]),
       });
       if (satisIslemAnahtariRef.current.imza !== islemImzasi) {
         satisIslemAnahtariRef.current = {
@@ -560,20 +625,24 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
           imza: islemImzasi,
         };
       }
-      const toplam = satilanKalemler.reduce((tutar, kalem) => tutar + Number(kalem.adet) * Number(kalem.satis_fiyati), 0);
+      const beklenenToplam = sepetToplamlari.netToplam;
       const yeniSatis = await marketSatisiKaydet(
         restaurantId,
         satilanKalemler,
         odemeTipi,
         satisCariId,
-        satisIslemAnahtariRef.current.anahtar
+        satisIslemAnahtariRef.current.anahtar,
+        genelIndirim
       );
+      const toplam = Number(yeniSatis.toplam_tutar ?? beklenenToplam);
       const satilanMiktarlar = satilanKalemler.reduce((toplamlar, kalem) => {
         const urunId = String(kalem.id);
         toplamlar.set(urunId, Number(toplamlar.get(urunId) || 0) + Number(kalem.adet || 0));
         return toplamlar;
       }, new Map());
       setSepet([]);
+      setGenelIndirim({ tur: 'yuzde', deger: '' });
+      setUrunIndirimFormu(null);
       satisIslemAnahtariRef.current = { anahtar: '', imza: '' };
       setUrunler(prev => prev.map(urun => {
         const satilanMiktar = Number(satilanMiktarlar.get(String(urun.id)) || 0);
@@ -834,10 +903,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     };
     return {
       baslik: raporSekmesi === 'gun_sonu' ? `Gün Sonu ${raporTarihi}` : 'Satış Fişleri',
-      kolonlar: ['Tarih', 'Cari', 'Ödeme', 'Durum', 'Toplam', 'İade', 'Net'],
+      kolonlar: ['Tarih', 'Cari', 'Ödeme', 'Durum', 'Brüt', 'İndirim', 'Satış Net', 'İade', 'Kalan Net'],
       satirlar: rapor.satislar.map(satis => [
         new Date(satis.created_at).toLocaleString('tr-TR'), satis.cari_adi || '',
-        satis.odeme_tipi, satis.durum || 'Tamamlandı', Number(satis.toplam_tutar || 0).toFixed(2),
+        satis.odeme_tipi, satis.durum || 'Tamamlandı', Number(satis.brut_toplam || satis.toplam_tutar || 0).toFixed(2),
+        Number(satis.indirim_toplami || 0).toFixed(2), Number(satis.toplam_tutar || 0).toFixed(2),
         Number(satis.iade_toplami || 0).toFixed(2), Number(satis.raporToplam || 0).toFixed(2),
       ]),
     };
@@ -906,6 +976,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
             <label>Barkod<input ref={barkodRef} value={satisBarkodu} onChange={event => setSatisBarkodu(event.target.value)} placeholder="Adedi yazın, barkodu okutun" /></label>
             <button className="market-primary" type="submit">Sepete Ekle</button>
           </form>
+          <div className="market-sale-cari">
+            <label className="market-field">Cari (isteğe bağlı)<select value={satisCariId} onChange={event => setSatisCariId(event.target.value)}><option value="">Cari seçmeden satış</option>{cariler.map(cari => <option value={cari.id} key={cari.id}>{cari.ad} · {para(cari.bakiye)}</option>)}</select></label>
+            {cariKayitAlani('satis')}
+            {cariOzeti(seciliSatisCarisi)}
+          </div>
           <input className="market-sale-search" value={satisArama} onChange={event => setSatisArama(event.target.value)} placeholder="Ürün adı veya barkod ile ara" />
           <div className="market-group-tabs">
             {gorunenGruplar.map(grup => <button type="button" key={grup.id} className={String(aktifSatisGrubu) === String(grup.id) ? 'active' : ''} onClick={() => setSatisGrubu(grup.id)}>{grup.grup_adi}</button>)}
@@ -921,18 +996,22 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
           </div>
         </div>
         <div className="market-card market-checkout">
-          <div className="market-heading"><div><span>SEPET VE ÖDEME</span><h2>{sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet), 0)} ürün</h2></div><strong>{para(sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet) * Number(kalem.satis_fiyati), 0))}</strong></div>
+          <div className="market-heading"><div><span>SEPET VE ÖDEME</span><h2>{sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet), 0)} ürün</h2></div><strong>{para(sepetToplamlari.netToplam)}</strong></div>
           {!sepet.length ? <div className="market-cart-empty">Sepet boş. Soldan ürüne dokunarak satışa ekleyin.</div> :
             <div className="market-table market-cart-table"><table><thead><tr><th>Ürün</th><th>Adet</th><th>Toplam</th><th></th></tr></thead><tbody>
               {sepet.map(kalem => {
                 const satirId = sepetSatirAnahtari(kalem);
-                return <tr key={satirId}><td><strong>{kalem.urun_adi}</strong><small>{para(kalem.satis_fiyati)}</small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - 1)}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step="0.001" value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + 1)}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => setSepet(prev => prev.filter(item => sepetSatirAnahtari(item) !== satirId))}>×</button></td></tr>;
+                const indirimli = Number(kalem.liste_fiyati ?? kalem.satis_fiyati) > Number(kalem.satis_fiyati);
+                const formAcik = String(urunIndirimFormu?.satirId) === satirId;
+                return <Fragment key={satirId}>
+                  <tr><td><strong>{kalem.urun_adi}</strong><small>{indirimli && <del>{para(kalem.liste_fiyati)}</del>} {para(kalem.satis_fiyati)}</small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - 1)}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step="0.001" value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + 1)}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><div className="market-cart-actions"><button type="button" title="Ürün indirimi" onClick={() => setUrunIndirimFormu(formAcik ? null : { satirId, tur: kalem.indirim_turu || 'yuzde', deger: kalem.indirim_degeri || '' })}>%</button><button className="market-remove" type="button" onClick={() => sepetSatiriniSil(satirId)}>×</button></div></td></tr>
+                  {formAcik && <tr className="market-discount-row"><td colSpan="4"><div className="market-product-discount"><label>İndirim türü<select value={urunIndirimFormu.tur} onChange={event => setUrunIndirimFormu({ ...urunIndirimFormu, tur: event.target.value })}><option value="yuzde">Yüzde (%)</option><option value="tutar">Birim başına TL</option></select></label><label>Değer<input type="number" min="0" max={urunIndirimFormu.tur === 'yuzde' ? 99.99 : Math.max(Number(kalem.liste_fiyati || 0) - 0.01, 0)} step="0.01" value={urunIndirimFormu.deger} onChange={event => setUrunIndirimFormu({ ...urunIndirimFormu, deger: event.target.value })} autoFocus /></label><button className="market-primary" type="button" onClick={urunIndiriminiUygula}>Uygula</button>{indirimli && <button className="market-remove" type="button" onClick={() => urunIndiriminiKaldir(satirId)}>Kaldır</button>}</div></td></tr>}
+                </Fragment>;
               })}
             </tbody></table></div>}
-          <div className="market-checkout-cari">
-            <label className="market-field">Cari (isteğe bağlı)<select value={satisCariId} onChange={event => setSatisCariId(event.target.value)}><option value="">Cari seçmeden satış</option>{cariler.map(cari => <option value={cari.id} key={cari.id}>{cari.ad} · {para(cari.bakiye)}</option>)}</select></label>
-            {cariKayitAlani('satis')}
-            {cariOzeti(seciliSatisCarisi)}
+          <div className="market-cart-discount">
+            <div className="market-cart-discount-fields"><label>Sepet indirimi<select value={genelIndirim.tur} onChange={event => setGenelIndirim({ ...genelIndirim, tur: event.target.value })}><option value="yuzde">Yüzde (%)</option><option value="tutar">Toplam TL</option></select></label><label>Değer<input type="number" min="0" max={genelIndirim.tur === 'yuzde' ? 99.99 : Math.max(sepetToplamlari.araToplam - 0.01, 0)} step="0.01" value={genelIndirim.deger} onChange={event => setGenelIndirim({ ...genelIndirim, deger: event.target.value })} placeholder="0" /></label></div>
+            <div className="market-cart-summary"><span>Brüt<strong>{para(sepetToplamlari.brutToplam)}</strong></span>{sepetToplamlari.urunIndirimTutari > 0 && <span>Ürün indirimi<strong>−{para(sepetToplamlari.urunIndirimTutari)}</strong></span>}{sepetToplamlari.genelIndirimTutari > 0 && <span>Sepet indirimi<strong>−{para(sepetToplamlari.genelIndirimTutari)}</strong></span>}<span className="total">Ödenecek<strong>{para(sepetToplamlari.netToplam)}</strong></span></div>
           </div>
           <div className="market-payment-buttons"><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
           <p className="market-note">Veresiye işlem için cari seçimi zorunludur. Nakit ve kart satışlarında cari seçimi isteğe bağlıdır.</p>
@@ -1211,6 +1290,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
               <article><span>Satış Sayısı</span><strong>{rapor.satisAdedi}</strong></article>
               <article><span>Satılan Ürün</span><strong>{rapor.urunAdedi}</strong></article>
               <article><span>Ortalama Sepet</span><strong>{para(rapor.ortalamaSepet)}</strong></article>
+              <article><span>Toplam İndirim</span><strong>{para(rapor.indirimToplami)}</strong></article>
               <article><span>İade Toplamı</span><strong>{para(rapor.iadeToplami)}</strong></article>
               <article><span>İptal Edilen Fiş</span><strong>{rapor.iptalAdedi}</strong></article>
             </div>
@@ -1270,18 +1350,21 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
 
         {raporSekmesi === 'fisler' && <div className="market-card">
           <div className="market-heading"><div><span>İŞLEM GEÇMİŞİ</span><h2>Son satışlar</h2></div><strong>{rapor.satisAdedi} satış · {iadeler.length} iade</strong></div>
-          {!rapor.satislar.length ? <p className="market-empty">Seçilen dönemde satış bulunmuyor.</p> : <div className="market-table"><table><thead><tr><th>Tarih / Saat</th><th>Cari</th><th>Ödeme</th><th>Durum</th><th>Toplam</th><th>Net</th><th></th></tr></thead><tbody>{rapor.satislar.slice(0, 100).map(satis => <Fragment key={satis.id}>
-            <tr><td>{new Date(satis.created_at).toLocaleString('tr-TR')}</td><td>{satis.cari_adi || 'Cari yok'}</td><td>{satis.odeme_tipi}</td><td>{satis.durum || 'Tamamlandı'}</td><td>{para(satis.toplam_tutar)}</td><td><strong>{para(satis.raporToplam)}</strong></td><td><button className="market-receipt-button" type="button" onClick={() => {
+          {!rapor.satislar.length ? <p className="market-empty">Seçilen dönemde satış bulunmuyor.</p> : <div className="market-table"><table><thead><tr><th>Tarih / Saat</th><th>Cari</th><th>Ödeme</th><th>Durum</th><th>Brüt</th><th>İndirim</th><th>Net</th><th></th></tr></thead><tbody>{rapor.satislar.slice(0, 100).map(satis => <Fragment key={satis.id}>
+            <tr><td>{new Date(satis.created_at).toLocaleString('tr-TR')}</td><td>{satis.cari_adi || 'Cari yok'}</td><td>{satis.odeme_tipi}</td><td>{satis.durum || 'Tamamlandı'}</td><td>{para(satis.brut_toplam || satis.toplam_tutar)}</td><td>{para(satis.indirim_toplami)}</td><td><strong>{para(satis.raporToplam)}</strong></td><td><button className="market-receipt-button" type="button" onClick={() => {
               setAcikSatisId(acikSatisId === satis.id ? '' : satis.id);
               setIadeAdetleri({});
               setIadeAciklama('');
             }}>{acikSatisId === satis.id ? 'Kapat' : 'Fişi Aç'}</button></td></tr>
-            {acikSatisId === satis.id && <tr className="market-receipt-row"><td colSpan="7"><div className="market-receipt">
+            {acikSatisId === satis.id && <tr className="market-receipt-row"><td colSpan="8"><div className="market-receipt">
               <div className="market-receipt-title"><span><strong>Satış fişi</strong><small>{new Date(satis.created_at).toLocaleString('tr-TR')} · {satis.odeme_tipi} · {satis.durum || 'Tamamlandı'}</small></span><b>{para(satis.toplam_tutar)}</b></div>
               {(satis.market_satis_kalemleri || []).map(kalem => {
                 const kalanAdet = Math.max(Number(kalem.adet || 0) - Number(kalem.iade_adedi || 0), 0);
-                return <div className="market-receipt-item" key={kalem.id}><span><strong>{kalem.urun_adi}</strong><small>{kalem.barkod}{Number(kalem.iade_adedi || 0) > 0 ? ` · ${kalem.iade_adedi} iade` : ''}</small></span><span>{kalem.adet} × {para(kalem.birim_fiyat)}</span><b>{para(kalem.toplam_tutar)}</b>{kalanAdet > 0 && <label className="market-return-qty">İade<input type="number" min="0" max={kalanAdet} step="0.001" value={iadeAdetleri[kalem.id] || ''} onChange={event => setIadeAdetleri(prev => ({ ...prev, [kalem.id]: event.target.value }))} /></label>}</div>;
+                const listeFiyati = Number(kalem.liste_fiyati || kalem.birim_fiyat || 0);
+                const indirimli = listeFiyati > Number(kalem.birim_fiyat || 0);
+                return <div className="market-receipt-item" key={kalem.id}><span><strong>{kalem.urun_adi}</strong><small>{kalem.barkod}{Number(kalem.iade_adedi || 0) > 0 ? ` · ${kalem.iade_adedi} iade` : ''}{indirimli ? ` · Liste ${para(listeFiyati)}` : ''}</small></span><span>{kalem.adet} × {para(kalem.birim_fiyat)}</span><b>{para(kalem.toplam_tutar)}</b>{kalanAdet > 0 && <label className="market-return-qty">İade<input type="number" min="0" max={kalanAdet} step="0.001" value={iadeAdetleri[kalem.id] || ''} onChange={event => setIadeAdetleri(prev => ({ ...prev, [kalem.id]: event.target.value }))} /></label>}</div>;
               })}
+              {Number(satis.indirim_toplami || 0) > 0 && <div className="market-receipt-discount-summary"><span>Brüt toplam</span><b>{para(satis.brut_toplam)}</b><span>Ürün indirimleri</span><b>−{para(satis.urun_indirim_toplami)}</b><span>Sepet indirimi</span><b>−{para(satis.genel_indirim_toplami)}</b></div>}
               <div className="market-receipt-total"><span>Net Toplam<small>{Number(satis.iade_toplami || 0) > 0 ? `${para(satis.iade_toplami)} iade edildi` : ''}</small></span><strong>{para(satis.raporToplam)}</strong></div>
               {satis.durum !== 'İptal' && <div className="market-return-actions"><input value={iadeAciklama} onChange={event => setIadeAciklama(event.target.value)} placeholder="İade / iptal açıklaması" /><button type="button" disabled={iadeIsleniyor} onClick={() => satisIadesiniKaydet(satis, false)}>Seçilenleri İade Et</button><button className="danger" type="button" disabled={iadeIsleniyor} onClick={() => satisIadesiniKaydet(satis, true)}>Satışı İptal Et</button></div>}
             </div></td></tr>}

@@ -411,13 +411,47 @@ export async function marketSayimiKaydet(restaurantId, sayim) {
   return baslik;
 }
 
-export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId = '', islemAnahtari = '') {
+export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId = '', islemAnahtari = '', indirim = {}) {
   await marketOturumunuDogrula();
   const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()
     || `00000000-0000-4000-8000-${String(Date.now()).slice(-12).padStart(12, '0')}`;
-  const { data: atomikSatis, error: atomikHata } = await supabase.rpc('market_satis_kaydet_atomik', {
+  const { data: indirimliAtomikSatis, error: indirimliAtomikHata } = await supabase.rpc('market_satis_kaydet_indirimli_atomik', {
     p_restaurant_id: Number(restaurantId),
     p_kalemler: sepet.map(kalem => ({
+      id: kalem.id,
+      adet: Number(kalem.adet),
+      liste_fiyati: Number(kalem.liste_fiyati ?? kalem.satis_fiyati),
+      satis_fiyati: Number(kalem.satis_fiyati),
+    })),
+    p_odeme_tipi: odemeTipi,
+    p_cari_id: cariId ? String(cariId) : null,
+    p_islem_anahtari: guvenliIslemAnahtari,
+    p_indirim_turu: indirim.tur || 'yuzde',
+    p_indirim_degeri: Number(indirim.deger || 0),
+  });
+  if (!indirimliAtomikHata) return indirimliAtomikSatis;
+  const indirimliRpcEksik = ['42883', 'PGRST202'].includes(indirimliAtomikHata.code)
+    || String(indirimliAtomikHata.message || '').includes('market_satis_kaydet_indirimli_atomik');
+  if (!indirimliRpcEksik) throw marketHatasi(indirimliAtomikHata);
+
+  const araToplam = sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet) * Number(kalem.satis_fiyati), 0);
+  const minimumNetToplam = sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet) * 0.01, 0);
+  const indirimDegeri = Math.max(Number(indirim.deger || 0), 0);
+  const hesaplananGenelIndirim = indirim.tur === 'tutar'
+    ? indirimDegeri
+    : araToplam * Math.min(indirimDegeri, 99.99) / 100;
+  const genelIndirimTutari = Math.min(hesaplananGenelIndirim, Math.max(araToplam - minimumNetToplam, 0));
+  const sepetKaydi = sepet.map(kalem => {
+    const satirToplami = Number(kalem.adet) * Number(kalem.satis_fiyati);
+    const indirimPayi = araToplam > 0 ? genelIndirimTutari * satirToplami / araToplam : 0;
+    return {
+      ...kalem,
+      satis_fiyati: Number(kalem.adet) > 0 ? Math.max((satirToplami - indirimPayi) / Number(kalem.adet), 0.01) : 0,
+    };
+  });
+  const { data: atomikSatis, error: atomikHata } = await supabase.rpc('market_satis_kaydet_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_kalemler: sepetKaydi.map(kalem => ({
       id: kalem.id,
       adet: Number(kalem.adet),
       satis_fiyati: Number(kalem.satis_fiyati),
@@ -431,7 +465,7 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     || String(atomikHata.message || '').includes('market_satis_kaydet_atomik');
   if (!rpcEksik) throw marketHatasi(atomikHata);
 
-  const toplam = sepet.reduce((t, k) => t + Number(k.adet) * Number(k.satis_fiyati), 0);
+  const toplam = sepetKaydi.reduce((t, k) => t + Number(k.adet) * Number(k.satis_fiyati), 0);
   const secilenCariId = cariId ? String(cariId) : null;
   const { data: secilenCari } = secilenCariId
     ? await supabase.from('cari_musteriler').select('id, ad').eq('restaurant_id', restaurantId).eq('id', secilenCariId).maybeSingle()
@@ -445,7 +479,7 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
   }]).select().single();
   if (satisError) throw marketHatasi(satisError);
 
-  const { data: satisKalemleri, error: kalemError } = await supabase.from('market_satis_kalemleri').insert(sepet.map(k => ({
+  const { data: satisKalemleri, error: kalemError } = await supabase.from('market_satis_kalemleri').insert(sepetKaydi.map(k => ({
     restaurant_id: restaurantId,
     satis_id: satis.id,
     urun_id: k.id,
@@ -456,7 +490,7 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     toplam_tutar: Number(k.adet) * Number(k.satis_fiyati),
   }))).select();
   if (kalemError) throw marketHatasi(kalemError);
-  const stokToplamlari = sepet.reduce((toplamlar, kalem) => {
+  const stokToplamlari = sepetKaydi.reduce((toplamlar, kalem) => {
     const urunId = String(kalem.id);
     const mevcut = toplamlar.get(urunId) || { ...kalem, adet: 0 };
     mevcut.adet += Number(kalem.adet || 0);
