@@ -4,8 +4,17 @@ function marketHatasi(error) {
   if (!error) return null;
   const tabloEksik = error.code === '42P01' || error.code === '42703' || String(error.message || '').includes('schema cache');
   return new Error(tabloEksik
-    ? 'Market geliştirme tabloları eksik. Supabase SQL Editor içinde 20260726_market_groups_cari_invoices.sql dosyasını çalıştırın.'
+    ? 'Market operasyon tabloları eksik. Supabase SQL Editor içinde 20260726_market_operations_pack.sql dosyasını çalıştırın.'
     : error.message || 'Market işlemi tamamlanamadı.');
+}
+
+const opsiyonelTabloEksikMi = error =>
+  !error || ['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error.code)
+  || String(error.message || '').includes('schema cache');
+
+async function stokHareketiEkle(payload) {
+  const { error } = await supabase.from('market_stok_hareketleri').insert([payload]);
+  if (error && !opsiyonelTabloEksikMi(error)) throw marketHatasi(error);
 }
 
 async function marketOturumunuDogrula() {
@@ -75,15 +84,20 @@ async function cariHareketiniKaldir(restaurantId, cariId, kaynak, kaynakId) {
 }
 
 export async function marketVerileriniGetir(restaurantId) {
-  const [urunler, gruplar, faturalar, sayimlar, cariler, satislar] = await Promise.all([
+  const [urunler, gruplar, faturalar, sayimlar, cariler, satislar, stokHareketleri, fiyatGecmisi, vardiyalar, kasaHareketleri, iadeler] = await Promise.all([
     supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('urun_adi'),
     supabase.from('market_gruplari').select('*').eq('restaurant_id', restaurantId).order('sira').order('grup_adi'),
     supabase.from('market_alis_faturalari').select('*, market_alis_fatura_kalemleri(*)').eq('restaurant_id', restaurantId).order('fatura_tarihi', { ascending: false }).limit(50),
     supabase.from('market_sayimlari').select('*, market_sayim_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(20),
     supabase.from('cari_musteriler').select('id, ad, telefon, bakiye, not_metni, hareketler').eq('restaurant_id', restaurantId).order('ad'),
     supabase.from('market_satislari').select('*, market_satis_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(1000),
+    supabase.from('market_stok_hareketleri').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(1000),
+    supabase.from('market_fiyat_gecmisi').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(500),
+    supabase.from('market_kasa_vardiyalari').select('*').eq('restaurant_id', restaurantId).order('acilis_tarihi', { ascending: false }).limit(100),
+    supabase.from('market_kasa_hareketleri').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(500),
+    supabase.from('market_iadeleri').select('*, market_iade_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(500),
   ]);
-  const error = urunler.error || gruplar.error || faturalar.error || sayimlar.error || satislar.error;
+  const error = urunler.error || gruplar.error || faturalar.error || sayimlar.error || cariler.error || satislar.error;
   if (error) throw marketHatasi(error);
   return {
     urunler: urunler.data || [],
@@ -92,6 +106,11 @@ export async function marketVerileriniGetir(restaurantId) {
     sayimlar: sayimlar.data || [],
     cariler: cariler.data || [],
     satislar: satislar.data || [],
+    stokHareketleri: opsiyonelTabloEksikMi(stokHareketleri.error) ? [] : stokHareketleri.data || [],
+    fiyatGecmisi: opsiyonelTabloEksikMi(fiyatGecmisi.error) ? [] : fiyatGecmisi.data || [],
+    vardiyalar: opsiyonelTabloEksikMi(vardiyalar.error) ? [] : vardiyalar.data || [],
+    kasaHareketleri: opsiyonelTabloEksikMi(kasaHareketleri.error) ? [] : kasaHareketleri.data || [],
+    iadeler: opsiyonelTabloEksikMi(iadeler.error) ? [] : iadeler.data || [],
   };
 }
 
@@ -181,6 +200,8 @@ export async function marketUrunuKaydet(restaurantId, urun) {
     stok_miktari: Number(urun.stokMiktari || 0),
     minimum_stok: Number(urun.minimumStok || 0),
     raf_konumu: String(urun.rafKonumu || '').trim() || null,
+    son_kullanma_tarihi: urun.sonKullanmaTarihi || null,
+    lot_no: String(urun.lotNo || '').trim() || null,
     aktif: true,
   };
   const sorgu = urun.id
@@ -193,6 +214,13 @@ export async function marketUrunuKaydet(restaurantId, urun) {
 
 export async function marketUrunStokFiyatGuncelle(restaurantId, urunId, degerler) {
   await marketOturumunuDogrula();
+  const { data: onceki, error: oncekiError } = await supabase
+    .from('market_urunleri')
+    .select('id, stok_miktari')
+    .eq('id', urunId)
+    .eq('restaurant_id', restaurantId)
+    .single();
+  if (oncekiError) throw marketHatasi(oncekiError);
   const { data, error } = await supabase
     .from('market_urunleri')
     .update({
@@ -205,6 +233,20 @@ export async function marketUrunStokFiyatGuncelle(restaurantId, urunId, degerler
     .select()
     .single();
   if (error) throw marketHatasi(error);
+  const stokFarki = Number(data.stok_miktari || 0) - Number(onceki.stok_miktari || 0);
+  if (stokFarki !== 0) {
+    await stokHareketiEkle({
+      restaurant_id: restaurantId,
+      urun_id: urunId,
+      hareket_tipi: 'Manuel Düzeltme',
+      miktar: stokFarki,
+      onceki_stok: Number(onceki.stok_miktari || 0),
+      sonraki_stok: Number(data.stok_miktari || 0),
+      kaynak_tipi: 'manuel_duzeltme',
+      kaynak_id: urunId,
+      aciklama: String(degerler.aciklama || '').trim() || 'Ürün kartından stok düzeltmesi',
+    });
+  }
   return data;
 }
 
@@ -283,10 +325,25 @@ export async function marketAlisFaturasiKaydet(restaurantId, fatura) {
     if (urunGetirError) throw marketHatasi(urunGetirError);
     for (const urun of guncelUrunler || []) {
       const yeniKalem = fatura.kalemler.find(kalem => String(kalem.urunId) === String(urun.id));
-      const payload = { stok_miktari: Number(urun.stok_miktari || 0) + Number(miktarFarklari.get(String(urun.id)) || 0) };
+      const stokFarki = Number(miktarFarklari.get(String(urun.id)) || 0);
+      const yeniStok = Number(urun.stok_miktari || 0) + stokFarki;
+      const payload = { stok_miktari: yeniStok };
       if (yeniKalem) payload.alis_fiyati = Number(yeniKalem.alisFiyati || 0);
       const { error } = await supabase.from('market_urunleri').update(payload).eq('id', urun.id).eq('restaurant_id', restaurantId);
       if (error) throw marketHatasi(error);
+      if (stokFarki !== 0) {
+        await stokHareketiEkle({
+          restaurant_id: restaurantId,
+          urun_id: urun.id,
+          hareket_tipi: stokFarki > 0 ? 'Alış' : 'Alış Düzeltmesi',
+          miktar: stokFarki,
+          onceki_stok: Number(urun.stok_miktari || 0),
+          sonraki_stok: yeniStok,
+          kaynak_tipi: 'market_alis_faturasi',
+          kaynak_id: baslik.id,
+          aciklama: `${fatura.faturaNo || 'Numarasız'} alış faturası`,
+        });
+      }
     }
   }
 
@@ -331,16 +388,49 @@ export async function marketSayimiKaydet(restaurantId, sayim) {
   })));
   if (kalemError) throw marketHatasi(kalemError);
   for (const kalem of sayim.kalemler) {
+    const oncekiStok = Number(kalem.stok_miktari || 0);
+    const yeniStok = Number(kalem.sayilanMiktar || 0);
     const { error } = await supabase.from('market_urunleri')
-      .update({ stok_miktari: Number(kalem.sayilanMiktar) })
+      .update({ stok_miktari: yeniStok })
       .eq('id', kalem.id).eq('restaurant_id', restaurantId);
     if (error) throw marketHatasi(error);
+    if (oncekiStok !== yeniStok) {
+      await stokHareketiEkle({
+        restaurant_id: restaurantId,
+        urun_id: kalem.id,
+        hareket_tipi: 'Sayım Farkı',
+        miktar: yeniStok - oncekiStok,
+        onceki_stok: oncekiStok,
+        sonraki_stok: yeniStok,
+        kaynak_tipi: 'market_sayimi',
+        kaynak_id: baslik.id,
+        aciklama: sayim.sayimAdi,
+      });
+    }
   }
   return baslik;
 }
 
-export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId = '') {
+export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId = '', islemAnahtari = '') {
   await marketOturumunuDogrula();
+  const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()
+    || `00000000-0000-4000-8000-${String(Date.now()).slice(-12).padStart(12, '0')}`;
+  const { data: atomikSatis, error: atomikHata } = await supabase.rpc('market_satis_kaydet_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_kalemler: sepet.map(kalem => ({
+      id: kalem.id,
+      adet: Number(kalem.adet),
+      satis_fiyati: Number(kalem.satis_fiyati),
+    })),
+    p_odeme_tipi: odemeTipi,
+    p_cari_id: cariId ? String(cariId) : null,
+    p_islem_anahtari: guvenliIslemAnahtari,
+  });
+  if (!atomikHata) return atomikSatis;
+  const rpcEksik = ['42883', 'PGRST202'].includes(atomikHata.code)
+    || String(atomikHata.message || '').includes('market_satis_kaydet_atomik');
+  if (!rpcEksik) throw marketHatasi(atomikHata);
+
   const toplam = sepet.reduce((t, k) => t + Number(k.adet) * Number(k.satis_fiyati), 0);
   const secilenCariId = cariId ? String(cariId) : null;
   const { data: secilenCari } = secilenCariId
@@ -391,4 +481,71 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     });
   }
   return { ...satis, market_satis_kalemleri: satisKalemleri || [] };
+}
+
+export async function marketSatisIadeEt(restaurantId, satisId, kalemler, aciklama = '', tamIptal = false) {
+  await marketOturumunuDogrula();
+  const { data, error } = await supabase.rpc('market_satis_iade_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_satis_id: satisId,
+    p_kalemler: kalemler.map(kalem => ({
+      satis_kalem_id: kalem.satisKalemId,
+      adet: Number(kalem.adet),
+    })),
+    p_aciklama: String(aciklama || '').trim() || null,
+    p_tam_iptal: Boolean(tamIptal),
+  });
+  if (error) throw marketHatasi(error);
+  return data;
+}
+
+export async function marketKasaVardiyasiAc(restaurantId, acilisTutari, notMetni = '') {
+  await marketOturumunuDogrula();
+  const { data, error } = await supabase.from('market_kasa_vardiyalari').insert([{
+    restaurant_id: restaurantId,
+    acilis_tutari: Number(acilisTutari || 0),
+    not_metni: String(notMetni || '').trim() || null,
+    durum: 'Açık',
+  }]).select().single();
+  if (error) throw marketHatasi(error);
+  return data;
+}
+
+export async function marketKasaHareketiKaydet(restaurantId, vardiyaId, hareket) {
+  await marketOturumunuDogrula();
+  const tutar = Number(hareket.tutar || 0);
+  if (!vardiyaId) throw new Error('Önce kasa vardiyası açın.');
+  if (!Number.isFinite(tutar) || tutar <= 0) throw new Error('Sıfırdan büyük bir tutar girin.');
+  const { data, error } = await supabase.from('market_kasa_hareketleri').insert([{
+    restaurant_id: restaurantId,
+    vardiya_id: vardiyaId,
+    hareket_tipi: hareket.hareketTipi,
+    tutar,
+    aciklama: String(hareket.aciklama || '').trim() || null,
+  }]).select().single();
+  if (error) throw marketHatasi(error);
+  return data;
+}
+
+export async function marketKasaVardiyasiKapat(restaurantId, vardiyaId, beklenenTutar, sayilanTutar, notMetni = '') {
+  await marketOturumunuDogrula();
+  const beklenen = Number(beklenenTutar || 0);
+  const sayilan = Number(sayilanTutar || 0);
+  const { data, error } = await supabase.from('market_kasa_vardiyalari')
+    .update({
+      beklenen_kapanis: beklenen,
+      sayilan_kapanis: sayilan,
+      fark_tutari: sayilan - beklenen,
+      durum: 'Kapalı',
+      not_metni: String(notMetni || '').trim() || null,
+      kapatan_kullanici: (await supabase.auth.getUser()).data.user?.id || null,
+      kapanis_tarihi: new Date().toISOString(),
+    })
+    .eq('id', vardiyaId)
+    .eq('restaurant_id', restaurantId)
+    .eq('durum', 'Açık')
+    .select()
+    .single();
+  if (error) throw marketHatasi(error);
+  return data;
 }
