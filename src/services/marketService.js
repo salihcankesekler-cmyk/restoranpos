@@ -102,7 +102,8 @@ export async function marketVerileriniGetir(restaurantId) {
   const error = urunler.error || gruplar.error || faturalar.error || sayimlar.error || cariler.error || satislar.error;
   if (error) throw marketHatasi(error);
   return {
-    urunler: urunler.data || [],
+    urunler: (urunler.data || []).filter(urun => urun.aktif !== false),
+    tumUrunler: urunler.data || [],
     gruplar: gruplar.data || [],
     faturalar: faturalar.data || [],
     sayimlar: sayimlar.data || [],
@@ -298,10 +299,36 @@ export async function marketUrunuKaydet(restaurantId, urun) {
     lot_no: String(urun.lotNo || '').trim() || null,
     aktif: true,
   };
-  const sorgu = urun.id
-    ? supabase.from('market_urunleri').update(payload).eq('id', urun.id).eq('restaurant_id', restaurantId)
-    : supabase.from('market_urunleri').insert([payload]);
+  let sorgu;
+  if (urun.id) {
+    sorgu = supabase.from('market_urunleri').update(payload).eq('id', urun.id).eq('restaurant_id', restaurantId);
+  } else {
+    const { data: mevcut, error: mevcutError } = await supabase
+      .from('market_urunleri')
+      .select('id, aktif')
+      .eq('restaurant_id', restaurantId)
+      .eq('barkod', payload.barkod)
+      .maybeSingle();
+    if (mevcutError) throw marketHatasi(mevcutError);
+    if (mevcut?.aktif) throw new Error('Bu barkodla kayıtlı aktif bir ürün zaten var.');
+    sorgu = mevcut?.id
+      ? supabase.from('market_urunleri').update(payload).eq('id', mevcut.id).eq('restaurant_id', restaurantId)
+      : supabase.from('market_urunleri').insert([payload]);
+  }
   const { data, error } = await sorgu.select().single();
+  if (error) throw marketHatasi(error);
+  return data;
+}
+
+export async function marketUrunuSil(restaurantId, urunId) {
+  await marketOturumunuDogrula();
+  const { data, error } = await supabase
+    .from('market_urunleri')
+    .update({ aktif: false })
+    .eq('restaurant_id', restaurantId)
+    .eq('id', urunId)
+    .select()
+    .single();
   if (error) throw marketHatasi(error);
   return data;
 }
