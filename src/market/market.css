@@ -1949,7 +1949,7 @@
   font:950 15px/1 inherit;
   text-align:right;
 }
-.market-change-calculator>div{
+.market-change-calculator>.market-change-result{
   display:flex;
   min-width:0;
   align-items:flex-end;
@@ -1959,17 +1959,57 @@
   background:#ecfdf5;
   color:#047857;
 }
-.market-change-calculator>div.short{
+.market-change-calculator>.market-change-result.short{
   background:#fff7ed;
   color:#c2410c;
 }
-.market-change-calculator>div span{
+.market-change-calculator>.market-change-result span{
   font-size:8px;
   font-weight:850;
 }
-.market-change-calculator>div strong{
+.market-change-calculator>.market-change-result strong{
   font-size:17px;
   line-height:1.1;
+}
+.market-partial-payments{
+  display:flex;
+  grid-column:1/-1;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  padding:3px 5px;
+  border-top:1px solid #fed7aa;
+  background:#fff7ed;
+}
+.market-partial-payments>div{
+  display:flex;
+  min-width:0;
+  flex:1;
+  flex-wrap:wrap;
+  gap:4px;
+}
+.market-partial-payments span{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  border:1px solid #fdba74;
+  border-radius:3px;
+  padding:3px 5px;
+  background:#fff;
+  color:#9a3412;
+  font-size:8px;
+  font-weight:900;
+}
+.market-partial-payments button{
+  flex:0 0 auto;
+  border:1px solid #fecaca;
+  border-radius:3px;
+  padding:5px 7px;
+  background:#fff;
+  color:#b91c1c;
+  font-size:8px;
+  font-weight:900;
+  cursor:pointer;
 }
 .market-pos-practical .market-payment-buttons{
   grid-row:5;

@@ -561,8 +561,23 @@ export async function marketSayimiKaydet(restaurantId, sayim) {
   return baslik;
 }
 
-export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId = '', islemAnahtari = '', indirim = {}) {
+export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId = '', islemAnahtari = '', indirim = {}, odemeler = []) {
   await marketOturumunuDogrula();
+  const cariOdemeTutari = Math.round(((odemeler || [])
+    .filter(odeme => odeme.tip === 'Cari / Veresiye')
+    .reduce((toplam, odeme) => toplam + Number(odeme.tutar || 0), 0) + Number.EPSILON) * 100) / 100;
+  const parcaliCariyiEsitle = async satis => {
+    if (!cariId || cariOdemeTutari <= 0 || odemeTipi === 'Cari / Veresiye') return satis;
+    await cariHareketiniEsitle(restaurantId, String(cariId), {
+      kaynak: 'market_satisi',
+      kaynakId: satis.id,
+      tip: 'Borç - Parçalı Satış',
+      tutar: cariOdemeTutari,
+      bakiyeEtkisi: cariOdemeTutari,
+      aciklama: `Market parçalı satışı · ${odemeTipi}`,
+    });
+    return satis;
+  };
   const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()
     || `00000000-0000-4000-8000-${String(Date.now()).slice(-12).padStart(12, '0')}`;
   const yuvarlanmisSepet = sepet.map(kalem => ({ ...kalem, adet: miktarYuvarla(kalem.adet) }));
@@ -605,7 +620,7 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     p_indirim_turu: uygulanacakIndirim.tur || 'yuzde',
     p_indirim_degeri: Number(uygulanacakIndirim.deger || 0),
   });
-  if (!indirimliAtomikHata) return indirimliAtomikSatis;
+  if (!indirimliAtomikHata) return parcaliCariyiEsitle(indirimliAtomikSatis);
   const indirimliRpcEksik = ['42883', 'PGRST202'].includes(indirimliAtomikHata.code)
     || String(indirimliAtomikHata.message || '').includes('market_satis_kaydet_indirimli_atomik');
   if (!indirimliRpcEksik) throw marketHatasi(indirimliAtomikHata);
@@ -635,7 +650,7 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     p_cari_id: cariId ? String(cariId) : null,
     p_islem_anahtari: guvenliIslemAnahtari,
   });
-  if (!atomikHata) return atomikSatis;
+  if (!atomikHata) return parcaliCariyiEsitle(atomikSatis);
   const rpcEksik = ['42883', 'PGRST202'].includes(atomikHata.code)
     || String(atomikHata.message || '').includes('market_satis_kaydet_atomik');
   if (!rpcEksik) throw marketHatasi(atomikHata);
@@ -689,7 +704,7 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
       aciklama: `Market satışı · ${odemeTipi}`,
     });
   }
-  return { ...satis, market_satis_kalemleri: satisKalemleri || [] };
+  return parcaliCariyiEsitle({ ...satis, market_satis_kalemleri: satisKalemleri || [] });
 }
 
 export async function marketSatisFisiniKuyrugaEkle(restaurantId, satis, icerikText) {
