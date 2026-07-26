@@ -4,7 +4,7 @@ function marketHatasi(error) {
   if (!error) return null;
   const tabloEksik = error.code === '42P01' || error.code === '42703' || String(error.message || '').includes('schema cache');
   return new Error(tabloEksik
-    ? 'Market operasyon tabloları eksik. Supabase SQL Editor içinde 20260726_market_operations_pack.sql dosyasını çalıştırın.'
+    ? 'Market ek tabloları eksik. Supabase SQL Editor içinde en güncel market SQL dosyasını çalıştırın.'
     : error.message || 'Market işlemi tamamlanamadı.');
 }
 
@@ -84,7 +84,7 @@ async function cariHareketiniKaldir(restaurantId, cariId, kaynak, kaynakId) {
 }
 
 export async function marketVerileriniGetir(restaurantId) {
-  const [urunler, gruplar, faturalar, sayimlar, cariler, satislar, stokHareketleri, fiyatGecmisi, vardiyalar, kasaHareketleri, iadeler] = await Promise.all([
+  const [urunler, gruplar, faturalar, sayimlar, cariler, satislar, stokHareketleri, fiyatGecmisi, vardiyalar, kasaHareketleri, iadeler, bekleyenSepetler, etiketKuyrugu] = await Promise.all([
     supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('urun_adi'),
     supabase.from('market_gruplari').select('*').eq('restaurant_id', restaurantId).order('sira').order('grup_adi'),
     supabase.from('market_alis_faturalari').select('*, market_alis_fatura_kalemleri(*)').eq('restaurant_id', restaurantId).order('fatura_tarihi', { ascending: false }).limit(50),
@@ -96,6 +96,8 @@ export async function marketVerileriniGetir(restaurantId) {
     supabase.from('market_kasa_vardiyalari').select('*').eq('restaurant_id', restaurantId).order('acilis_tarihi', { ascending: false }).limit(100),
     supabase.from('market_kasa_hareketleri').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(500),
     supabase.from('market_iadeleri').select('*, market_iade_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(500),
+    supabase.from('market_bekleyen_sepetler').select('*').eq('restaurant_id', restaurantId).order('updated_at', { ascending: false }).limit(100),
+    supabase.from('market_etiket_kuyrugu').select('*').eq('restaurant_id', restaurantId).eq('durum', 'Bekliyor').order('created_at', { ascending: false }).limit(1000),
   ]);
   const error = urunler.error || gruplar.error || faturalar.error || sayimlar.error || cariler.error || satislar.error;
   if (error) throw marketHatasi(error);
@@ -111,7 +113,99 @@ export async function marketVerileriniGetir(restaurantId) {
     vardiyalar: opsiyonelTabloEksikMi(vardiyalar.error) ? [] : vardiyalar.data || [],
     kasaHareketleri: opsiyonelTabloEksikMi(kasaHareketleri.error) ? [] : kasaHareketleri.data || [],
     iadeler: opsiyonelTabloEksikMi(iadeler.error) ? [] : iadeler.data || [],
+    bekleyenSepetler: opsiyonelTabloEksikMi(bekleyenSepetler.error) ? [] : bekleyenSepetler.data || [],
+    etiketKuyrugu: opsiyonelTabloEksikMi(etiketKuyrugu.error) ? [] : etiketKuyrugu.data || [],
   };
+}
+
+export async function marketBekleyenSepetiKaydet(restaurantId, sepet) {
+  await marketOturumunuDogrula();
+  const kalemler = Array.isArray(sepet.kalemler) ? sepet.kalemler : [];
+  if (!kalemler.length) throw new Error('Beklemeye alınacak sepet boş.');
+  const { data, error } = await supabase.from('market_bekleyen_sepetler').insert([{
+    restaurant_id: restaurantId,
+    sepet_adi: String(sepet.sepetAdi || '').trim() || `Sepet ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`,
+    cari_id: sepet.cariId ? String(sepet.cariId) : null,
+    cari_adi: String(sepet.cariAdi || '').trim() || null,
+    kalemler,
+    genel_indirim: sepet.genelIndirim || {},
+  }]).select().single();
+  if (error) throw marketHatasi(error);
+  return data;
+}
+
+export async function marketBekleyenSepetiSil(restaurantId, sepetId) {
+  await marketOturumunuDogrula();
+  const { error } = await supabase.from('market_bekleyen_sepetler')
+    .delete()
+    .eq('restaurant_id', restaurantId)
+    .eq('id', sepetId);
+  if (error) throw marketHatasi(error);
+}
+
+export async function marketEtiketKuyrugunuTamamla(restaurantId, kuyrukIds) {
+  await marketOturumunuDogrula();
+  const ids = [...new Set((kuyrukIds || []).filter(Boolean))];
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from('market_etiket_kuyrugu')
+    .update({ durum: 'Basildi', basim_tarihi: new Date().toISOString() })
+    .eq('restaurant_id', restaurantId)
+    .in('id', ids)
+    .select();
+  if (error) throw marketHatasi(error);
+  return data || [];
+}
+
+export async function marketUrunleriniTopluKaydet(restaurantId, satirlar, mevcutGruplar = []) {
+  await marketOturumunuDogrula();
+  if (!Array.isArray(satirlar) || !satirlar.length) throw new Error('Aktarılacak geçerli ürün bulunamadı.');
+  const grupHaritasi = new Map(mevcutGruplar.map(grup => [
+    String(grup.grup_adi || '').trim().toLocaleLowerCase('tr-TR'),
+    grup,
+  ]));
+  const eksikGrupAdlari = [...new Set(satirlar
+    .map(satir => String(satir.grup || '').trim())
+    .filter(grupAdi => grupAdi && !grupHaritasi.has(grupAdi.toLocaleLowerCase('tr-TR'))))];
+
+  for (const grupAdi of eksikGrupAdlari) {
+    const ornek = satirlar.find(satir => String(satir.grup || '').trim() === grupAdi);
+    const yeniGrup = await marketGrubuKaydet(restaurantId, {
+      grupAdi,
+      kdvOrani: Number(ornek?.kdv ?? 20),
+      satisEkranindaGoster: true,
+      sira: mevcutGruplar.length + grupHaritasi.size,
+    });
+    grupHaritasi.set(grupAdi.toLocaleLowerCase('tr-TR'), yeniGrup);
+  }
+
+  const payload = satirlar.map(satir => {
+    const grup = grupHaritasi.get(String(satir.grup || '').trim().toLocaleLowerCase('tr-TR'));
+    if (!grup) throw new Error(`${satir.urunAdi || satir.barkod}: ürün grubu bulunamadı.`);
+    return {
+      restaurant_id: restaurantId,
+      grup_id: grup.id,
+      barkod: String(satir.barkod || '').trim(),
+      urun_adi: String(satir.urunAdi || '').trim(),
+      stok_kodu: String(satir.stokKodu || '').trim() || null,
+      kategori: grup.grup_adi,
+      marka: String(satir.marka || '').trim() || null,
+      birim: String(satir.birim || '').trim() || 'Adet',
+      kdv_orani: Number(satir.kdv ?? grup.kdv_orani ?? 20),
+      alis_fiyati: Number(satir.alisFiyati || 0),
+      satis_fiyati: Number(satir.satisFiyati || 0),
+      stok_miktari: Number(satir.stokMiktari || 0),
+      minimum_stok: Number(satir.minimumStok || 0),
+      raf_konumu: String(satir.rafKonumu || '').trim() || null,
+      son_kullanma_tarihi: satir.sonKullanmaTarihi || null,
+      lot_no: String(satir.lotNo || '').trim() || null,
+      aktif: true,
+    };
+  });
+  const { data, error } = await supabase.from('market_urunleri')
+    .upsert(payload, { onConflict: 'restaurant_id,barkod' })
+    .select();
+  if (error) throw marketHatasi(error);
+  return data || [];
 }
 
 export async function marketGrubuKaydet(restaurantId, grup) {

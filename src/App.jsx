@@ -16698,6 +16698,7 @@ Toplam Ciro: {toplam}
                   restaurantId={mevcutRestaurantId}
                   restaurantName={user?.restaurant}
                   notify={bildirimGoster}
+                  canPerform={aktifKullaniciDetayYetkisiVar}
                 />
               </React.Suspense>
             )}

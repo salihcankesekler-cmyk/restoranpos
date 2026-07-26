@@ -2,8 +2,11 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import JsBarcode from 'jsbarcode';
 import {
   marketAlisFaturasiKaydet,
+  marketBekleyenSepetiKaydet,
+  marketBekleyenSepetiSil,
   marketCariKaydet,
   marketCariHareketiKaydet,
+  marketEtiketKuyrugunuTamamla,
   marketGrubuKaydet,
   marketKasaHareketiKaydet,
   marketKasaVardiyasiAc,
@@ -12,6 +15,7 @@ import {
   marketSatisIadeEt,
   marketSatisiKaydet,
   marketUrunStokFiyatGuncelle,
+  marketUrunleriniTopluKaydet,
   marketUrunuKaydet,
   marketVerileriniGetir,
 } from '../services/marketService';
@@ -62,6 +66,62 @@ const kritikUrunMu = urun => {
   return kritikStok || kalanGun <= 30;
 };
 
+const varsayilanTeraziAyarlari = {
+  aktif: false,
+  onEk: '20',
+  degerTuru: 'agirlik',
+  bolen: 1000,
+};
+
+const csvBasliginiTemizle = value => String(value || '')
+  .trim()
+  .toLocaleLowerCase('tr-TR')
+  .replaceAll(/[ç]/g, 'c').replaceAll(/[ğ]/g, 'g').replaceAll(/[ı]/g, 'i')
+  .replaceAll(/[ö]/g, 'o').replaceAll(/[ş]/g, 's').replaceAll(/[ü]/g, 'u')
+  .replaceAll(/[^a-z0-9]+/g, '_').replaceAll(/^_+|_+$/g, '');
+
+const csvSatirlariniAyristir = metin => {
+  const ilkSatir = String(metin || '').replace(/^\uFEFF/, '').split(/\r?\n/, 1)[0] || '';
+  const adaylar = [';', ',', '\t'];
+  const ayirici = adaylar.sort((a, b) => ilkSatir.split(b).length - ilkSatir.split(a).length)[0];
+  const satirlar = [];
+  let satir = [];
+  let hucre = '';
+  let tirnakta = false;
+  const kaynak = String(metin || '').replace(/^\uFEFF/, '');
+  for (let index = 0; index < kaynak.length; index += 1) {
+    const karakter = kaynak[index];
+    if (karakter === '"') {
+      if (tirnakta && kaynak[index + 1] === '"') {
+        hucre += '"';
+        index += 1;
+      } else tirnakta = !tirnakta;
+    } else if (karakter === ayirici && !tirnakta) {
+      satir.push(hucre.trim());
+      hucre = '';
+    } else if ((karakter === '\n' || karakter === '\r') && !tirnakta) {
+      if (karakter === '\r' && kaynak[index + 1] === '\n') index += 1;
+      satir.push(hucre.trim());
+      if (satir.some(Boolean)) satirlar.push(satir);
+      satir = [];
+      hucre = '';
+    } else hucre += karakter;
+  }
+  satir.push(hucre.trim());
+  if (satir.some(Boolean)) satirlar.push(satir);
+  return satirlar;
+};
+
+const csvSayisi = value => {
+  const temiz = String(value ?? '').trim().replaceAll(' ', '');
+  if (!temiz) return 0;
+  const normalize = temiz.includes(',') && temiz.includes('.')
+    ? temiz.replaceAll('.', '').replace(',', '.')
+    : temiz.replace(',', '.');
+  const sonuc = Number(normalize);
+  return Number.isFinite(sonuc) ? sonuc : 0;
+};
+
 function BarkodSvg({ value }) {
   const svgRef = useRef(null);
   useEffect(() => {
@@ -81,7 +141,7 @@ function BarkodSvg({ value }) {
   return <svg ref={svgRef} className="market-barcode-svg" aria-label={`Barkod ${value}`} />;
 }
 
-export default function MarketApp({ restaurantId, restaurantName, notify }) {
+export default function MarketApp({ restaurantId, restaurantName, notify, canPerform }) {
   const [sekme, setSekme] = useState('satis');
   const [urunler, setUrunler] = useState([]);
   const [gruplar, setGruplar] = useState([]);
@@ -94,6 +154,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   const [vardiyalar, setVardiyalar] = useState([]);
   const [kasaHareketleri, setKasaHareketleri] = useState([]);
   const [iadeler, setIadeler] = useState([]);
+  const [bekleyenSepetler, setBekleyenSepetler] = useState([]);
+  const [etiketKuyrugu, setEtiketKuyrugu] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hata, setHata] = useState('');
   const [arama, setArama] = useState('');
@@ -108,6 +170,9 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   const [sepet, setSepet] = useState([]);
   const [genelIndirim, setGenelIndirim] = useState({ tur: 'yuzde', deger: '' });
   const [genelIndirimPenceresi, setGenelIndirimPenceresi] = useState(false);
+  const [bekleyenSepetPenceresi, setBekleyenSepetPenceresi] = useState('');
+  const [bekleyenSepetAdi, setBekleyenSepetAdi] = useState('');
+  const [bekleyenSepetIsleniyor, setBekleyenSepetIsleniyor] = useState(false);
   const [urunIndirimFormu, setUrunIndirimFormu] = useState(null);
   const [satisGrubu, setSatisGrubu] = useState('');
   const [satisCariId, setSatisCariId] = useState('');
@@ -123,6 +188,18 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   const [etiketArama, setEtiketArama] = useState('');
   const [etiketAdetleri, setEtiketAdetleri] = useState({});
   const [etiketBoyutu, setEtiketBoyutu] = useState('58x40');
+  const [teraziAyarlari, setTeraziAyarlari] = useState(() => {
+    try {
+      return {
+        ...varsayilanTeraziAyarlari,
+        ...JSON.parse(localStorage.getItem(`integra-market-terazi-${restaurantId}`) || '{}'),
+      };
+    } catch {
+      return varsayilanTeraziAyarlari;
+    }
+  });
+  const [topluAktarim, setTopluAktarim] = useState({ dosyaAdi: '', satirlar: [], hatalar: [] });
+  const [topluAktariliyor, setTopluAktariliyor] = useState(false);
   const [raporAraligi, setRaporAraligi] = useState('bugun');
   const [raporSekmesi, setRaporSekmesi] = useState('gun_sonu');
   const [raporTarihi, setRaporTarihi] = useState(() => gunAnahtari(new Date()));
@@ -147,6 +224,14 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     if (typeof notify === 'function') notify(mesaj, tip);
   };
 
+  const yetkiVar = yetki => typeof canPerform !== 'function' || canPerform(yetki);
+
+  const yetkiyiDogrula = (yetki, mesaj) => {
+    if (yetkiVar(yetki)) return true;
+    bildir(mesaj || 'Bu işlem için personel yetkiniz yok.', 'warning');
+    return false;
+  };
+
   const veriyiUygula = data => {
     setUrunler(data.urunler || []);
     setGruplar(data.gruplar || []);
@@ -159,6 +244,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     setVardiyalar(data.vardiyalar || []);
     setKasaHareketleri(data.kasaHareketleri || []);
     setIadeler(data.iadeler || []);
+    setBekleyenSepetler(data.bekleyenSepetler || []);
+    setEtiketKuyrugu(data.etiketKuyrugu || []);
   };
 
   const verileriYukle = async (sessiz = false) => {
@@ -196,6 +283,10 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   useEffect(() => {
     if (['satis', 'alis', 'sayim'].includes(sekme)) window.setTimeout(() => barkodRef.current?.focus(), 80);
   }, [sekme]);
+
+  useEffect(() => {
+    localStorage.setItem(`integra-market-terazi-${restaurantId}`, JSON.stringify(teraziAyarlari));
+  }, [restaurantId, teraziAyarlari]);
 
   const gorunenGruplar = useMemo(
     () => gruplar.filter(grup => grup.satis_ekraninda_goster),
@@ -250,6 +341,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     return urunler.filter(urun => [urun.urun_adi, urun.barkod]
       .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin)));
   }, [etiketArama, urunler]);
+
+  const bekleyenEtiketUrunIdleri = useMemo(
+    () => [...new Set(etiketKuyrugu.map(kayit => String(kayit.urun_id)))],
+    [etiketKuyrugu]
+  );
 
   const rapor = useMemo(() => {
     const simdi = new Date();
@@ -550,10 +646,14 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
 
   const urunFiyatiniUygula = fiyatDegeri => {
     if (!urunIndirimFormu) return;
+    const yeniFiyat = Math.max(Number(fiyatDegeri ?? urunIndirimFormu.fiyat ?? 0), 0);
+    if (yeniFiyat < Number(urunIndirimFormu.listeFiyati || 0)
+      && !yetkiyiDogrula('indirim_yap', 'Bu personelin indirim veya ikram yapma yetkisi yok.')) return;
+    if (yeniFiyat > Number(urunIndirimFormu.listeFiyati || 0)
+      && !yetkiyiDogrula('fiyat_degistir', 'Bu personelin ürün fiyatını artırma yetkisi yok.')) return;
     setSepet(prev => prev.map(kalem => {
       if (sepetSatirAnahtari(kalem) !== String(urunIndirimFormu.satirId)) return kalem;
       const orijinalListeFiyati = Number(kalem.orijinal_liste_fiyati ?? kalem.liste_fiyati ?? kalem.satis_fiyati ?? 0);
-      const yeniFiyat = Math.max(Number(fiyatDegeri ?? urunIndirimFormu.fiyat ?? 0), 0);
       const kayitListeFiyati = Math.max(orijinalListeFiyati, yeniFiyat);
       return {
         ...kalem,
@@ -579,6 +679,18 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     setUrunIndirimFormu(null);
   };
 
+  const urunFiyatiPenceresiniAc = (kalem, satirId) => {
+    if (!yetkiVar('indirim_yap') && !yetkiVar('fiyat_degistir')) {
+      return bildir('Bu personelin ürün fiyatı değiştirme veya ikram yetkisi yok.', 'warning');
+    }
+    setUrunIndirimFormu({
+      satirId,
+      urunAdi: kalem.urun_adi,
+      fiyat: kalem.satis_fiyati,
+      listeFiyati: Number(kalem.orijinal_liste_fiyati ?? kalem.liste_fiyati),
+    });
+  };
+
   const urunuFiyatKontrolluEkle = (urun, adet) => {
     if (Number(urun.satis_fiyati || 0) <= 0) {
       setFiyatBekleyenUrun({ urun, adet: Math.max(Number(adet || 1), 0.001) });
@@ -593,13 +705,99 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     setSatisAdedi('1');
   };
 
+  const teraziBarkodunuCoz = barkod => {
+    const kod = String(barkod || '').trim();
+    if (!teraziAyarlari.aktif || !/^\d{13}$/.test(kod)) return null;
+    const onEkler = String(teraziAyarlari.onEk || '').split(',').map(item => item.trim()).filter(Boolean);
+    if (!onEkler.includes(kod.slice(0, 2))) return null;
+    const urunKodu = kod.slice(2, 7);
+    const urun = urunler.find(item => {
+      const adaylar = [item.stok_kodu, item.barkod].map(value => String(value || '').trim());
+      return adaylar.some(aday => aday === urunKodu || aday.padStart(5, '0') === urunKodu);
+    });
+    if (!urun) return { hata: `Terazi ürün kodu ${urunKodu} ürün listesinde bulunamadı.` };
+    const hamDeger = Number(kod.slice(7, 12));
+    const bolen = Math.max(Number(teraziAyarlari.bolen || 1000), 1);
+    if (teraziAyarlari.degerTuru === 'tutar') {
+      const toplamTutar = hamDeger / bolen;
+      const birimFiyat = Number(urun.satis_fiyati || 0);
+      if (birimFiyat <= 0) return { hata: 'Tutar kodlu terazi ürününün kayıtlı satış fiyatı olmalıdır.' };
+      return { urun, adet: toplamTutar / birimFiyat, bilgi: `${para(toplamTutar)} terazi tutarı` };
+    }
+    return { urun, adet: hamDeger / bolen, bilgi: `${hamDeger / bolen} ${urun.birim || 'kg'}` };
+  };
+
   const satisaEkle = event => {
     event.preventDefault();
-    const urun = urunler.find(item => String(item.barkod) === satisBarkodu.trim());
-    if (!urun) return bildir('Barkod ürün listesinde bulunamadı.', 'warning');
-    urunuFiyatKontrolluEkle(urun, satisAdedi);
+    const okunanBarkod = satisBarkodu.trim();
+    const urun = urunler.find(item => String(item.barkod) === okunanBarkod);
+    const teraziSonucu = urun ? null : teraziBarkodunuCoz(okunanBarkod);
+    if (!urun && !teraziSonucu) return bildir('Barkod ürün listesinde bulunamadı.', 'warning');
+    if (teraziSonucu?.hata) return bildir(teraziSonucu.hata, 'warning');
+    urunuFiyatKontrolluEkle(urun || teraziSonucu.urun, urun ? satisAdedi : teraziSonucu.adet);
     setSatisBarkodu('');
     setSatisAdedi('1');
+  };
+
+  const sepetiBeklemeyeAl = async event => {
+    event.preventDefault();
+    if (!sepet.length) return bildir('Beklemeye alınacak sepet boş.', 'warning');
+    setBekleyenSepetIsleniyor(true);
+    try {
+      const seciliCari = cariler.find(cari => String(cari.id) === String(satisCariId));
+      const kayit = await marketBekleyenSepetiKaydet(restaurantId, {
+        sepetAdi: bekleyenSepetAdi,
+        cariId: satisCariId,
+        cariAdi: seciliCari?.ad,
+        kalemler: sepet,
+        genelIndirim,
+      });
+      setBekleyenSepetler(prev => [kayit, ...prev]);
+      setSepet([]);
+      setSatisCariId('');
+      setGenelIndirim({ tur: 'yuzde', deger: '' });
+      setGenelIndirimPenceresi(false);
+      setUrunIndirimFormu(null);
+      setBekleyenSepetAdi('');
+      setBekleyenSepetPenceresi('');
+      bildir('Sepet beklemeye alındı.', 'success');
+    } catch (error) {
+      bildir(error.message, 'error');
+    } finally {
+      setBekleyenSepetIsleniyor(false);
+    }
+  };
+
+  const bekleyenSepetiAc = async kayit => {
+    if (sepet.length) return bildir('Önce açık sepeti tamamlayın veya beklemeye alın.', 'warning');
+    setBekleyenSepetIsleniyor(true);
+    try {
+      const acilacakKalemler = Array.isArray(kayit.kalemler) ? kayit.kalemler : [];
+      await marketBekleyenSepetiSil(restaurantId, kayit.id);
+      setSepet(acilacakKalemler);
+      setSatisCariId(kayit.cari_id || '');
+      setGenelIndirim(kayit.genel_indirim?.tur ? kayit.genel_indirim : { tur: 'yuzde', deger: '' });
+      setBekleyenSepetler(prev => prev.filter(item => String(item.id) !== String(kayit.id)));
+      setBekleyenSepetPenceresi('');
+      bildir('Bekleyen sepet satış ekranına alındı.', 'success');
+    } catch (error) {
+      bildir(error.message, 'error');
+    } finally {
+      setBekleyenSepetIsleniyor(false);
+    }
+  };
+
+  const bekleyenSepetiSil = async kayit => {
+    setBekleyenSepetIsleniyor(true);
+    try {
+      await marketBekleyenSepetiSil(restaurantId, kayit.id);
+      setBekleyenSepetler(prev => prev.filter(item => String(item.id) !== String(kayit.id)));
+      bildir('Bekleyen sepet silindi.', 'success');
+    } catch (error) {
+      bildir(error.message, 'error');
+    } finally {
+      setBekleyenSepetIsleniyor(false);
+    }
   };
 
   const anlikSatisFiyatiniUygula = event => {
@@ -616,6 +814,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   const satisiTamamla = async odemeTipi => {
     if (satisKaydiSuruyorRef.current) return;
     if (!sepet.length) return bildir('Satış sepeti boş.', 'warning');
+    if ((sepetToplamlari.urunIndirimTutari > 0 || sepetToplamlari.genelIndirimTutari > 0)
+      && !yetkiyiDogrula('indirim_yap', 'Bu indirimli satışı tamamlamak için indirim yetkisi gerekir.')) return;
     if (odemeTipi === 'Cari / Veresiye' && !satisCariId) return bildir('Veresiye satış için cari seçin.', 'warning');
     satisKaydiSuruyorRef.current = true;
     setSatisKaydediliyor(true);
@@ -956,6 +1156,103 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     }
   };
 
+  const urunSablonunuIndir = () => {
+    const basliklar = [
+      'barkod', 'urun_adi', 'grup', 'stok_kodu', 'marka', 'birim', 'kdv',
+      'alis_fiyati', 'satis_fiyati', 'stok', 'minimum_stok', 'raf',
+      'son_kullanma_tarihi', 'lot_no',
+    ];
+    const ornek = ['8690000000001', 'Örnek Ürün', 'İçecekler', '00001', 'Marka', 'Adet', '20', '10,50', '15,00', '25', '5', 'A-01', '', ''];
+    const icerik = [basliklar, ornek].map(satir => satir.map(deger => `"${String(deger).replaceAll('"', '""')}"`).join(';')).join('\r\n');
+    const baglanti = document.createElement('a');
+    baglanti.href = URL.createObjectURL(new Blob([`\uFEFF${icerik}`], { type: 'text/csv;charset=utf-8' }));
+    baglanti.download = 'integra-market-urun-aktarim-sablonu.csv';
+    baglanti.click();
+    URL.revokeObjectURL(baglanti.href);
+  };
+
+  const topluUrunDosyasiniOku = async event => {
+    const dosya = event.target.files?.[0];
+    event.target.value = '';
+    if (!dosya) return;
+    try {
+      const csvSatirlari = csvSatirlariniAyristir(await dosya.text());
+      if (csvSatirlari.length < 2) throw new Error('Dosyada başlık ve en az bir ürün satırı olmalıdır.');
+      const basliklar = csvSatirlari[0].map(csvBasliginiTemizle);
+      const deger = (satir, ...adlar) => {
+        const index = adlar.map(csvBasliginiTemizle).map(ad => basliklar.indexOf(ad)).find(sira => sira >= 0);
+        return index >= 0 ? satir[index] : '';
+      };
+      const hatalar = [];
+      const satirlar = csvSatirlari.slice(1).map((satir, index) => {
+        const urun = {
+          satirNo: index + 2,
+          barkod: deger(satir, 'barkod', 'barcode'),
+          urunAdi: deger(satir, 'urun_adi', 'ürün adı', 'urun'),
+          grup: deger(satir, 'grup', 'kategori'),
+          stokKodu: deger(satir, 'stok_kodu', 'ürün kodu', 'terazi_kodu'),
+          marka: deger(satir, 'marka'),
+          birim: deger(satir, 'birim') || 'Adet',
+          kdv: deger(satir, 'kdv', 'kdv_orani') === '' ? null : csvSayisi(deger(satir, 'kdv', 'kdv_orani')),
+          alisFiyati: csvSayisi(deger(satir, 'alis_fiyati', 'alış fiyatı', 'alis')),
+          satisFiyati: csvSayisi(deger(satir, 'satis_fiyati', 'satış fiyatı', 'satis')),
+          stokMiktari: csvSayisi(deger(satir, 'stok', 'stok_miktari')),
+          minimumStok: csvSayisi(deger(satir, 'minimum_stok', 'min_stok')),
+          rafKonumu: deger(satir, 'raf', 'raf_konumu'),
+          sonKullanmaTarihi: deger(satir, 'son_kullanma_tarihi', 'skt'),
+          lotNo: deger(satir, 'lot_no', 'lot'),
+        };
+        if (!String(urun.barkod).trim()) hatalar.push(`Satır ${urun.satirNo}: barkod boş.`);
+        if (!String(urun.urunAdi).trim()) hatalar.push(`Satır ${urun.satirNo}: ürün adı boş.`);
+        if (!String(urun.grup).trim()) hatalar.push(`Satır ${urun.satirNo}: grup boş.`);
+        return urun;
+      });
+      const gecersizSatirlar = new Set(hatalar.map(hataMetni => Number(hataMetni.match(/\d+/)?.[0])));
+      setTopluAktarim({
+        dosyaAdi: dosya.name,
+        satirlar: satirlar.filter(satir => !gecersizSatirlar.has(satir.satirNo)),
+        hatalar,
+      });
+    } catch (error) {
+      setTopluAktarim({ dosyaAdi: dosya.name, satirlar: [], hatalar: [error.message] });
+    }
+  };
+
+  const topluUrunleriAktar = async () => {
+    if (!topluAktarim.satirlar.length) return bildir('Aktarılacak geçerli ürün bulunamadı.', 'warning');
+    setTopluAktariliyor(true);
+    try {
+      const kayitlar = await marketUrunleriniTopluKaydet(restaurantId, topluAktarim.satirlar, gruplar);
+      setTopluAktarim({ dosyaAdi: '', satirlar: [], hatalar: [] });
+      await verileriYukle(true);
+      bildir(`${kayitlar.length} ürün başarıyla aktarıldı veya güncellendi.`, 'success');
+    } catch (error) {
+      bildir(error.message, 'error');
+    } finally {
+      setTopluAktariliyor(false);
+    }
+  };
+
+  const fiyatDegisenleriSec = () => {
+    const kuyruktakiUrunler = urunler.filter(urun => bekleyenEtiketUrunIdleri.includes(String(urun.id))).map(urun => urun.id);
+    setEtiketUrunleri(prev => [...new Set([...prev, ...kuyruktakiUrunler])]);
+    if (!kuyruktakiUrunler.length) bildir('Bekleyen fiyat etiketi bulunmuyor.', 'info');
+  };
+
+  const etiketleriYazdir = async () => {
+    if (!etiketUrunleri.length) return bildir('Önce ürün seçin.', 'warning');
+    window.print();
+    const seciliIdler = new Set(etiketUrunleri.map(String));
+    const tamamlanacaklar = etiketKuyrugu.filter(kayit => seciliIdler.has(String(kayit.urun_id))).map(kayit => kayit.id);
+    if (!tamamlanacaklar.length) return;
+    try {
+      await marketEtiketKuyrugunuTamamla(restaurantId, tamamlanacaklar);
+      setEtiketKuyrugu(prev => prev.filter(kayit => !tamamlanacaklar.includes(kayit.id)));
+    } catch (error) {
+      bildir(`Etiket basıldı ancak kuyruk güncellenemedi: ${error.message}`, 'warning');
+    }
+  };
+
   const nav = [
     ['satis', '▥ Barkodlu Satış'],
     ['gruplar', '▦ Gruplar'],
@@ -1006,16 +1303,20 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
         </div>
         <div className="market-card market-checkout">
           <div className="market-heading"><div><span>SEPET VE ÖDEME</span><h2>{sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet), 0)} ürün</h2></div><strong>{para(sepetToplamlari.netToplam)}</strong></div>
+          <div className="market-park-toolbar">
+            <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('kaydet')}>⏸ Sepeti Beklet</button>
+            <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}>▶ Bekleyenler ({bekleyenSepetler.length})</button>
+          </div>
           {!sepet.length ? <div className="market-cart-empty">Sepet boş. Soldan ürüne dokunarak satışa ekleyin.</div> :
             <div className="market-table market-cart-table"><table><thead><tr><th>Ürün</th><th>Adet</th><th>Toplam</th><th></th></tr></thead><tbody>
               {sepet.map(kalem => {
                 const satirId = sepetSatirAnahtari(kalem);
                 const indirimli = Number(kalem.liste_fiyati ?? kalem.satis_fiyati) > Number(kalem.satis_fiyati);
-                return <tr key={satirId}><td><strong>{kalem.urun_adi}</strong><small>{indirimli && <del>{para(kalem.liste_fiyati)}</del>}<button className={Number(kalem.satis_fiyati) === 0 ? 'market-cart-price complimentary' : 'market-cart-price'} type="button" onClick={() => setUrunIndirimFormu({ satirId, urunAdi: kalem.urun_adi, fiyat: kalem.satis_fiyati, listeFiyati: Number(kalem.orijinal_liste_fiyati ?? kalem.liste_fiyati) })}>{Number(kalem.satis_fiyati) === 0 ? 'İKRAM' : para(kalem.satis_fiyati)}</button></small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - 1)}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step="0.001" value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + 1)}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => sepetSatiriniSil(satirId)}>×</button></td></tr>;
+                return <tr key={satirId}><td><strong>{kalem.urun_adi}</strong><small>{indirimli && <del>{para(kalem.liste_fiyati)}</del>}<button className={Number(kalem.satis_fiyati) === 0 ? 'market-cart-price complimentary' : 'market-cart-price'} type="button" onClick={() => urunFiyatiPenceresiniAc(kalem, satirId)}>{Number(kalem.satis_fiyati) === 0 ? 'İKRAM' : para(kalem.satis_fiyati)}</button></small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - 1)}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step="0.001" value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + 1)}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => sepetSatiriniSil(satirId)}>×</button></td></tr>;
               })}
             </tbody></table></div>}
           <div className="market-cart-discount">
-            <button className={sepetToplamlari.genelIndirimTutari > 0 ? 'market-discount-trigger active' : 'market-discount-trigger'} type="button" disabled={!sepet.length} onClick={() => setGenelIndirimPenceresi(true)}>{sepetToplamlari.genelIndirimTutari > 0 ? `İskonto −${para(sepetToplamlari.genelIndirimTutari)}` : '＋ İskonto'}</button>
+            <button className={sepetToplamlari.genelIndirimTutari > 0 ? 'market-discount-trigger active' : 'market-discount-trigger'} type="button" disabled={!sepet.length} onClick={() => yetkiyiDogrula('indirim_yap', 'Bu personelin iskonto yapma yetkisi yok.') && setGenelIndirimPenceresi(true)}>{sepetToplamlari.genelIndirimTutari > 0 ? `İskonto −${para(sepetToplamlari.genelIndirimTutari)}` : '＋ İskonto'}</button>
             <div className="market-cart-summary"><span>Brüt<strong>{para(sepetToplamlari.brutToplam)}</strong></span>{sepetToplamlari.urunIndirimTutari > 0 && <span>Ürün / ikram<strong>−{para(sepetToplamlari.urunIndirimTutari)}</strong></span>}{sepetToplamlari.genelIndirimTutari > 0 && <span>İskonto<strong>−{para(sepetToplamlari.genelIndirimTutari)}</strong></span>}<span className="total">Ödenecek<strong>{para(sepetToplamlari.netToplam)}</strong></span></div>
           </div>
           <div className="market-payment-buttons"><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
@@ -1042,7 +1343,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
           </form>
         </div>}
         {genelIndirimPenceresi && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Sepet iskontosu">
-          <form onSubmit={event => { event.preventDefault(); setGenelIndirimPenceresi(false); }}>
+          <form onSubmit={event => { event.preventDefault(); if (yetkiyiDogrula('indirim_yap', 'Bu personelin iskonto yapma yetkisi yok.')) setGenelIndirimPenceresi(false); }}>
             <span>SEPET İSKONTOSU</span>
             <h2>Toplam indirimi</h2>
             <p>İskontoyu yüzde veya toplam TL tutarı olarak girin.</p>
@@ -1050,6 +1351,28 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
             <small>Uygulanacak iskonto: {para(sepetToplamlari.genelIndirimTutari)} · Ödenecek: {para(sepetToplamlari.netToplam)}</small>
             <div><button className="market-remove" type="button" onClick={() => { setGenelIndirim({ tur: 'yuzde', deger: '' }); setGenelIndirimPenceresi(false); }}>İskontoyu Kaldır</button><button className="market-primary" type="submit">Uygula</button></div>
           </form>
+        </div>}
+        {bekleyenSepetPenceresi === 'kaydet' && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Sepeti beklemeye al">
+          <form onSubmit={sepetiBeklemeyeAl}>
+            <span>BEKLEYEN SEPET</span>
+            <h2>Sepeti beklemeye al</h2>
+            <p>Müşteri geri geldiğinde bu sepeti kaldığı yerden açabilirsiniz.</p>
+            <label>Sepet adı<input value={bekleyenSepetAdi} onChange={event => setBekleyenSepetAdi(event.target.value)} placeholder={`Sepet ${bekleyenSepetler.length + 1}`} autoFocus /></label>
+            <small>{sepet.length} kalem · {para(sepetToplamlari.netToplam)}</small>
+            <div><button className="market-remove" type="button" onClick={() => setBekleyenSepetPenceresi('')}>Vazgeç</button><button className="market-primary" type="submit" disabled={bekleyenSepetIsleniyor}>{bekleyenSepetIsleniyor ? 'Kaydediliyor…' : 'Beklemeye Al'}</button></div>
+          </form>
+        </div>}
+        {bekleyenSepetPenceresi === 'liste' && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Bekleyen sepetler">
+          <div className="market-park-modal">
+            <span>BEKLEYEN SEPETLER</span>
+            <h2>{bekleyenSepetler.length} kayıt</h2>
+            <div className="market-park-list">{bekleyenSepetler.map(kayit => {
+              const kalemler = Array.isArray(kayit.kalemler) ? kayit.kalemler : [];
+              const toplam = kalemler.reduce((tutar, kalem) => tutar + Number(kalem.adet || 0) * Number(kalem.satis_fiyati || 0), 0);
+              return <div key={kayit.id}><span><strong>{kayit.sepet_adi}</strong><small>{kayit.cari_adi || 'Cari yok'} · {kalemler.length} kalem · {new Date(kayit.updated_at).toLocaleString('tr-TR')}</small></span><b>{para(toplam)}</b><button type="button" disabled={bekleyenSepetIsleniyor} onClick={() => bekleyenSepetiAc(kayit)}>Aç</button><button className="market-remove" type="button" disabled={bekleyenSepetIsleniyor} onClick={() => bekleyenSepetiSil(kayit)}>Sil</button></div>;
+            })}{!bekleyenSepetler.length && <p className="market-empty">Bekleyen sepet bulunmuyor.</p>}</div>
+            <div className="market-park-modal-footer"><button className="market-remove" type="button" onClick={() => setBekleyenSepetPenceresi('')}>Kapat</button></div>
+          </div>
         </div>}
       </div>}
 
@@ -1078,6 +1401,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
           <div className="market-heading"><div><span>ÜRÜN KARTI</span><h2>{urunFormu.id ? 'Ürünü düzenle' : 'Yeni barkodlu ürün'}</h2></div>{urunFormu.id && <button className="market-remove" type="button" onClick={() => setUrunFormu(bosUrun)}>Vazgeç</button>}</div>
           <label>Barkod<input autoFocus value={urunFormu.barkod} onChange={event => setUrunFormu({ ...urunFormu, barkod: event.target.value })} placeholder="869…" /></label>
           <label>Ürün adı<input value={urunFormu.urunAdi} onChange={event => setUrunFormu({ ...urunFormu, urunAdi: event.target.value })} /></label>
+          <label>Stok / terazi ürün kodu<input value={urunFormu.stokKodu} onChange={event => setUrunFormu({ ...urunFormu, stokKodu: event.target.value })} placeholder="Terazi barkodu için 5 haneli kod" /></label>
           <label>Ürün grubu *<select required value={urunFormu.grupId} onChange={event => {
             const grup = gruplar.find(item => String(item.id) === String(event.target.value));
             setUrunFormu({
@@ -1094,8 +1418,26 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
           <div className="market-row"><label>KDV<select value={urunFormu.kdvOrani} onChange={event => setUrunFormu({ ...urunFormu, kdvOrani: event.target.value })}><option value="0">%0</option><option value="1">%1</option><option value="10">%10</option><option value="20">%20</option></select></label><label>Raf konumu<input value={urunFormu.rafKonumu} onChange={event => setUrunFormu({ ...urunFormu, rafKonumu: event.target.value })} placeholder="A-03" /></label></div>
           <div className="market-row"><label>Son kullanma tarihi<input type="date" value={urunFormu.sonKullanmaTarihi} onChange={event => setUrunFormu({ ...urunFormu, sonKullanmaTarihi: event.target.value })} /></label><label>Parti / Lot No<input value={urunFormu.lotNo} onChange={event => setUrunFormu({ ...urunFormu, lotNo: event.target.value })} /></label></div>
           <button className="market-primary" type="submit">{urunFormu.id ? 'Ürünü Kaydet' : 'Ürünü Oluştur'}</button>
+          <div className="market-scale-settings">
+            <div><strong>⚖️ Terazi barkodu</strong><small>EAN-13: önek + 5 haneli ürün kodu + 5 haneli değer</small></div>
+            <label className="market-check"><input type="checkbox" checked={teraziAyarlari.aktif} onChange={event => setTeraziAyarlari({ ...teraziAyarlari, aktif: event.target.checked })} /> Terazi barkodlarını satışta tanı</label>
+            {teraziAyarlari.aktif && <div className="market-row">
+              <label>Önekler<input value={teraziAyarlari.onEk} onChange={event => setTeraziAyarlari({ ...teraziAyarlari, onEk: event.target.value })} placeholder="20,21" /></label>
+              <label>Değer türü<select value={teraziAyarlari.degerTuru} onChange={event => setTeraziAyarlari({ ...teraziAyarlari, degerTuru: event.target.value })}><option value="agirlik">Ağırlık / miktar</option><option value="tutar">Toplam tutar</option></select></label>
+              <label>Bölen<input type="number" min="1" value={teraziAyarlari.bolen} onChange={event => setTeraziAyarlari({ ...teraziAyarlari, bolen: Math.max(Number(event.target.value || 1), 1) })} /></label>
+            </div>}
+          </div>
         </form>
         <div className="market-card">
+          <div className="market-bulk-import">
+            <div><span>TOPLU ÜRÜN AKTARIMI</span><strong>Excel uyumlu CSV</strong><small>Yeni gruplar otomatik açılır; aynı barkodlu ürünler güncellenir.</small></div>
+            <div className="market-bulk-actions"><button type="button" onClick={urunSablonunuIndir}>Şablon İndir</button><label>CSV Seç<input type="file" accept=".csv,.txt,text/csv" onChange={topluUrunDosyasiniOku} /></label></div>
+            {topluAktarim.dosyaAdi && <div className="market-bulk-preview">
+              <span><strong>{topluAktarim.dosyaAdi}</strong><small>{topluAktarim.satirlar.length} geçerli ürün · {topluAktarim.hatalar.length} hata</small></span>
+              <button className="market-primary" type="button" disabled={!topluAktarim.satirlar.length || topluAktariliyor} onClick={topluUrunleriAktar}>{topluAktariliyor ? 'Aktarılıyor…' : 'Ürünleri Aktar'}</button>
+              {topluAktarim.hatalar.length > 0 && <details><summary>Hataları göster</summary>{topluAktarim.hatalar.slice(0, 20).map(hataMetni => <small key={hataMetni}>{hataMetni}</small>)}</details>}
+            </div>}
+          </div>
           <div className="market-toolbar"><div><span>ÜRÜN LİSTESİ</span><h2>{filtreliUrunler.length} ürün</h2><small>{kritikUrunler.length} kritik / SKT yakın</small></div><label className="market-compact-check"><input type="checkbox" checked={yalnizKritik} onChange={event => setYalnizKritik(event.target.checked)} /> Yalnızca kritikler</label><input value={arama} onChange={event => setArama(event.target.value)} placeholder="Barkod, ürün veya grup ara" /></div>
           <div className="market-table"><table><thead><tr><th>Barkod / Ürün</th><th>Grup</th><th>Stok</th><th>Alış</th><th>Satış</th><th>Kâr</th><th></th></tr></thead><tbody>
             {filtreliUrunler.map(urun => {
@@ -1258,14 +1600,14 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       </div>}
 
       {!yukleniyor && sekme === 'etiket' && <div className="market-card">
-        <div className="market-heading"><div><span>RAF VE BARKOD</span><h2>Etiket basım kuyruğu</h2></div><div className="market-label-actions"><label>Etiket ölçüsü<select value={etiketBoyutu} onChange={event => setEtiketBoyutu(event.target.value)}><option value="58x40">58 × 40 mm</option><option value="50x30">50 × 30 mm</option><option value="40x30">40 × 30 mm</option></select></label><button className="market-primary" type="button" onClick={() => etiketUrunleri.length ? window.print() : bildir('Önce ürün seçin.', 'warning')}>🖨️ Seçilenleri Yazdır</button></div></div>
+        <div className="market-heading"><div><span>RAF VE BARKOD</span><h2>Etiket basım kuyruğu</h2></div><div className="market-label-actions"><button className={etiketKuyrugu.length ? 'market-queue-button active' : 'market-queue-button'} type="button" onClick={fiyatDegisenleriSec}>↻ Fiyatı Değişenler ({etiketKuyrugu.length})</button><label>Etiket ölçüsü<select value={etiketBoyutu} onChange={event => setEtiketBoyutu(event.target.value)}><option value="58x40">58 × 40 mm</option><option value="50x30">50 × 30 mm</option><option value="40x30">40 × 30 mm</option></select></label><button className="market-primary" type="button" onClick={etiketleriYazdir}>🖨️ Seçilenleri Yazdır</button></div></div>
         <input className="market-label-search" value={etiketArama} onChange={event => setEtiketArama(event.target.value)} placeholder="Ürün adı veya barkoda göre ara" />
         <div className="market-label-columns"><span>Seç</span><span>Ürün / Barkod</span><span>Adet</span><span>Alış</span><span>Satış</span><span></span></div>
         <div className="market-label-list">{filtreliEtiketUrunleri.map(urun => {
           const acik = String(hizliDuzenleme?.id) === String(urun.id);
           return <div className="market-label-row" key={urun.id}>
             <input aria-label={`${urun.urun_adi} etiketini seç`} type="checkbox" checked={etiketUrunleri.includes(urun.id)} onChange={event => setEtiketUrunleri(prev => event.target.checked ? [...prev, urun.id] : prev.filter(id => id !== urun.id))} />
-            <span><strong>{urun.urun_adi}</strong><small>{urun.barkod}</small></span>
+            <span><strong>{urun.urun_adi}{bekleyenEtiketUrunIdleri.includes(String(urun.id)) && <em className="market-queue-badge">Yeni fiyat</em>}</strong><small>{urun.barkod}</small></span>
             <input className="market-label-count" aria-label={`${urun.urun_adi} etiket adedi`} type="number" min="1" max="100" value={etiketAdetleri[urun.id] || 1} onChange={event => setEtiketAdetleri(prev => ({ ...prev, [urun.id]: Math.max(Number(event.target.value || 1), 1) }))} />
             <b>{para(urun.alis_fiyati)}</b>
             <b>{para(urun.satis_fiyati)}</b>
