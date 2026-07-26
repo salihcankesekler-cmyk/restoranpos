@@ -525,6 +525,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
         adet: eklenecekAdet,
         satir_id: String(satirId),
         liste_fiyati: Number(urun.liste_fiyati ?? urun.satis_fiyati ?? 0),
+        orijinal_liste_fiyati: Number(urun.orijinal_liste_fiyati ?? urun.liste_fiyati ?? urun.satis_fiyati ?? 0),
         indirim_turu: '',
         indirim_degeri: 0,
       }]);
@@ -551,13 +552,15 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     if (!urunIndirimFormu) return;
     setSepet(prev => prev.map(kalem => {
       if (sepetSatirAnahtari(kalem) !== String(urunIndirimFormu.satirId)) return kalem;
-      const listeFiyati = Number(kalem.liste_fiyati ?? kalem.satis_fiyati ?? 0);
-      const yeniFiyat = Math.min(Math.max(Number(fiyatDegeri ?? urunIndirimFormu.fiyat ?? 0), 0), listeFiyati);
+      const orijinalListeFiyati = Number(kalem.orijinal_liste_fiyati ?? kalem.liste_fiyati ?? kalem.satis_fiyati ?? 0);
+      const yeniFiyat = Math.max(Number(fiyatDegeri ?? urunIndirimFormu.fiyat ?? 0), 0);
+      const kayitListeFiyati = Math.max(orijinalListeFiyati, yeniFiyat);
       return {
         ...kalem,
         satis_fiyati: yeniFiyat,
-        indirim_turu: yeniFiyat === 0 ? 'ikram' : yeniFiyat < listeFiyati ? 'fiyat' : '',
-        indirim_degeri: Math.max(listeFiyati - yeniFiyat, 0),
+        liste_fiyati: kayitListeFiyati,
+        indirim_turu: yeniFiyat === 0 ? 'ikram' : yeniFiyat < orijinalListeFiyati ? 'fiyat' : yeniFiyat > orijinalListeFiyati ? 'fiyat_artisi' : '',
+        indirim_degeri: Math.max(orijinalListeFiyati - yeniFiyat, 0),
       };
     }));
     setUrunIndirimFormu(null);
@@ -565,7 +568,13 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
 
   const urunIndiriminiKaldir = satirId => {
     setSepet(prev => prev.map(kalem => sepetSatirAnahtari(kalem) === String(satirId)
-      ? { ...kalem, satis_fiyati: Number(kalem.liste_fiyati || 0), indirim_turu: '', indirim_degeri: 0 }
+      ? {
+        ...kalem,
+        liste_fiyati: Number(kalem.orijinal_liste_fiyati ?? kalem.liste_fiyati ?? 0),
+        satis_fiyati: Number(kalem.orijinal_liste_fiyati ?? kalem.liste_fiyati ?? 0),
+        indirim_turu: '',
+        indirim_degeri: 0,
+      }
       : kalem));
     setUrunIndirimFormu(null);
   };
@@ -1002,7 +1011,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
               {sepet.map(kalem => {
                 const satirId = sepetSatirAnahtari(kalem);
                 const indirimli = Number(kalem.liste_fiyati ?? kalem.satis_fiyati) > Number(kalem.satis_fiyati);
-                return <tr key={satirId}><td><strong>{kalem.urun_adi}</strong><small>{indirimli && <del>{para(kalem.liste_fiyati)}</del>}<button className={Number(kalem.satis_fiyati) === 0 ? 'market-cart-price complimentary' : 'market-cart-price'} type="button" onClick={() => setUrunIndirimFormu({ satirId, urunAdi: kalem.urun_adi, fiyat: kalem.satis_fiyati, listeFiyati: kalem.liste_fiyati })}>{Number(kalem.satis_fiyati) === 0 ? 'İKRAM' : para(kalem.satis_fiyati)}</button></small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - 1)}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step="0.001" value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + 1)}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => sepetSatiriniSil(satirId)}>×</button></td></tr>;
+                return <tr key={satirId}><td><strong>{kalem.urun_adi}</strong><small>{indirimli && <del>{para(kalem.liste_fiyati)}</del>}<button className={Number(kalem.satis_fiyati) === 0 ? 'market-cart-price complimentary' : 'market-cart-price'} type="button" onClick={() => setUrunIndirimFormu({ satirId, urunAdi: kalem.urun_adi, fiyat: kalem.satis_fiyati, listeFiyati: Number(kalem.orijinal_liste_fiyati ?? kalem.liste_fiyati) })}>{Number(kalem.satis_fiyati) === 0 ? 'İKRAM' : para(kalem.satis_fiyati)}</button></small></td><td><div className="market-quantity-control"><button type="button" aria-label={`${kalem.urun_adi} azalt`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) - 1)}>−</button><input aria-label={`${kalem.urun_adi} adedi`} type="number" min="0.001" step="0.001" value={kalem.adet} onFocus={event => event.target.select()} onChange={event => sepetAdediniDegistir(satirId, event.target.value)} /><button type="button" aria-label={`${kalem.urun_adi} artır`} onClick={() => sepetAdediniDegistir(satirId, Number(kalem.adet) + 1)}>＋</button></div></td><td><strong>{para(Number(kalem.adet) * Number(kalem.satis_fiyati))}</strong></td><td><button className="market-remove" type="button" onClick={() => sepetSatiriniSil(satirId)}>×</button></td></tr>;
               })}
             </tbody></table></div>}
           <div className="market-cart-discount">
@@ -1027,9 +1036,9 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
             <span>ÜRÜN FİYATI</span>
             <h2>{urunIndirimFormu.urunAdi}</h2>
             <p>Bu fişte kullanılacak birim fiyatı yazın veya ürünü ikram olarak işaretleyin.</p>
-            <label>Yeni fiyat (TL)<input type="number" min="0" max={urunIndirimFormu.listeFiyati} step="0.01" value={urunIndirimFormu.fiyat} onChange={event => setUrunIndirimFormu({ ...urunIndirimFormu, fiyat: event.target.value })} autoFocus /></label>
+            <label>Yeni fiyat (TL)<input type="number" min="0" step="0.01" value={urunIndirimFormu.fiyat} onChange={event => setUrunIndirimFormu({ ...urunIndirimFormu, fiyat: event.target.value })} autoFocus /></label>
             <small>Liste fiyatı: {para(urunIndirimFormu.listeFiyati)}</small>
-            <div className="market-price-modal-actions"><button className="market-remove" type="button" onClick={() => setUrunIndirimFormu(null)}>Vazgeç</button><button className="market-complimentary-button" type="button" onClick={() => urunFiyatiniUygula(0)}>🎁 İkram</button><button type="button" onClick={() => urunIndiriminiKaldir(urunIndirimFormu.satirId)}>Liste Fiyatı</button><button className="market-primary" type="submit">Uygula</button></div>
+            <div className="market-price-modal-actions"><button className="market-primary market-apply-price" type="button" onClick={() => urunFiyatiniUygula(urunIndirimFormu.fiyat)}>Yazdığım Fiyatı Uygula</button><button className="market-complimentary-button" type="button" onClick={() => urunFiyatiniUygula(0)}>🎁 İkram</button><button type="button" onClick={() => urunIndiriminiKaldir(urunIndirimFormu.satirId)}>Liste Fiyatı</button><button className="market-remove" type="button" onClick={() => setUrunIndirimFormu(null)}>Vazgeç</button></div>
           </form>
         </div>}
         {genelIndirimPenceresi && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Sepet iskontosu">
