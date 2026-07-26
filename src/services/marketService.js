@@ -136,6 +136,32 @@ export async function marketCariKaydet(restaurantId, cari) {
   return data;
 }
 
+export async function marketCariHareketiKaydet(restaurantId, hareket) {
+  await marketOturumunuDogrula();
+  const tutar = Number(hareket.tutar || 0);
+  if (!hareket.cariId) throw new Error('Cari seçimi zorunludur.');
+  if (!Number.isFinite(tutar) || tutar <= 0) throw new Error('Sıfırdan büyük bir tutar girin.');
+  const tahsilatMi = hareket.islemTipi === 'tahsilat';
+  const kaynakId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  await cariHareketiniEsitle(restaurantId, hareket.cariId, {
+    kaynak: 'market_harici_hareket',
+    kaynakId,
+    tip: tahsilatMi ? 'Tahsilat' : 'Ödeme',
+    tutar,
+    bakiyeEtkisi: tahsilatMi ? -tutar : tutar,
+    aciklama: String(hareket.aciklama || '').trim() || (tahsilatMi ? 'Dışarıdan tahsilat alındı' : 'Dışarı ödeme yapıldı'),
+    tarih: hareket.tarih ? new Date(`${hareket.tarih}T12:00:00`).toISOString() : new Date().toISOString(),
+  });
+  const { data, error } = await supabase
+    .from('cari_musteriler')
+    .select('id, ad, telefon, bakiye, not_metni, hareketler')
+    .eq('restaurant_id', restaurantId)
+    .eq('id', hareket.cariId)
+    .single();
+  if (error) throw marketHatasi(error);
+  return data;
+}
+
 export async function marketUrunuKaydet(restaurantId, urun) {
   await marketOturumunuDogrula();
   if (!urun.grupId) throw new Error('Ürün grubu seçimi zorunludur.');

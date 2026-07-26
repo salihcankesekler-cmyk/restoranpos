@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   marketAlisFaturasiKaydet,
   marketCariKaydet,
+  marketCariHareketiKaydet,
   marketGrubuKaydet,
   marketSayimiKaydet,
   marketSatisiKaydet,
@@ -19,6 +20,12 @@ const bosUrun = {
 
 const bosGrup = { grupAdi: '', satisEkranindaGoster: true, sira: 0 };
 const bosCari = { ad: '', telefon: '', notMetni: '' };
+const bosFinansHareketi = () => ({
+  islemTipi: 'tahsilat',
+  tutar: '',
+  aciklama: '',
+  tarih: new Date().toISOString().slice(0, 10),
+});
 
 const bosFatura = () => ({
   id: '', cariId: '', tedarikciAdi: '', faturaNo: '',
@@ -65,8 +72,12 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
   const [sepet, setSepet] = useState([]);
   const [satisGrubu, setSatisGrubu] = useState('');
   const [satisCariId, setSatisCariId] = useState('');
+  const [fiyatBekleyenUrun, setFiyatBekleyenUrun] = useState(null);
+  const [anlikSatisFiyati, setAnlikSatisFiyati] = useState('');
   const [cariFormu, setCariFormu] = useState(bosCari);
   const [cariFormYeri, setCariFormYeri] = useState('');
+  const [finansCariId, setFinansCariId] = useState('');
+  const [finansHareketi, setFinansHareketi] = useState(bosFinansHareketi);
   const [sayim, setSayim] = useState({});
   const [sayimBarkodu, setSayimBarkodu] = useState('');
   const [etiketUrunleri, setEtiketUrunleri] = useState([]);
@@ -231,6 +242,12 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
 
   const seciliSatisCarisi = cariler.find(cari => String(cari.id) === String(satisCariId));
   const seciliAlisCarisi = cariler.find(cari => String(cari.id) === String(fatura.cariId));
+  const seciliFinansCarisi = cariler.find(cari => String(cari.id) === String(finansCariId));
+  const finansOzeti = useMemo(() => ({
+    alacak: cariler.reduce((toplam, cari) => toplam + Math.max(Number(cari.bakiye || 0), 0), 0),
+    borc: cariler.reduce((toplam, cari) => toplam + Math.abs(Math.min(Number(cari.bakiye || 0), 0)), 0),
+    sifir: cariler.filter(cari => Number(cari.bakiye || 0) === 0).length,
+  }), [cariler]);
 
   const grupKaydet = async event => {
     event.preventDefault();
@@ -326,8 +343,18 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       : prev.map(kalem => String(kalem.id) === String(urunId) ? { ...kalem, adet } : kalem));
   };
 
+  const urunuFiyatKontrolluEkle = (urun, adet) => {
+    const mevcut = sepet.find(kalem => String(kalem.id) === String(urun.id));
+    if (!mevcut && Number(urun.satis_fiyati || 0) <= 0) {
+      setFiyatBekleyenUrun({ urun, adet: Math.max(Number(adet || 1), 0.001) });
+      setAnlikSatisFiyati('');
+      return;
+    }
+    urunuSepeteEkle(urun, adet);
+  };
+
   const secilenUrunuSepeteEkle = urun => {
-    urunuSepeteEkle(urun, satisAdedi);
+    urunuFiyatKontrolluEkle(urun, satisAdedi);
     setSatisAdedi('1');
   };
 
@@ -335,9 +362,19 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     event.preventDefault();
     const urun = urunler.find(item => String(item.barkod) === satisBarkodu.trim());
     if (!urun) return bildir('Barkod ürün listesinde bulunamadı.', 'warning');
-    urunuSepeteEkle(urun, satisAdedi);
+    urunuFiyatKontrolluEkle(urun, satisAdedi);
     setSatisBarkodu('');
     setSatisAdedi('1');
+  };
+
+  const anlikSatisFiyatiniUygula = event => {
+    event.preventDefault();
+    const fiyat = Number(anlikSatisFiyati);
+    if (!Number.isFinite(fiyat) || fiyat <= 0) return bildir('Sıfırdan büyük bir satış fiyatı girin.', 'warning');
+    urunuSepeteEkle({ ...fiyatBekleyenUrun.urun, satis_fiyati: fiyat }, fiyatBekleyenUrun.adet);
+    setFiyatBekleyenUrun(null);
+    setAnlikSatisFiyati('');
+    window.setTimeout(() => barkodRef.current?.focus(), 80);
   };
 
   const satisiTamamla = async odemeTipi => {
@@ -371,10 +408,24 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
       if (cariFormYeri === 'alis') {
         setFatura(prev => ({ ...prev, cariId: String(yeniCari.id), tedarikciAdi: yeniCari.ad }));
       }
+      if (cariFormYeri === 'finans') setFinansCariId(String(yeniCari.id));
       setCariFormu(bosCari);
       setCariFormYeri('');
       await verileriYukle(true);
       bildir('Cari kaydedildi ve seçildi.', 'success');
+    } catch (error) { bildir(error.message, 'error'); }
+  };
+
+  const finansHareketiKaydet = async event => {
+    event.preventDefault();
+    try {
+      const guncellenenCari = await marketCariHareketiKaydet(restaurantId, {
+        ...finansHareketi,
+        cariId: finansCariId,
+      });
+      setCariler(prev => prev.map(cari => String(cari.id) === String(guncellenenCari.id) ? guncellenenCari : cari));
+      setFinansHareketi(bosFinansHareketi());
+      bildir(finansHareketi.islemTipi === 'tahsilat' ? 'Tahsilat cari hesabına işlendi.' : 'Ödeme cari hesabına işlendi.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
   };
 
@@ -506,6 +557,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
     ['gruplar', '▦ Gruplar'],
     ['urunler', '📦 Ürünler'],
     ['alis', '🧾 Alış Faturaları'],
+    ['finans', '💰 Finans / Cari'],
     ['sayim', '📋 Sayım'],
     ['etiket', '🏷️ Etiket Basımı'],
     ['raporlar', '📈 Raporlar'],
@@ -535,7 +587,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
           <div className="market-sale-products">
             {satisUrunleri.map(urun => <button type="button" key={urun.id} onClick={() => secilenUrunuSepeteEkle(urun)}>
               <span><strong>{urun.urun_adi}</strong><small>{urun.barkod} · Stok {urun.stok_miktari}</small></span>
-              <b>{para(urun.satis_fiyati)}</b>
+              <b>{Number(urun.satis_fiyati || 0) > 0 ? para(urun.satis_fiyati) : 'Satışta fiyat gir'}</b>
               <i>＋</i>
             </button>)}
             {gorunenGruplar.length > 0 && !satisUrunleri.length && <p className="market-empty">Bu grupta aramaya uygun ürün bulunamadı.</p>}
@@ -555,6 +607,16 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
           <div className="market-payment-buttons"><button type="button" onClick={() => satisiTamamla('Nakit')}>💵<span>Nakit</span></button><button type="button" onClick={() => satisiTamamla('Kredi Kartı')}>💳<span>Kart</span></button><button type="button" onClick={() => satisiTamamla('Cari / Veresiye')}>👤<span>Cari</span></button></div>
           <p className="market-note">Veresiye işlem için cari seçimi zorunludur. Nakit ve kart satışlarında cari seçimi isteğe bağlıdır.</p>
         </div>
+        {fiyatBekleyenUrun && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Satış fiyatı gir">
+          <form onSubmit={anlikSatisFiyatiniUygula}>
+            <span>SATIŞ FİYATI</span>
+            <h2>{fiyatBekleyenUrun.urun.urun_adi}</h2>
+            <p>Bu ürünün kayıtlı satış fiyatı yok. Yalnızca bu fişte kullanılacak fiyatı girin.</p>
+            <label>Fiyat (TL)<input type="number" min="0.01" step="0.01" value={anlikSatisFiyati} onChange={event => setAnlikSatisFiyati(event.target.value)} autoFocus /></label>
+            <small>{fiyatBekleyenUrun.adet} adet sepete eklenecek.</small>
+            <div><button className="market-remove" type="button" onClick={() => setFiyatBekleyenUrun(null)}>Vazgeç</button><button className="market-primary" type="submit">Fiyatı Uygula</button></div>
+          </form>
+        </div>}
       </div>}
 
       {!yukleniyor && sekme === 'gruplar' && <div className="market-grid-form">
@@ -646,6 +708,46 @@ export default function MarketApp({ restaurantId, restaurantName, notify }) {
               <button className="market-primary" type="button" onClick={() => faturayiDuzenle(kayit)}>✎ Faturayı Düzenle</button>
             </div>}
           </article>)}</div>}
+        </div>
+      </div>}
+
+      {!yukleniyor && sekme === 'finans' && <div className="market-finance-layout">
+        <div className="market-card">
+          <div className="market-heading"><div><span>CARİ BAKİYELERİ</span><h2>Finans özeti</h2></div><strong>{cariler.length} cari</strong></div>
+          <div className="market-finance-stats">
+            <div><span>Toplam Alacak</span><strong>{para(finansOzeti.alacak)}</strong><small>Müşterilerden alınacak</small></div>
+            <div><span>Toplam Borç</span><strong>{para(finansOzeti.borc)}</strong><small>Tedarikçilere ödenecek</small></div>
+            <div><span>Bakiyesi Sıfır</span><strong>{finansOzeti.sifir}</strong><small>Kapanmış cari</small></div>
+          </div>
+          {cariKayitAlani('finans')}
+          <div className="market-cari-balance-list">{cariler.map(cari => {
+            const bakiye = Number(cari.bakiye || 0);
+            return <button type="button" key={cari.id} className={String(finansCariId) === String(cari.id) ? 'active' : ''} onClick={() => setFinansCariId(String(cari.id))}>
+              <span><strong>{cari.ad}</strong><small>{cari.telefon || 'Telefon yok'}</small></span>
+              <b className={bakiye < 0 ? 'red' : 'green'}>{bakiye > 0 ? 'Alacak ' : bakiye < 0 ? 'Borç ' : ''}{para(Math.abs(bakiye))}</b>
+            </button>;
+          })}{!cariler.length && <p className="market-empty">Henüz cari kaydı yok.</p>}</div>
+        </div>
+        <div className="market-card">
+          <div className="market-heading"><div><span>ÖDEME / TAHSİLAT</span><h2>Cari hareket gir</h2></div></div>
+          <form className="market-finance-form" onSubmit={finansHareketiKaydet}>
+            <label>Cari<select required value={finansCariId} onChange={event => setFinansCariId(event.target.value)}><option value="">Cari seçin</option>{cariler.map(cari => <option key={cari.id} value={cari.id}>{cari.ad}</option>)}</select></label>
+            <div className="market-transaction-types">
+              <button type="button" className={finansHareketi.islemTipi === 'tahsilat' ? 'active income' : ''} onClick={() => setFinansHareketi({ ...finansHareketi, islemTipi: 'tahsilat' })}>↓ Tahsilat Aldım</button>
+              <button type="button" className={finansHareketi.islemTipi === 'odeme' ? 'active expense' : ''} onClick={() => setFinansHareketi({ ...finansHareketi, islemTipi: 'odeme' })}>↑ Ödeme Yaptım</button>
+            </div>
+            <div className="market-row"><label>Tutar (TL)<input type="number" min="0.01" step="0.01" value={finansHareketi.tutar} onChange={event => setFinansHareketi({ ...finansHareketi, tutar: event.target.value })} /></label><label>Tarih<input type="date" value={finansHareketi.tarih} onChange={event => setFinansHareketi({ ...finansHareketi, tarih: event.target.value })} /></label></div>
+            <label>Açıklama<input value={finansHareketi.aciklama} onChange={event => setFinansHareketi({ ...finansHareketi, aciklama: event.target.value })} placeholder="Örn. Havale ile tahsilat" /></label>
+            <button className="market-primary" type="submit">{finansHareketi.islemTipi === 'tahsilat' ? 'Tahsilatı Kaydet' : 'Ödemeyi Kaydet'}</button>
+          </form>
+          {seciliFinansCarisi ? <>
+            {cariOzeti(seciliFinansCarisi)}
+            <div className="market-heading"><div><span>HAREKETLER</span><h2>Hesap geçmişi</h2></div></div>
+            <div className="market-finance-history">{(Array.isArray(seciliFinansCarisi.hareketler) ? seciliFinansCarisi.hareketler : []).map(hareket => <div key={hareket.id}>
+              <span><strong>{hareket.tip}</strong><small>{hareket.aciklama || 'Açıklama yok'} · {new Date(hareket.tarih).toLocaleString('tr-TR')}</small></span>
+              <b className={hareket.tip === 'Tahsilat' ? 'green' : hareket.tip === 'Ödeme' ? 'red' : ''}>{para(hareket.tutar)}</b>
+            </div>)}{(!Array.isArray(seciliFinansCarisi.hareketler) || !seciliFinansCarisi.hareketler.length) && <p className="market-empty">Bu caride henüz hareket yok.</p>}</div>
+          </> : <p className="market-empty">Bakiye ve hareketleri görmek için soldan bir cari seçin.</p>}
         </div>
       </div>}
 
