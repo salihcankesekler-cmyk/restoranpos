@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
+const DepoApp = React.lazy(() => import('./depo/DepoApp'));
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -3934,6 +3935,7 @@ Toplam Ciro: {toplam}
   // personel ekran yetkilerinde kullanılacak sekme seçeneklerini tutan kod
   const personelSekmeSecenekleri = [
     { key: 'market', label: '🏪 Market Yönetimi' },
+    { key: 'depo', label: '🏭 Depo & Şube Sevk' },
     { key: 'masalar', label: '🪑 Masalar' },
     { key: 'mutfak', label: '👨‍🍳 Mutfak' },
     { key: 'paket', label: '🛵 Paket Servis' },
@@ -3994,31 +3996,31 @@ Toplam Ciro: {toplam}
       key: 'Market',
       label: 'Integra Market',
       aciklama: 'Barkodlu ürün, alış faturası, sayım, fiyat ve etiket yönetimi.',
-      sekmeler: ['market', 'hizli_satis', 'stok', 'kasa', 'cari', 'raporlar', 'giderler', 'iadeler', 'garsonlar', 'isletme_profili', 'kurulum', 'sistem_durumu'],
+      sekmeler: ['market', 'depo', 'hizli_satis', 'stok', 'kasa', 'cari', 'raporlar', 'giderler', 'iadeler', 'garsonlar', 'isletme_profili', 'kurulum', 'sistem_durumu'],
     },
     {
       key: 'Baslangic',
       label: 'Başlangıç',
       aciklama: 'Masa, mutfak, hızlı satış ve temel rapor isteyen küçük işletmeler.',
-      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
+      sekmeler: ['masalar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'depo', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
     },
     {
       key: 'Profesyonel',
       label: 'Profesyonel',
       aciklama: 'Restoranların günlük operasyonu için en dengeli paket.',
-      sekmeler: ['raporlar', 'masalar', 'mutfak', 'paket', 'hizli_satis', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'cari', 'stok', 'kasa', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar'],
+      sekmeler: ['raporlar', 'masalar', 'mutfak', 'paket', 'hizli_satis', 'menu', 'receteler', 'depo', 'qr_menu', 'servis_talepleri', 'cari', 'stok', 'kasa', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar'],
     },
     {
       key: 'Paket Servis',
       label: 'Paket Servis Odaklı',
       aciklama: 'Paket, online sipariş havuzu, kurye ve entegrasyon ağırlıklı kullanım.',
-      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
+      sekmeler: ['paket', 'entegrasyonlar', 'mutfak', 'hizli_satis', 'menu', 'receteler', 'depo', 'qr_menu', 'cari', 'kasa', 'raporlar', 'servis_talepleri', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
     },
     {
       key: 'QR Plus',
       label: 'QR Menü Plus',
       aciklama: 'QR menü, masadan sipariş, servis talebi ve sadakat odaklı kullanım.',
-      sekmeler: ['masalar', 'mutfak', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
+      sekmeler: ['masalar', 'mutfak', 'menu', 'receteler', 'depo', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
     },
     {
       key: 'Premium',
@@ -4058,7 +4060,11 @@ Toplam Ciro: {toplam}
     const gorevMetni = String(gorev || '').toLocaleLowerCase('tr-TR');
 
     if (gorevMetni.includes('müdür') || gorevMetni.includes('mudur')) {
-      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'kiosk', 'isletme_profili', 'kurulum'];
+      return ['raporlar', 'masalar', 'mutfak', 'paket', 'cari', 'stok', 'depo', 'kasa', 'hizli_satis', 'giderler', 'iadeler', 'rezervasyonlar', 'garsonlar', 'menu', 'receteler', 'qr_menu', 'servis_talepleri', 'sadakat', 'kiosk', 'isletme_profili', 'kurulum'];
+    }
+
+    if (gorevMetni.includes('depo')) {
+      return ['depo'];
     }
 
     if (gorevMetni.includes('mutfak')) {
@@ -16431,6 +16437,15 @@ Toplam Ciro: {toplam}
                   🏪 Integra Market
                 </button>
               )}
+              {tabGorunur('depo') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('depo')}
+                  style={activeTab === 'depo' ? styles.navItemActive : styles.navItem}
+                >
+                  🏭 Depo & Şube Sevk
+                </button>
+              )}
               {tabGorunur('raporlar') && (
                 <button
                   type="button"
@@ -16822,6 +16837,16 @@ Toplam Ciro: {toplam}
                   restaurantName={user?.restaurant}
                   notify={bildirimGoster}
                   canPerform={aktifKullaniciDetayYetkisiVar}
+                />
+              </React.Suspense>
+            )}
+            {activeTab === 'depo' && (
+              <React.Suspense fallback={<div style={{ padding: '24px', color: '#64748b', fontWeight: '800' }}>Depo ve sevkiyat modülü hazırlanıyor…</div>}>
+                <DepoApp
+                  restaurantId={mevcutRestaurantId}
+                  restaurantName={user?.restaurant}
+                  userRole={user?.role}
+                  notify={bildirimGoster}
                 />
               </React.Suspense>
             )}
@@ -21972,6 +21997,7 @@ Toplam Ciro: {toplam}
                     <option value="Müdür">Müdür</option>
                     <option value="Mutfak">Mutfak</option>
                     <option value="Kasiyer">Kasiyer</option>
+                    <option value="Depo Personeli">Depo Personeli</option>
                   </select>
 
                   <input
