@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
 const DepoApp = React.lazy(() => import('./depo/DepoApp'));
+const KuaforApp = React.lazy(() => import('./kuafor/KuaforApp'));
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -3936,6 +3937,7 @@ Toplam Ciro: {toplam}
   const personelSekmeSecenekleri = [
     { key: 'market', label: '🏪 Market Yönetimi' },
     { key: 'depo', label: '🏭 Depo & Şube Sevk' },
+    { key: 'kuafor', label: '✂️ Kuaför Randevu & Plan' },
     { key: 'masalar', label: '🪑 Masalar' },
     { key: 'mutfak', label: '👨‍🍳 Mutfak' },
     { key: 'paket', label: '🛵 Paket Servis' },
@@ -4023,16 +4025,22 @@ Toplam Ciro: {toplam}
       sekmeler: ['masalar', 'mutfak', 'menu', 'receteler', 'depo', 'qr_menu', 'servis_talepleri', 'sadakat', 'raporlar', 'kasa', 'isletme_profili', 'kurulum', 'sistem_durumu', 'garsonlar'],
     },
     {
+      key: 'Kuaför',
+      label: 'Integra Kuaför',
+      aciklama: 'Müşteri kaydı, personel, işlem süresi, randevu ve günlük çalışma planı.',
+      sekmeler: ['kuafor', 'cari', 'kasa', 'giderler', 'raporlar', 'garsonlar', 'isletme_profili', 'kurulum', 'sistem_durumu'],
+    },
+    {
       key: 'Premium',
       label: 'Premium / Tüm Modüller',
       aciklama: 'Tüm restoran sekmeleri açık. Demo, satış sunumu ve tam paket müşteriler için.',
-      sekmeler: tumIsletmeSekmeYetkileri().filter(sekme => sekme !== 'market'),
+      sekmeler: tumIsletmeSekmeYetkileri().filter(sekme => !['market', 'kuafor'].includes(sekme)),
     },
     {
       key: 'Kurumsal',
       label: 'Kurumsal / Özel',
       aciklama: 'Tüm restoran modülleri açık; özel entegrasyon ve kurumsal kullanım için.',
-      sekmeler: tumIsletmeSekmeYetkileri().filter(sekme => sekme !== 'market'),
+      sekmeler: tumIsletmeSekmeYetkileri().filter(sekme => !['market', 'kuafor'].includes(sekme)),
     },
   ];
 
@@ -4065,6 +4073,10 @@ Toplam Ciro: {toplam}
 
     if (gorevMetni.includes('depo')) {
       return ['depo'];
+    }
+
+    if (gorevMetni.includes('kuaför') || gorevMetni.includes('kuafor')) {
+      return ['kuafor'];
     }
 
     if (gorevMetni.includes('mutfak')) {
@@ -4123,6 +4135,7 @@ Toplam Ciro: {toplam}
 
     if (rol === 'owner') {
       if (aktifIsletmeSekmeleri.includes('market') && !aktifIsletmeSekmeleri.includes('masalar')) return 'market';
+      if (aktifIsletmeSekmeleri.includes('kuafor') && !aktifIsletmeSekmeleri.includes('masalar')) return 'kuafor';
       return aktifIsletmeSekmeleri.includes('raporlar') ? 'raporlar' : aktifIsletmeSekmeleri[0] || 'masalar';
     }
 
@@ -4714,6 +4727,7 @@ Toplam Ciro: {toplam}
     aktifSekmeler: isletmeSekmeleriniHazirla(r.aktif_sekmeler, r.modul_paketi || r.paket_adi || r.basvuru_paketi || 'Premium'),
     modulPaketi: r.modul_paketi || r.paket_adi || r.basvuru_paketi || 'Premium',
     modulNotu: r.modul_notu || '',
+    isletmeTipi: r.isletme_tipi || 'Restoran',
     yetkiliAdi: r.yetkili_adi || '',
     firmaTelefon: r.firma_telefon || r.telefon || '',
     firmaAdres: r.firma_adres || r.adres || '',
@@ -11905,8 +11919,8 @@ Toplam Ciro: {toplam}
 
     if (alan === 'paketAdi') {
       guncelleme.basvuru_paketi = temizDeger;
-      guncelleme.isletme_tipi = temizDeger === 'Market' ? 'Market' : 'Restoran';
-      if (['Profesyonel', 'Market'].includes(temizDeger)) {
+      guncelleme.isletme_tipi = temizDeger === 'Market' ? 'Market' : temizDeger === 'Kuaför' ? 'Kuaför' : 'Restoran';
+      if (['Profesyonel', 'Market', 'Kuaför'].includes(temizDeger)) {
         guncelleme.aylik_ucret = Number(restoran.aylikUcret || 699) || 699;
         guncelleme.kullanici_limiti = Number(restoran.kullaniciLimiti || 3) || 3;
       }
@@ -15120,6 +15134,13 @@ Toplam Ciro: {toplam}
       adimlar: ['Müşteri ve tarih seç', 'Masa/kapora gir', 'Geldi veya gelmedi durumunu işle'],
       aksiyonlar: [{ label: 'Cari oluştur', tab: 'cari' }, { label: 'Masalar', tab: 'masalar' }],
     },
+    kuafor: {
+      rozet: 'Randevu planlama',
+      baslik: 'Kuaför randevu kaydı ve personel gün planı',
+      aciklama: 'Müşteri adı, telefon, uygulanacak işlem, kullanılan malzeme ve personel saatlerini tek ekranda planlayın.',
+      adimlar: ['Personel ve işlemleri tanımla', 'Randevuyu gün planına kaydet', 'Geldi / tamamlandı durumunu işle'],
+      aksiyonlar: [{ label: 'Müşteri kayıtları', tab: 'kuafor' }, { label: 'Personeller', tab: 'garsonlar' }],
+    },
     garsonlar: {
       rozet: 'Personel yetkisi',
       baslik: 'Personel ekranlarını ve görevlerini yönet',
@@ -16615,6 +16636,16 @@ Toplam Ciro: {toplam}
                 </button>
               )}
 
+              {tabGorunur('kuafor') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('kuafor')}
+                  style={activeTab === 'kuafor' ? styles.navItemActive : styles.navItem}
+                >
+                  ✂️ Kuaför Randevu & Gün Planı
+                </button>
+              )}
+
               {tabGorunur('garsonlar') && (
                 <button
                   type="button"
@@ -16846,6 +16877,15 @@ Toplam Ciro: {toplam}
                   restaurantId={mevcutRestaurantId}
                   restaurantName={user?.restaurant}
                   userRole={user?.role}
+                  notify={bildirimGoster}
+                />
+              </React.Suspense>
+            )}
+            {activeTab === 'kuafor' && (
+              <React.Suspense fallback={<div style={{ padding: '24px', color: '#64748b', fontWeight: '800' }}>Kuaför randevu planı hazırlanıyor…</div>}>
+                <KuaforApp
+                  restaurantId={mevcutRestaurantId}
+                  restaurantName={user?.restaurant}
                   notify={bildirimGoster}
                 />
               </React.Suspense>
@@ -20622,7 +20662,7 @@ Toplam Ciro: {toplam}
                       <input placeholder="Telefon" value={demoTalepFormu.telefon} onChange={e => setDemoTalepFormu(prev => ({ ...prev, telefon: e.target.value }))} style={styles.input} />
                       <input placeholder="Şehir" value={demoTalepFormu.sehir} onChange={e => setDemoTalepFormu(prev => ({ ...prev, sehir: e.target.value }))} style={styles.input} />
                       <select value={demoTalepFormu.isletmeTipi} onChange={e => setDemoTalepFormu(prev => ({ ...prev, isletmeTipi: e.target.value }))} style={styles.input}>
-                        <option>Restoran</option><option>Kafe</option><option>Fast food</option><option>Paket servis</option><option>Diğer</option>
+                        <option>Restoran</option><option>Kafe</option><option>Fast food</option><option>Paket servis</option><option>Kuaför</option><option>Diğer</option>
                       </select>
                       <input placeholder="Not" value={demoTalepFormu.not} onChange={e => setDemoTalepFormu(prev => ({ ...prev, not: e.target.value }))} style={styles.input} />
                     </div>
@@ -21998,6 +22038,7 @@ Toplam Ciro: {toplam}
                     <option value="Mutfak">Mutfak</option>
                     <option value="Kasiyer">Kasiyer</option>
                     <option value="Depo Personeli">Depo Personeli</option>
+                    <option value="Kuaför Personeli">Kuaför Personeli</option>
                   </select>
 
                   <input
@@ -23210,6 +23251,7 @@ Toplam Ciro: {toplam}
                                 style={styles.input}
                               >
                                 <option>Market</option>
+                                <option>Kuaför</option>
                                 <option>Profesyonel</option>
                                 <option>Kurumsal</option>
                                 <option>Özel Paket</option>
