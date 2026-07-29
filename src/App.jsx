@@ -16976,6 +16976,8 @@ Toplam Ciro: {toplam}
                 <KuaforApp
                   restaurantId={mevcutRestaurantId}
                   restaurantName={user?.restaurant}
+                  userRole={user?.role}
+                  personelHesaplari={personeller}
                   notify={bildirimGoster}
                   onSalesChanged={() => Promise.all([
                     satisGecmisiniSupabasedenCek(mevcutRestaurantId),

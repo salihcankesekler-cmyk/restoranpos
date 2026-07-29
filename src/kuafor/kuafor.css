@@ -23,6 +23,7 @@
 .kuafor-app button.success { border-color: #059669; background: #059669; color: #fff; }
 .kuafor-app button.danger { border-color: #fecdd3; background: #fff1f2; color: #be123c; }
 .kuafor-alert { display: flex; gap: 10px; align-items: center; padding: 11px 14px; margin-bottom: 12px; border: 1px solid #fecaca; border-radius: 12px; background: #fff1f2; color: #9f1239; font-size: 12px; }
+.kuafor-account-alert { border-color: #fde68a; background: #fffbeb; color: #92400e; }
 .kuafor-workflow { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; margin-bottom: 10px; }
 .kuafor-workflow > button { display: grid; grid-template-columns: 28px 1fr; gap: 7px; align-items: center; padding: 8px; text-align: left; }
 .kuafor-workflow > button > b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #ede9fe; color: #6d28d9; font-size: 11px; }
@@ -41,6 +42,7 @@
 .kuafor-date-nav { display: flex; gap: 5px; align-items: center; }
 .kuafor-date-nav button { padding: 7px 10px; }
 .kuafor-date-nav input { width: 130px; }
+.kuafor-personal-plan-badge { padding: 9px 11px; border: 1px solid #c4b5fd; border-radius: 9px; background: #faf5ff; color: #5b21b6; font-size: 10px; font-weight: 900; white-space: nowrap; }
 .kuafor-app input, .kuafor-app select, .kuafor-app textarea { width: 100%; min-height: 38px; border: 1px solid #d8d0dc; border-radius: 8px; outline: none; background: #fff; color: var(--kf-ink); padding: 8px 10px; font: inherit; font-size: 12px; }
 .kuafor-app textarea { min-height: 76px; resize: vertical; }
 .kuafor-app input:focus, .kuafor-app select:focus, .kuafor-app textarea:focus { border-color: var(--kf-purple); box-shadow: 0 0 0 3px rgba(124, 58, 237, .1); }
@@ -149,6 +151,9 @@
 .kuafor-stack-form, .kuafor-catalog-form { display: grid; gap: 8px; }
 .kuafor-catalog-form { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--kf-line); }
 .kuafor-catalog-form button.primary { grid-column: 1 / -1; }
+.kuafor-account-link { display: grid; grid-column: 1 / -1; gap: 4px; padding: 8px; border: 1px solid #c4b5fd; border-radius: 9px; background: #faf5ff; }
+.kuafor-account-link > span { color: #5b21b6; font-size: 9px; font-weight: 900; }
+.kuafor-account-link > small { color: var(--kf-muted); font-size: 8px; }
 .color-label { display: grid; grid-template-columns: 1fr 50px; gap: 7px; align-items: center; padding: 4px 7px; border: 1px solid #d8d0dc; border-radius: 8px; background: #fff; }
 .color-label input { min-height: 28px; padding: 1px; border: 0; }
 .kuafor-search { display: flex; gap: 7px; align-items: center; padding: 6px 9px; margin-bottom: 9px; border: 1px solid var(--kf-line); border-radius: 9px; }

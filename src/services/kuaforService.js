@@ -115,6 +115,7 @@ export async function kuaforPersoneliKaydet(restaurantId, form, personelId = nul
     uzmanlik: String(form.uzmanlik || '').trim() || null,
     renk: form.renk || '#7c3aed',
     sira: Number(form.sira || 0),
+    sistem_personel_id: form.sistemPersonelId ? Number(form.sistemPersonelId) : null,
     aktif: true,
   };
 

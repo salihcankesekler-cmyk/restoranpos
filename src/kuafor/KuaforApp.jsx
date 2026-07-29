@@ -8,6 +8,7 @@ import {
   kuaforRandevusuKaydet,
   kuaforVerileriniGetir,
 } from '../services/kuaforService';
+import { supabase } from '../lib/supabase';
 import './kuafor.css';
 
 const GUN_BASLANGIC_DAKIKA = 8 * 60;
@@ -51,12 +52,12 @@ const bosRandevu = tarih => ({
 });
 
 const bosMusteri = { ad: '', telefon: '', email: '', dogumTarihi: '', notMetni: '' };
-const bosPersonel = { ad: '', telefon: '', uzmanlik: '', renk: '#7c3aed', sira: '' };
+const bosPersonel = { ad: '', telefon: '', uzmanlik: '', renk: '#7c3aed', sira: '', sistemPersonelId: '' };
 const bosHizmet = { hizmetAdi: '', kategori: 'Saç', sureDakika: '30', fiyat: '', renk: '#f97316' };
 const bosOdeme = { odemeTipi: 'Nakit', odenenTutar: '' };
 const bosTahsilat = { musteriId: '', tutar: '', odemeTipi: 'Nakit', aciklama: '' };
 
-export default function KuaforApp({ restaurantId, restaurantName, notify, onSalesChanged }) {
+export default function KuaforApp({ restaurantId, restaurantName, userRole, personelHesaplari = [], notify, onSalesChanged }) {
   const [aktifSekme, setAktifSekme] = useState('plan');
   const [seciliTarih, setSeciliTarih] = useState(bugunYerel());
   const [seciliPersonelFiltresi, setSeciliPersonelFiltresi] = useState('tumu');
@@ -80,6 +81,7 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
   const [tahsilatFormu, setTahsilatFormu] = useState(bosTahsilat);
   const [cariArama, setCariArama] = useState('');
   const [urunArama, setUrunArama] = useState('');
+  const isletmeSahibiMi = userRole === 'owner' || userRole === 'super_admin';
 
   const mesajGoster = useCallback((mesaj, tip = 'info') => {
     if (typeof notify === 'function') notify(mesaj, tip);
@@ -104,6 +106,25 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
     const zamanlayici = window.setTimeout(() => yenile(), 0);
     return () => window.clearTimeout(zamanlayici);
   }, [yenile]);
+
+  useEffect(() => {
+    if (!restaurantId) return undefined;
+
+    const kanal = supabase
+      .channel(`kuafor-randevu-plan-${restaurantId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'kuafor_randevulari', filter: `restaurant_id=eq.${restaurantId}` },
+        () => {
+          void yenile({ sessiz: true });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(kanal);
+    };
+  }, [restaurantId, yenile]);
 
   const islemCalistir = async (calistir, basariMesaji) => {
     setIslemYukleniyor(true);
@@ -134,6 +155,12 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
     if (seciliPersonelFiltresi === 'tumu') return veriler.personeller;
     return veriler.personeller.filter(p => String(p.id) === String(seciliPersonelFiltresi));
   }, [veriler.personeller, seciliPersonelFiltresi]);
+  const baglanabilirPersonelHesaplari = useMemo(() => {
+    return (Array.isArray(personelHesaplari) ? personelHesaplari : [])
+      .filter(hesap => hesap.durum === 'Aktif' && hesap.authBagli)
+      .filter(hesap => Array.isArray(hesap.tabYetkileri) && hesap.tabYetkileri.includes('kuafor'))
+      .sort((a, b) => String(a.ad || '').localeCompare(String(b.ad || ''), 'tr'));
+  }, [personelHesaplari]);
 
   const filtreliMusteriler = useMemo(() => {
     const metin = String(musteriArama || '').trim().toLocaleLowerCase('tr-TR');
@@ -497,6 +524,12 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
       </header>
 
       {hata && <div className="kuafor-alert"><strong>Kontrol gerekiyor</strong><span>{hata}</span></div>}
+      {!isletmeSahibiMi && veriler.personeller.length === 0 && (
+        <div className="kuafor-alert kuafor-account-alert">
+          <strong>Personel kartı bağlantısı gerekiyor</strong>
+          <span>İşletme sahibi, Kuaför → Personel & İşlemler bölümünden giriş hesabınızı kuaför personel kartınızla eşleştirmelidir.</span>
+        </div>
+      )}
 
       <nav className="kuafor-tabs">
         {[
@@ -505,7 +538,7 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
           ['musteriler', '👥 Müşteriler'],
           ['cariler', '₺ Cari / Tahsilat'],
           ['gun_sonu', '📊 Gün Sonu'],
-          ['ayarlar', '⚙️ Personel & İşlemler'],
+          ...(isletmeSahibiMi ? [['ayarlar', '⚙️ Personel & İşlemler']] : []),
         ].map(([key, label]) => (
           <button type="button" key={key} className={aktifSekme === key ? 'active' : ''} onClick={() => setAktifSekme(key)}>{label}</button>
         ))}
@@ -524,10 +557,14 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
               <strong>{tarihBasligi(seciliTarih)}</strong>
               <span>{gunRandevulari.length} kayıtlı randevu</span>
             </div>
-            <select value={seciliPersonelFiltresi} onChange={e => setSeciliPersonelFiltresi(e.target.value)}>
-              <option value="tumu">Tüm personeller</option>
-              {veriler.personeller.map(personel => <option key={personel.id} value={personel.id}>{personel.ad}</option>)}
-            </select>
+            {isletmeSahibiMi ? (
+              <select value={seciliPersonelFiltresi} onChange={e => setSeciliPersonelFiltresi(e.target.value)}>
+                <option value="tumu">Tüm personeller</option>
+                {veriler.personeller.map(personel => <option key={personel.id} value={personel.id}>{personel.ad}</option>)}
+              </select>
+            ) : (
+              <div className="kuafor-personal-plan-badge">🔒 Yalnızca kendi gün planınız</div>
+            )}
           </section>
 
           <section className="kuafor-stats">
@@ -539,7 +576,9 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
 
           {veriler.personeller.length === 0 ? (
             <div className="kuafor-empty setup-empty">
-              Gün planını kullanmak için önce <button type="button" onClick={() => setAktifSekme('ayarlar')}>Personel & İşlemler</button> bölümünden personel ve hizmet tanımlayın.
+              {isletmeSahibiMi
+                ? <>Gün planını kullanmak için önce <button type="button" onClick={() => setAktifSekme('ayarlar')}>Personel & İşlemler</button> bölümünden personel ve hizmet tanımlayın.</>
+                : 'Gün planınız henüz personel hesabınızla eşleştirilmemiş. İşletme sahibinizden hesap bağlantısını yapmasını isteyin.'}
             </div>
           ) : (
             <section className="kuafor-plan-card">
@@ -662,7 +701,8 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
             <div className="kuafor-empty setup-empty">
               Randevu açmak için önce müşteri kartı, personel ve işlem kaydı oluşturun.
               {veriler.musteriler.length === 0 && <button type="button" onClick={() => setAktifSekme('musteriler')}>Müşteri Kartı Aç</button>}
-              {(veriler.personeller.length === 0 || veriler.hizmetler.length === 0) && <button type="button" onClick={() => setAktifSekme('ayarlar')}>Personel / İşlem Tanımla</button>}
+              {(veriler.personeller.length === 0 || veriler.hizmetler.length === 0) && isletmeSahibiMi && <button type="button" onClick={() => setAktifSekme('ayarlar')}>Personel / İşlem Tanımla</button>}
+              {veriler.personeller.length === 0 && !isletmeSahibiMi && <div>İşletme sahibinizin giriş hesabınızı kuaför personel kartınızla eşleştirmesi gerekir.</div>}
             </div>
           ) : (
             <form className="kuafor-randevu-form" onSubmit={randevuyuKaydet}>
@@ -801,23 +841,39 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
         </section>
       )}
 
-      {aktifSekme === 'ayarlar' && (
+      {aktifSekme === 'ayarlar' && isletmeSahibiMi && (
         <section className="kuafor-grid-two">
           <div className="kuafor-card">
-            <div className="kuafor-card-title"><div><h2>{duzenlenenPersonelId ? 'Personeli düzenle' : 'Kayıtlı personel'}</h2><p>Bir kez kaydedilir; randevularda listeden seçilir ve gün planında ayrı sütun olur.</p></div></div>
+            <div className="kuafor-card-title"><div><h2>{duzenlenenPersonelId ? 'Personeli düzenle' : 'Kayıtlı personel'}</h2><p>Giriş hesabıyla eşleştirilen personel yalnızca kendi gün planını görebilir.</p></div></div>
             <form className="kuafor-catalog-form" onSubmit={personelKaydet}>
               <input value={personelFormu.ad} onChange={e => setPersonelFormu(p => ({ ...p, ad: e.target.value }))} placeholder="Personel adı *" />
               <input value={personelFormu.telefon} onChange={e => setPersonelFormu(p => ({ ...p, telefon: e.target.value }))} placeholder="Telefon" />
               <input value={personelFormu.uzmanlik} onChange={e => setPersonelFormu(p => ({ ...p, uzmanlik: e.target.value }))} placeholder="Uzmanlık (Boya, kesim…)" />
               <label className="color-label"><span>Plan rengi</span><input type="color" value={personelFormu.renk} onChange={e => setPersonelFormu(p => ({ ...p, renk: e.target.value }))} /></label>
+              <label className="kuafor-account-link">
+                <span>Panele giriş yapan personel hesabı</span>
+                <select value={personelFormu.sistemPersonelId} onChange={e => setPersonelFormu(p => ({ ...p, sistemPersonelId: e.target.value }))}>
+                  <option value="">Giriş hesabı bağlanmadı</option>
+                  {baglanabilirPersonelHesaplari
+                    .filter(hesap => !veriler.personeller.some(personel =>
+                      String(personel.id) !== String(duzenlenenPersonelId)
+                      && String(personel.sistem_personel_id || '') === String(hesap.id)
+                    ))
+                    .map(hesap => <option key={hesap.id} value={hesap.id}>{hesap.ad}{hesap.email ? ` · ${hesap.email}` : ''}</option>)}
+                </select>
+                <small>Listede görünmesi için hesap aktif, girişe bağlı ve Kuaför sekmesi yetkili olmalıdır.</small>
+              </label>
               <button type="submit" className="primary" disabled={islemYukleniyor}>{duzenlenenPersonelId ? 'Personeli Güncelle' : 'Personeli Kaydet'}</button>
               {duzenlenenPersonelId && <button type="button" onClick={() => { setDuzenlenenPersonelId(null); setPersonelFormu(bosPersonel); }}>Vazgeç</button>}
             </form>
             <div className="kuafor-catalog-list">
-              {veriler.personeller.map(personel => <div key={personel.id}><i style={{ background: personel.renk }} /><span><strong>{personel.ad}</strong><small>{personel.uzmanlik || 'Uzmanlık belirtilmedi'}</small></span><button type="button" onClick={() => {
+              {veriler.personeller.map(personel => {
+                const bagliHesap = baglanabilirPersonelHesaplari.find(hesap => String(hesap.id) === String(personel.sistem_personel_id));
+                return <div key={personel.id}><i style={{ background: personel.renk }} /><span><strong>{personel.ad}</strong><small>{personel.uzmanlik || 'Uzmanlık belirtilmedi'} · {bagliHesap ? `🔒 ${bagliHesap.email || bagliHesap.ad}` : '⚠️ Giriş hesabı bağlanmadı'}</small></span><button type="button" onClick={() => {
                 setDuzenlenenPersonelId(personel.id);
-                setPersonelFormu({ ad: personel.ad || '', telefon: personel.telefon || '', uzmanlik: personel.uzmanlik || '', renk: personel.renk || '#7c3aed', sira: String(personel.sira || '') });
-              }}>Düzenle</button></div>)}
+                setPersonelFormu({ ad: personel.ad || '', telefon: personel.telefon || '', uzmanlik: personel.uzmanlik || '', renk: personel.renk || '#7c3aed', sira: String(personel.sira || ''), sistemPersonelId: String(personel.sistem_personel_id || '') });
+              }}>Düzenle</button></div>;
+              })}
             </div>
           </div>
           <div className="kuafor-card">
