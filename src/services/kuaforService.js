@@ -19,7 +19,7 @@ export async function kuaforVerileriniGetir(restaurantId) {
   const bitis = new Date();
   bitis.setDate(bitis.getDate() + 240);
 
-  const [personelSonucu, hizmetSonucu, musteriSonucu, randevuSonucu, cariSonucu] = await Promise.all([
+  const [personelSonucu, hizmetSonucu, musteriSonucu, randevuSonucu, cariSonucu, menuUrunSonucu, stokMalzemeSonucu] = await Promise.all([
     supabase
       .from('kuafor_personelleri')
       .select('*')
@@ -52,6 +52,16 @@ export async function kuaforVerileriniGetir(restaurantId) {
       .select('id, ad, telefon, bakiye, not_metni, hareketler')
       .eq('restaurant_id', restaurantId)
       .order('ad'),
+    supabase
+      .from('menu_urunleri')
+      .select('id, ad, stok_adedi, kritik_stok, stok_takip, aktif')
+      .eq('restaurant_id', restaurantId)
+      .order('ad'),
+    supabase
+      .from('stok_malzemeleri')
+      .select('id, ad, birim, stok_miktari, kritik_miktar')
+      .eq('restaurant_id', restaurantId)
+      .order('ad'),
   ]);
 
   hataKontrol(personelSonucu.error, 'Kuaför personelleri alınamadı.');
@@ -59,6 +69,33 @@ export async function kuaforVerileriniGetir(restaurantId) {
   hataKontrol(musteriSonucu.error, 'Müşteri kayıtları alınamadı.');
   hataKontrol(randevuSonucu.error, 'Randevular alınamadı.');
   hataKontrol(cariSonucu.error, 'Cari hesaplar alınamadı.');
+  hataKontrol(menuUrunSonucu.error, 'Kayıtlı ürünler alınamadı.');
+  hataKontrol(stokMalzemeSonucu.error, 'Stok malzemeleri alınamadı.');
+
+  const urunler = [
+    ...(menuUrunSonucu.data || [])
+      .filter(urun => urun.aktif !== false)
+      .map(urun => ({
+        id: String(urun.id),
+        kaynakTipi: 'menu_urunu',
+        ad: urun.ad || 'İsimsiz ürün',
+        birim: 'adet',
+        stok: Number(urun.stok_adedi || 0),
+        kritikStok: Number(urun.kritik_stok || 0),
+        stokTakip: Boolean(urun.stok_takip),
+        kaynakBasligi: 'Ürün kartı',
+      })),
+    ...(stokMalzemeSonucu.data || []).map(malzeme => ({
+      id: String(malzeme.id),
+      kaynakTipi: 'stok_malzemesi',
+      ad: malzeme.ad || 'İsimsiz malzeme',
+      birim: malzeme.birim || 'adet',
+      stok: Number(malzeme.stok_miktari || 0),
+      kritikStok: Number(malzeme.kritik_miktar || 0),
+      stokTakip: true,
+      kaynakBasligi: 'Hammadde / stok',
+    })),
+  ].sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
 
   return {
     personeller: personelSonucu.data || [],
@@ -66,6 +103,7 @@ export async function kuaforVerileriniGetir(restaurantId) {
     musteriler: musteriSonucu.data || [],
     randevular: randevuSonucu.data || [],
     cariler: cariSonucu.data || [],
+    urunler,
   };
 }
 
@@ -147,7 +185,25 @@ export async function kuaforRandevusuKaydet(restaurantId, form, randevuId = null
   });
 
   hataKontrol(error, 'Randevu kaydedilemedi.');
-  return data;
+
+  const kullanilanUrunler = (Array.isArray(form.kullanilanUrunler) ? form.kullanilanUrunler : [])
+    .map(urun => ({
+      kaynak_tipi: urun.kaynakTipi,
+      id: String(urun.id),
+      ad: String(urun.ad || '').trim(),
+      birim: String(urun.birim || 'adet').trim(),
+      miktar: Number(urun.miktar || 0),
+    }))
+    .filter(urun => ['menu_urunu', 'stok_malzemesi'].includes(urun.kaynak_tipi) && urun.id && urun.miktar > 0);
+
+  const { data: urunData, error: urunError } = await supabase.rpc('kuafor_randevu_urunleri_kaydet', {
+    p_restaurant_id: restaurantId,
+    p_randevu_id: data.id,
+    p_urunler: kullanilanUrunler,
+  });
+
+  hataKontrol(urunError, 'Randevuda kullanılan ürünler kaydedilemedi.');
+  return urunData || data;
 }
 
 export async function kuaforRandevuDurumunuGuncelle(restaurantId, randevuId, durum, odeme = {}) {

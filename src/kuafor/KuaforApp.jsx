@@ -30,6 +30,9 @@ const yerelSaat = deger => {
 const para = deger => Number(deger || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const tarihBasligi = tarih => new Date(`${tarih}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const durumSinifi = durum => String(durum || '').toLocaleLowerCase('tr-TR').replaceAll(' ', '-').replaceAll('ı', 'i').replaceAll('ş', 's').replaceAll('ç', 'c').replaceAll('ğ', 'g').replaceAll('ü', 'u').replaceAll('ö', 'o');
+const randevuUrunOzeti = randevu => (Array.isArray(randevu?.kullanilan_urunler) ? randevu.kullanilan_urunler : [])
+  .map(urun => `${urun.ad || 'Ürün'} ${Number(urun.miktar || 0).toLocaleString('tr-TR')} ${urun.birim || 'adet'}`)
+  .join(', ');
 
 const bosRandevu = tarih => ({
   musteriId: '',
@@ -42,6 +45,7 @@ const bosRandevu = tarih => ({
   sureDakika: '30',
   ucret: '',
   kapora: '',
+  kullanilanUrunler: [],
   kullanilanMalzemeler: '',
   notMetni: '',
 });
@@ -56,7 +60,7 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
   const [aktifSekme, setAktifSekme] = useState('plan');
   const [seciliTarih, setSeciliTarih] = useState(bugunYerel());
   const [seciliPersonelFiltresi, setSeciliPersonelFiltresi] = useState('tumu');
-  const [veriler, setVeriler] = useState({ personeller: [], hizmetler: [], musteriler: [], randevular: [], cariler: [] });
+  const [veriler, setVeriler] = useState({ personeller: [], hizmetler: [], musteriler: [], randevular: [], cariler: [], urunler: [] });
   const [yukleniyor, setYukleniyor] = useState(true);
   const [islemYukleniyor, setIslemYukleniyor] = useState(false);
   const [hata, setHata] = useState('');
@@ -75,6 +79,7 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
   const [odemeFormu, setOdemeFormu] = useState(bosOdeme);
   const [tahsilatFormu, setTahsilatFormu] = useState(bosTahsilat);
   const [cariArama, setCariArama] = useState('');
+  const [urunArama, setUrunArama] = useState('');
 
   const mesajGoster = useCallback((mesaj, tip = 'info') => {
     if (typeof notify === 'function') notify(mesaj, tip);
@@ -152,8 +157,7 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
     sonuc[tip] = Number(sonuc[tip] || 0) + Number(randevu.odenen_tutar ?? randevu.ucret ?? 0);
     return sonuc;
   }, {}), [gunSonuKayitlari]);
-  const kuaforCariKayitlari = useMemo(() => {
-    const arama = String(cariArama || '').trim().toLocaleLowerCase('tr-TR');
+  const tumKuaforCariKayitlari = useMemo(() => {
     return veriler.musteriler
       .map(musteri => {
         const cari = veriler.cariler.find(kayit => String(kayit.id) === String(musteri.cari_musteri_id))
@@ -161,10 +165,33 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
         return cari ? { musteri, cari } : null;
       })
       .filter(Boolean)
-      .filter(kayit => !arama || `${kayit.musteri.ad || ''} ${kayit.musteri.telefon || ''}`.toLocaleLowerCase('tr-TR').includes(arama))
       .sort((a, b) => Number(b.cari.bakiye || 0) - Number(a.cari.bakiye || 0));
-  }, [veriler.musteriler, veriler.cariler, cariArama]);
-  const toplamCariBakiye = kuaforCariKayitlari.reduce((toplam, kayit) => toplam + Number(kayit.cari.bakiye || 0), 0);
+  }, [veriler.musteriler, veriler.cariler]);
+  const kuaforCariKayitlari = useMemo(() => {
+    const arama = String(cariArama || '').trim().toLocaleLowerCase('tr-TR');
+    return tumKuaforCariKayitlari.filter(kayit =>
+      !arama || `${kayit.musteri.ad || ''} ${kayit.musteri.telefon || ''}`.toLocaleLowerCase('tr-TR').includes(arama)
+    );
+  }, [tumKuaforCariKayitlari, cariArama]);
+  const toplamCariBakiye = tumKuaforCariKayitlari.reduce((toplam, kayit) => toplam + Number(kayit.cari.bakiye || 0), 0);
+  const filtreliUrunler = useMemo(() => {
+    const arama = String(urunArama || '').trim().toLocaleLowerCase('tr-TR');
+    return (veriler.urunler || []).filter(urun => {
+      const seciliMi = randevuFormu.kullanilanUrunler.some(secili =>
+        secili.kaynakTipi === urun.kaynakTipi && String(secili.id) === String(urun.id)
+      );
+      return !seciliMi && (!arama || `${urun.ad} ${urun.kaynakBasligi} ${urun.birim}`.toLocaleLowerCase('tr-TR').includes(arama));
+    }).slice(0, 60);
+  }, [veriler.urunler, randevuFormu.kullanilanUrunler, urunArama]);
+  const gunCariTahsilatlari = useMemo(() => {
+    return (veriler.cariler || []).flatMap(cari =>
+      (Array.isArray(cari.hareketler) ? cari.hareketler : [])
+        .filter(hareket => hareket.kaynak === 'kuafor_tahsilati')
+        .filter(hareket => hareket.tarih && yerelTarih(hareket.tarih) === seciliTarih)
+        .map(hareket => ({ ...hareket, cariAdi: cari.ad || 'İsimsiz müşteri', cariTelefon: cari.telefon || '' }))
+    ).sort((a, b) => String(b.tarih || '').localeCompare(String(a.tarih || '')));
+  }, [veriler.cariler, seciliTarih]);
+  const gunCariTahsilatToplami = gunCariTahsilatlari.reduce((toplam, hareket) => toplam + Number(hareket.tutar || 0), 0);
 
   const tarihDegistir = gunFarki => {
     const tarih = new Date(`${seciliTarih}T12:00:00`);
@@ -184,6 +211,36 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
       ucret: String(veriler.hizmetler[0]?.fiyat ?? ''),
     });
     setAktifSekme('kayit');
+  };
+
+  const kullanilanUrunEkle = secimAnahtari => {
+    const [kaynakTipi, id] = String(secimAnahtari || '').split(':');
+    const urun = (veriler.urunler || []).find(kayit => kayit.kaynakTipi === kaynakTipi && String(kayit.id) === id);
+    if (!urun) return;
+
+    setRandevuFormu(prev => ({
+      ...prev,
+      kullanilanUrunler: [...prev.kullanilanUrunler, { ...urun, miktar: '1' }],
+    }));
+    setUrunArama('');
+  };
+
+  const kullanilanUrunMiktariDegistir = (kaynakTipi, id, miktar) => {
+    setRandevuFormu(prev => ({
+      ...prev,
+      kullanilanUrunler: prev.kullanilanUrunler.map(urun =>
+        urun.kaynakTipi === kaynakTipi && String(urun.id) === String(id) ? { ...urun, miktar } : urun
+      ),
+    }));
+  };
+
+  const kullanilanUrunuSil = (kaynakTipi, id) => {
+    setRandevuFormu(prev => ({
+      ...prev,
+      kullanilanUrunler: prev.kullanilanUrunler.filter(urun =>
+        !(urun.kaynakTipi === kaynakTipi && String(urun.id) === String(id))
+      ),
+    }));
   };
 
   const planBoslugunaTikla = (event, personelId) => {
@@ -240,6 +297,10 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
       mesajGoster('Kayıtlı müşteri, kayıtlı personel, işlem, tarih ve saat seçimi zorunludur.', 'warning');
       return;
     }
+    if (randevuFormu.kullanilanUrunler.some(urun => Number(urun.miktar || 0) <= 0)) {
+      mesajGoster('Kullanılan ürün miktarları sıfırdan büyük olmalıdır.', 'warning');
+      return;
+    }
 
     const baslangic = new Date(`${randevuFormu.tarih}T${randevuFormu.saat}:00`);
     const basarili = await islemCalistir(
@@ -272,6 +333,15 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
       sureDakika: String(randevu.sure_dakika || 30),
       ucret: String(randevu.ucret ?? ''),
       kapora: String(randevu.kapora ?? ''),
+      kullanilanUrunler: (Array.isArray(randevu.kullanilan_urunler) ? randevu.kullanilan_urunler : []).map(urun => ({
+        id: String(urun.id),
+        kaynakTipi: urun.kaynak_tipi,
+        ad: urun.ad || '',
+        birim: urun.birim || 'adet',
+        stok: Number(urun.stok ?? 0),
+        miktar: String(urun.miktar ?? 1),
+        kaynakBasligi: urun.kaynak_tipi === 'stok_malzemesi' ? 'Hammadde / stok' : 'Ürün kartı',
+      })),
       kullanilanMalzemeler: randevu.kullanilan_malzemeler || '',
       notMetni: randevu.not_metni || '',
     });
@@ -340,7 +410,16 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
       () => kuaforCariTahsilatiKaydet(restaurantId, tahsilatFormu),
       'Tahsilat kaydedildi ve müşterinin cari bakiyesinden düşüldü.'
     );
-    if (basarili) setTahsilatFormu(bosTahsilat);
+    if (basarili) {
+      setTahsilatFormu(bosTahsilat);
+      if (typeof onSalesChanged === 'function') {
+        try {
+          await onSalesChanged();
+        } catch {
+          // Tahsilat kuaför ekranında güncellendi; ana rapor bir sonraki yenilemede tekrar yüklenir.
+        }
+      }
+    }
   };
 
   const musteriKaydet = async event => {
@@ -406,38 +485,27 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
     <div className="kuafor-app">
       <header className="kuafor-header">
         <div>
-          <span className="kuafor-eyebrow">RANDEVU VE GÜN PLANI</span>
+          <span className="kuafor-eyebrow">{restaurantName || 'İŞLETME'}</span>
           <h1>Kuaför Yönetimi</h1>
-          <p>{restaurantName || 'İşletme'} için müşteri, personel, işlem süresi ve günlük randevu planı.</p>
+          <p>Randevu, müşteri, stok kullanımı, cari ve gün sonu tek ekranda.</p>
         </div>
-        <button type="button" className="kuafor-new-button" onClick={() => randevuFormunuAc()}>＋ Yeni Randevu</button>
+        <div className="kuafor-quick-actions">
+          <button type="button" onClick={() => setAktifSekme('musteriler')}>＋ Müşteri</button>
+          <button type="button" onClick={() => setAktifSekme('cariler')}>₺ Tahsilat</button>
+          <button type="button" className="kuafor-new-button" onClick={() => randevuFormunuAc()}>＋ Yeni Randevu</button>
+        </div>
       </header>
 
       {hata && <div className="kuafor-alert"><strong>Kontrol gerekiyor</strong><span>{hata}</span></div>}
 
-      <section className="kuafor-workflow">
-        {[
-          ['1', 'Müşteri kartı', 'Müşteriyi bir kez kaydedin', 'musteriler'],
-          ['2', 'Personel ve işlem', 'Kalıcı listelerden seçin', 'ayarlar'],
-          ['3', 'Randevu', 'Müşteri, personel ve saat bağlayın', 'kayit'],
-          ['4', 'Gün planı', 'Geliş ve işlem durumunu yönetin', 'plan'],
-          ['5', 'Cari hesaplar', 'Borç ve tahsilatı izleyin', 'cariler'],
-          ['6', 'Ödeme ve gün sonu', 'Tamamlayıp satışa aktarın', 'gun_sonu'],
-        ].map(([no, baslik, aciklama, sekme]) => (
-          <button type="button" key={sekme} className={aktifSekme === sekme ? 'active' : ''} onClick={() => setAktifSekme(sekme)}>
-            <b>{no}</b><span><strong>{baslik}</strong><small>{aciklama}</small></span>
-          </button>
-        ))}
-      </section>
-
       <nav className="kuafor-tabs">
         {[
-          ['plan', 'Gün Planı'],
-          ['musteriler', 'Müşteri Kayıtları'],
-          ['kayit', duzenlenenRandevuId ? 'Randevuyu Düzenle' : 'Randevu Kaydı'],
-          ['ayarlar', 'Kayıtlı Personel & İşlemler'],
-          ['cariler', 'Cari / Veresiye'],
-          ['gun_sonu', 'Kuaför Gün Sonu'],
+          ['plan', '📅 Gün Planı'],
+          ['kayit', duzenlenenRandevuId ? '✏️ Randevuyu Düzenle' : '＋ Randevu Kaydı'],
+          ['musteriler', '👥 Müşteriler'],
+          ['cariler', '₺ Cari / Tahsilat'],
+          ['gun_sonu', '📊 Gün Sonu'],
+          ['ayarlar', '⚙️ Personel & İşlemler'],
         ].map(([key, label]) => (
           <button type="button" key={key} className={aktifSekme === key ? 'active' : ''} onClick={() => setAktifSekme(key)}>{label}</button>
         ))}
@@ -532,7 +600,7 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
                 <span className={`kuafor-status ${durumSinifi(seciliRandevu.durum)}`}>{seciliRandevu.durum}</span>
                 <h2>{seciliRandevu.musteri_adi}</h2>
                 <p>{yerelSaat(seciliRandevu.baslangic_zamani)}–{yerelSaat(seciliRandevu.bitis_zamani)} · {seciliRandevu.hizmet_adi} · {seciliRandevu.personel_adi}</p>
-                <small>{seciliRandevu.telefon || 'Telefon yok'}{seciliRandevu.kullanilan_malzemeler ? ` · Malzeme: ${seciliRandevu.kullanilan_malzemeler}` : ''}{seciliRandevu.not_metni ? ` · ${seciliRandevu.not_metni}` : ''}</small>
+                <small>{seciliRandevu.telefon || 'Telefon yok'}{randevuUrunOzeti(seciliRandevu) ? ` · Ürün: ${randevuUrunOzeti(seciliRandevu)}` : ''}{seciliRandevu.kullanilan_malzemeler ? ` · Ek malzeme: ${seciliRandevu.kullanilan_malzemeler}` : ''}{seciliRandevu.not_metni ? ` · ${seciliRandevu.not_metni}` : ''}</small>
               </div>
               <div className="kuafor-selected-price"><span>İşlem</span><strong>{para(seciliRandevu.ucret)} TL</strong><small>Kapora: {para(seciliRandevu.kapora)} TL</small></div>
               <div className="kuafor-status-actions">
@@ -622,7 +690,40 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
               <label><span>Süre (dakika)</span><input type="number" min="5" step="5" value={randevuFormu.sureDakika} onChange={e => setRandevuFormu(p => ({ ...p, sureDakika: e.target.value }))} /></label>
               <label><span>İşlem ücreti</span><input type="number" min="0" step="0.01" value={randevuFormu.ucret} onChange={e => setRandevuFormu(p => ({ ...p, ucret: e.target.value }))} /></label>
               <label><span>Kapora</span><input type="number" min="0" step="0.01" value={randevuFormu.kapora} onChange={e => setRandevuFormu(p => ({ ...p, kapora: e.target.value }))} /></label>
-              <label className="wide"><span>Kullanılan malzemeler</span><textarea value={randevuFormu.kullanilanMalzemeler} onChange={e => setRandevuFormu(p => ({ ...p, kullanilanMalzemeler: e.target.value }))} placeholder="Örn. Wella 7/1 boya, %6 oksidan 60 ml, keratin bakım…" /></label>
+              <div className="kuafor-product-picker wide">
+                <div className="kuafor-product-picker-head">
+                  <div><strong>Kullanılan ürünler</strong><span>Ürün veya hammadde kartından seçin; işlem tamamlanınca stok otomatik düşer.</span></div>
+                  <small>{randevuFormu.kullanilanUrunler.length} ürün seçildi</small>
+                </div>
+                <div className="kuafor-product-picker-controls">
+                  <input value={urunArama} onChange={e => setUrunArama(e.target.value)} placeholder="Ürün ya da malzeme ara…" />
+                  <select value="" onChange={e => kullanilanUrunEkle(e.target.value)}>
+                    <option value="">Listeden ürünü ekleyin</option>
+                    {filtreliUrunler.map(urun => (
+                      <option key={`${urun.kaynakTipi}-${urun.id}`} value={`${urun.kaynakTipi}:${urun.id}`}>
+                        {urun.ad} · Stok {para(urun.stok)} {urun.birim} · {urun.kaynakBasligi}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="kuafor-used-products">
+                  {randevuFormu.kullanilanUrunler.map(urun => {
+                    const guncelUrun = (veriler.urunler || []).find(kayit => kayit.kaynakTipi === urun.kaynakTipi && String(kayit.id) === String(urun.id));
+                    const stok = Number(guncelUrun?.stok ?? urun.stok ?? 0);
+                    const birim = guncelUrun?.birim || urun.birim || 'adet';
+                    return (
+                      <div key={`${urun.kaynakTipi}-${urun.id}`}>
+                        <span><strong>{guncelUrun?.ad || urun.ad}</strong><small>{guncelUrun?.kaynakBasligi || urun.kaynakBasligi} · Mevcut stok: {para(stok)} {birim}</small></span>
+                        <label><span>Kullanım</span><input type="number" min="0.001" step="0.001" value={urun.miktar} onChange={e => kullanilanUrunMiktariDegistir(urun.kaynakTipi, urun.id, e.target.value)} /></label>
+                        <b>{birim}</b>
+                        <button type="button" className="danger" onClick={() => kullanilanUrunuSil(urun.kaynakTipi, urun.id)}>Sil</button>
+                      </div>
+                    );
+                  })}
+                  {randevuFormu.kullanilanUrunler.length === 0 && <p>Bu randevuya henüz stoktan kullanılacak ürün eklenmedi.</p>}
+                </div>
+              </div>
+              <label className="wide"><span>Ek malzeme notu</span><textarea value={randevuFormu.kullanilanMalzemeler} onChange={e => setRandevuFormu(p => ({ ...p, kullanilanMalzemeler: e.target.value }))} placeholder="Kartlarda olmayan özel boya kodu, karışım veya kullanım notu…" /></label>
               <label className="wide"><span>Not</span><textarea value={randevuFormu.notMetni} onChange={e => setRandevuFormu(p => ({ ...p, notMetni: e.target.value }))} placeholder="Boya kodu, tercih, alerji veya hatırlatma notu…" /></label>
               <div className="kuafor-form-summary">
                 <span>Planlanan bitiş</span>
@@ -686,7 +787,7 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
                           <div key={randevu.id}>
                             <time>{new Date(randevu.baslangic_zamani).toLocaleDateString('tr-TR')}</time>
                             <span><strong>{randevu.hizmet_adi}</strong><small>{randevu.personel_adi} · {randevu.durum}</small></span>
-                            <p>{randevu.kullanilan_malzemeler ? `Malzeme: ${randevu.kullanilan_malzemeler}` : 'Kullanılan malzeme kaydı yok.'}</p>
+                            <p>{randevuUrunOzeti(randevu) ? `Ürün: ${randevuUrunOzeti(randevu)}` : 'Stoktan kullanılan ürün kaydı yok.'}{randevu.kullanilan_malzemeler ? ` · Ek not: ${randevu.kullanilan_malzemeler}` : ''}</p>
                           </div>
                         ))}
                       {!veriler.randevular.some(randevu => String(randevu.musteri_id) === String(musteri.id)) && <div className="kuafor-empty">Bu müşterinin henüz işlem geçmişi yok.</div>}
@@ -813,7 +914,14 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
           <section className="kuafor-day-end-summary">
             <article><span>İşlem adedi</span><strong>{gunSonuKayitlari.length}</strong></article>
             <article><span>Gün sonu toplamı</span><strong>{para(gunSonuToplami)} TL</strong></article>
-            {Object.entries(odemeDagilimi).map(([tip, tutar]) => <article key={tip}><span>{tip}</span><strong>{para(tutar)} TL</strong></article>)}
+            {Object.entries(odemeDagilimi).map(([tip, tutar]) => (
+              <article key={tip}>
+                <span>{String(tip).toLocaleLowerCase('tr-TR').includes('cari') || String(tip).toLocaleLowerCase('tr-TR').includes('veresiye') ? 'Cari satış (ilk işlem)' : tip}</span>
+                <strong>{para(tutar)} TL</strong>
+              </article>
+            ))}
+            <article className="collection"><span>Cari tahsilat (sonradan alınan)</span><strong>{para(gunCariTahsilatToplami)} TL</strong></article>
+            <article className="balance"><span>Şu an açık cari bakiye</span><strong>{para(toplamCariBakiye)} TL</strong></article>
           </section>
           <section className="kuafor-card">
             <div className="kuafor-card-title"><div><h2>Kuaför gün sonu hareketleri</h2><p>“Ödeme Al & Tamamla” ile kapatılan her işlem ana satış raporuna da aktarılır.</p></div></div>
@@ -828,6 +936,24 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
                 </article>
               ))}
               {gunSonuKayitlari.length === 0 && <div className="kuafor-empty">Bu tarih için tamamlanan ve ödemesi alınan işlem yok.</div>}
+            </div>
+          </section>
+          <section className="kuafor-card">
+            <div className="kuafor-card-title">
+              <div><h2>Cari tahsilatlar</h2><p>Veresiye satıştan sonra müşterinin getirdiği ödemeler burada ayrı görünür; geçmişteki cari satış kaydı değişmez.</p></div>
+              <strong className="kuafor-collection-total">{para(gunCariTahsilatToplami)} TL</strong>
+            </div>
+            <div className="kuafor-day-end-list kuafor-collection-list">
+              {gunCariTahsilatlari.map(hareket => (
+                <article key={hareket.id || `${hareket.cariAdi}-${hareket.tarih}`}>
+                  <time>{hareket.tarih ? yerelSaat(hareket.tarih) : '-'}</time>
+                  <span><strong>{hareket.cariAdi}</strong><small>{hareket.cariTelefon || hareket.aciklama || 'Telefon yok'}</small></span>
+                  <em>{hareket.odeme_tipi || 'Belirtilmedi'}</em>
+                  <b>{para(hareket.tutar)} TL</b>
+                  <i>Tahsil edildi</i>
+                </article>
+              ))}
+              {gunCariTahsilatlari.length === 0 && <div className="kuafor-empty">Bu tarih için sonradan alınmış cari tahsilat bulunmuyor.</div>}
             </div>
           </section>
         </>

@@ -6,14 +6,16 @@
   --kf-purple: #7c3aed;
   --kf-purple-dark: #5b21b6;
   color: var(--kf-ink);
+  padding: 4px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 .kuafor-app * { box-sizing: border-box; }
 .kuafor-loading { padding: 28px; color: #64748b; font-weight: 800; }
-.kuafor-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; padding: 20px 22px; margin-bottom: 12px; border: 1px solid var(--kf-line); border-radius: 18px; background: linear-gradient(120deg, #fff 0%, #faf5ff 55%, #fff7ed 100%); box-shadow: 0 18px 42px -36px rgba(76, 29, 149, .55); }
+.kuafor-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 13px; margin-bottom: 6px; border: 1px solid var(--kf-line); border-radius: 12px; background: linear-gradient(120deg, #fff 0%, #faf5ff 55%, #fff7ed 100%); box-shadow: 0 18px 42px -36px rgba(76, 29, 149, .55); }
 .kuafor-eyebrow { color: var(--kf-purple); font-size: 10px; font-weight: 950; letter-spacing: .13em; }
-.kuafor-header h1 { margin: 5px 0 3px; font-size: clamp(23px, 3vw, 32px); line-height: 1.05; letter-spacing: -.04em; }
+.kuafor-header h1 { margin: 2px 0; font-size: clamp(19px, 2.2vw, 25px); line-height: 1.05; letter-spacing: -.04em; }
 .kuafor-header p, .kuafor-card-title p { margin: 0; color: var(--kf-muted); font-size: 12px; line-height: 1.45; }
+.kuafor-quick-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .kuafor-app button { border: 1px solid var(--kf-line); border-radius: 9px; background: #fff; color: var(--kf-ink); padding: 9px 12px; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; transition: .15s ease; }
 .kuafor-app button:hover:not(:disabled) { border-color: #c4b5fd; transform: translateY(-1px); }
 .kuafor-app button:disabled { opacity: .55; cursor: not-allowed; }
@@ -29,7 +31,7 @@
 .kuafor-workflow > button small { overflow: hidden; color: var(--kf-muted); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
 .kuafor-workflow > button.active { border-color: #c4b5fd; background: #faf5ff; }
 .kuafor-workflow > button.active > b { background: var(--kf-purple); color: #fff; }
-.kuafor-tabs { display: flex; gap: 5px; overflow-x: auto; padding: 5px; margin-bottom: 12px; border: 1px solid var(--kf-line); border-radius: 12px; background: #fff; }
+.kuafor-tabs { position: sticky; top: 0; z-index: 20; display: flex; gap: 5px; overflow-x: auto; padding: 4px; margin-bottom: 7px; border: 1px solid var(--kf-line); border-radius: 10px; background: rgba(255,255,255,.97); box-shadow: 0 7px 18px -16px rgba(37, 27, 47, .75); }
 .kuafor-tabs button { flex: 0 0 auto; border-color: transparent; padding: 8px 13px; color: var(--kf-muted); }
 .kuafor-tabs button.active { border-color: var(--kf-ink); background: var(--kf-ink); color: #fff; }
 .kuafor-datebar { display: grid; grid-template-columns: auto 1fr minmax(170px, auto); gap: 13px; align-items: center; padding: 11px 13px; margin-bottom: 10px; border: 1px solid var(--kf-line); border-radius: 14px; background: #fff; }
@@ -120,6 +122,24 @@
 .kuafor-service-selection > button small { color: var(--kf-muted); font-size: 7px; }
 .kuafor-service-selection > button b { color: #be123c; font-size: 15px; }
 .kuafor-service-selection > span { align-self: center; color: var(--kf-muted); font-size: 9px; }
+.kuafor-product-picker { display: grid; gap: 8px; padding: 10px; border: 1px solid #c4b5fd; border-radius: 10px; background: #faf5ff; }
+.kuafor-product-picker-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.kuafor-product-picker-head > div { display: grid; }
+.kuafor-product-picker-head strong { font-size: 11px; }
+.kuafor-product-picker-head span { color: var(--kf-muted); font-size: 8px; }
+.kuafor-product-picker-head small { padding: 4px 7px; border-radius: 999px; background: #ede9fe; color: #6d28d9; font-size: 8px; font-weight: 900; white-space: nowrap; }
+.kuafor-product-picker-controls { display: grid; grid-template-columns: minmax(160px, .8fr) minmax(240px, 1.2fr); gap: 7px; }
+.kuafor-used-products { display: grid; gap: 5px; }
+.kuafor-used-products > div { display: grid; grid-template-columns: minmax(160px, 1fr) 105px 45px auto; gap: 7px; align-items: end; padding: 7px; border: 1px solid var(--kf-line); border-radius: 8px; background: #fff; }
+.kuafor-used-products > div > span { display: grid; align-self: center; }
+.kuafor-used-products > div > span strong { font-size: 10px; }
+.kuafor-used-products > div > span small { color: var(--kf-muted); font-size: 8px; }
+.kuafor-used-products label { display: grid; gap: 2px; }
+.kuafor-used-products label span { color: var(--kf-muted); font-size: 8px; font-weight: 800; }
+.kuafor-used-products input { min-height: 33px; padding: 5px 7px; }
+.kuafor-used-products b { align-self: center; color: var(--kf-muted); font-size: 9px; }
+.kuafor-used-products button { min-height: 33px; padding: 5px 8px; }
+.kuafor-used-products > p { margin: 0; padding: 10px; color: var(--kf-muted); font-size: 9px; text-align: center; }
 .kuafor-form-summary { display: grid; align-content: center; padding: 10px; border: 1px solid #ddd6fe; border-radius: 10px; background: #faf5ff; }
 .kuafor-form-summary span { color: var(--kf-muted); font-size: 9px; }
 .kuafor-form-summary strong { font-size: 20px; }
@@ -160,6 +180,11 @@
 .kuafor-day-end-summary article { padding: 13px; border: 1px solid var(--kf-line); border-radius: 12px; background: #fff; }
 .kuafor-day-end-summary span { display: block; color: var(--kf-muted); font-size: 9px; font-weight: 800; }
 .kuafor-day-end-summary strong { display: block; margin-top: 5px; font-size: 19px; }
+.kuafor-day-end-summary article.collection { border-color: #6ee7b7; background: #ecfdf5; }
+.kuafor-day-end-summary article.collection strong { color: #047857; }
+.kuafor-day-end-summary article.balance { border-color: #fecdd3; background: #fff1f2; }
+.kuafor-day-end-summary article.balance strong { color: #be123c; }
+.kuafor-collection-total { color: #047857; font-size: 20px; }
 .kuafor-day-end-list { display: grid; gap: 6px; }
 .kuafor-day-end-list article { display: grid; grid-template-columns: 54px 1fr 120px 100px 105px; gap: 9px; align-items: center; padding: 9px; border: 1px solid var(--kf-line); border-radius: 9px; }
 .kuafor-day-end-list time { font-size: 10px; font-weight: 900; }
@@ -213,9 +238,14 @@
   .kuafor-cari-summary { grid-template-columns: 1fr 1fr; }
   .kuafor-cari-summary > div { grid-column: 1 / -1; }
   .kuafor-collection-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kuafor-product-picker-controls { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .kuafor-header { padding: 15px; }
+  .kuafor-app { padding: 2px; }
+  .kuafor-header { flex-direction: column; align-items: stretch; padding: 10px; }
+  .kuafor-header p { display: none; }
+  .kuafor-quick-actions { justify-content: flex-start; }
+  .kuafor-tabs button { padding: 8px 10px; }
   .kuafor-datebar { grid-template-columns: 1fr; }
   .kuafor-date-nav { flex-wrap: wrap; }
   .kuafor-grid-two { grid-template-columns: 1fr; }
@@ -223,6 +253,8 @@
   .kuafor-workflow > button small { display: none; }
   .kuafor-randevu-form { grid-template-columns: 1fr; }
   .kuafor-randevu-form .wide { grid-column: auto; }
+  .kuafor-used-products > div { grid-template-columns: 1fr 90px 38px; }
+  .kuafor-used-products button { grid-column: 1 / -1; }
   .kuafor-selected { grid-template-columns: 1fr; }
   .kuafor-selected-price { text-align: left; }
   .kuafor-day-list > button { grid-template-columns: 43px 4px 1fr auto; }

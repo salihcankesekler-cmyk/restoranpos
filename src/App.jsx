@@ -648,6 +648,7 @@ Toplam Ciro: {toplam}
   const [yeniCariTelefon, setYeniCariTelefon] = useState('');
   const [yeniCariNotu, setYeniCariNotu] = useState('');
   const [cariTahsilatTutari, setCariTahsilatTutari] = useState('');
+  const [cariTahsilatOdemeTipi, setCariTahsilatOdemeTipi] = useState('Nakit');
   const [cariAdisyonMusteriId, setCariAdisyonMusteriId] = useState('');
   // cariye yazarken klavyeden müşteri aramak için kullanılan kod
   const [cariAdisyonArama, setCariAdisyonArama] = useState('');
@@ -7759,6 +7760,9 @@ Toplam Ciro: {toplam}
             <div class="row"><span>Toplam İndirim</span><strong>${raporData.toplamIndirim} TL</strong></div>
             <div class="row"><span>Nakit</span><strong>${raporData.nakitToplam} TL</strong></div>
             <div class="row"><span>Kredi Kartı</span><strong>${raporData.kartToplam} TL</strong></div>
+            <div class="row"><span>Cari Satış</span><strong>${raporData.cariSatisToplam || 0} TL</strong></div>
+            <div class="row"><span>Cari Tahsilat</span><strong>${raporData.cariTahsilatToplam || 0} TL</strong></div>
+            <div class="row"><span>Açık Cari Bakiye</span><strong>${raporData.acikCariBakiye || 0} TL</strong></div>
             <div class="row"><span>Diğer</span><strong>${raporData.digerOdemeToplam} TL</strong></div>
             <div class="line"></div>
             <strong>Ürün Satışları</strong>
@@ -9036,7 +9040,7 @@ Toplam Ciro: {toplam}
   };
 
   // cari müşteri hareketi kaydeden kod
-  const cariHareketEkle = async (cari, tip, tutar, aciklama) => {
+  const cariHareketEkle = async (cari, tip, tutar, aciklama, odemeTipi = null) => {
     const tutarSayi = sayiyaCevir(tutar);
 
     if (!cari || !tutarSayi || tutarSayi <= 0) {
@@ -9051,6 +9055,8 @@ Toplam Ciro: {toplam}
       tutar: tutarSayi,
       aciklama,
       tarih: new Date().toISOString(),
+      odeme_tipi: tip === 'Tahsilat' ? (odemeTipi || 'Nakit') : null,
+      bakiye_etkisi: tip === 'Borç' ? tutarSayi : -tutarSayi,
     };
 
     const yeniBakiye = tip === 'Borç'
@@ -9206,10 +9212,11 @@ Toplam Ciro: {toplam}
 
   // cari tahsilat alan kod
   const cariTahsilatAl = async (cari) => {
-    const sonuc = await cariHareketEkle(cari, 'Tahsilat', cariTahsilatTutari, 'Cari tahsilat');
+    const sonuc = await cariHareketEkle(cari, 'Tahsilat', cariTahsilatTutari, 'Cari tahsilat', cariTahsilatOdemeTipi);
 
     if (sonuc) {
       setCariTahsilatTutari('');
+      setCariTahsilatOdemeTipi('Nakit');
     }
   };
 
@@ -13401,6 +13408,35 @@ Toplam Ciro: {toplam}
     });
   };
 
+  // Cari borç ve tahsilat hareketlerini seçili rapor dönemine göre hazırlayan kod
+  const raporCariHareketleriniFiltrele = () => {
+    const bugunStr = new Date().toISOString().split('T')[0];
+    const seciliTarih = raporTarihi || bugunStr;
+    const seciliAy = seciliTarih.substring(0, 7);
+    const baslangic = raporBaslangicTarihi || seciliTarih;
+    const bitis = raporBitisTarihi || baslangic;
+
+    const hareketler = (Array.isArray(cariMusteriler) ? cariMusteriler : []).flatMap(cari => {
+      return (Array.isArray(cari.hareketler) ? cari.hareketler : []).map(hareket => ({
+        ...hareket,
+        cariId: cari.id,
+        cariAdi: cari.ad || 'İsimsiz cari',
+        cariTelefon: cari.telefon || '',
+        hareketTarihi: hareket.tarih ? new Date(hareket.tarih).toLocaleDateString('sv-SE') : '',
+      }));
+    });
+
+    if (reportType === 'gunluk') {
+      return hareketler.filter(hareket => hareket.hareketTarihi === seciliTarih);
+    }
+
+    if (reportType === 'aylik') {
+      return hareketler.filter(hareket => hareket.hareketTarihi.startsWith(seciliAy));
+    }
+
+    return hareketler.filter(hareket => hareket.hareketTarihi >= baslangic && hareket.hareketTarihi <= bitis);
+  };
+
   // rapor periyodunu yazıya çeviren kod
   const raporBasligi = () => {
     if (reportType === 'gunluk') {
@@ -13492,13 +13528,23 @@ Toplam Ciro: {toplam}
 
     const raporGiderleri = raporGiderleriniFiltrele();
     const raporIadeKayitlari = raporIadeKayitlariniFiltrele();
+    const raporCariHareketleri = raporCariHareketleriniFiltrele();
     const giderToplam = raporGiderleri.reduce((t, g) => t + Number(g.tutar || 0), 0);
     const iadeIkramZayiToplam = raporIadeKayitlari.reduce((t, i) => t + Number(i.tutar || 0), 0);
+    const cariTahsilatToplam = raporCariHareketleri
+      .filter(hareket => String(hareket.tip || '').toLocaleLowerCase('tr-TR').includes('tahsilat'))
+      .reduce((toplam, hareket) => toplam + Math.abs(Number(hareket.tutar || 0)), 0);
+    const cariBorcToplam = raporCariHareketleri
+      .filter(hareket => String(hareket.tip || '').toLocaleLowerCase('tr-TR').includes('borç'))
+      .reduce((toplam, hareket) => toplam + Math.abs(Number(hareket.tutar || 0)), 0);
+    const acikCariBakiye = (Array.isArray(cariMusteriler) ? cariMusteriler : [])
+      .reduce((toplam, cari) => toplam + Math.max(Number(cari.bakiye || 0), 0), 0);
 
     const sayilanAdisyonlar = new Set();
     let nakitToplam = 0;
     let kartToplam = 0;
     let digerOdemeToplam = 0;
+    let cariSatisToplam = 0;
 
     filtrelenmisSatislar.forEach(s => {
       const odemeler = Array.isArray(s.odemeler) ? s.odemeler : [];
@@ -13525,6 +13571,8 @@ Toplam Ciro: {toplam}
           nakitToplam += tutar;
         } else if (tip.includes('kart')) {
           kartToplam += tutar;
+        } else if (tip.includes('cari') || tip.includes('veresiye')) {
+          cariSatisToplam += tutar;
         } else {
           digerOdemeToplam += tutar;
         }
@@ -13577,6 +13625,11 @@ Toplam Ciro: {toplam}
       nakitToplam,
       kartToplam,
       digerOdemeToplam,
+      cariSatisToplam: paraYuvarla(cariSatisToplam),
+      cariBorcToplam: paraYuvarla(cariBorcToplam),
+      cariTahsilatToplam: paraYuvarla(cariTahsilatToplam),
+      acikCariBakiye: paraYuvarla(acikCariBakiye),
+      cariHareketleri: raporCariHareketleri.sort((a, b) => String(b.tarih || '').localeCompare(String(a.tarih || ''))),
       giderToplam,
       iadeIkramZayiToplam,
       raporGiderleri,
@@ -14124,6 +14177,11 @@ Toplam Ciro: {toplam}
     nakitToplam: 0,
     kartToplam: 0,
     digerOdemeToplam: 0,
+    cariSatisToplam: 0,
+    cariBorcToplam: 0,
+    cariTahsilatToplam: 0,
+    acikCariBakiye: 0,
+    cariHareketleri: [],
     garsonOzetleri: [],
     paketRaporu: [],
     paketToplam: 0,
@@ -16828,10 +16886,10 @@ Toplam Ciro: {toplam}
           </div>
 
           {/* MAIN */}
-          <div style={activeTab === 'market'
+          <div style={['market', 'kuafor'].includes(activeTab)
             ? (isMobile ? styles.marketMainContentMobile : styles.marketMainContentFull)
             : (isMobile ? styles.mainContentMobile : styles.mainContentFull)}>
-            {activeTab !== 'market' && <div
+            {!['market', 'kuafor'].includes(activeTab) && <div
               style={{
                 backgroundColor: '#ffffff',
                 border: '1px solid #e2e8f0',
@@ -16875,8 +16933,8 @@ Toplam Ciro: {toplam}
                 {manuelYenilemeYapiliyor ? '⏳ Yenileniyor' : '🔄 Verileri Yenile'}
               </button>
             </div>}
-            {activeTab !== 'market' && renderEkranRehberi()}
-            {activeTab !== 'market' && rehberGizli ? (
+            {!['market', 'kuafor'].includes(activeTab) && renderEkranRehberi()}
+            {!['market', 'kuafor'].includes(activeTab) && rehberGizli ? (
               <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideShowBtn}>💡 Ekran rehberini göster</button>
             ) : null}
             {activeTab !== 'market' && aktifKullaniciLisansRozeti && ['Yaklaşıyor', 'Ödeme Gecikti', 'Ödeme Bekliyor'].includes(aktifKullaniciLisansRozeti.etiket) && (
@@ -16919,7 +16977,10 @@ Toplam Ciro: {toplam}
                   restaurantId={mevcutRestaurantId}
                   restaurantName={user?.restaurant}
                   notify={bildirimGoster}
-                  onSalesChanged={() => satisGecmisiniSupabasedenCek(mevcutRestaurantId)}
+                  onSalesChanged={() => Promise.all([
+                    satisGecmisiniSupabasedenCek(mevcutRestaurantId),
+                    cariMusterileriSupabasedenCek(mevcutRestaurantId),
+                  ])}
                 />
               </React.Suspense>
             )}
@@ -19280,6 +19341,17 @@ Toplam Ciro: {toplam}
                         onChange={e => setCariTahsilatTutari(e.target.value)}
                         style={{ ...styles.input, width: '120px', minWidth: '120px' }}
                       />
+                      <select
+                        value={cariTahsilatOdemeTipi}
+                        onChange={e => setCariTahsilatOdemeTipi(e.target.value)}
+                        style={{ ...styles.input, width: '135px', minWidth: '135px' }}
+                        aria-label="Tahsilat ödeme tipi"
+                      >
+                        <option>Nakit</option>
+                        <option>Kredi Kartı</option>
+                        <option>Havale / EFT</option>
+                        <option>Diğer</option>
+                      </select>
                       <button type="button" onClick={() => cariTahsilatAl(cari)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>
                         Tahsilat Al
                       </button>
@@ -19289,7 +19361,7 @@ Toplam Ciro: {toplam}
                           <div style={{ display: 'grid', gap: '6px', marginTop: '10px' }}>
                             {cari.hareketler.slice(0, 20).map(h => (
                               <div key={h.id || `${h.tarih}-${h.tutar}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', fontSize: '12px' }}>
-                                <span>{String(h.tarih || '').slice(0, 16).replace('T', ' ')} — {h.tip} — {h.aciklama}</span>
+                                <span>{String(h.tarih || '').slice(0, 16).replace('T', ' ')} — {h.tip}{h.odeme_tipi ? ` (${h.odeme_tipi})` : ''} — {h.aciklama}</span>
                                 <strong style={{ color: h.tip === 'Borç' ? '#ef4444' : '#10b981' }}>{h.tutar} TL</strong>
                               </div>
                             ))}
@@ -22362,6 +22434,24 @@ Toplam Ciro: {toplam}
                   </div>
 
                   <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Cari Satış (Dönem)</div>
+                    <div style={{ ...styles.statsValue, color: '#ea580c' }}>{raporData.cariSatisToplam || 0} TL</div>
+                    <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>Satış anında veresiye yazılan</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Cari Tahsilat (Dönem)</div>
+                    <div style={{ ...styles.statsValue, color: '#059669' }}>{raporData.cariTahsilatToplam || 0} TL</div>
+                    <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>Sonradan müşteriden alınan</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
+                    <div style={styles.statsTitle}>Açık Cari Bakiye</div>
+                    <div style={{ ...styles.statsValue, color: '#be123c' }}>{raporData.acikCariBakiye || 0} TL</div>
+                    <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>Şu an tahsil edilmemiş toplam</div>
+                  </div>
+
+                  <div style={styles.statsCard}>
                     <div style={styles.statsTitle}>Açık Masalardaki Bekleyen Tutar</div>
                     <div style={styles.statsValue}>{tumRestoranMasalari.reduce((acc, curr) => acc + Number(curr.tutar || 0), 0)} TL</div>
                   </div>
@@ -22435,6 +22525,14 @@ Toplam Ciro: {toplam}
                     >
                       👤 Garson Performansı
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRaporSekmesi('cari')}
+                      style={raporSekmesi === 'cari' ? styles.filterBtnActive : styles.filterBtn}
+                    >
+                      📒 Cari Hareketleri
+                    </button>
                   </div>
                 </div>
 
@@ -22478,6 +22576,59 @@ Toplam Ciro: {toplam}
                                 <td style={{ ...styles.td, color: '#ef4444', fontWeight: 'bold' }}>{paraYuvarla(item.indirimTutari || 0)} TL</td>
                               </tr>
                             ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {raporSekmesi === 'cari' && (
+                  <div style={{ ...styles.panelCard, marginTop: '25px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '15px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '16px', margin: 0, color: '#1e293b' }}>📒 Cari Borç ve Tahsilat Hareketleri</h3>
+                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px', fontWeight: '700' }}>
+                          Veresiye satış geçmişi silinmez; sonradan alınan ödeme ayrı tahsilat olarak görünür ve açık bakiyeyi düşürür.
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ ...styles.badgePending, padding: '7px 10px' }}>Borç: {raporData.cariBorcToplam || 0} TL</span>
+                        <span style={{ ...styles.badgeActive, padding: '7px 10px' }}>Tahsilat: {raporData.cariTahsilatToplam || 0} TL</span>
+                      </div>
+                    </div>
+
+                    {(!raporData.cariHareketleri || raporData.cariHareketleri.length === 0) ? (
+                      <div style={{ color: '#94a3b8', fontSize: '14px', textAlign: 'center', padding: '30px' }}>
+                        Bu dönemde cari borç veya tahsilat hareketi bulunmuyor.
+                      </div>
+                    ) : (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={styles.table}>
+                          <thead>
+                            <tr style={{ backgroundColor: '#f8fafc' }}>
+                              <th style={styles.th}>Tarih</th>
+                              <th style={styles.th}>Müşteri</th>
+                              <th style={styles.th}>Hareket</th>
+                              <th style={styles.th}>Ödeme Tipi</th>
+                              <th style={styles.th}>Açıklama</th>
+                              <th style={styles.th}>Tutar</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {raporData.cariHareketleri.map((hareket, index) => {
+                              const tahsilatMi = String(hareket.tip || '').toLocaleLowerCase('tr-TR').includes('tahsilat');
+                              return (
+                                <tr key={hareket.id || `${hareket.cariId}-${hareket.tarih}-${index}`} style={styles.tr}>
+                                  <td style={styles.td}>{hareket.tarih ? new Date(hareket.tarih).toLocaleString('tr-TR') : '-'}</td>
+                                  <td style={{ ...styles.td, fontWeight: '900' }}>{hareket.cariAdi}<div style={{ color: '#94a3b8', fontSize: '10px' }}>{hareket.cariTelefon || ''}</div></td>
+                                  <td style={styles.td}><span style={tahsilatMi ? styles.badgeActive : styles.badgePending}>{hareket.tip || 'Hareket'}</span></td>
+                                  <td style={styles.td}>{hareket.odeme_tipi || '-'}</td>
+                                  <td style={styles.td}>{hareket.aciklama || '-'}</td>
+                                  <td style={{ ...styles.td, color: tahsilatMi ? '#059669' : '#be123c', fontWeight: '900' }}>{tahsilatMi ? '-' : '+'}{paraYuvarla(Math.abs(Number(hareket.tutar || 0)))} TL</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
