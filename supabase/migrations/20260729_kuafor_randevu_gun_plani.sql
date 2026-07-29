@@ -117,6 +117,9 @@ create unique index if not exists kuafor_musterileri_telefon_unique
 create index if not exists kuafor_musterileri_restaurant_ad_idx
   on public.kuafor_musterileri (restaurant_id, ad);
 
+alter table public.kuafor_musterileri
+  add column if not exists cari_musteri_id text;
+
 create table if not exists public.kuafor_randevulari (
   id uuid primary key default gen_random_uuid(),
   restaurant_id bigint not null references public.restaurants(id) on delete cascade,
@@ -150,6 +153,7 @@ alter table public.kuafor_randevulari
   add column if not exists odenen_tutar numeric(14,2),
   add column if not exists tamamlanma_zamani timestamptz,
   add column if not exists gun_sonuna_aktarildi boolean not null default false,
+  add column if not exists cariye_aktarildi boolean not null default false,
   add column if not exists hizmet_detaylari jsonb not null default '[]'::jsonb;
 
 alter table public.satis_gecmisi
@@ -460,8 +464,12 @@ set search_path = public, private, pg_temp
 as $$
 declare
   v_randevu public.kuafor_randevulari%rowtype;
+  v_musteri public.kuafor_musterileri%rowtype;
+  v_cari public.cari_musteriler%rowtype;
   v_onceki_durum text;
   v_satis_tutari numeric(14,2);
+  v_hareketler jsonb;
+  v_cari_hareketi jsonb;
 begin
   if not private.integra_kuafor_yetkisi_var(p_restaurant_id) then
     raise exception 'Bu işletmenin kuaför randevu modülüne erişim yetkiniz yok.';
@@ -514,6 +522,95 @@ begin
         updated_at = now()
     where id = v_randevu.musteri_id
       and restaurant_id = p_restaurant_id;
+  end if;
+
+  if p_durum = 'Tamamlandı'
+     and lower(trim(p_odeme_tipi)) in ('cari', 'cari / veresiye', 'veresiye')
+     and not coalesce(v_randevu.cariye_aktarildi, false) then
+    select *
+    into v_musteri
+    from public.kuafor_musterileri
+    where id = v_randevu.musteri_id
+      and restaurant_id = p_restaurant_id
+    for update;
+
+    if v_musteri.cari_musteri_id is not null then
+      select *
+      into v_cari
+      from public.cari_musteriler c
+      where c.restaurant_id = p_restaurant_id
+        and c.id::text = v_musteri.cari_musteri_id
+      for update;
+    end if;
+
+    if v_cari.id is null and nullif(trim(v_musteri.telefon), '') is not null then
+      select *
+      into v_cari
+      from public.cari_musteriler c
+      where c.restaurant_id = p_restaurant_id
+        and nullif(trim(c.telefon), '') = trim(v_musteri.telefon)
+      order by c.id
+      limit 1
+      for update;
+    end if;
+
+    if v_cari.id is null then
+      insert into public.cari_musteriler (
+        restaurant_id,
+        ad,
+        telefon,
+        not_metni,
+        bakiye,
+        hareketler
+      ) values (
+        p_restaurant_id,
+        v_musteri.ad,
+        nullif(trim(v_musteri.telefon), ''),
+        'Kuaför müşterisi',
+        0,
+        '[]'::jsonb
+      )
+      returning * into v_cari;
+    end if;
+
+    update public.kuafor_musterileri
+    set cari_musteri_id = v_cari.id::text,
+        updated_at = now()
+    where id = v_musteri.id
+      and restaurant_id = p_restaurant_id;
+
+    v_hareketler := coalesce(to_jsonb(v_cari.hareketler), '[]'::jsonb);
+
+    if not exists (
+      select 1
+      from jsonb_array_elements(v_hareketler) hareket
+      where hareket ->> 'kaynak' = 'kuafor_randevusu'
+        and hareket ->> 'kaynak_id' = v_randevu.id::text
+    ) then
+      v_cari_hareketi := jsonb_build_object(
+        'id', v_randevu.id::text,
+        'tip', 'Borç',
+        'tutar', v_satis_tutari,
+        'aciklama', 'Kuaför işlemi · ' || v_randevu.hizmet_adi,
+        'tarih', now(),
+        'kaynak', 'kuafor_randevusu',
+        'kaynak_id', v_randevu.id::text,
+        'bakiye_etkisi', v_satis_tutari
+      );
+
+      update public.cari_musteriler
+      set bakiye = coalesce(bakiye, 0) + v_satis_tutari,
+          hareketler = jsonb_build_array(v_cari_hareketi) || v_hareketler
+      where restaurant_id = p_restaurant_id
+        and id::text = v_cari.id::text;
+    end if;
+
+    update public.kuafor_randevulari
+    set cariye_aktarildi = true,
+        updated_at = now()
+    where id = p_randevu_id
+      and restaurant_id = p_restaurant_id
+    returning * into v_randevu;
   end if;
 
   if p_durum = 'Tamamlandı' then
@@ -579,6 +676,116 @@ begin
 end;
 $$;
 
+drop function if exists public.kuafor_cari_tahsilat_kaydet(bigint, uuid, numeric, text, text);
+
+create or replace function public.kuafor_cari_tahsilat_kaydet(
+  p_restaurant_id bigint,
+  p_kuafor_musteri_id uuid,
+  p_tutar numeric,
+  p_odeme_tipi text,
+  p_aciklama text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare
+  v_musteri public.kuafor_musterileri%rowtype;
+  v_cari public.cari_musteriler%rowtype;
+  v_tutar numeric(14,2);
+  v_hareketler jsonb;
+  v_hareket_id uuid;
+  v_hareket jsonb;
+begin
+  if not private.integra_kuafor_yetkisi_var(p_restaurant_id) then
+    raise exception 'Bu işletmenin kuaför cari hesaplarına erişim yetkiniz yok.';
+  end if;
+
+  v_tutar := round(coalesce(p_tutar, 0), 2);
+  if v_tutar <= 0 then
+    raise exception 'Tahsilat tutarı sıfırdan büyük olmalıdır.';
+  end if;
+
+  if nullif(trim(p_odeme_tipi), '') is null then
+    raise exception 'Tahsilat ödeme tipini seçin.';
+  end if;
+
+  select *
+  into v_musteri
+  from public.kuafor_musterileri
+  where id = p_kuafor_musteri_id
+    and restaurant_id = p_restaurant_id
+  for update;
+
+  if not found then
+    raise exception 'Kuaför müşteri kaydı bulunamadı.';
+  end if;
+
+  if v_musteri.cari_musteri_id is not null then
+    select *
+    into v_cari
+    from public.cari_musteriler c
+    where c.restaurant_id = p_restaurant_id
+      and c.id::text = v_musteri.cari_musteri_id
+    for update;
+  end if;
+
+  if v_cari.id is null and nullif(trim(v_musteri.telefon), '') is not null then
+    select *
+    into v_cari
+    from public.cari_musteriler c
+    where c.restaurant_id = p_restaurant_id
+      and nullif(trim(c.telefon), '') = trim(v_musteri.telefon)
+    order by c.id
+    limit 1
+    for update;
+  end if;
+
+  if v_cari.id is null then
+    raise exception 'Bu müşterinin cari hesabı bulunamadı. Önce bir işlemi Cari / Veresiye ile tamamlayın.';
+  end if;
+
+  if v_tutar > greatest(coalesce(v_cari.bakiye, 0), 0) then
+    raise exception 'Tahsilat tutarı güncel cari bakiyeden büyük olamaz.';
+  end if;
+
+  v_hareket_id := gen_random_uuid();
+  v_hareketler := coalesce(to_jsonb(v_cari.hareketler), '[]'::jsonb);
+  v_hareket := jsonb_build_object(
+    'id', v_hareket_id::text,
+    'tip', 'Tahsilat',
+    'tutar', v_tutar,
+    'aciklama', coalesce(nullif(trim(p_aciklama), ''), 'Kuaför cari tahsilatı'),
+    'tarih', now(),
+    'odeme_tipi', trim(p_odeme_tipi),
+    'kaynak', 'kuafor_tahsilati',
+    'kaynak_id', v_hareket_id::text,
+    'bakiye_etkisi', -v_tutar
+  );
+
+  update public.cari_musteriler
+  set bakiye = coalesce(bakiye, 0) - v_tutar,
+      hareketler = jsonb_build_array(v_hareket) || v_hareketler
+  where restaurant_id = p_restaurant_id
+    and id::text = v_cari.id::text
+  returning * into v_cari;
+
+  update public.kuafor_musterileri
+  set cari_musteri_id = v_cari.id::text,
+      updated_at = now()
+  where id = v_musteri.id
+    and restaurant_id = p_restaurant_id;
+
+  return jsonb_build_object(
+    'cari_id', v_cari.id::text,
+    'musteri_id', v_musteri.id,
+    'bakiye', v_cari.bakiye,
+    'hareket', v_hareket
+  );
+end;
+$$;
+
 alter table public.kuafor_personelleri enable row level security;
 alter table public.kuafor_hizmetleri enable row level security;
 alter table public.kuafor_musterileri enable row level security;
@@ -622,11 +829,13 @@ revoke all on function public.kuafor_randevu_kaydet(
   bigint, uuid, uuid, text, text, uuid, uuid, timestamptz, integer, numeric, numeric, text, text, uuid[]
 ) from public, anon;
 revoke all on function public.kuafor_randevu_durum_guncelle(bigint, uuid, text, text, numeric) from public, anon;
+revoke all on function public.kuafor_cari_tahsilat_kaydet(bigint, uuid, numeric, text, text) from public, anon;
 
 grant execute on function public.kuafor_randevu_kaydet(
   bigint, uuid, uuid, text, text, uuid, uuid, timestamptz, integer, numeric, numeric, text, text, uuid[]
 ) to authenticated;
 grant execute on function public.kuafor_randevu_durum_guncelle(bigint, uuid, text, text, numeric) to authenticated;
+grant execute on function public.kuafor_cari_tahsilat_kaydet(bigint, uuid, numeric, text, text) to authenticated;
 
 update public.restaurants
 set isletme_tipi = 'Kuaför'

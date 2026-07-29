@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  kuaforCariTahsilatiKaydet,
   kuaforHizmetiKaydet,
   kuaforMusterisiKaydet,
   kuaforPersoneliKaydet,
@@ -49,12 +50,13 @@ const bosMusteri = { ad: '', telefon: '', email: '', dogumTarihi: '', notMetni: 
 const bosPersonel = { ad: '', telefon: '', uzmanlik: '', renk: '#7c3aed', sira: '' };
 const bosHizmet = { hizmetAdi: '', kategori: 'Saç', sureDakika: '30', fiyat: '', renk: '#f97316' };
 const bosOdeme = { odemeTipi: 'Nakit', odenenTutar: '' };
+const bosTahsilat = { musteriId: '', tutar: '', odemeTipi: 'Nakit', aciklama: '' };
 
 export default function KuaforApp({ restaurantId, restaurantName, notify, onSalesChanged }) {
   const [aktifSekme, setAktifSekme] = useState('plan');
   const [seciliTarih, setSeciliTarih] = useState(bugunYerel());
   const [seciliPersonelFiltresi, setSeciliPersonelFiltresi] = useState('tumu');
-  const [veriler, setVeriler] = useState({ personeller: [], hizmetler: [], musteriler: [], randevular: [] });
+  const [veriler, setVeriler] = useState({ personeller: [], hizmetler: [], musteriler: [], randevular: [], cariler: [] });
   const [yukleniyor, setYukleniyor] = useState(true);
   const [islemYukleniyor, setIslemYukleniyor] = useState(false);
   const [hata, setHata] = useState('');
@@ -71,6 +73,8 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
   const [duzenlenenHizmetId, setDuzenlenenHizmetId] = useState(null);
   const [odemeRandevuId, setOdemeRandevuId] = useState(null);
   const [odemeFormu, setOdemeFormu] = useState(bosOdeme);
+  const [tahsilatFormu, setTahsilatFormu] = useState(bosTahsilat);
+  const [cariArama, setCariArama] = useState('');
 
   const mesajGoster = useCallback((mesaj, tip = 'info') => {
     if (typeof notify === 'function') notify(mesaj, tip);
@@ -148,6 +152,19 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
     sonuc[tip] = Number(sonuc[tip] || 0) + Number(randevu.odenen_tutar ?? randevu.ucret ?? 0);
     return sonuc;
   }, {}), [gunSonuKayitlari]);
+  const kuaforCariKayitlari = useMemo(() => {
+    const arama = String(cariArama || '').trim().toLocaleLowerCase('tr-TR');
+    return veriler.musteriler
+      .map(musteri => {
+        const cari = veriler.cariler.find(kayit => String(kayit.id) === String(musteri.cari_musteri_id))
+          || veriler.cariler.find(kayit => musteri.telefon && String(kayit.telefon || '') === String(musteri.telefon));
+        return cari ? { musteri, cari } : null;
+      })
+      .filter(Boolean)
+      .filter(kayit => !arama || `${kayit.musteri.ad || ''} ${kayit.musteri.telefon || ''}`.toLocaleLowerCase('tr-TR').includes(arama))
+      .sort((a, b) => Number(b.cari.bakiye || 0) - Number(a.cari.bakiye || 0));
+  }, [veriler.musteriler, veriler.cariler, cariArama]);
+  const toplamCariBakiye = kuaforCariKayitlari.reduce((toplam, kayit) => toplam + Number(kayit.cari.bakiye || 0), 0);
 
   const tarihDegistir = gunFarki => {
     const tarih = new Date(`${seciliTarih}T12:00:00`);
@@ -304,6 +321,28 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
     }
   };
 
+  const tahsilatPaneliniAc = kayit => {
+    setTahsilatFormu({
+      musteriId: kayit.musteri.id,
+      tutar: '',
+      odemeTipi: 'Nakit',
+      aciklama: '',
+    });
+  };
+
+  const cariTahsilatiKaydet = async event => {
+    event.preventDefault();
+    if (!tahsilatFormu.musteriId || Number(tahsilatFormu.tutar || 0) <= 0) {
+      mesajGoster('Sıfırdan büyük bir tahsilat tutarı girin.', 'warning');
+      return;
+    }
+    const basarili = await islemCalistir(
+      () => kuaforCariTahsilatiKaydet(restaurantId, tahsilatFormu),
+      'Tahsilat kaydedildi ve müşterinin cari bakiyesinden düşüldü.'
+    );
+    if (basarili) setTahsilatFormu(bosTahsilat);
+  };
+
   const musteriKaydet = async event => {
     event.preventDefault();
     if (!musteriFormu.ad.trim()) {
@@ -382,7 +421,8 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
           ['2', 'Personel ve işlem', 'Kalıcı listelerden seçin', 'ayarlar'],
           ['3', 'Randevu', 'Müşteri, personel ve saat bağlayın', 'kayit'],
           ['4', 'Gün planı', 'Geliş ve işlem durumunu yönetin', 'plan'],
-          ['5', 'Ödeme ve gün sonu', 'Tamamlayıp satışa aktarın', 'gun_sonu'],
+          ['5', 'Cari hesaplar', 'Borç ve tahsilatı izleyin', 'cariler'],
+          ['6', 'Ödeme ve gün sonu', 'Tamamlayıp satışa aktarın', 'gun_sonu'],
         ].map(([no, baslik, aciklama, sekme]) => (
           <button type="button" key={sekme} className={aktifSekme === sekme ? 'active' : ''} onClick={() => setAktifSekme(sekme)}>
             <b>{no}</b><span><strong>{baslik}</strong><small>{aciklama}</small></span>
@@ -396,6 +436,7 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
           ['musteriler', 'Müşteri Kayıtları'],
           ['kayit', duzenlenenRandevuId ? 'Randevuyu Düzenle' : 'Randevu Kaydı'],
           ['ayarlar', 'Kayıtlı Personel & İşlemler'],
+          ['cariler', 'Cari / Veresiye'],
           ['gun_sonu', 'Kuaför Gün Sonu'],
         ].map(([key, label]) => (
           <button type="button" key={key} className={aktifSekme === key ? 'active' : ''} onClick={() => setAktifSekme(key)}>{label}</button>
@@ -518,9 +559,10 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
                 <label><span>Ödeme tipi</span><select value={odemeFormu.odemeTipi} onChange={e => setOdemeFormu(p => ({ ...p, odemeTipi: e.target.value }))}>
                   {['Nakit', 'Kredi Kartı', 'Havale / EFT', 'Cari / Veresiye', 'Diğer'].map(tip => <option key={tip}>{tip}</option>)}
                 </select></label>
-                <label><span>Satış / tahsilat tutarı</span><input type="number" min="0" step="0.01" required value={odemeFormu.odenenTutar} onChange={e => setOdemeFormu(p => ({ ...p, odenenTutar: e.target.value }))} /></label>
+                <label><span>{odemeFormu.odemeTipi === 'Cari / Veresiye' ? 'Cariye yazılacak borç' : 'Satış / tahsilat tutarı'}</span><input type="number" min="0" step="0.01" required value={odemeFormu.odenenTutar} onChange={e => setOdemeFormu(p => ({ ...p, odenenTutar: e.target.value }))} /></label>
                 <button type="submit" className="success" disabled={islemYukleniyor}>Ödemeyi Kaydet ve Tamamla</button>
                 <button type="button" onClick={() => setOdemeRandevuId(null)}>Vazgeç</button>
+                {odemeFormu.odemeTipi === 'Cari / Veresiye' && <small className="kuafor-credit-note">Bu tutar müşterinin cari bakiyesine borç yazılır; daha sonra Cari / Veresiye panelinden tahsilat girilir.</small>}
               </form>
             </section>
           )}
@@ -696,6 +738,65 @@ export default function KuaforApp({ restaurantId, restaurantName, notify, onSale
             </div>
           </div>
         </section>
+      )}
+
+      {aktifSekme === 'cariler' && (
+        <>
+          <section className="kuafor-cari-summary">
+            <article><span>Cari müşterisi</span><strong>{kuaforCariKayitlari.length}</strong><small>veresiye hesabı açılan</small></article>
+            <article><span>Toplam alacak</span><strong>{para(toplamCariBakiye)} TL</strong><small>müşterilerden alınacak</small></article>
+            <div>
+              <strong>Cari hesap nasıl oluşur?</strong>
+              <p>Randevuyu “Cari / Veresiye” ile tamamladığınızda müşteri adına cari hesap otomatik açılır ve işlem tutarı borç yazılır.</p>
+            </div>
+          </section>
+
+          <section className="kuafor-card">
+            <div className="kuafor-card-title"><div><h2>Cari müşteri bakiyeleri</h2><p>Müşterinin borcunu, sonradan getirdiği parayı ve tüm hareket geçmişini buradan takip edin.</p></div></div>
+            <div className="kuafor-search"><span>⌕</span><input value={cariArama} onChange={e => setCariArama(e.target.value)} placeholder="Müşteri adı veya telefon ara…" /></div>
+
+            {tahsilatFormu.musteriId && (
+              <form className="kuafor-collection-form" onSubmit={cariTahsilatiKaydet}>
+                <div>
+                  <span>TAHSİLAT GİRİŞİ</span>
+                  <strong>{veriler.musteriler.find(musteri => String(musteri.id) === String(tahsilatFormu.musteriId))?.ad}</strong>
+                </div>
+                <label><span>Getirdiği tutar</span><input type="number" min="0.01" step="0.01" required value={tahsilatFormu.tutar} onChange={e => setTahsilatFormu(p => ({ ...p, tutar: e.target.value }))} /></label>
+                <label><span>Ödeme tipi</span><select value={tahsilatFormu.odemeTipi} onChange={e => setTahsilatFormu(p => ({ ...p, odemeTipi: e.target.value }))}>{['Nakit', 'Kredi Kartı', 'Havale / EFT', 'Diğer'].map(tip => <option key={tip}>{tip}</option>)}</select></label>
+                <label><span>Açıklama</span><input value={tahsilatFormu.aciklama} onChange={e => setTahsilatFormu(p => ({ ...p, aciklama: e.target.value }))} placeholder="Örn. 15 Ağustos tahsilatı" /></label>
+                <button type="submit" className="success" disabled={islemYukleniyor}>Tahsilatı Kaydet</button>
+                <button type="button" onClick={() => setTahsilatFormu(bosTahsilat)}>Vazgeç</button>
+              </form>
+            )}
+
+            <div className="kuafor-cari-list">
+              {kuaforCariKayitlari.map(kayit => (
+                <article key={kayit.musteri.id}>
+                  <div className="kuafor-avatar">{String(kayit.musteri.ad || '?').slice(0, 1).toLocaleUpperCase('tr-TR')}</div>
+                  <div><strong>{kayit.musteri.ad}</strong><span>{kayit.musteri.telefon || 'Telefon yok'}</span></div>
+                  <div className={Number(kayit.cari.bakiye || 0) > 0 ? 'debt' : 'clear'}><span>Güncel bakiye</span><strong>{para(kayit.cari.bakiye)} TL</strong></div>
+                  <button type="button" className="success" disabled={Number(kayit.cari.bakiye || 0) <= 0} onClick={() => tahsilatPaneliniAc(kayit)}>Tahsilat Gir</button>
+                  <details>
+                    <summary>Ekstre / Hareket Geçmişi</summary>
+                    <div>
+                      {(Array.isArray(kayit.cari.hareketler) ? kayit.cari.hareketler : []).slice(0, 30).map(hareket => (
+                        <p key={hareket.id || `${hareket.tarih}-${hareket.tutar}`}>
+                          <time>{hareket.tarih ? new Date(hareket.tarih).toLocaleString('tr-TR') : '-'}</time>
+                          <span><strong>{hareket.tip || 'Hareket'}</strong><small>{hareket.aciklama || 'Açıklama yok'}{hareket.odeme_tipi ? ` · ${hareket.odeme_tipi}` : ''}</small></span>
+                          <b className={Number(hareket.bakiye_etkisi ?? (hareket.tip === 'Borç' ? hareket.tutar : -hareket.tutar)) > 0 ? 'debt' : 'clear'}>
+                            {Number(hareket.bakiye_etkisi ?? (hareket.tip === 'Borç' ? hareket.tutar : -hareket.tutar)) > 0 ? '+' : '-'}{para(Math.abs(Number(hareket.tutar || 0)))} TL
+                          </b>
+                        </p>
+                      ))}
+                      {(!Array.isArray(kayit.cari.hareketler) || kayit.cari.hareketler.length === 0) && <div className="kuafor-empty">Henüz cari hareket yok.</div>}
+                    </div>
+                  </details>
+                </article>
+              ))}
+              {kuaforCariKayitlari.length === 0 && <div className="kuafor-empty">Henüz veresiye işlemi bulunan kuaför müşterisi yok. İlk “Cari / Veresiye” işleminde hesap otomatik oluşur.</div>}
+            </div>
+          </section>
+        </>
       )}
 
       {aktifSekme === 'gun_sonu' && (

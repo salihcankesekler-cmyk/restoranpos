@@ -19,7 +19,7 @@ export async function kuaforVerileriniGetir(restaurantId) {
   const bitis = new Date();
   bitis.setDate(bitis.getDate() + 240);
 
-  const [personelSonucu, hizmetSonucu, musteriSonucu, randevuSonucu] = await Promise.all([
+  const [personelSonucu, hizmetSonucu, musteriSonucu, randevuSonucu, cariSonucu] = await Promise.all([
     supabase
       .from('kuafor_personelleri')
       .select('*')
@@ -47,18 +47,25 @@ export async function kuaforVerileriniGetir(restaurantId) {
       .gte('baslangic_zamani', baslangic.toISOString())
       .lte('baslangic_zamani', bitis.toISOString())
       .order('baslangic_zamani'),
+    supabase
+      .from('cari_musteriler')
+      .select('id, ad, telefon, bakiye, not_metni, hareketler')
+      .eq('restaurant_id', restaurantId)
+      .order('ad'),
   ]);
 
   hataKontrol(personelSonucu.error, 'Kuaför personelleri alınamadı.');
   hataKontrol(hizmetSonucu.error, 'Kuaför işlemleri alınamadı.');
   hataKontrol(musteriSonucu.error, 'Müşteri kayıtları alınamadı.');
   hataKontrol(randevuSonucu.error, 'Randevular alınamadı.');
+  hataKontrol(cariSonucu.error, 'Cari hesaplar alınamadı.');
 
   return {
     personeller: personelSonucu.data || [],
     hizmetler: hizmetSonucu.data || [],
     musteriler: musteriSonucu.data || [],
     randevular: randevuSonucu.data || [],
+    cariler: cariSonucu.data || [],
   };
 }
 
@@ -153,5 +160,18 @@ export async function kuaforRandevuDurumunuGuncelle(restaurantId, randevuId, dur
   });
 
   hataKontrol(error, 'Randevu durumu güncellenemedi.');
+  return data;
+}
+
+export async function kuaforCariTahsilatiKaydet(restaurantId, form) {
+  const { data, error } = await supabase.rpc('kuafor_cari_tahsilat_kaydet', {
+    p_restaurant_id: restaurantId,
+    p_kuafor_musteri_id: form.musteriId,
+    p_tutar: Number(form.tutar || 0),
+    p_odeme_tipi: String(form.odemeTipi || 'Nakit').trim(),
+    p_aciklama: String(form.aciklama || '').trim() || null,
+  });
+
+  hataKontrol(error, 'Cari tahsilat kaydedilemedi.');
   return data;
 }
