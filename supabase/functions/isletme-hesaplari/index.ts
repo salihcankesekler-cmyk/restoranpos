@@ -264,10 +264,18 @@ serve(async req => {
       const adres = temizMetin(body?.adres, 500);
       const notMetni = temizMetin(body?.notMetni, 1000);
       const password = String(body?.password || '');
-      const izinliPaketler = new Set(['Profesyonel', 'Market', 'Başlangıç', 'Baslangic', 'Paket Servis', 'QR Plus', 'Kurumsal']);
+      const izinliPaketler = new Set(['Profesyonel', 'Market', 'Kuaför', 'Başlangıç', 'Baslangic', 'Paket Servis', 'QR Plus', 'Kurumsal']);
       const paket = izinliPaketler.has(String(body?.paket || ''))
         ? String(body.paket)
         : 'Profesyonel';
+      const izinliIsletmeTipleri = new Set(['Restoran', 'Market', 'Karma', 'Kuaför', 'Güzellik / Bakım', 'Servis / Atölye', 'Hizmet', 'Diğer']);
+      const isletmeTipi = izinliIsletmeTipleri.has(String(body?.isletmeTipi || ''))
+        ? String(body.isletmeTipi)
+        : paket === 'Market'
+          ? 'Market'
+          : paket === 'Kuaför'
+            ? 'Kuaför'
+            : 'Restoran';
 
       if (!restaurantName || !yetkiliAdi || !telefon || !emailGecerli(email)) {
         await denemeKaydet(emailHash, false);
@@ -327,10 +335,10 @@ serve(async req => {
             kayit_notu: notMetni,
             basvuru_paketi: paket,
             paket_adi: paket,
-            isletme_tipi: paket === 'Market' ? 'Market' : 'Restoran',
+            isletme_tipi: isletmeTipi,
             aylik_ucret: 0,
             lisans_durumu: 'Onay Bekliyor',
-            kullanici_limiti: ['Profesyonel', 'Market'].includes(paket) ? 3 : 0,
+            kullanici_limiti: ['Profesyonel', 'Market', 'Kuaför'].includes(paket) ? 3 : 0,
             durum: 'Onay Bekliyor',
             rol: 'owner',
           })

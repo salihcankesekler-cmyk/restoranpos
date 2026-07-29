@@ -221,6 +221,7 @@ function IntegraApp() {
   const [kayitTelefon, setKayitTelefon] = useState('');
   const [kayitAdres, setKayitAdres] = useState('');
   const [kayitNotu, setKayitNotu] = useState('');
+  const [kayitIsletmeTipi, setKayitIsletmeTipi] = useState('Restoran');
   const [kayitPaketi, setKayitPaketi] = useState('Profesyonel');
   const [destekAdSoyad, setDestekAdSoyad] = useState('');
   const [destekFirmaAdi, setDestekFirmaAdi] = useState('');
@@ -6309,6 +6310,7 @@ Toplam Ciro: {toplam}
           telefon: kayitTelefon,
           adres: kayitAdres,
           notMetni: kayitNotu,
+          isletmeTipi: kayitIsletmeTipi,
           paket: kayitPaketi,
           email: temizKayitEmaili,
           password,
@@ -6321,7 +6323,7 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const adminMesaji = `Yeni kayıt başvurusu: ${restaurantName} / Yetkili: ${kayitYetkiliAdi} / Telefon: ${kayitTelefon} / Paket: ${kayitPaketi}`;
+    const adminMesaji = `Yeni kayıt başvurusu: ${restaurantName} / Tür: ${kayitIsletmeTipi} / Yetkili: ${kayitYetkiliAdi} / Telefon: ${kayitTelefon} / Paket: ${kayitPaketi}`;
 
     await adminMailGonder({
       tip: 'Yeni Kayıt Başvurusu',
@@ -6333,6 +6335,7 @@ Toplam Ciro: {toplam}
         telefon: kayitTelefon,
         adres: kayitAdres,
         email,
+        isletmeTipi: kayitIsletmeTipi,
         paket: kayitPaketi,
         not: kayitNotu,
       },
@@ -6349,6 +6352,7 @@ Toplam Ciro: {toplam}
     setKayitTelefon('');
     setKayitAdres('');
     setKayitNotu('');
+    setKayitIsletmeTipi('Restoran');
     setKayitPaketi('Profesyonel');
     setEmail('');
     setPassword('');
@@ -15681,10 +15685,10 @@ Toplam Ciro: {toplam}
             }}
           >
             <div style={styles.heroContent}>
-              <span style={styles.heroBadge}>✨ Restoran POS • Integra Market • Barkod & stok • Mobil uyumlu</span>
-              <h1 style={styles.heroTitle}>Restoranınızı veya marketinizi tek panelden yönetin.</h1>
+              <span style={styles.heroBadge}>✨ Satış • Randevu • Stok • Depo • Finans • Mobil uyumlu</span>
+              <h1 style={styles.heroTitle}>İşletmenizin tüm operasyonunu tek panelden yönetin.</h1>
               <p style={styles.heroSubtitle}>
-                Integra POS; restoranlar için masa ve mutfak akışını, marketler için barkodlu satış, alış faturası, sayım, fiyat ve etiket yönetimini modern bir işletme panelinde toplar.
+                Integra; restoran, kafe, market, kuaför, güzellik salonu ve farklı hizmet/perakende işletmelerinin satış, randevu, müşteri, stok, depo, cari, personel ve rapor süreçlerini ihtiyaca göre açılan modüllerde bir araya getirir.
               </p>
 
               <div style={styles.heroActionGroup}>
@@ -15694,7 +15698,7 @@ Toplam Ciro: {toplam}
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '22px' }}>
-                {['QR Menü', 'Masa Adisyon', 'Android APK', 'Mutfak & Bar', 'Cari / Veresiye', 'Stok & Reçete'].map(item => (
+                {['Satış & Kasa', 'Randevu Planı', 'Müşteri / Cari', 'Stok & Depo', 'Personel', 'Rapor & Gün Sonu'].map(item => (
                   <span
                     key={item}
                     style={{
@@ -15718,8 +15722,8 @@ Toplam Ciro: {toplam}
                   <div style={styles.heroStatLabel}>Bulut erişim</div>
                 </div>
                 <div style={styles.heroStatCard}>
-                  <div style={styles.heroStatValue}>QR</div>
-                  <div style={styles.heroStatLabel}>Masa siparişi</div>
+                  <div style={styles.heroStatValue}>Modüler</div>
+                  <div style={styles.heroStatLabel}>İşletmeye özel ekran</div>
                 </div>
                 <div style={styles.heroStatCard}>
                   <div style={styles.heroStatValue}>Kâr</div>
@@ -15734,56 +15738,56 @@ Toplam Ciro: {toplam}
                   <span style={{ color: '#ef4444' }}>●</span>
                   <span style={{ color: '#f59e0b' }}>●</span>
                   <span style={{ color: '#10b981' }}>●</span>
-                  Canlı Integra POS Paneli
+                  Canlı Integra İşletme Paneli
                 </div>
 
                 <div style={{ padding: '18px' }}>
                   <div style={styles.mockupTopRow}>
-                    <div style={styles.mockupBadge}>Salon / Bahçe / Teras • Canlı</div>
-                    <div style={styles.mockupMuted}>Anlık durum</div>
+                    <div style={styles.mockupBadge}>Tek merkez • Tüm operasyon • Canlı</div>
+                    <div style={styles.mockupMuted}>İşletme özeti</div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '16px' }}>
                     {[
-                      { ad: 'Masa 1', tutar: '860 TL', durum: 'Dolu', renk: '#fff7ed' },
-                      { ad: 'Masa 2', tutar: 'Boş', durum: 'Boş', renk: '#f0fdf4' },
-                      { ad: 'Bahçe 3', tutar: '420 TL', durum: 'Dolu', renk: '#fff7ed' },
-                    ].map(masa => (
+                      { ad: 'Satış & Kasa', tutar: '18.460 TL', durum: 'Günlük ciro', renk: '#fff7ed' },
+                      { ad: 'Randevu', tutar: '14 işlem', durum: '3 bekliyor', renk: '#faf5ff' },
+                      { ad: 'Stok & Depo', tutar: '2 sevk', durum: 'Onay bekliyor', renk: '#f0fdf4' },
+                    ].map(kart => (
                       <div
-                        key={masa.ad}
+                        key={kart.ad}
                         style={{
                           border: '1px solid #e2e8f0',
-                          backgroundColor: masa.renk,
+                          backgroundColor: kart.renk,
                           borderRadius: '14px',
                           padding: '14px',
                         }}
                       >
-                        <strong style={{ color: '#1e293b' }}>{masa.ad}</strong>
-                        <div style={{ color: masa.durum === 'Dolu' ? '#ff6b35' : '#10b981', fontWeight: '900', marginTop: '6px' }}>
-                          {masa.tutar}
+                        <strong style={{ color: '#1e293b' }}>{kart.ad}</strong>
+                        <div style={{ color: '#ff6b35', fontWeight: '900', marginTop: '6px' }}>
+                          {kart.tutar}
                         </div>
-                        <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>{masa.durum}</div>
+                        <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>{kart.durum}</div>
                       </div>
                     ))}
                   </div>
 
                   <div style={styles.mockupReceipt}>
-                    <div style={styles.mockupReceiptTitle}>🧾 Aktif Adisyon • Reçete & Maliyet Takibi</div>
+                    <div style={styles.mockupReceiptTitle}>📌 Bugünün işletme akışı</div>
                     <div style={styles.mockupReceiptRow}>
-                      <span>2x Lahmacun <small style={{ color: '#64748b' }}>(Acılı)</small></span>
-                      <strong>240 TL</strong>
+                      <span>Restoran <small style={{ color: '#64748b' }}>(masa ve mutfak)</small></span>
+                      <strong>Canlı</strong>
                     </div>
                     <div style={styles.mockupReceiptRow}>
-                      <span>1x Kumpir <small style={{ color: '#64748b' }}>(Bol kaşar)</small></span>
-                      <strong>220 TL</strong>
+                      <span>Market <small style={{ color: '#64748b' }}>(barkod ve stok)</small></span>
+                      <strong>Canlı</strong>
                     </div>
                     <div style={styles.mockupReceiptRow}>
-                      <span>Parçalı ödeme</span>
-                      <strong>Nakit + Kart</strong>
+                      <span>Kuaför / Hizmet <small style={{ color: '#64748b' }}>(randevu ve müşteri)</small></span>
+                      <strong>Canlı</strong>
                     </div>
                     <div style={styles.mockupReceiptTotal}>
-                      <span>Toplam</span>
-                      <strong>460 TL</strong>
+                      <span>Tek panelde</span>
+                      <strong>Kontrol sizde</strong>
                     </div>
                   </div>
                 </div>
@@ -15794,10 +15798,10 @@ Toplam Ciro: {toplam}
           {/* PREMIUM GÜVEN ŞERİDİ */}
           <section style={styles.trustStripSection}>
             {[
-              ['🧾', 'Fiş ve mutfak akışı', 'Adisyon, mutfak, bar ve ödeme süreçleri tek panelden yönetilir.'],
-              ['📱', 'Mobil / APK', 'Telefon ve tablet kullanımına uygun hızlı adisyon ekranları.'],
-              ['📊', 'Canlı rapor', 'Kasa, KDV, kâr, cari ve gün sonu verileri anlık takip edilir.'],
-              ['🛵', 'Paket servis', 'Müşteri, kurye, paket fişi ve cari/veresiye akışı tek panelde.'],
+              ['🧩', 'İşletmeye özel modüller', 'İhtiyacınız olan satış, randevu, stok, depo ve finans ekranlarını birlikte kullanın.'],
+              ['📱', 'Mobil / tablet / bilgisayar', 'Dokunmatik ekranlara ve farklı cihazlara uygun hızlı çalışma düzeni.'],
+              ['📊', 'Canlı rapor ve gün sonu', 'Kasa, ödeme, kâr, cari, işlem ve stok verileri anlık takip edilir.'],
+              ['🔐', 'Rol bazlı kullanım', 'Her personel yalnızca yetkili olduğu işletme ekranlarını görür.'],
             ].map(([icon, title, text]) => (
               <div key={title} style={styles.trustPillCard}>
                 <div style={styles.trustPillIcon}>{icon}</div>
@@ -15813,19 +15817,19 @@ Toplam Ciro: {toplam}
           <section style={{ padding: '72px 4%', backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
             <div style={{ maxWidth: '1180px', margin: '0 auto' }}>
               <div style={styles.sectionHeadWrap}>
-                <span style={styles.sectionBadge}>Canlı Operasyon</span>
-                <h2 style={styles.sectionTitle}>Siparişten rapora kadar akış tek çizgide ilerler</h2>
+                <span style={styles.sectionBadge}>Uçtan Uca Operasyon</span>
+                <h2 style={styles.sectionTitle}>Kayıttan gün sonuna kadar iş akışı birbirine bağlı ilerler</h2>
                 <p style={styles.sectionSubtitle}>
-                  QR menü, masa adisyonu, reçete/stok düşümü ve kâr raporu birbirine bağlı çalışır. İşletme sahibi gün sonunda sadece ciroyu değil, maliyeti ve kârlılığı da görür.
+                  Satış, randevu, müşteri, stok, depo sevki, ödeme ve rapor kayıtları aynı işletme verisi üzerinde çalışır. Yönetici gün sonunda ciroyu, maliyeti ve operasyon durumunu birlikte görür.
                 </p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
                 {[
-                  ['1', 'Müşteri sipariş verir', 'Masa, QR menü, hızlı satış veya paket servis üzerinden sipariş alınır.'],
-                  ['2', 'Garson onaylar', 'QR talepleri servis ekranına düşer, garson onayıyla doğru masaya aktarılır.'],
-                  ['3', 'Stok ve reçete işler', 'Ürün reçetesine göre hammadde veya üretilmiş ürün stoğu kontrollü düşer.'],
-                  ['4', 'Kâr rapora yansır', 'Satış, maliyet, brüt kâr, cari ve kasa hareketleri raporlarda toplanır.'],
+                  ['1', 'Kayıt veya satış başlar', 'Masa, barkod, hızlı satış, randevu ya da müşteri kaydıyla doğru akış açılır.'],
+                  ['2', 'Personel görevini yürütür', 'Yetkili kullanıcı kendi ekranında siparişi, işlemi, stoğu veya sevki yönetir.'],
+                  ['3', 'Ödeme ve stok işlenir', 'Tahsilat, cari, stok düşümü ve depo hareketleri işlemle birlikte kaydedilir.'],
+                  ['4', 'Gün sonu rapora yansır', 'Satış, hizmet, ödeme, maliyet ve personel sonuçları tek raporda toplanır.'],
                 ].map(([no, title, text]) => (
                   <div key={title} style={{ background: 'linear-gradient(180deg, #fff 0%, #fff7ed 100%)', border: '1px solid #fed7aa', borderRadius: '20px', padding: '22px', boxShadow: '0 18px 40px -28px rgba(15,23,42,0.22)' }}>
                     <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#ff6b35', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', marginBottom: '14px' }}>{no}</div>
@@ -15841,9 +15845,9 @@ Toplam Ciro: {toplam}
           <section id="kimler" style={{ padding: '72px 4%', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
             <div style={styles.sectionHeadWrap}>
               <span style={styles.sectionBadge}>Kimler için?</span>
-              <h2 style={styles.sectionTitle}>Yeme-içme ve perakende işletmeleri için ticari POS altyapısı</h2>
+              <h2 style={styles.sectionTitle}>Satış yapan ve hizmet veren tüm işletmeler için modüler yönetim altyapısı</h2>
               <p style={styles.sectionSubtitle}>
-                Masa servisinden barkodlu satışa, paket servisten stok sayımına kadar günlük operasyonu tek sistemde toplayın.
+                Masa servisinden barkodlu satışa, randevudan müşteri geçmişine, depo sevkinden gün sonuna kadar işletmenizin ihtiyacı olan panelleri birlikte kullanın.
               </p>
             </div>
 
@@ -15857,6 +15861,10 @@ Toplam Ciro: {toplam}
                 ['🛵', 'Paket servis', 'Paket ekranına hazır altyapı'],
                 ['🏪', 'Market / Tekel', 'Barkodlu satış, stok ve etiket'],
                 ['🧺', 'Şarküteri / Büfe', 'Alış faturası, sayım ve fiyat yönetimi'],
+                ['✂️', 'Kuaför / Berber', 'Müşteri, randevu, personel ve gün sonu'],
+                ['💆', 'Güzellik / Bakım', 'İşlem planı, müşteri geçmişi ve ödeme'],
+                ['🧰', 'Servis / Atölye', 'Müşteri kaydı, iş takibi, stok ve tahsilat'],
+                ['🏢', 'Çok Şubeli İşletme', 'Merkez depo, şube sevki ve ortak rapor'],
               ].map(([icon, title, text]) => (
                 <div key={title} style={{ ...styles.featureItem, padding: '22px' }}>
                   <div style={{ fontSize: '30px', marginBottom: '10px' }}>{icon}</div>
@@ -15873,7 +15881,7 @@ Toplam Ciro: {toplam}
               <span style={styles.sectionBadge}>Modüller</span>
               <h2 style={styles.sectionTitle}>İşletmenin günlük ihtiyacı tek sistemde</h2>
               <p style={styles.sectionSubtitle}>
-                Restoran, market, kasa ve yönetim ekranlarını birbirine bağlayan modüler POS yapısı.
+                İşletme tipine göre satış, hizmet, randevu, stok ve yönetim ekranlarını birbirine bağlayan modüler yapı.
               </p>
             </div>
 
@@ -15889,6 +15897,9 @@ Toplam Ciro: {toplam}
                 ['👥', 'Personel Kullanımı', 'Patron, garson, mutfak ve admin akışlarını ayrı ekranlarla yönetin.'],
                 ['▥', 'Barkodlu Market Satışı', 'USB veya Bluetooth barkod okuyucuyla ürünü hızla bulun, satışı tamamlayın ve stoğu otomatik düşürün.'],
                 ['📋', 'Alış, Sayım & Etiket', 'Alış faturasıyla stok artırın, barkodla sayım yapın, toplu fiyat güncelleyip raf etiketi basın.'],
+                ['✂️', 'Randevu & Müşteri Geçmişi', 'Kayıtlı müşteri ve personelle gün planı oluşturun; işlem, malzeme, ödeme ve ziyaret geçmişini saklayın.'],
+                ['🏭', 'Merkez Depo & Şube Sevki', 'Alışı depoya alın; şubeye sevk edilen stoğu teslim onayından sonra işletme stoklarına aktarın.'],
+                ['💰', 'Cari & Finans', 'Tahsilat, ödeme, cari bakiye, kasa hareketi ve gün sonu sonuçlarını tek yerde izleyin.'],
               ].map(([icon, title, text]) => (
                 <div key={title} style={styles.featureItem}>
                   <div style={styles.featureIcon}>{icon}</div>
@@ -15903,17 +15914,17 @@ Toplam Ciro: {toplam}
           <section id="nasil-calisir" style={{ padding: '82px 4%', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
             <div style={styles.sectionHeadWrap}>
               <span style={styles.sectionBadge}>Nasıl çalışır?</span>
-              <h2 style={styles.sectionTitle}>Garsondan rapora kadar akış net</h2>
+              <h2 style={styles.sectionTitle}>İşletmenize göre açılan panellerle adım adım ilerleyin</h2>
             </div>
 
             <div style={{ maxWidth: '1120px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
               {[
                 ['1', 'İşletme başvuru yapar', 'Admin panelinden hesap aktif edilir.'],
-                ['2', 'Menü ve masalar tanımlanır', 'Gruplar, KDV, departman ve mutfak ayarları yapılır.'],
-                ['3', 'Garson sipariş girer', 'Masa seçilir, grup üzerinden ürün eklenir.'],
-                ['4', 'Mutfak anında görür', 'Notlu ürünler departmana göre ekrana düşer.'],
-                ['5', 'Kasa ödeme alır', 'Nakit, kart, indirim ve para üstü hesaplanır.'],
-                ['6', 'Patron raporu izler', 'Gün sonu, ürün ve ödeme raporu yazdırılır.'],
+                ['2', 'Gerekli modüller açılır', 'Restoran, market, kuaför, depo veya finans panelleri ihtiyaca göre yetkilendirilir.'],
+                ['3', 'Katalog ve kayıtlar hazırlanır', 'Ürün, hizmet, müşteri, personel, şube ve stok başlangıçları tanımlanır.'],
+                ['4', 'Günlük işlem yürütülür', 'Sipariş, barkodlu satış, randevu, alış veya sevk işlemi ilgili panelden yapılır.'],
+                ['5', 'Ödeme ve hareket kaydedilir', 'Nakit, kart, cari ve diğer hareketler işleme bağlanır.'],
+                ['6', 'Yönetici sonucu izler', 'Gün sonu, satış, hizmet, personel, stok ve kâr raporları takip edilir.'],
               ].map(([no, title, text]) => (
                 <div
                   key={no}
@@ -15958,10 +15969,10 @@ Toplam Ciro: {toplam}
 
             <div style={{ maxWidth: '1180px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
               {[
-                ['🪑 Canlı Masalar', 'Bölüm sekmeleri, masa tutarı, açılış saati, garson adı ve hızlı ürün ekleme.'],
-                ['👨‍🍳 Mutfak', 'Masa adı, ürün adı, adet, not, garson ve tarih bilgisiyle sipariş takibi.'],
-                ['📊 Raporlar', 'Günlük, aylık ve tarih aralığıyla ciro, ödeme ve ürün detayları.'],
-                ['🍽️ Menü Yönetimi', 'Grup, departman, KDV, mutfak gönderimi, ürün notları ve fiyat yönetimi.'],
+                ['🪑 Restoran & Kafe', 'Masa, adisyon, mutfak, paket servis, reçete ve ödeme akışları.'],
+                ['▥ Market & Perakende', 'Barkodlu satış, hızlı tuşlar, alış, sayım, etiket ve cari takibi.'],
+                ['✂️ Kuaför & Hizmet', 'Müşteri kartı, kayıtlı personel, randevu planı, işlem ve ödeme geçmişi.'],
+                ['🏭 Depo & Yönetim', 'Merkez alış, şube sevki, stok, finans, yetki ve birleşik raporlar.'],
               ].map(([title, text]) => (
                 <div
                   key={title}
@@ -15998,8 +16009,8 @@ Toplam Ciro: {toplam}
                   İşletmede hatayı azaltır, kontrolü artırır.
                 </h2>
                 <p style={{ color: '#cbd5e1', lineHeight: '1.8', fontSize: '15px' }}>
-                  Sipariş notları kaybolmaz, mutfak bilgisi anında görür, ödeme ve raporlar tek sistemde tutulur.
-                  Patron işletmesini uzaktan izleyebilir.
+                  Satış, randevu, stok, depo, cari, ödeme ve personel kayıtları dağınık kalmaz.
+                  İşletme sahibi yetkili olduğu tüm operasyonu tek sistemden ve uzaktan izleyebilir.
                 </p>
               </div>
 
@@ -16007,8 +16018,8 @@ Toplam Ciro: {toplam}
                 {[
                   ['Bulut', 'Kurulum gerektirmez'],
                   ['Rol bazlı', 'Kullanıcı ekranları'],
-                  ['Anlık', 'Mutfak ve masa takibi'],
-                  ['Detaylı', 'Rapor ve fiş çıktısı'],
+                  ['Anlık', 'Satış ve operasyon takibi'],
+                  ['Detaylı', 'Rapor ve gün sonu'],
                 ].map(([big, small]) => (
                   <div key={big} style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '18px', padding: '22px' }}>
                     <div style={{ fontSize: '24px', fontWeight: '900', color: '#ff6b35' }}>{big}</div>
@@ -16033,10 +16044,10 @@ Toplam Ciro: {toplam}
                 <div style={styles.pricePlan}>Profesyonel</div>
                 <div style={styles.priceValue}>İletişime Geçin</div>
                 <ul style={styles.priceList}>
-                  <li style={styles.priceListItem}>Masa, adisyon ve masa aktarma</li>
-                  <li style={styles.priceListItem}>Paket servis ve hızlı satış</li>
-                  <li style={styles.priceListItem}>Mutfak ekranı ve fiş tasarımı</li>
-                  <li style={styles.priceListItem}>Gün sonu, kasa ve raporlar</li>
+                  <li style={styles.priceListItem}>İşletme tipine özel modül seçimi</li>
+                  <li style={styles.priceListItem}>Satış, randevu, stok ve müşteri yönetimi</li>
+                  <li style={styles.priceListItem}>Depo, şube, cari ve finans akışı</li>
+                  <li style={styles.priceListItem}>Gün sonu, ödeme ve yönetim raporları</li>
                   <li style={styles.priceListItem}>Personel yetkileri ve kullanıcı limiti</li>
                 </ul>
                 <a href="#destek" style={{ ...styles.priceBtn, textDecoration: 'none', display: 'inline-flex', justifyContent: 'center' }}>İletişime Geç</a>
@@ -16108,11 +16119,12 @@ Toplam Ciro: {toplam}
 
             <div style={{ maxWidth: '980px', margin: '0 auto', display: 'grid', gap: '12px' }}>
               {[
-                ['Garsonlar telefondan kullanabilir mi?', 'Evet. Sistem web tabanlı olduğu için telefon, tablet ve bilgisayar tarayıcısından kullanılabilir.'],
-                ['Fiş ve mutfak akışı var mı?', 'Adisyon, mutfak, bar, ödeme fişi ve gün sonu raporu aynı panelden yönetilebilir.'],
-                ['Mutfak ekranı ayrı çalışır mı?', 'Evet. Mutfağa gidecek ürünler notları ve adetleriyle mutfak ekranına düşer.'],
-                ['Raporlarda ödeme ayrımı var mı?', 'Nakit, kredi kartı, parçalı ödeme ve ürün bazlı satış raporları takip edilebilir.'],
-                ['Kurulum gerekiyor mu?', 'Temel kullanım için ekstra kurulum gerekmez; internet olan cihazdan giriş yapılır.'],
+                ['Hangi işletmeler kullanabilir?', 'Restoran, kafe, market, kuaför, güzellik salonu, servis, atölye ve farklı satış/hizmet işletmeleri için gerekli modüller ayrı ayrı açılabilir.'],
+                ['Telefon ve tabletten kullanılabilir mi?', 'Evet. Sistem web tabanlıdır; telefon, dokunmatik tablet ve bilgisayar tarayıcısından kullanılabilir.'],
+                ['Her personel tüm ekranları görür mü?', 'Hayır. İşletme sahibi her kullanıcıya yalnızca görevinde ihtiyaç duyduğu panel ve işlem yetkilerini açabilir.'],
+                ['Randevu ve satış aynı rapora yansır mı?', 'Tamamlanıp ödemesi alınan randevu işlemleri gün sonu ve ana satış raporlarına aktarılır.'],
+                ['Depo ve şubeler birlikte çalışır mı?', 'Evet. Alış merkez depoya alınabilir; sevk, şube tarafından onaylanınca şube stoğuna geçer.'],
+                ['Kurulum gerekiyor mu?', 'Temel kullanım için ekstra kurulum gerekmez; internet olan cihazdan giriş yapılır. Yazıcı ve donanım bağlantıları ihtiyaca göre ayrıca kurulur.'],
               ].map(([q, a]) => (
                 <details key={q} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px 18px' }}>
                   <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#1e293b' }}>{q}</summary>
@@ -16141,10 +16153,10 @@ Toplam Ciro: {toplam}
             >
               <div>
                 <h2 style={{ margin: '0 0 8px', fontSize: 'clamp(24px, 4vw, 38px)', fontWeight: '900' }}>
-                  İşletmenizi dijital adisyona taşıyalım.
+                  İşletmenize uygun dijital yönetim sistemini birlikte kuralım.
                 </h2>
                 <p style={{ margin: 0, color: 'rgba(255,255,255,0.82)', lineHeight: '1.7' }}>
-                  Demo başvurusu yapın, işletmenize uygun kurulum akışını birlikte planlayalım.
+                  Demo başvurusu yapın; kullanacağınız satış, randevu, stok, depo ve rapor modüllerini birlikte planlayalım.
                 </p>
               </div>
 
@@ -16186,8 +16198,8 @@ Toplam Ciro: {toplam}
                 </div>
 
                 <p style={styles.footerText}>
-                  Integra POS; restoran, kafe ve hizmet sektöründeki işletmeler için geliştirilen
-                  bulut tabanlı adisyon, masa, mutfak, ödeme ve rapor yönetim platformudur.
+                  Integra; restoran, kafe, market, kuaför, güzellik salonu, perakende ve hizmet işletmeleri için geliştirilen
+                  bulut tabanlı satış, randevu, müşteri, stok, depo, finans ve rapor yönetim platformudur.
                 </p>
               </div>
 
@@ -16324,7 +16336,7 @@ Toplam Ciro: {toplam}
             <form onSubmit={handleRegister} style={styles.form}>
               <input
                 type="text"
-                placeholder="Restoran / Kafe Adı *"
+                placeholder="İşletme / Firma Adı *"
                 value={restaurantName}
                 onChange={e => setRestaurantName(e.target.value)}
                 style={styles.authInput}
@@ -16351,12 +16363,32 @@ Toplam Ciro: {toplam}
                 style={styles.authInput}
               />
               <select
+                value={kayitIsletmeTipi}
+                onChange={e => setKayitIsletmeTipi(e.target.value)}
+                style={styles.authInput}
+              >
+                <option value="Restoran">Restoran / Kafe / Yeme-İçme</option>
+                <option value="Market">Market / Perakende</option>
+                <option value="Kuaför">Kuaför / Berber</option>
+                <option value="Güzellik / Bakım">Güzellik / Bakım Salonu</option>
+                <option value="Servis / Atölye">Servis / Atölye</option>
+                <option value="Hizmet">Diğer Hizmet İşletmesi</option>
+                <option value="Karma">Karma / Çok Modüllü İşletme</option>
+                <option value="Diğer">Diğer</option>
+              </select>
+              <select
                 value={kayitPaketi}
-                onChange={e => setKayitPaketi(e.target.value)}
+                onChange={e => {
+                  const paket = e.target.value;
+                  setKayitPaketi(paket);
+                  if (paket === 'Market') setKayitIsletmeTipi('Market');
+                  if (paket === 'Kuaför') setKayitIsletmeTipi('Kuaför');
+                }}
                 style={styles.authInput}
               >
                 <option value="Profesyonel">Profesyonel - İletişime Geçin</option>
                 <option value="Market">Integra Market - Barkod, stok ve etiket</option>
+                <option value="Kuaför">Kuaför / Hizmet - Müşteri, randevu ve gün sonu</option>
                 <option value="Kurumsal">Kurumsal / Özel Çözüm - İletişime Geçin</option>
               </select>
               <input
@@ -16887,6 +16919,7 @@ Toplam Ciro: {toplam}
                   restaurantId={mevcutRestaurantId}
                   restaurantName={user?.restaurant}
                   notify={bildirimGoster}
+                  onSalesChanged={() => satisGecmisiniSupabasedenCek(mevcutRestaurantId)}
                 />
               </React.Suspense>
             )}
@@ -20662,7 +20695,7 @@ Toplam Ciro: {toplam}
                       <input placeholder="Telefon" value={demoTalepFormu.telefon} onChange={e => setDemoTalepFormu(prev => ({ ...prev, telefon: e.target.value }))} style={styles.input} />
                       <input placeholder="Şehir" value={demoTalepFormu.sehir} onChange={e => setDemoTalepFormu(prev => ({ ...prev, sehir: e.target.value }))} style={styles.input} />
                       <select value={demoTalepFormu.isletmeTipi} onChange={e => setDemoTalepFormu(prev => ({ ...prev, isletmeTipi: e.target.value }))} style={styles.input}>
-                        <option>Restoran</option><option>Kafe</option><option>Fast food</option><option>Paket servis</option><option>Kuaför</option><option>Diğer</option>
+                        <option>Restoran</option><option>Kafe</option><option>Market / Perakende</option><option>Fast food</option><option>Paket servis</option><option>Kuaför / Berber</option><option>Güzellik / Bakım</option><option>Servis / Atölye</option><option>Çok Şubeli İşletme</option><option>Diğer</option>
                       </select>
                       <input placeholder="Not" value={demoTalepFormu.not} onChange={e => setDemoTalepFormu(prev => ({ ...prev, not: e.target.value }))} style={styles.input} />
                     </div>

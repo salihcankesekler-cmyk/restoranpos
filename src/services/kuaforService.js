@@ -125,28 +125,31 @@ export async function kuaforRandevusuKaydet(restaurantId, form, randevuId = null
   const { data, error } = await supabase.rpc('kuafor_randevu_kaydet', {
     p_restaurant_id: restaurantId,
     p_randevu_id: randevuId || null,
-    p_musteri_id: form.musteriId || null,
+    p_musteri_id: form.musteriId,
     p_musteri_adi: String(form.musteriAdi || '').trim(),
     p_telefon: String(form.telefon || '').trim() || null,
     p_personel_id: form.personelId,
-    p_hizmet_id: form.hizmetId,
+    p_hizmet_id: form.hizmetIdleri[0],
     p_baslangic_zamani: form.baslangicZamani,
     p_sure_dakika: Number(form.sureDakika || 30),
     p_ucret: Number(form.ucret || 0),
     p_kapora: Number(form.kapora || 0),
     p_kullanilan_malzemeler: String(form.kullanilanMalzemeler || '').trim() || null,
     p_not_metni: String(form.notMetni || '').trim() || null,
+    p_hizmet_idleri: form.hizmetIdleri,
   });
 
   hataKontrol(error, 'Randevu kaydedilemedi.');
   return data;
 }
 
-export async function kuaforRandevuDurumunuGuncelle(restaurantId, randevuId, durum) {
+export async function kuaforRandevuDurumunuGuncelle(restaurantId, randevuId, durum, odeme = {}) {
   const { data, error } = await supabase.rpc('kuafor_randevu_durum_guncelle', {
     p_restaurant_id: restaurantId,
     p_randevu_id: randevuId,
     p_durum: durum,
+    p_odeme_tipi: durum === 'Tamamlandı' ? String(odeme.odemeTipi || '').trim() : null,
+    p_odenen_tutar: durum === 'Tamamlandı' ? Number(odeme.odenenTutar || 0) : null,
   });
 
   hataKontrol(error, 'Randevu durumu güncellenemedi.');
