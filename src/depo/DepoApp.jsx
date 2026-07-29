@@ -270,7 +270,7 @@ export default function DepoApp({ restaurantId, restaurantName, notify, userRole
   const sevkIslemi = async (islem, sevk) => {
     const mesajlar = {
       gonder: 'Sevk yola çıkarıldı; miktarlar merkez depodan düşüldü.',
-      teslim: `Sevk teslim alındı; ürünler ${sevk.hedef_stok_tipi === 'Market' ? 'market' : 'restoran'} stoğuna eklendi.`,
+      teslim: `Sevk teslim alındı; ürünler ${sevk.hedef_stok_tipi === 'Market' ? 'market' : sevk.hedef_stok_tipi === 'Restoran Ürünü' ? 'restoran satış ürünü' : 'restoran hammadde'} stoğuna eklendi.`,
       iptal: 'Sevk iptal edildi; yola çıkmışsa ürünler depo stoğuna geri alındı.',
     };
     await islemCalistir(
@@ -489,6 +489,7 @@ export default function DepoApp({ restaurantId, restaurantName, notify, userRole
                 </select>
                 <select value={sevkFormu.hedefStokTipi} onChange={e => setSevkFormu(p => ({ ...p, hedefStokTipi: e.target.value }))}>
                   <option value="Restoran">Restoran hammaddesi stoğu</option>
+                  <option value="Restoran Ürünü">Restoran satış ürünü stoğu</option>
                   <option value="Market">Market ürün stoğu</option>
                 </select>
                 <input value={sevkFormu.notMetni} onChange={e => setSevkFormu(p => ({ ...p, notMetni: e.target.value }))} placeholder="Sevk notu / araç / teslim edecek kişi" />

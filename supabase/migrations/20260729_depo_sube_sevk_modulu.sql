@@ -137,7 +137,7 @@ create table if not exists public.depo_sevkleri (
   hedef_restaurant_id bigint not null references public.restaurants(id) on delete cascade,
   kaynak_adi text not null,
   hedef_adi text not null,
-  hedef_stok_tipi text not null check (hedef_stok_tipi in ('Restoran', 'Market')),
+  hedef_stok_tipi text not null check (hedef_stok_tipi in ('Restoran', 'Restoran Ürünü', 'Market')),
   durum text not null default 'Hazırlanıyor'
     check (durum in ('Hazırlanıyor', 'Yolda', 'Teslim Alındı', 'İptal')),
   toplam_maliyet numeric(14,2) not null default 0,
@@ -151,6 +151,13 @@ create table if not exists public.depo_sevkleri (
   iptal_tarihi timestamptz,
   check (kaynak_restaurant_id <> hedef_restaurant_id)
 );
+
+alter table public.depo_sevkleri
+  drop constraint if exists depo_sevkleri_hedef_stok_tipi_check;
+
+alter table public.depo_sevkleri
+  add constraint depo_sevkleri_hedef_stok_tipi_check
+  check (hedef_stok_tipi in ('Restoran', 'Restoran Ürünü', 'Market'));
 
 create index if not exists depo_sevkleri_kaynak_idx
   on public.depo_sevkleri (kaynak_restaurant_id, created_at desc);
@@ -582,8 +589,8 @@ begin
     raise exception 'Merkez depo kendi işletmesine sevk oluşturamaz.';
   end if;
 
-  if p_hedef_stok_tipi not in ('Restoran', 'Market') then
-    raise exception 'Hedef stok tipi Restoran veya Market olmalıdır.';
+  if p_hedef_stok_tipi not in ('Restoran', 'Restoran Ürünü', 'Market') then
+    raise exception 'Hedef stok tipi restoran hammaddesi, restoran satış ürünü veya market olmalıdır.';
   end if;
 
   if not exists (
@@ -817,6 +824,7 @@ declare
   v_sevk public.depo_sevkleri%rowtype;
   v_kalem public.depo_sevk_kalemleri%rowtype;
   v_malzeme public.stok_malzemeleri%rowtype;
+  v_menu_urunu public.menu_urunleri%rowtype;
   v_market public.market_urunleri%rowtype;
   v_grup_id uuid;
   v_hedef_barkod text;
@@ -979,6 +987,41 @@ begin
         p_sevk_id::text,
         v_sevk.sevk_no || ' · ' || v_sevk.kaynak_adi,
         auth.uid()
+      );
+    elsif v_sevk.hedef_stok_tipi = 'Restoran Ürünü' then
+      select *
+      into v_menu_urunu
+      from public.menu_urunleri
+      where restaurant_id = p_restaurant_id
+        and lower(trim(ad)) = lower(trim(v_kalem.urun_adi))
+      limit 1
+      for update;
+
+      if not found then
+        raise exception '% adlı satış ürünü hedef işletmenin Menü bölümünde bulunamadı. Önce aynı adla menü ürünü açın.',
+          v_kalem.urun_adi;
+      end if;
+
+      v_onceki_stok := coalesce(v_menu_urunu.stok_adedi, 0);
+      v_yeni_stok := v_onceki_stok + v_kalem.miktar;
+
+      update public.menu_urunleri
+      set stok_adedi = v_yeni_stok,
+          stok_takip = true
+      where id = v_menu_urunu.id;
+
+      insert into public.stok_hareketleri (
+        restaurant_id,
+        urun_id,
+        tip,
+        miktar,
+        aciklama
+      ) values (
+        p_restaurant_id,
+        v_menu_urunu.id,
+        'Depo Sevki Ürün Giriş',
+        v_kalem.miktar,
+        v_sevk.sevk_no || ' · ' || v_sevk.kaynak_adi
       );
     else
       select *
