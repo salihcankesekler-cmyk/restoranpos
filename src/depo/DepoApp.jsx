@@ -13,6 +13,15 @@ const bugun = () => new Date().toISOString().slice(0, 10);
 const sayi = deger => Number(deger || 0);
 const para = deger => sayi(deger).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const tarihSaat = deger => deger ? new Date(deger).toLocaleString('tr-TR') : '-';
+const birimiDuzenle = deger => {
+  const birim = String(deger || '').trim().toLocaleLowerCase('tr-TR');
+  if (['kg', 'kilogram'].includes(birim)) return 'Kg';
+  if (['gr', 'gram'].includes(birim)) return 'Gram';
+  if (['lt', 'l', 'litre'].includes(birim)) return 'Litre';
+  if (birim === 'paket') return 'Paket';
+  if (birim === 'koli') return 'Koli';
+  return 'Adet';
+};
 
 const bosUrun = {
   barkod: '',
@@ -45,12 +54,15 @@ export default function DepoApp({ restaurantId, restaurantName, notify, userRole
     sevkler: [],
     sevkKalemleri: [],
     baglantilar: [],
+    kaynakUrunler: [],
+    kaynakUrunHatalari: [],
     baglantiKodu: '',
   });
   const [yukleniyor, setYukleniyor] = useState(true);
   const [islemYukleniyor, setIslemYukleniyor] = useState(false);
   const [hata, setHata] = useState('');
   const [arama, setArama] = useState('');
+  const [kaynakArama, setKaynakArama] = useState('');
   const [urunFormu, setUrunFormu] = useState(bosUrun);
   const [duzenlenenUrunId, setDuzenlenenUrunId] = useState(null);
   const [alisFormu, setAlisFormu] = useState(bosAlis);
@@ -108,6 +120,24 @@ export default function DepoApp({ restaurantId, restaurantName, notify, userRole
         .includes(metin)
     );
   }, [arama, veriler.urunler]);
+
+  const filtreliKaynakUrunler = useMemo(() => {
+    const metin = String(kaynakArama || '').trim().toLocaleLowerCase('tr-TR');
+    return veriler.kaynakUrunler
+      .map(urun => {
+        const depoKarti = veriler.urunler.find(depoUrunu => {
+          const ayniBarkod = urun.barkod && depoUrunu.barkod && String(urun.barkod) === String(depoUrunu.barkod);
+          const ayniAd = String(urun.urunAdi || '').trim().toLocaleLowerCase('tr-TR')
+            === String(depoUrunu.urun_adi || '').trim().toLocaleLowerCase('tr-TR');
+          return ayniBarkod || ayniAd;
+        });
+        return { ...urun, depoKarti };
+      })
+      .filter(urun => !metin || `${urun.urunAdi} ${urun.barkod} ${urun.stokKodu} ${urun.kategori} ${urun.kaynakBasligi}`
+        .toLocaleLowerCase('tr-TR')
+        .includes(metin))
+      .slice(0, 18);
+  }, [kaynakArama, veriler.kaynakUrunler, veriler.urunler]);
 
   const gidenSevkler = useMemo(
     () => veriler.sevkler.filter(s => String(s.kaynak_restaurant_id) === String(restaurantId)),
@@ -173,6 +203,26 @@ export default function DepoApp({ restaurantId, restaurantName, notify, userRole
     });
     setDuzenlenenUrunId(urun.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const kaynakUrunuFormaAktar = kaynakUrun => {
+    if (kaynakUrun.depoKarti) {
+      urunuDuzenle(kaynakUrun.depoKarti);
+      mesajGoster('Bu ürünün depo kartı zaten var; mevcut kart düzenlemeye açıldı.', 'info');
+      return;
+    }
+
+    setDuzenlenenUrunId(null);
+    setUrunFormu({
+      barkod: kaynakUrun.barkod || '',
+      urunAdi: kaynakUrun.urunAdi || '',
+      stokKodu: kaynakUrun.stokKodu || '',
+      kategori: kaynakUrun.kategori || 'Genel',
+      birim: birimiDuzenle(kaynakUrun.birim),
+      alisFiyati: String(kaynakUrun.alisFiyati ?? ''),
+      minimumStok: String(kaynakUrun.minimumStok ?? ''),
+    });
+    mesajGoster(`${kaynakUrun.urunAdi} depo kartına hazırlandı. Bilgileri kontrol edip Kartı Kaydet'e basın.`, 'info');
   };
 
   const alisSatiriEkle = () => {
@@ -389,6 +439,40 @@ export default function DepoApp({ restaurantId, restaurantName, notify, userRole
           <div className="depo-card-title">
             <div><h2>Depo ürün ve hammadde kartları</h2><p>Market ürünü veya restoran hammaddesi aynı merkez listede tutulabilir.</p></div>
           </div>
+          <div className="depo-source-picker">
+            <div className="depo-source-heading">
+              <div>
+                <strong>Kayıtlı karttan seç</strong>
+                <span>Restoran ürünü, hammadde veya market kartını arayıp depo formuna aktarın.</span>
+              </div>
+              <b>{veriler.kaynakUrunler.length} kaynak kart</b>
+            </div>
+            <div className="depo-search source-search">
+              <span>⌕</span>
+              <input
+                value={kaynakArama}
+                onChange={e => setKaynakArama(e.target.value)}
+                placeholder="Ürün adı, barkod, stok kodu veya kategori ara…"
+              />
+            </div>
+            <div className="depo-source-results">
+              {filtreliKaynakUrunler.map(urun => (
+                <button type="button" key={urun.secimId} onClick={() => kaynakUrunuFormaAktar(urun)}>
+                  <span>
+                    <strong>{urun.urunAdi}</strong>
+                    <small>{urun.kaynakBasligi} · {urun.kategori} · {urun.mevcutStok.toLocaleString('tr-TR')} {urun.birim}</small>
+                  </span>
+                  <b className={urun.depoKarti ? 'saved' : ''}>{urun.depoKarti ? 'Depoda kayıtlı' : 'Forma aktar'}</b>
+                </button>
+              ))}
+              {filtreliKaynakUrunler.length === 0 && (
+                <div className="depo-empty">Aramaya uygun restoran, stok veya market kartı bulunamadı.</div>
+              )}
+            </div>
+            {veriler.kaynakUrunHatalari.length > 0 && (
+              <small className="depo-source-warning">Bazı kaynak listeleri alınamadı: {veriler.kaynakUrunHatalari.join(' · ')}</small>
+            )}
+          </div>
           <form className="depo-form-grid" onSubmit={urunKaydet}>
             <input value={urunFormu.barkod} onChange={e => setUrunFormu(p => ({ ...p, barkod: e.target.value }))} placeholder="Barkod (isteğe bağlı)" />
             <input value={urunFormu.urunAdi} onChange={e => setUrunFormu(p => ({ ...p, urunAdi: e.target.value }))} placeholder="Ürün / hammadde adı *" />
@@ -441,6 +525,11 @@ export default function DepoApp({ restaurantId, restaurantName, notify, userRole
               <input type="date" value={alisFormu.faturaTarihi} onChange={e => setAlisFormu(p => ({ ...p, faturaTarihi: e.target.value }))} />
               <input value={alisFormu.notMetni} onChange={e => setAlisFormu(p => ({ ...p, notMetni: e.target.value }))} placeholder="Açıklama" />
             </div>
+            {veriler.urunler.length === 0 && (
+              <div className="depo-empty action-empty">
+                Alış kalemi seçebilmek için önce <button type="button" onClick={() => setAktifSekme('urunler')}>Depo Stoku</button> bölümünden kayıtlı bir ürün veya hammaddeyi depo kartına aktarın.
+              </div>
+            )}
             <div className="depo-line-entry">
               <select value={alisSatiri.urunId} onChange={e => {
                 const urun = veriler.urunler.find(u => String(u.id) === String(e.target.value));

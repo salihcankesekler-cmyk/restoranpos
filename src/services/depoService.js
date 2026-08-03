@@ -21,6 +21,9 @@ export async function depoVerileriniGetir(restaurantId) {
     sevkKalemSonucu,
     baglantiSonucu,
     kodSonucu,
+    menuUrunSonucu,
+    stokMalzemeSonucu,
+    marketUrunSonucu,
   ] = await Promise.all([
     supabase
       .from('depo_urunleri')
@@ -51,6 +54,22 @@ export async function depoVerileriniGetir(restaurantId) {
       .eq('durum', 'Aktif')
       .order('created_at', { ascending: false }),
     supabase.rpc('depo_baglanti_kodum', { p_restaurant_id: restaurantId }),
+    supabase
+      .from('menu_urunleri')
+      .select('id, ad, kategori, maliyet, stok_adedi, kritik_stok, aktif')
+      .eq('restaurant_id', restaurantId)
+      .order('ad'),
+    supabase
+      .from('stok_malzemeleri')
+      .select('id, ad, birim, stok_miktari, kritik_miktar, birim_maliyet')
+      .eq('restaurant_id', restaurantId)
+      .order('ad'),
+    supabase
+      .from('market_urunleri')
+      .select('id, barkod, urun_adi, stok_kodu, kategori, birim, alis_fiyati, stok_miktari, minimum_stok, aktif')
+      .eq('restaurant_id', restaurantId)
+      .eq('aktif', true)
+      .order('urun_adi'),
   ]);
 
   hataKontrol(urunSonucu.error, 'Depo ürünleri alınamadı.');
@@ -60,12 +79,71 @@ export async function depoVerileriniGetir(restaurantId) {
   hataKontrol(baglantiSonucu.error, 'Bağlı işletmeler alınamadı.');
   hataKontrol(kodSonucu.error, 'Depo bağlantı kodu alınamadı.');
 
+  const kaynakUrunHatalari = [
+    ['Restoran ürünleri', menuUrunSonucu.error],
+    ['Stok malzemeleri', stokMalzemeSonucu.error],
+    ['Market ürünleri', marketUrunSonucu.error],
+  ]
+    .filter(([, error]) => Boolean(error))
+    .map(([baslik, error]) => `${baslik}: ${error.message}`);
+
+  kaynakUrunHatalari.forEach(mesaj => console.warn(`Depo kaynak kartı yüklenemedi: ${mesaj}`));
+
+  const kaynakUrunler = [
+    ...(menuUrunSonucu.data || [])
+      .filter(urun => urun.aktif !== false)
+      .map(urun => ({
+        secimId: `menu:${urun.id}`,
+        kaynakTipi: 'menu',
+        kaynakBasligi: 'Restoran ürünü',
+        kaynakId: String(urun.id),
+        urunAdi: urun.ad || 'İsimsiz ürün',
+        barkod: '',
+        stokKodu: '',
+        kategori: urun.kategori || 'Menü',
+        birim: 'Adet',
+        alisFiyati: Number(urun.maliyet || 0),
+        mevcutStok: Number(urun.stok_adedi || 0),
+        minimumStok: Number(urun.kritik_stok || 0),
+      })),
+    ...(stokMalzemeSonucu.data || []).map(malzeme => ({
+      secimId: `stok:${malzeme.id}`,
+      kaynakTipi: 'stok',
+      kaynakBasligi: 'Hammadde / stok',
+      kaynakId: String(malzeme.id),
+      urunAdi: malzeme.ad || 'İsimsiz malzeme',
+      barkod: '',
+      stokKodu: '',
+      kategori: 'Hammadde',
+      birim: malzeme.birim || 'Adet',
+      alisFiyati: Number(malzeme.birim_maliyet || 0),
+      mevcutStok: Number(malzeme.stok_miktari || 0),
+      minimumStok: Number(malzeme.kritik_miktar || 0),
+    })),
+    ...(marketUrunSonucu.data || []).map(urun => ({
+      secimId: `market:${urun.id}`,
+      kaynakTipi: 'market',
+      kaynakBasligi: 'Market ürünü',
+      kaynakId: String(urun.id),
+      urunAdi: urun.urun_adi || 'İsimsiz ürün',
+      barkod: urun.barkod || '',
+      stokKodu: urun.stok_kodu || '',
+      kategori: urun.kategori || 'Market',
+      birim: urun.birim || 'Adet',
+      alisFiyati: Number(urun.alis_fiyati || 0),
+      mevcutStok: Number(urun.stok_miktari || 0),
+      minimumStok: Number(urun.minimum_stok || 0),
+    })),
+  ].sort((a, b) => a.urunAdi.localeCompare(b.urunAdi, 'tr'));
+
   return {
     urunler: urunSonucu.data || [],
     alislar: alisSonucu.data || [],
     sevkler: sevkSonucu.data || [],
     sevkKalemleri: sevkKalemSonucu.data || [],
     baglantilar: baglantiSonucu.data || [],
+    kaynakUrunler,
+    kaynakUrunHatalari,
     baglantiKodu: typeof kodSonucu.data === 'string'
       ? kodSonucu.data
       : kodSonucu.data?.baglanti_kodu || '',
