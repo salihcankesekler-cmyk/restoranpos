@@ -103,3 +103,27 @@ export async function restoranIadeKaydiAtomik({
   if (!data?.kayit) throw new Error('İade/ikram kaydı tamamlandı ancak kayıt bilgisi alınamadı.');
   return data;
 }
+
+export async function restoranAdisyonCariyeAtomik({
+  restaurantId,
+  masaId,
+  islemAnahtari,
+  cariMusteriId,
+  tutar,
+  satisKayitlari,
+}) {
+  const { data, error } = await supabase.rpc('restoran_adisyon_cariye_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_masa_id: Number(masaId),
+    p_islem_anahtari: islemAnahtari,
+    p_cari_musteri_id: Number(cariMusteriId),
+    p_tutar: Number(tutar),
+    p_satis_kayitlari: satisKayitlari,
+  });
+
+  if (error) throw new Error(hataMesaji(error));
+  if (!data?.masa || !data?.cari) {
+    throw new Error('Cari satış tamamlandı ancak güncel masa/cari bilgisi alınamadı.');
+  }
+  return data;
+}

@@ -9,6 +9,7 @@ import {
 } from './services/systemService';
 import {
   restoranAdisyonOdemeAtomik,
+  restoranAdisyonCariyeAtomik,
   restoranAlisFisiAtomik,
   restoranAlisFisleriniGetir,
   restoranIadeKaydiAtomik,
@@ -889,6 +890,7 @@ Toplam Ciro: {toplam}
   const odemeIslemAnahtarlariRef = useRef({});
   const alisFisIslemAnahtarlariRef = useRef({});
   const iadeIslemAnahtarlariRef = useRef({});
+  const cariAdisyonIslemAnahtarlariRef = useRef({});
 
   useEffect(() => {
     selectedMasaIdRef.current = selectedMasaId;
@@ -9216,76 +9218,91 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const tutar = Number(masa.tutar || 0);
-    const islemKaydedildi = await cariHareketEkle(cari, 'Borç', tutar, `${masa.ad} adisyonu cariye yazıldı`);
+    const tutar = kalanTutar(masa);
+    if (tutar <= 0) {
+      alert('Cari hesaba yazılacak kalan tutar yok.');
+      return;
+    }
 
-    if (!islemKaydedildi) return;
+    const islemImzasi = `${masa.id}|${cari.id}|${tutar.toFixed(2)}|${(masa.odemeler || []).length}`;
+    let islemAnahtari = cariAdisyonIslemAnahtarlariRef.current[islemImzasi];
+    if (!islemAnahtari) {
+      islemAnahtari = istemciIslemAnahtariOlustur();
+      cariAdisyonIslemAnahtarlariRef.current[islemImzasi] = islemAnahtari;
+    }
 
     const bugun = new Date().toISOString().split('T')[0];
     const adisyonKapanisSaati = new Date().toISOString();
-    const adisyonId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${masa.id}-cari`;
+    const adisyonId = islemAnahtari;
+    const cariOdeme = { tip: 'Cari', tutar, alinanTutar: tutar, paraUstu: 0, tarih: adisyonKapanisSaati };
+    const yeniOdemeler = [...(masa.odemeler || []), cariOdeme];
+    const odemeOzeti = yeniOdemeler.length > 1 ? 'Parçalı' : 'Cari';
+    const masaAraToplam = siparislerAraToplamHesapla(masa.siparisler);
+    const masaGenelIndirimOzeti = toplamIndirimHesapla(
+      masaAraToplam,
+      masa.adisyonIndirimYuzde || 0,
+      masa.adisyonIndirimTutari || 0
+    );
+    const dagitilmisSatirlar = toplamIndirimiSatirlaraDagit(
+      masa.siparisler,
+      masaGenelIndirimOzeti.toplamIndirim,
+      masaGenelIndirimOzeti.brutToplam
+    );
 
-    const satisKayitlari = masa.siparisler.map(s => ({
+    const satisKayitlari = dagitilmisSatirlar.map(satir => {
+      const s = satir.kaynak;
+      const satirMaliyetKaydi = { ...s, fiyat: Number(satir.netBirimFiyat || 0), adet: Number(s.adet || 1) };
+      return ({
       restaurant_id: mevcutRestaurantId,
       masa_id: masa.id,
       masa_adi: masa.ad,
       musteri_adi: cari.ad,
       adisyon_id: adisyonId,
       ad: s.ad,
-      fiyat: Number(s.fiyat || 0),
+      fiyat: Number(satir.netBirimFiyat || 0),
       adet: Number(s.adet || 1),
       tarih: bugun,
-      odeme_tipi: 'Cari',
-      odemeler: [{ tip: 'Cari', tutar, tarih: new Date().toISOString() }],
+      odeme_tipi: odemeOzeti,
+      odemeler: yeniOdemeler,
       adisyon_acilis_saati: masa.adisyonAcilisSaati || null,
       adisyon_kapanis_saati: adisyonKapanisSaati,
       urun_notu: s.not || null,
       ekstra_ucret: Number(s.ekstraUcret || 0),
       normal_fiyat: Number(s.normalFiyat || s.fiyat || 0),
       liste_fiyati: Number(s.listeFiyati || s.normalFiyat || s.fiyat || 0),
-      satis_fiyati: Number(s.satisFiyati || s.fiyat || 0),
-      indirim_yuzde: Number(s.indirimYuzde || 0),
-      indirim_tutari: Number(s.indirimTutari || 0),
-      fiyat_degistirildi: Boolean(s.fiyatDegistirildi),
+      satis_fiyati: Number(satir.netBirimFiyat || 0),
+      indirim_yuzde: Number(s.indirimYuzde || 0) || Number(masaGenelIndirimOzeti.indirimYuzde || 0),
+      indirim_tutari: Number(s.indirimTutari || 0) + Number(satir.satirToplamIndirim || 0) / Math.max(Number(s.adet || 1), 1),
+      fiyat_degistirildi: Boolean(s.fiyatDegistirildi) || Number(satir.satirToplamIndirim || 0) > 0,
+      ikram: Boolean(s.ikram),
       menu_grubu: s.menuGrubu || 'Genel',
       departman: s.departman || 'Mutfak',
-      kdv_orani: Number(s.kdvOrani || 10),
+      kdv_orani: Number(s.kdvOrani ?? 10),
+      maliyet: satisSatiriBirimMaliyetiHesapla(satirMaliyetKaydi),
+      toplam_maliyet: satisSatiriToplamMaliyetiHesapla(satirMaliyetKaydi),
       garson_adi: masa.adisyonGarsonAdi || '',
-    }));
+    });
+    });
 
-    const { error: satisError } = await supabase
-      .from('satis_gecmisi')
-      .insert(satisKayitlari);
-
-    if (satisError) {
-      console.error('Cari satış kaydı hatası:', satisError);
-      alert('Cari satış rapora işlenemedi: ' + satisError.message);
+    let sonuc;
+    try {
+      sonuc = await restoranAdisyonCariyeAtomik({
+        restaurantId: mevcutRestaurantId,
+        masaId: masa.id,
+        islemAnahtari,
+        cariMusteriId: cari.id,
+        tutar,
+        satisKayitlari,
+      });
+    } catch (error) {
+      console.error('Güvenli cari satış kapanışı hatası:', error);
+      alert('Adisyon cariye yazılamadı: ' + error.message);
       return;
     }
 
-    await stokDusur(masa.siparisler);
-
-    const { data, error } = await supabase
-      .from('masalar')
-      .update({
-        dolu: false,
-        tutar: 0,
-        siparisler: [],
-        odemeler: [],
-        adisyon_acilis_saati: null,
-        adisyon_garson_adi: null,
-        musteri_adi: null,
-      })
-      .eq('id', masa.id)
-      .eq('restaurant_id', mevcutRestaurantId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Masa cari sonrası kapatılamadı:', error);
-      alert('Cari kaydedildi ama masa kapatılamadı: ' + error.message);
-      return;
-    }
+    delete cariAdisyonIslemAnahtarlariRef.current[islemImzasi];
+    const data = sonuc.masa;
+    const guncelCari = sonuc.cari;
 
     const guncelMasa = {
       id: data.id,
@@ -9304,7 +9321,26 @@ Toplam Ciro: {toplam}
       bolum: data.bolum || masa.bolum || aktifMasaBolumu || 'Salon',
     };
 
-    setMasalar(masalar.map(m => m.id === guncelMasa.id ? guncelMasa : m));
+    setMasalar(prevMasalar => prevMasalar.map(m => m.id === guncelMasa.id ? guncelMasa : m));
+    setCariMusteriler(prevCariler => prevCariler.map(c => String(c.id) === String(guncelCari.id) ? {
+      ...c,
+      bakiye: Number(guncelCari.bakiye || 0),
+      hareketler: Array.isArray(guncelCari.hareketler) ? guncelCari.hareketler : c.hareketler,
+    } : c));
+
+    const sonFis = {
+      masa: { ...masa, musteriAdi: cari.ad, siparisler: [...masa.siparisler] },
+      odemeler: yeniOdemeler,
+    };
+    setSonFisBilgisi(sonFis);
+    if (fisYazdirmaModu === 'yazdir') fisYazdir(sonFis.masa, sonFis.odemeler);
+    if (fisYazdirmaModu === 'sor') setFisSorModal(sonFis);
+
+    Promise.all([
+      satisGecmisiniSupabasedenCek(mevcutRestaurantId),
+      menuUrunleriniSupabasedenCek(mevcutRestaurantId),
+      stokMalzemeleriniSupabasedenCek(mevcutRestaurantId),
+    ]).catch(error => console.error('Cari satış sonrası ekran verileri yenilenemedi:', error));
     setCariAdisyonMusteriId('');
   };
 
