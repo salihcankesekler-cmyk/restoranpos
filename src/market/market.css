@@ -2397,7 +2397,7 @@
 }
 .market-pos-practical .market-catalog{
   display:grid;
-  grid-template-columns:84px minmax(0,1fr) 58px;
+  grid-template-columns:94px minmax(0,1fr) 58px;
   grid-template-rows:minmax(0,1fr);
   gap:1px;
   overflow:hidden;
@@ -2412,11 +2412,11 @@
   background:#0f172a;
 }
 .market-pos-practical .market-group-tabs button{
-  min-height:44px;
-  flex:0 0 44px;
-  padding:4px 3px;
+  min-height:50px;
+  flex:0 0 50px;
+  padding:5px 4px;
   border-radius:0;
-  font-size:9px;
+  font-size:10px;
 }
 .market-pos-product-panel{
   grid-column:2;
@@ -2576,7 +2576,7 @@
   .market-pos-practical .market-checkout{min-height:680px}
 }
 @media(max-width:640px){
-  .market-pos-practical .market-catalog{grid-template-columns:70px minmax(0,1fr) 50px}
+  .market-pos-practical .market-catalog{grid-template-columns:76px minmax(0,1fr) 50px}
   .market-pos-practical .market-sale-products{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:142px}
   .market-pos-practical .market-sale-products>button{height:142px;grid-template-rows:78px minmax(0,1fr) auto}
   .market-sale-product-visual{height:78px}
