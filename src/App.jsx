@@ -28,6 +28,7 @@ import {
   LANDING_TRUST_FEATURES,
 } from './landing/landingContent';
 import LandingPage from './landing/LandingPage';
+import './quick-sale.css';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
 const DepoApp = React.lazy(() => import('./depo/DepoApp'));
@@ -10649,6 +10650,7 @@ Toplam Ciro: {toplam}
           mutfakEkraninaGitsin: mutfakEkraniAktifMi(urun),
           yaziciyaGitsin: fisYaziciAktifMi(urun),
           menuNotlari: Array.isArray(urun.menuNotlari) ? urun.menuNotlari : [],
+          resimUrl: urunGosterimResmi(urun),
         });
       }
 
@@ -11117,6 +11119,16 @@ Toplam Ciro: {toplam}
     setIadeAdet(1);
     setIadeTutar('');
     setIadeStogaAl(true);
+  };
+
+  const hizliSatisAlinanTutarTusla = tus => {
+    setHizliSatisAlinanTutar(prev => {
+      const mevcut = String(prev || '');
+      if (tus === 'C') return '';
+      if (tus === 'sil') return mevcut.slice(0, -1);
+      if (tus === '.') return mevcut.includes('.') ? mevcut : `${mevcut || '0'}.`;
+      return `${mevcut}${tus}`.replace(/^0+(?=\d)/, '').slice(0, 10);
+    });
   };
 
   // rezervasyonda kayıtlı cari müşteri seçilince bilgileri forma dolduran kod
@@ -20065,81 +20077,60 @@ Toplam Ciro: {toplam}
 
             {/* hızlı satış / gel-al ekranını gösteren kod */}
             {activeTab === 'hizli_satis' && (
-              <div style={styles.panelCard}>
-                <h2 style={styles.pageTitle}>⚡ Hızlı Satış / Gel-Al</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+              <div className="quick-sale-screen">
+                <div className="quick-sale-titlebar">
+                  <div><span>INTEGRA DOKUNMATİK POS</span><h2>Hızlı Satış / Gel-Al</h2></div>
+                  <strong>{hizliSatisToplam} TL</strong>
+                </div>
+                <p className="quick-sale-intro">
                   Masa veya paket açmadan hızlı ürün seçip nakit/kart satış kapatabilirsiniz.
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr', gap: '18px' }}>
-                  <div>
-                    <div style={isMobile ? { ...styles.yatayKaydirmaSekmeleri, marginBottom: '12px' } : { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                <div className="quick-sale-layout">
+                  <div className="quick-sale-catalog">
+                    <div className="quick-sale-groups">
                       {aktifMenuGruplari.map(grup => (
                         <button
                           key={grup.ad}
                           type="button"
                           onClick={() => setAktifHizliSatisMenuGrubu(grup.ad)}
-                          style={{
-                            border: 'none',
-                            backgroundColor: aktifHizliSatisMenuGrubu === grup.ad ? '#ff6b35' : '#e2e8f0',
-                            color: aktifHizliSatisMenuGrubu === grup.ad ? '#fff' : '#334155',
-                            padding: '9px 13px',
-                            borderRadius: '999px',
-                            cursor: 'pointer',
-                            fontWeight: '900',
-                            fontSize: '12px',
-                            flex: '0 0 auto',
-                          }}
+                          className={aktifHizliSatisMenuGrubu === grup.ad ? 'active' : ''}
                         >
                           {grup.ad}
                         </button>
                       ))}
                     </div>
 
-                    <input
-                      type="text"
-                      placeholder="Ürün ara..."
-                      value={hizliSatisUrunArama}
-                      onChange={e => setHizliSatisUrunArama(e.target.value)}
-                      style={{ ...styles.input, width: '100%', boxSizing: 'border-box', marginBottom: '12px' }}
-                    />
+                    <div className="quick-sale-product-pane">
+                      <label className="quick-sale-search"><span>⌕</span><input type="text" placeholder="Ürün adıyla ara..." value={hizliSatisUrunArama} onChange={e => setHizliSatisUrunArama(e.target.value)} />{hizliSatisUrunArama && <button type="button" onClick={() => setHizliSatisUrunArama('')} aria-label="Ürün aramasını temizle">×</button>}</label>
 
-                    <div style={isMobile ? styles.mesaGridMobile : styles.mesaGrid}>
-                      {aktifHizliSatisGrubuUrunleri.map(urun => (
-                        <button
-                          key={urun.id}
-                          type="button"
-                          onClick={() => hizliSatisUrunEkle(urun)}
-                          style={{
-                            ...styles.mesaCard,
-                            textAlign: 'left',
-                            borderColor: urun.favori ? '#f59e0b' : 'transparent',
-                            backgroundColor: '#fff',
-                          }}
-                        >
-                          {urunGosterimResmi(urun) && (
-                            <img
-                              src={urunGosterimResmi(urun)}
-                              alt={urun.ad}
-                              onError={e => { e.currentTarget.style.display = 'none'; }}
-                              style={{ width: '100%', height: '82px', objectFit: 'cover', borderRadius: '10px', marginBottom: '8px', backgroundColor: '#f1f5f9' }}
-                            />
-                          )}
-                          <div style={{ fontWeight: '900', color: '#1e293b' }}>{urun.favori ? '⭐ ' : ''}{urun.ad}</div>
-                          <div style={{ color: '#ff6b35', fontWeight: '900', marginTop: '8px' }}>{urun.fiyat} TL</div>
-                          <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>{urun.menuGrubu || 'Genel'}</div>
-                        </button>
-                      ))}
+                      <div className="quick-sale-product-grid">
+                        {aktifHizliSatisGrubuUrunleri.map(urun => {
+                          const urunResmi = urunGosterimResmi(urun);
+                          return <button key={urun.id} type="button" onClick={() => hizliSatisUrunEkle(urun)} className={urun.favori ? 'quick-sale-product-card favorite' : 'quick-sale-product-card'}>
+                            <span className="quick-sale-product-media">
+                              {urunResmi
+                                ? <img src={urunResmi} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                : <b>{String(urun.ad || 'Ü').trim().slice(0, 2).toLocaleUpperCase('tr-TR')}</b>}
+                              {urun.favori && <em>★</em>}
+                            </span>
+                            <span className="quick-sale-product-name">{urun.ad}</span>
+                            <strong>{urun.fiyat} TL</strong>
+                            <small>{urun.menuGrubu || 'Genel'}</small>
+                          </button>;
+                        })}
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px' }}>
-                    <h3 style={{ marginTop: 0, color: '#1e293b' }}>Hızlı Satış Sepeti</h3>
+                  <div className="quick-sale-checkout">
+                    <div className="quick-sale-cart-head"><span>AKTİF FİŞ</span><h3>Hızlı Satış Sepeti</h3><b>{hizliSatisUrunler.reduce((toplam, urun) => toplam + Number(urun.adet || 0), 0)} ürün</b></div>
                     {hizliSatisUrunler.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: '13px' }}>Sepet boş.</div>
+                      <div className="quick-sale-cart-empty"><strong>Satışa hazır</strong><span>Soldaki ürünlerden seçerek başlayın.</span></div>
                     ) : (
-                      hizliSatisUrunler.map((u, index) => (
-                        <div key={`${u.urunId}-${index}`} style={{ ...styles.receiptRow, alignItems: 'flex-start', gap: '8px' }}>
+                      <div className="quick-sale-cart-list">{hizliSatisUrunler.map((u, index) => (
+                        <div key={`${u.urunId}-${index}`} className="quick-sale-cart-item">
+                          <span className="quick-sale-cart-image">{u.resimUrl ? <img src={u.resimUrl} alt="" /> : String(u.ad || 'Ü').slice(0, 1)}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: '800', color: '#1e293b' }}>
                               {u.adet}x {u.ad} {u.ikram ? '🎁 İkram' : ''}
@@ -20208,7 +20199,7 @@ Toplam Ciro: {toplam}
                             <button type="button" onClick={() => hizliSatisAdetDegistir(index, 1)} style={styles.deleteItemBtn}>+</button>
                           </div>
                         </div>
-                      ))
+                      ))}</div>
                     )}
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
@@ -20289,8 +20280,15 @@ Toplam Ciro: {toplam}
                       placeholder={`${hizliSatisToplam} TL alındı`}
                       value={hizliSatisAlinanTutar}
                       onChange={e => setHizliSatisAlinanTutar(e.target.value)}
-                      style={{ ...styles.input, width: '100%', minWidth: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+                      className="quick-sale-received-input"
                     />
+
+                    <div className="quick-sale-keypad" aria-label="Alınan tutar dokunmatik tuş takımı">
+                      {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(rakam => <button type="button" key={rakam} onClick={() => hizliSatisAlinanTutarTusla(rakam)}>{rakam}</button>)}
+                      <button type="button" className="clear" onClick={() => hizliSatisAlinanTutarTusla('C')}>C</button>
+                      <button type="button" onClick={() => hizliSatisAlinanTutarTusla(0)}>0</button>
+                      <button type="button" onClick={() => hizliSatisAlinanTutarTusla('sil')}>⌫</button>
+                    </div>
 
                     {Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0) > 0 && (
                       <div style={{ color: '#10b981', fontWeight: '900', fontSize: '13px', marginTop: '8px' }}>

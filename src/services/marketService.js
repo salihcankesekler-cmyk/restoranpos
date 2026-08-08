@@ -303,6 +303,7 @@ export async function marketUrunuKaydet(restaurantId, urun) {
     raf_konumu: String(urun.rafKonumu || '').trim() || null,
     son_kullanma_tarihi: urun.sonKullanmaTarihi || null,
     lot_no: String(urun.lotNo || '').trim() || null,
+    resim_url: String(urun.resimUrl || '').trim() || null,
     aktif: true,
   };
   let sorgu;

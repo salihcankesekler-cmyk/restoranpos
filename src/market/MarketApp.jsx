@@ -27,7 +27,7 @@ import './market.css';
 const bosUrun = {
   barkod: '', urunAdi: '', stokKodu: '', grupId: '', kategori: '', marka: '',
   birim: 'Adet', kdvOrani: 20, alisFiyati: '', satisFiyati: '',
-  stokMiktari: '', minimumStok: '', rafKonumu: '', sonKullanmaTarihi: '', lotNo: '',
+  stokMiktari: '', minimumStok: '', rafKonumu: '', sonKullanmaTarihi: '', lotNo: '', resimUrl: '',
 };
 
 const bosGrup = {
@@ -178,6 +178,44 @@ const kritikUrunMu = urun => {
 
 const kilogramUrunuMu = urun =>
   ['kg', 'kilogram'].includes(String(urun?.birim || '').trim().toLocaleLowerCase('tr-TR'));
+
+const marketUrunGorseli = urun => String(urun?.resim_url || urun?.resimUrl || '').trim();
+
+const marketUrunGorseliniHazirla = dosya => new Promise((resolve, reject) => {
+  if (!dosya || !String(dosya.type || '').startsWith('image/')) {
+    reject(new Error('JPG, PNG veya WEBP biçiminde bir ürün görseli seçin.'));
+    return;
+  }
+  if (Number(dosya.size || 0) > 4 * 1024 * 1024) {
+    reject(new Error('Ürün görseli en fazla 4 MB olabilir.'));
+    return;
+  }
+
+  const okuyucu = new FileReader();
+  okuyucu.onerror = () => reject(new Error('Ürün görseli okunamadı.'));
+  okuyucu.onload = () => {
+    const gorsel = new Image();
+    gorsel.onerror = () => reject(new Error('Ürün görseli açılamadı.'));
+    gorsel.onload = () => {
+      const enBuyukKenar = 640;
+      const oran = Math.min(enBuyukKenar / gorsel.width, enBuyukKenar / gorsel.height, 1);
+      const tuval = document.createElement('canvas');
+      tuval.width = Math.max(Math.round(gorsel.width * oran), 1);
+      tuval.height = Math.max(Math.round(gorsel.height * oran), 1);
+      const cizim = tuval.getContext('2d');
+      if (!cizim) {
+        reject(new Error('Ürün görseli işlenemedi.'));
+        return;
+      }
+      cizim.fillStyle = '#ffffff';
+      cizim.fillRect(0, 0, tuval.width, tuval.height);
+      cizim.drawImage(gorsel, 0, 0, tuval.width, tuval.height);
+      resolve(tuval.toDataURL('image/webp', 0.78));
+    };
+    gorsel.src = String(okuyucu.result || '');
+  };
+  okuyucu.readAsDataURL(dosya);
+});
 
 const varsayilanTeraziAyarlari = {
   aktif: false,
@@ -897,8 +935,21 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       rafKonumu: urun.raf_konumu || '',
       sonKullanmaTarihi: urun.son_kullanma_tarihi || '',
       lotNo: urun.lot_no || '',
+      resimUrl: marketUrunGorseli(urun),
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const marketUrunGorseliSec = async event => {
+    const dosya = event.target.files?.[0];
+    event.target.value = '';
+    if (!dosya) return;
+    try {
+      const resimUrl = await marketUrunGorseliniHazirla(dosya);
+      setUrunFormu(prev => ({ ...prev, resimUrl }));
+    } catch (error) {
+      bildir(error.message, 'warning');
+    }
   };
 
   const urunBarkoduEnter = event => {
@@ -2067,6 +2118,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               {satisUrunleri.map(urun => {
                 const urunGrubu = grupHaritasi.get(String(urun.grup_id));
                 const urunRengi = urunGrubu?.urun_rengi || '#0f172a';
+                const urunResmi = marketUrunGorseli(urun);
                 return <button
                   type="button"
                   key={urun.id}
@@ -2074,7 +2126,13 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
                   style={{ '--market-product-color': urunRengi, '--market-product-text': kontrastYaziRengi(urunRengi) }}
                   onClick={() => secilenUrunuSepeteEkle(urun)}
                 >
-                  <span><strong>{urun.urun_adi}</strong><small>{urun.barkod || 'Barkodsuz'} · Stok {miktarYaz(urun.stok_miktari)}</small></span>
+                  <span className="market-sale-product-visual">
+                    {urunResmi
+                      ? <img src={urunResmi} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} />
+                      : <span className="market-sale-product-placeholder" aria-hidden="true">{String(urun.urun_adi || 'Ü').trim().slice(0, 2).toLocaleUpperCase('tr-TR')}</span>}
+                    {kritikUrunMu(urun) && <em>KRİTİK</em>}
+                  </span>
+                  <span className="market-sale-product-copy"><strong>{urun.urun_adi}</strong><small>{urun.barkod || 'Barkodsuz'} · Stok {miktarYaz(urun.stok_miktari)}</small></span>
                   <b>{Number(urun.satis_fiyati || 0) > 0 ? `${para(urun.satis_fiyati)}${kilogramUrunuMu(urun) ? ' / kg' : ''}` : 'Satışta fiyat gir'}</b>
                   <i>＋</i>
                 </button>;
@@ -2292,6 +2350,16 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           <div className="market-row"><label>Stok<input type="number" step="0.001" value={urunFormu.stokMiktari} onChange={event => setUrunFormu({ ...urunFormu, stokMiktari: event.target.value })} /></label><label>Minimum stok<input type="number" step="0.001" value={urunFormu.minimumStok} onChange={event => setUrunFormu({ ...urunFormu, minimumStok: event.target.value })} /></label></div>
           <div className="market-row"><label>KDV<select value={urunFormu.kdvOrani} onChange={event => setUrunFormu({ ...urunFormu, kdvOrani: event.target.value })}><option value="0">%0</option><option value="1">%1</option><option value="10">%10</option><option value="20">%20</option></select></label><label>Raf konumu<input value={urunFormu.rafKonumu} onChange={event => setUrunFormu({ ...urunFormu, rafKonumu: event.target.value })} placeholder="A-03" /></label></div>
           <div className="market-row"><label>Son kullanma tarihi<input type="date" value={urunFormu.sonKullanmaTarihi} onChange={event => setUrunFormu({ ...urunFormu, sonKullanmaTarihi: event.target.value })} /></label><label>Parti / Lot No<input value={urunFormu.lotNo} onChange={event => setUrunFormu({ ...urunFormu, lotNo: event.target.value })} /></label></div>
+          <div className="market-product-image-editor">
+            <div className="market-product-image-preview">
+              {urunFormu.resimUrl
+                ? <img src={urunFormu.resimUrl} alt={`${urunFormu.urunAdi || 'Ürün'} önizlemesi`} />
+                : <span aria-hidden="true">📷</span>}
+            </div>
+            <label>Ürün görseli bağlantısı<input value={String(urunFormu.resimUrl || '').startsWith('data:') ? '' : urunFormu.resimUrl} onChange={event => setUrunFormu({ ...urunFormu, resimUrl: event.target.value })} placeholder={String(urunFormu.resimUrl || '').startsWith('data:') ? 'Bilgisayardan görsel seçildi' : 'https://... veya bilgisayardan seçin'} /></label>
+            <label className="market-product-image-upload">Bilgisayardan Görsel Seç<input type="file" accept="image/jpeg,image/png,image/webp" onChange={marketUrunGorseliSec} /></label>
+            {urunFormu.resimUrl && <button className="market-remove" type="button" onClick={() => setUrunFormu({ ...urunFormu, resimUrl: '' })}>Görseli Kaldır</button>}
+          </div>
         </form>
         <div className="market-card">
           <div className="market-product-sales-settings">

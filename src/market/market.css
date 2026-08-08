@@ -2234,3 +2234,148 @@
     height:7mm;
   }
 }
+
+/* Görselli ürün vitrini: dokunmatik barkodlu satış */
+.market-pos-practical .market-sale-products{
+  grid-auto-rows:minmax(138px,1fr);
+}
+.market-pos-practical .market-sale-products>button{
+  position:relative;
+  display:grid;
+  min-height:138px;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:78px auto auto;
+  align-content:stretch;
+  align-items:center;
+  justify-content:stretch;
+  gap:0;
+  overflow:hidden;
+  border-top:4px solid var(--market-product-color,#0f172a);
+  padding:0 7px 7px;
+  background:#fff;
+  color:#0f172a;
+  text-align:left;
+}
+.market-pos-practical .market-sale-products>button:hover{
+  border-top-color:#f97316;
+  background:#fff7ed;
+  filter:none;
+}
+.market-pos-practical .market-sale-products>button.is-critical{
+  box-shadow:inset 0 0 0 2px #ef4444;
+}
+.market-sale-product-visual{
+  position:relative;
+  display:grid!important;
+  grid-column:1/-1!important;
+  width:calc(100% + 14px);
+  height:78px;
+  margin-left:-7px;
+  place-items:center;
+  overflow:hidden;
+  background:#f8fafc;
+}
+.market-sale-product-visual img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#fff;
+}
+.market-sale-product-placeholder{
+  display:grid!important;
+  width:100%;
+  height:100%;
+  place-items:center;
+  background:linear-gradient(145deg,var(--market-product-color,#0f172a),#0f172a);
+  color:var(--market-product-text,#fff);
+  font-size:24px;
+  font-weight:950;
+  letter-spacing:-.04em;
+}
+.market-sale-product-visual em{
+  position:absolute;
+  top:4px;
+  right:4px;
+  border-radius:3px;
+  padding:2px 4px;
+  background:#dc2626;
+  color:#fff;
+  font-size:6px;
+  font-style:normal;
+  font-weight:950;
+}
+.market-pos-practical .market-sale-products .market-sale-product-copy{
+  display:flex;
+  grid-column:1/-1;
+  min-width:0;
+  align-items:flex-start;
+  justify-content:flex-start;
+  padding-top:6px;
+  text-align:left;
+}
+.market-pos-practical .market-sale-products .market-sale-product-copy strong{
+  width:100%;
+  color:#0f172a;
+  font-size:10px;
+  line-height:1.2;
+  text-align:left;
+}
+.market-pos-practical .market-sale-products .market-sale-product-copy small{
+  width:100%;
+  color:#64748b;
+  font-size:7px;
+  text-align:left;
+}
+.market-pos-practical .market-sale-products>button>b{
+  grid-column:1/-1;
+  justify-self:start;
+  padding-top:4px;
+  color:#c2410c;
+  font-size:11px;
+}
+.market-product-image-editor{
+  display:grid;
+  grid-template-columns:82px minmax(180px,1fr) auto auto;
+  align-items:end;
+  gap:8px;
+  padding:9px;
+  border:1px solid #bfdbfe;
+  border-radius:9px;
+  background:#eff6ff;
+}
+.market-product-image-preview{
+  width:82px;
+  height:68px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  background:#fff;
+  color:#94a3b8;
+  font-size:24px;
+}
+.market-product-image-preview img{width:100%;height:100%;object-fit:contain}
+.market-product-image-editor>label:not(.market-product-image-upload){min-width:0}
+.market-product-image-upload{
+  min-height:34px;
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #93c5fd;
+  border-radius:7px;
+  padding:7px 10px!important;
+  background:#fff;
+  color:#1d4ed8!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.market-product-image-upload input{display:none}
+.market-product-image-editor>.market-remove{min-height:34px;white-space:nowrap}
+@media(max-width:760px){
+  .market-product-image-editor{grid-template-columns:72px 1fr}
+  .market-product-image-preview{width:72px;grid-row:1/3}
+  .market-product-image-editor>.market-remove{grid-column:2}
+}
