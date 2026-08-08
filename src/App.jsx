@@ -27,6 +27,7 @@ import {
   LANDING_SUPPORT_TOPICS,
   LANDING_TRUST_FEATURES,
 } from './landing/landingContent';
+import LandingPage from './landing/LandingPage';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
 const DepoApp = React.lazy(() => import('./depo/DepoApp'));
@@ -16198,8 +16199,42 @@ Toplam Ciro: {toplam}
           </div>
         </div>
       )}
-      {/* ana sayfa ekranını gösteren kod */}
+      {/* yeni ana sayfa */}
       {screen === 'landing' && (
+        <LandingPage
+          onLogin={() => setScreen('login')}
+          onRegister={paket => {
+            setKayitPaketi(paket);
+            setScreen('register');
+          }}
+          onSupportSubmit={destekTalebiGonder}
+          supportForm={{
+            adSoyad: destekAdSoyad,
+            firmaAdi: destekFirmaAdi,
+            email: destekEmail,
+            telefon: destekTelefon,
+            talepTipi: destekTalepTipi,
+            konu: destekKonu,
+            mesaj: destekMesaj,
+          }}
+          setSupportField={(alan, deger) => {
+            const alanGuncelleyicileri = {
+              adSoyad: setDestekAdSoyad,
+              firmaAdi: setDestekFirmaAdi,
+              email: setDestekEmail,
+              telefon: setDestekTelefon,
+              talepTipi: setDestekTalepTipi,
+              konu: setDestekKonu,
+              mesaj: setDestekMesaj,
+            };
+
+            alanGuncelleyicileri[alan]?.(deger);
+          }}
+        />
+      )}
+
+      {/* önceki ana sayfa tasarımı, geri dönüş gerekirse korunur */}
+      {screen === 'landing_legacy' && (
         <div style={styles.landingViewport}>
           {/* NAVBAR */}
           <header style={styles.navbar}>
