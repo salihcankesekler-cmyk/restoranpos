@@ -168,7 +168,17 @@ export async function kuaforMusterisiKaydet(restaurantId, form, musteriId = null
 }
 
 export async function kuaforRandevusuKaydet(restaurantId, form, randevuId = null) {
-  const { data, error } = await supabase.rpc('kuafor_randevu_kaydet', {
+  const kullanilanUrunler = (Array.isArray(form.kullanilanUrunler) ? form.kullanilanUrunler : [])
+    .map(urun => ({
+      kaynak_tipi: urun.kaynakTipi,
+      id: String(urun.id),
+      ad: String(urun.ad || '').trim(),
+      birim: String(urun.birim || 'adet').trim(),
+      miktar: Number(urun.miktar || 0),
+    }))
+    .filter(urun => ['menu_urunu', 'stok_malzemesi'].includes(urun.kaynak_tipi) && urun.id && urun.miktar > 0);
+
+  const { data, error } = await supabase.rpc('kuafor_randevu_kaydet_atomik', {
     p_restaurant_id: restaurantId,
     p_randevu_id: randevuId || null,
     p_musteri_id: form.musteriId,
@@ -183,28 +193,11 @@ export async function kuaforRandevusuKaydet(restaurantId, form, randevuId = null
     p_kullanilan_malzemeler: String(form.kullanilanMalzemeler || '').trim() || null,
     p_not_metni: String(form.notMetni || '').trim() || null,
     p_hizmet_idleri: form.hizmetIdleri,
-  });
-
-  hataKontrol(error, 'Randevu kaydedilemedi.');
-
-  const kullanilanUrunler = (Array.isArray(form.kullanilanUrunler) ? form.kullanilanUrunler : [])
-    .map(urun => ({
-      kaynak_tipi: urun.kaynakTipi,
-      id: String(urun.id),
-      ad: String(urun.ad || '').trim(),
-      birim: String(urun.birim || 'adet').trim(),
-      miktar: Number(urun.miktar || 0),
-    }))
-    .filter(urun => ['menu_urunu', 'stok_malzemesi'].includes(urun.kaynak_tipi) && urun.id && urun.miktar > 0);
-
-  const { data: urunData, error: urunError } = await supabase.rpc('kuafor_randevu_urunleri_kaydet', {
-    p_restaurant_id: restaurantId,
-    p_randevu_id: data.id,
     p_urunler: kullanilanUrunler,
   });
 
-  hataKontrol(urunError, 'Randevuda kullanılan ürünler kaydedilemedi.');
-  return urunData || data;
+  hataKontrol(error, 'Randevu kaydedilemedi.');
+  return data;
 }
 
 export async function kuaforRandevuDurumunuGuncelle(restaurantId, randevuId, durum, odeme = {}) {
