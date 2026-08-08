@@ -516,49 +516,26 @@ export async function marketAlisFaturasiSil(restaurantId, faturaId) {
   return data;
 }
 
-export async function marketSayimiKaydet(restaurantId, sayim) {
+export async function marketSayimiKaydet(restaurantId, sayim, islemAnahtari = '') {
   await marketOturumunuDogrula();
-  const { data: baslik, error: baslikError } = await supabase.from('market_sayimlari').insert([{
-    restaurant_id: restaurantId,
-    sayim_adi: sayim.sayimAdi,
-    durum: 'Tamamlandı',
-    toplam_kalem: sayim.kalemler.length,
-    farkli_kalem: sayim.kalemler.filter(k => Number(k.fark) !== 0).length,
-    tamamlanma_tarihi: new Date().toISOString(),
-  }]).select().single();
-  if (baslikError) throw marketHatasi(baslikError);
-
-  const { error: kalemError } = await supabase.from('market_sayim_kalemleri').insert(sayim.kalemler.map(kalem => ({
-    restaurant_id: restaurantId,
-    sayim_id: baslik.id,
-    urun_id: kalem.id,
-    sistem_miktari: Number(kalem.stok_miktari),
-    sayilan_miktar: Number(kalem.sayilanMiktar),
-    fark_miktari: Number(kalem.fark),
-  })));
-  if (kalemError) throw marketHatasi(kalemError);
-  for (const kalem of sayim.kalemler) {
-    const oncekiStok = Number(kalem.stok_miktari || 0);
-    const yeniStok = Number(kalem.sayilanMiktar || 0);
-    const { error } = await supabase.from('market_urunleri')
-      .update({ stok_miktari: yeniStok })
-      .eq('id', kalem.id).eq('restaurant_id', restaurantId);
-    if (error) throw marketHatasi(error);
-    if (oncekiStok !== yeniStok) {
-      await stokHareketiEkle({
-        restaurant_id: restaurantId,
-        urun_id: kalem.id,
-        hareket_tipi: 'Sayım Farkı',
-        miktar: yeniStok - oncekiStok,
-        onceki_stok: oncekiStok,
-        sonraki_stok: yeniStok,
-        kaynak_tipi: 'market_sayimi',
-        kaynak_id: baslik.id,
-        aciklama: sayim.sayimAdi,
-      });
-    }
+  const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()
+    || `00000000-0000-4000-8000-${String(Date.now()).slice(-12).padStart(12, '0')}`;
+  const { data, error } = await supabase.rpc('market_sayim_kaydet_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_sayim_adi: String(sayim.sayimAdi || '').trim(),
+    p_kalemler: sayim.kalemler.map(kalem => ({
+      id: kalem.id,
+      sayilan_miktar: Number(kalem.sayilanMiktar || 0),
+    })),
+    p_islem_anahtari: guvenliIslemAnahtari,
+  });
+  if (error) {
+    const rpcEksik = ['42883', 'PGRST202'].includes(error.code)
+      || String(error.message || '').includes('market_sayim_kaydet_atomik');
+    if (rpcEksik) throw new Error('Güvenli market sayım SQL’i eksik. Güncel Supabase migration dosyasını çalıştırın.');
+    throw marketHatasi(error);
   }
-  return baslik;
+  return data;
 }
 
 export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId = '', islemAnahtari = '', indirim = {}, odemeler = []) {

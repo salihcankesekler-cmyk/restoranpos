@@ -352,6 +352,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const satisKaydiSuruyorRef = useRef(false);
   const satisIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
   const iadeIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
+  const sayimIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
 
   const bildir = (mesaj, tip = 'info') => {
     if (typeof notify === 'function') notify(mesaj, tip);
@@ -1629,15 +1630,28 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   };
 
   const sayimiTamamla = async () => {
+    if (!yetkiyiDogrula('urun_yonet', 'Stok sayımını tamamlamak için ürün yönetme yetkisi gerekir.')) return;
     const kalemler = urunler.filter(urun => Object.prototype.hasOwnProperty.call(sayim, urun.id)).map(urun => ({
       ...urun,
       sayilanMiktar: Number(sayim[urun.id] || 0),
       fark: Number(sayim[urun.id] || 0) - Number(urun.stok_miktari || 0),
     }));
     if (!kalemler.length) return bildir('Sayım için en az bir ürün okutun.', 'warning');
+    const islemImzasi = JSON.stringify(kalemler.map(kalem => [kalem.id, kalem.sayilanMiktar]));
+    if (sayimIslemAnahtariRef.current.imza !== islemImzasi) {
+      sayimIslemAnahtariRef.current = {
+        anahtar: globalThis.crypto.randomUUID(),
+        imza: islemImzasi,
+      };
+    }
     try {
-      await marketSayimiKaydet(restaurantId, { sayimAdi: `${new Date().toLocaleDateString('tr-TR')} Market Sayımı`, kalemler });
+      await marketSayimiKaydet(
+        restaurantId,
+        { sayimAdi: `${new Date().toLocaleDateString('tr-TR')} Market Sayımı`, kalemler },
+        sayimIslemAnahtariRef.current.anahtar,
+      );
       setSayim({});
+      sayimIslemAnahtariRef.current = { anahtar: '', imza: '' };
       await verileriYukle(true);
       bildir('Sayım tamamlandı ve stok farkları işlendi.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
