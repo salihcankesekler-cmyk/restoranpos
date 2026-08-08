@@ -354,6 +354,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const iadeIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
   const sayimIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
   const faturaIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
+  const finansIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
 
   const bildir = (mesaj, tip = 'info') => {
     if (typeof notify === 'function') notify(mesaj, tip);
@@ -952,6 +953,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   };
 
   const hizliDuzenlemeyiKaydet = async () => {
+    if (!yetkiyiDogrula('urun_yonet', 'Stok ve fiyatları düzenlemek için ürün yönetme yetkisi gerekir.')) return;
     try {
       const guncellenen = await marketUrunStokFiyatGuncelle(restaurantId, hizliDuzenleme.id, hizliDuzenleme);
       setUrunler(prev => prev.map(urun => String(urun.id) === String(guncellenen.id) ? guncellenen : urun));
@@ -1461,13 +1463,22 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
 
   const finansHareketiKaydet = async event => {
     event.preventDefault();
+    if (!yetkiyiDogrula('kasa_gor', 'Cari ödeme veya tahsilat kaydetmek için kasa yetkisi gerekir.')) return;
+    const islemImzasi = JSON.stringify({ ...finansHareketi, cariId: finansCariId });
+    if (finansIslemAnahtariRef.current.imza !== islemImzasi) {
+      finansIslemAnahtariRef.current = {
+        anahtar: globalThis.crypto.randomUUID(),
+        imza: islemImzasi,
+      };
+    }
     try {
       const guncellenenCari = await marketCariHareketiKaydet(restaurantId, {
         ...finansHareketi,
         cariId: finansCariId,
-      });
+      }, finansIslemAnahtariRef.current.anahtar);
       setCariler(prev => prev.map(cari => String(cari.id) === String(guncellenenCari.id) ? guncellenenCari : cari));
       setFinansHareketi(bosFinansHareketi());
+      finansIslemAnahtariRef.current = { anahtar: '', imza: '' };
       bildir(finansHareketi.islemTipi === 'tahsilat' ? 'Tahsilat cari hesabına işlendi.' : 'Ödeme cari hesabına işlendi.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
   };
