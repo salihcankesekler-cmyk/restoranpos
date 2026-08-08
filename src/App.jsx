@@ -1,48 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
+import AppErrorBoundary from './system/AppErrorBoundary';
+import {
+  gunSonuKilitleriniGetir,
+  gunSonuKilidiniAyarla,
+  sistemIslemKaydiEkle,
+  sistemOlayiKaydet,
+} from './services/systemService';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
 const DepoApp = React.lazy(() => import('./depo/DepoApp'));
 const KuaforApp = React.lazy(() => import('./kuafor/KuaforApp'));
-
-class AppErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, errorMessage: '' };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, errorMessage: error?.message || 'Beklenmeyen bir hata oluştu.' };
-  }
-
-  componentDidCatch(error, info) {
-    console.error('Uygulama hata yakalayıcı:', error, info);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', padding: '24px', fontFamily: 'Arial, sans-serif' }}>
-          <div style={{ maxWidth: '520px', width: '100%', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '24px', boxShadow: '0 20px 45px -28px rgba(15,23,42,0.25)' }}>
-            <div style={{ fontSize: '34px', marginBottom: '10px' }}>⚠️</div>
-            <h2 style={{ margin: '0 0 8px', color: '#1e293b' }}>Uygulama geçici olarak durdu</h2>
-            <p style={{ color: '#64748b', lineHeight: 1.6, marginBottom: '14px' }}>Sayfayı yenileyerek tekrar deneyin. Sorun devam ederse destek ekibine bu hata mesajını iletin.</p>
-            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px', color: '#334155', fontSize: '12px', marginBottom: '14px', wordBreak: 'break-word' }}>
-              {this.state.errorMessage}
-            </div>
-            <button type="button" onClick={() => window.location.reload()} style={{ border: 'none', backgroundColor: '#ff6b35', color: '#fff', padding: '12px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '800' }}>Sayfayı Yenile</button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
+const SystemCenter = React.lazy(() => import('./system/SystemCenter'));
 
 export default function App() {
   return (
-    <AppErrorBoundary>
+    <AppErrorBoundary onError={(error, info) => sistemOlayiKaydet({
+      kaynak: 'react',
+      islem: 'render',
+      mesaj: error,
+      hataKodu: error?.name || '',
+      ekran: 'uygulama',
+      detay: { componentStack: info?.componentStack || '' },
+    })}>
       <IntegraApp />
     </AppErrorBoundary>
   );
@@ -973,6 +953,39 @@ Toplam Ciro: {toplam}
   ]);
 
   const mevcutRestaurantId = user?.role === 'waiter' ? user?.parentRestaurantId : user?.restaurantId;
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !mevcutRestaurantId) return undefined;
+
+    const pencereHatasi = (event) => {
+      void sistemOlayiKaydet({
+        restaurantId: mevcutRestaurantId,
+        kaynak: 'window',
+        islem: 'error',
+        mesaj: event?.error || event?.message || 'Tarayıcı hatası',
+        hataKodu: event?.error?.name || '',
+        ekran: activeTab,
+        detay: { dosya: event?.filename || '', satir: event?.lineno || null, sutun: event?.colno || null },
+      });
+    };
+    const reddedilenSoz = (event) => {
+      void sistemOlayiKaydet({
+        restaurantId: mevcutRestaurantId,
+        kaynak: 'promise',
+        islem: 'unhandled_rejection',
+        mesaj: event?.reason || 'Yakalanmayan işlem hatası',
+        hataKodu: event?.reason?.code || event?.reason?.name || '',
+        ekran: activeTab,
+      });
+    };
+
+    window.addEventListener('error', pencereHatasi);
+    window.addEventListener('unhandledrejection', reddedilenSoz);
+    return () => {
+      window.removeEventListener('error', pencereHatasi);
+      window.removeEventListener('unhandledrejection', reddedilenSoz);
+    };
+  }, [activeTab, mevcutRestaurantId]);
 
   // giriş yapan restorana ait tüm masaları bulan kod
   const tumRestoranMasalari = masalar.filter(m => m.restaurantId === mevcutRestaurantId);
@@ -2680,6 +2693,16 @@ Toplam Ciro: {toplam}
     };
 
     setIslemLoglari(prev => [kayit, ...(Array.isArray(prev) ? prev : [])].slice(0, 120));
+    void sistemIslemKaydiEkle({
+      restaurantId: mevcutRestaurantId,
+      islemTipi: tip,
+      ekran: activeTab,
+      hedefTablo: ekstra.hedefTablo || ekstra.tablo || '',
+      hedefId: ekstra.hedefId || ekstra.id || '',
+      aciklama,
+      oncekiVeri: ekstra.oncekiVeri ?? null,
+      yeniVeri: ekstra.yeniVeri ?? null,
+    });
     return kayit;
   };
 
@@ -2707,31 +2730,63 @@ Toplam Ciro: {toplam}
 
   const personelDetayYetkileriniHazirla = (personel = {}) => {
     const kayitli = personelDetayYetkiKayitlari?.[String(personel.id)] || personel.detayYetkileri;
-    const kaynak = Array.isArray(kayitli) && kayitli.length > 0 ? kayitli : goreveGoreVarsayilanDetayYetkileri(personel.gorev || 'Garson');
+    const ayarlanmis = personel.detayYetkileriAyarlanmis === true
+      || Object.prototype.hasOwnProperty.call(personelDetayYetkiKayitlari || {}, String(personel.id));
+    const kaynak = ayarlanmis && Array.isArray(kayitli)
+      ? kayitli
+      : goreveGoreVarsayilanDetayYetkileri(personel.gorev || 'Garson');
     const izinli = personelDetayYetkiSecenekleri.map(y => y.key);
     return Array.from(new Set(kaynak.filter(y => izinli.includes(y))));
   };
 
-  const personelDetayYetkisiniDegistir = (personel, yetkiKey, secili) => {
+  const personelDetayYetkileriniKaydet = async (personel, yeniYetkiler) => {
     if (!personel?.id) return;
+    try {
+      const sonuc = await isletmeHesapIslemi({
+        action: 'update_personnel_detail_permissions',
+        personelId: personel.id,
+        detayYetkileri: yeniYetkiler,
+      }, 'Personel detay yetkileri güncellenemedi.');
+
+      const kayitliYetkiler = Array.isArray(sonuc?.personnel?.detayYetkileri)
+        ? sonuc.personnel.detayYetkileri
+        : yeniYetkiler;
+      setPersonelDetayYetkiKayitlari(prev => ({
+        ...(prev || {}),
+        [String(personel.id)]: kayitliYetkiler,
+      }));
+      setPersoneller(prev => (Array.isArray(prev) ? prev : []).map(p => String(p.id) === String(personel.id)
+        ? { ...p, detayYetkileri: kayitliYetkiler, detayYetkileriAyarlanmis: true }
+        : p));
+      islemLoguEkle('Personel Yetki', `${personel.ad || 'Personel'} detay yetkileri güncellendi.`, {
+        hedefTablo: 'personeller',
+        hedefId: personel.id,
+        yeniVeri: { detayYetkileri: kayitliYetkiler },
+      });
+      bildirimGoster(sonuc?.message || 'Personel detay yetkileri kaydedildi.', 'success');
+    } catch (error) {
+      console.error('Personel detay yetkisi güncellenemedi:', error);
+      bildirimGoster(error?.message || 'Personel detay yetkileri güncellenemedi.', 'error');
+    }
+  };
+
+  const personelDetayYetkisiniDegistir = async (personel, yetkiKey, secili) => {
     const mevcut = personelDetayYetkileriniHazirla(personel);
     const yeniYetkiler = secili
       ? Array.from(new Set([...mevcut, yetkiKey]))
       : mevcut.filter(y => y !== yetkiKey);
-
-    setPersonelDetayYetkiKayitlari(prev => ({
-      ...(prev || {}),
-      [String(personel.id)]: yeniYetkiler,
-    }));
-
-    setPersoneller(prev => (Array.isArray(prev) ? prev : []).map(p => String(p.id) === String(personel.id) ? { ...p, detayYetkileri: yeniYetkiler } : p));
-    islemLoguEkle('Personel Yetki', `${personel.ad || 'Personel'} detay yetkileri güncellendi.`);
+    await personelDetayYetkileriniKaydet(personel, yeniYetkiler);
   };
 
   const aktifKullaniciDetayYetkisiVar = (yetkiKey) => {
     if (!user || user.role === 'owner' || user.role === 'super_admin') return true;
     const personel = aktifPersoneller.find(p => p.email && user.email && String(p.email).toLocaleLowerCase('tr-TR') === String(user.email).toLocaleLowerCase('tr-TR'));
-    const yetkiler = personel ? personelDetayYetkileriniHazirla(personel) : goreveGoreVarsayilanDetayYetkileri(user?.personelGorev || 'Garson');
+    const oturumYetkileriAyarlanmis = user?.detayYetkileriAyarlanmis === true;
+    const yetkiler = personel
+      ? personelDetayYetkileriniHazirla(personel)
+      : oturumYetkileriAyarlanmis && Array.isArray(user?.detayYetkileri)
+        ? user.detayYetkileri
+        : goreveGoreVarsayilanDetayYetkileri(user?.personelGorev || 'Garson');
     return yetkiler.includes(yetkiKey);
   };
 
@@ -2747,12 +2802,38 @@ Toplam Ciro: {toplam}
     return Boolean(gunSonuKilitleri?.[gunSonuKilitAnahtari(tarih)]);
   };
 
-  const gunSonuKilidiniDegistir = (tarih, kilitli) => {
+  const gunSonuKilitleriniSupabasedenCek = async (restaurantId) => {
+    if (!restaurantId) return;
+    try {
+      const kayitlar = await gunSonuKilitleriniGetir(restaurantId);
+      setGunSonuKilitleri(prev => {
+        const guncel = { ...(prev || {}) };
+        kayitlar.forEach(kayit => {
+          guncel[`${restaurantId}_${kayit.tarih}`] = Boolean(kayit.kilitli);
+        });
+        return guncel;
+      });
+    } catch (error) {
+      console.warn('Gün sonu kilitleri alınamadı:', error?.message || error);
+    }
+  };
+
+  const gunSonuKilidiniDegistir = async (tarih, kilitli) => {
     const hedefTarih = tarih || new Date().toISOString().split('T')[0];
     const anahtar = gunSonuKilitAnahtari(hedefTarih);
-    setGunSonuKilitleri(prev => ({ ...(prev || {}), [anahtar]: Boolean(kilitli) }));
-    islemLoguEkle('Gün Sonu Kilidi', `${hedefTarih} tarihi ${kilitli ? 'kilitlendi' : 'tekrar açıldı'}.`);
-    alert(kilitli ? 'Gün sonu kilidi aktif edildi.' : 'Gün sonu kilidi kaldırıldı.');
+    try {
+      await gunSonuKilidiniAyarla(mevcutRestaurantId, hedefTarih, kilitli, kilitli ? 'Gün sonu kapatıldı.' : 'İşletme sahibi tarafından tekrar açıldı.');
+      setGunSonuKilitleri(prev => ({ ...(prev || {}), [anahtar]: Boolean(kilitli) }));
+      islemLoguEkle('Gün Sonu Kilidi', `${hedefTarih} tarihi ${kilitli ? 'kilitlendi' : 'tekrar açıldı'}.`, {
+        hedefTablo: 'gun_sonu_kilitleri',
+        hedefId: hedefTarih,
+        yeniVeri: { kilitli: Boolean(kilitli) },
+      });
+      bildirimGoster(kilitli ? 'Gün sonu kilidi aktif edildi.' : 'Gün sonu kilidi kaldırıldı.', 'success');
+    } catch (error) {
+      console.error('Gün sonu kilidi güncellenemedi:', error);
+      bildirimGoster(error?.message || 'Gün sonu kilidi güncellenemedi.', 'error');
+    }
   };
 
   const csvHucre = (deger) => `"${String(deger ?? '').replace(/"/g, '""')}"`;
@@ -5077,11 +5158,18 @@ Toplam Ciro: {toplam}
         email: p.email || '',
         durum: p.durum || 'Aktif',
         tabYetkileri: yetkiListesiniHazirla(p.tabYetkileri, p.gorev || 'Garson'),
+        detayYetkileri: Array.isArray(p.detayYetkileri) ? p.detayYetkileri : [],
+        detayYetkileriAyarlanmis: p.detayYetkileriAyarlanmis === true,
         authBagli: Boolean(p.authBagli),
         createdAt: p.createdAt,
       }));
 
       setPersoneller(temizPersoneller);
+      setPersonelDetayYetkiKayitlari(() => Object.fromEntries(
+        temizPersoneller
+          .filter(p => p.detayYetkileriAyarlanmis)
+          .map(p => [String(p.id), p.detayYetkileri])
+      ));
       setGarsonlar(temizPersoneller
         .filter(p => p.email && p.authBagli)
         .map(p => ({
@@ -5680,6 +5768,8 @@ Toplam Ciro: {toplam}
       personelId: data.personel_id || null,
       personelGorev: data.personel_gorev || data.gorev || (data.rol === 'owner' ? 'İşletme Sahibi' : 'Garson'),
       tabYetkileri: yetkiListesiniHazirla(data.tab_yetkileri, data.personel_gorev || 'Garson'),
+      detayYetkileri: Array.isArray(data.detay_yetkileri) ? data.detay_yetkileri : [],
+      detayYetkileriAyarlanmis: data.detay_yetkileri_ayarlandi === true,
       aktifSekmeler: aktifIsletmeSekmeleri,
       modulPaketi: isletmeAyarKaydi.modul_paketi || isletmeAyarKaydi.paket_adi || isletmeAyarKaydi.basvuru_paketi || 'Premium',
       kullaniciLimiti: Number(isletmeAyarKaydi.kullanici_limiti || data.kullanici_limiti || 3),
@@ -5734,6 +5824,10 @@ Toplam Ciro: {toplam}
 
       if (typeof personelleriSupabasedenCek === 'function') {
         await personelleriSupabasedenCek(aktifRestaurantId);
+      }
+
+      if (typeof gunSonuKilitleriniSupabasedenCek === 'function') {
+        await gunSonuKilitleriniSupabasedenCek(aktifRestaurantId);
       }
 
       if (typeof satisGecmisiniSupabasedenCek === 'function') {
@@ -12056,6 +12150,7 @@ Toplam Ciro: {toplam}
           email: personelEmail || undefined,
           password: personelSifre || undefined,
           tabYetkileri: seciliYetkiler,
+          detayYetkileri: goreveGoreVarsayilanDetayYetkileri(personelGorevi),
         },
         'Personel güvenli biçimde eklenemedi.'
       );
@@ -14717,6 +14812,10 @@ Toplam Ciro: {toplam}
         if (typeof personelleriSupabasedenCek === 'function') {
           await personelleriSupabasedenCek(aktifRestaurantId);
         }
+
+        if (typeof gunSonuKilitleriniSupabasedenCek === 'function') {
+          await gunSonuKilitleriniSupabasedenCek(aktifRestaurantId);
+        }
       } catch (err) {
         console.error('Oturum verileri tekrar yüklenemedi:', err);
       }
@@ -16987,77 +17086,23 @@ Toplam Ciro: {toplam}
               </React.Suspense>
             )}
             {activeTab === 'sistem_durumu' && (
-              <div>
-                <div style={styles.contentHeader}>
-                  <div>
-                    <h2 style={styles.pageTitle}>🛠️ Sistem Durumu</h2>
-                    <div style={{ color: '#64748b', fontSize: '13px', marginTop: '6px', fontWeight: '700' }}>
-                      Sahada sorun olduğunda önce buradan bağlantı, yenileme ve açık işlem durumunu kontrol edin.
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => panelVerileriniYenile({ bildirim: true })}
-                    disabled={manuelYenilemeYapiliyor}
-                    style={{ ...styles.btnOrange, backgroundColor: manuelYenilemeYapiliyor ? '#94a3b8' : '#0f172a' }}
-                  >
-                    {manuelYenilemeYapiliyor ? '⏳ Yenileniyor' : '🔄 Tüm Verileri Yenile'}
-                  </button>
-                </div>
-
-                <div style={styles.statsGrid}>
-                  <div style={styles.statsCard}>
-                    <div style={styles.statsTitle}>Canlı Senkron</div>
-                    <div style={{ ...styles.statsValue, color: canliSenkronDurumu === 'Aktif' ? '#10b981' : '#f97316' }}>{canliSenkronDurumu}</div>
-                  </div>
-
-                  <div style={styles.statsCard}>
-                    <div style={styles.statsTitle}>Supabase Bağlantısı</div>
-                    <div style={{ ...styles.statsValue, color: supabaseBaglantiDurumu === 'Aktif' ? '#10b981' : supabaseBaglantiDurumu === 'Hata' ? '#ef4444' : '#f97316' }}>{supabaseBaglantiDurumu}</div>
-                  </div>
-
-                  <div style={styles.statsCard}>
-                    <div style={styles.statsTitle}>Son Veri Yenileme</div>
-                    <div style={{ ...styles.statsValue, fontSize: '22px' }}>{sonVeriYenilemeZamani ? saatYaz(sonVeriYenilemeZamani) : '-'}</div>
-                  </div>
-
-                  <div style={styles.statsCard}>
-                    <div style={styles.statsTitle}>Açık Masa</div>
-                    <div style={styles.statsValue}>{tumRestoranMasalari.filter(m => m.dolu).length}</div>
-                  </div>
-
-                  <div style={styles.statsCard}>
-                    <div style={styles.statsTitle}>Bekleyen Servis / QR</div>
-                    <div style={{ ...styles.statsValue, color: acikServisTalebiSayisi > 0 ? '#f97316' : '#10b981' }}>{acikServisTalebiSayisi}</div>
-                  </div>
-
-                  <div style={styles.statsCard}>
-                    <div style={styles.statsTitle}>Yeni Online/Paket</div>
-                    <div style={{ ...styles.statsValue, color: yeniOnlineSiparisSayisi > 0 ? '#f97316' : '#10b981' }}>{yeniOnlineSiparisSayisi}</div>
-                  </div>
-                </div>
-
-                <div style={{ ...styles.panelCard, marginTop: '18px' }}>
-                  <h3 style={{ margin: '0 0 10px', color: '#1e293b' }}>Acil kontrol sırası</h3>
-                  <div style={{ display: 'grid', gap: '8px', color: '#475569', fontSize: '13px', fontWeight: '750', lineHeight: 1.5 }}>
-                    <div>1. Sipariş veya ürün görünmüyorsa önce <strong>Verileri Yenile</strong> butonuna basın.</div>
-                    <div>2. Canlı senkron kopuk görünürse internet bağlantısını kontrol edin; sistem 6,5 saniyede bir yedek yeniler.</div>
-                    <div>3. Bekleyen QR siparişler <strong>Servis Talepleri</strong> ekranından kabul edilip masaya aktarılır.</div>
-                    <div>4. Gün sonunda açık masa kalmadığından ve kasa/gün sonu alındığından emin olun.</div>
-                  </div>
-
-                  {sonSistemHatasi ? (
-                    <div style={{ marginTop: '14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '12px', fontSize: '12px', fontWeight: '800' }}>
-                      Son hata: {sonSistemHatasi}
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: '14px', backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', borderRadius: '12px', padding: '12px', fontSize: '12px', fontWeight: '800' }}>
-                      Kayıtlı son sistem hatası yok.
-                    </div>
-                  )}
-                </div>
-              </div>
+              <React.Suspense fallback={<div style={{ padding: '24px', color: '#64748b', fontWeight: '800' }}>Sistem Merkezi hazırlanıyor…</div>}>
+                <SystemCenter
+                  restaurantId={mevcutRestaurantId}
+                  restaurantName={user?.restaurant}
+                  userRole={user?.role}
+                  canliSenkronDurumu={canliSenkronDurumu}
+                  supabaseBaglantiDurumu={supabaseBaglantiDurumu}
+                  sonVeriYenilemeZamani={sonVeriYenilemeZamani}
+                  acikMasaSayisi={tumRestoranMasalari.filter(m => m.dolu).length}
+                  bekleyenServisSayisi={acikServisTalebiSayisi}
+                  yeniSiparisSayisi={yeniOnlineSiparisSayisi}
+                  sonSistemHatasi={sonSistemHatasi}
+                  manuelYenilemeYapiliyor={manuelYenilemeYapiliyor}
+                  onRefresh={panelVerileriniYenile}
+                  notify={bildirimGoster}
+                />
+              </React.Suspense>
             )}
 
             {/* masalar ve canlı adisyon ekranını gösteren kod */}
@@ -20674,10 +20719,13 @@ Toplam Ciro: {toplam}
                                 <div style={{ color: '#0f172a', fontWeight: '950' }}>{p.ad || p.email || 'Personel'}</div>
                                 <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '750' }}>{p.gorev || 'Garson'} · {p.email || '-'}</div>
                               </div>
-                              <button type="button" onClick={() => {
-                                setPersonelDetayYetkiKayitlari(prev => ({ ...(prev || {}), [String(p.id)]: personelDetayYetkiSecenekleri.map(y => y.key) }));
-                                alert('Bu personel için tüm detay yetkileri açıldı.');
-                              }} style={{ ...styles.addBtnMini, backgroundColor: '#0f172a' }}>Tümünü Aç</button>
+                              <button
+                                type="button"
+                                onClick={() => personelDetayYetkileriniKaydet(p, personelDetayYetkiSecenekleri.map(y => y.key))}
+                                style={{ ...styles.addBtnMini, backgroundColor: '#0f172a' }}
+                              >
+                                Tümünü Aç
+                              </button>
                             </div>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                               {personelDetayYetkiSecenekleri.map(secenek => {

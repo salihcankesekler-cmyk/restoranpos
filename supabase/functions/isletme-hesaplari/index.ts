@@ -189,6 +189,8 @@ const guvenliPersonel = (personel: any) => ({
   email: personel.email || '',
   durum: personel.durum || 'Aktif',
   tabYetkileri: Array.isArray(personel.tab_yetkileri) ? personel.tab_yetkileri : [],
+  detayYetkileri: Array.isArray(personel.detay_yetkileri) ? personel.detay_yetkileri : [],
+  detayYetkileriAyarlanmis: personel.detay_yetkileri_ayarlandi === true,
   authBagli: Boolean(personel.auth_user_id),
   createdAt: personel.created_at || null,
 });
@@ -626,7 +628,7 @@ serve(async req => {
     if (action === 'list_personnel') {
       const { data, error } = await adminClient
         .from('personeller')
-        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, auth_user_id, created_at')
+        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, detay_yetkileri, detay_yetkileri_ayarlandi, auth_user_id, created_at')
         .eq('restaurant_id', restaurantId)
         .order('id', { ascending: true });
       if (error) throw error;
@@ -646,6 +648,7 @@ serve(async req => {
       const personelEmail = temizEmail(body?.email);
       const password = String(body?.password || '');
       const tabYetkileri = Array.isArray(body?.tabYetkileri) ? body.tabYetkileri.slice(0, 50) : [];
+      const detayYetkileri = Array.isArray(body?.detayYetkileri) ? body.detayYetkileri.slice(0, 50) : [];
 
       if (!ad) return jsonResponse({ error: 'Personel adı zorunludur.' }, 400);
       if ((personelEmail && !emailGecerli(personelEmail)) || Boolean(personelEmail) !== Boolean(password)) {
@@ -694,8 +697,10 @@ serve(async req => {
           auth_user_id: authUser?.id || null,
           durum: 'Aktif',
           tab_yetkileri: tabYetkileri,
+          detay_yetkileri: detayYetkileri,
+          detay_yetkileri_ayarlandi: Array.isArray(body?.detayYetkileri),
         })
-        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, auth_user_id, created_at')
+        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, detay_yetkileri, detay_yetkileri_ayarlandi, auth_user_id, created_at')
         .single();
 
       if (error) {
@@ -736,7 +741,7 @@ serve(async req => {
         .update({ tab_yetkileri: tabYetkileri })
         .eq('id', personelId)
         .eq('restaurant_id', restaurantId)
-        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, auth_user_id, created_at')
+        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, detay_yetkileri, detay_yetkileri_ayarlandi, auth_user_id, created_at')
         .single();
       if (error) throw error;
 
@@ -748,6 +753,55 @@ serve(async req => {
         .eq('personel_id', personel.id);
 
       return jsonResponse({ ok: true, personnel: guvenliPersonel(personel) });
+    }
+
+    if (action === 'update_personnel_detail_permissions') {
+      ownerZorunlu();
+      const personelId = body?.personelId;
+      const izinliDetayYetkileri = new Set([
+        'odeme_al',
+        'fis_yazdir',
+        'indirim_yap',
+        'adisyon_duzenle',
+        'kapali_adisyon_ac',
+        'fiyat_degistir',
+        'rapor_gor',
+        'kasa_gor',
+        'masa_yonet',
+        'urun_yonet',
+        'silme_yap',
+        'stok_duzenle',
+        'alis_yonet',
+        'iade_yap',
+        'sevk_yonet',
+        'cari_yonet',
+        'ayar_yonet',
+      ]);
+      const detayYetkileri = Array.isArray(body?.detayYetkileri)
+        ? Array.from(new Set(body.detayYetkileri.map((yetki: unknown) => String(yetki)).filter((yetki: string) => izinliDetayYetkileri.has(yetki)))).slice(0, 50)
+        : null;
+
+      if (!personelId || detayYetkileri === null) {
+        return jsonResponse({ error: 'Personel ve detay yetki listesi zorunludur.' }, 400);
+      }
+
+      const { data: personel, error } = await adminClient
+        .from('personeller')
+        .update({
+          detay_yetkileri: detayYetkileri,
+          detay_yetkileri_ayarlandi: true,
+        })
+        .eq('id', personelId)
+        .eq('restaurant_id', restaurantId)
+        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, detay_yetkileri, detay_yetkileri_ayarlandi, auth_user_id, created_at')
+        .single();
+      if (error) throw error;
+
+      return jsonResponse({
+        ok: true,
+        personnel: guvenliPersonel(personel),
+        message: 'Personel detay yetkileri güvenli biçimde güncellendi.',
+      });
     }
 
     if (action === 'upsert_personnel_auth') {
@@ -795,7 +849,7 @@ serve(async req => {
         })
         .eq('id', personel.id)
         .eq('restaurant_id', restaurantId)
-        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, auth_user_id, created_at')
+        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, detay_yetkileri, detay_yetkileri_ayarlandi, auth_user_id, created_at')
         .single();
       if (updateError) throw updateError;
 
@@ -840,7 +894,7 @@ serve(async req => {
         .update({ durum: aktif ? 'Aktif' : 'Pasif' })
         .eq('id', personel.id)
         .eq('restaurant_id', restaurantId)
-        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, auth_user_id, created_at')
+        .select('id, restaurant_id, ad, gorev, telefon, email, durum, tab_yetkileri, detay_yetkileri, detay_yetkileri_ayarlandi, auth_user_id, created_at')
         .single();
       if (updateError) throw updateError;
 
