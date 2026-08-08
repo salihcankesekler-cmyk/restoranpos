@@ -7,6 +7,7 @@ import {
   sistemIslemKaydiEkle,
   sistemOlayiKaydet,
 } from './services/systemService';
+import { restoranAdisyonOdemeAtomik } from './services/restaurantSaleService';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
 const DepoApp = React.lazy(() => import('./depo/DepoApp'));
@@ -869,6 +870,7 @@ Toplam Ciro: {toplam}
 
   const [selectedMasaId, setSelectedMasaId] = useState(null);
   const selectedMasaIdRef = useRef(null);
+  const odemeIslemAnahtarlariRef = useRef({});
 
   useEffect(() => {
     selectedMasaIdRef.current = selectedMasaId;
@@ -8098,6 +8100,19 @@ Toplam Ciro: {toplam}
 
     const odemeTutari = nakitMi ? Math.min(girilenOdemeTutari, kalan) : girilenOdemeTutari;
     const paraUstu = nakitMi ? Math.max(girilenOdemeTutari - kalan, 0) : 0;
+    const odemeImzasi = `${masa.id}|${String(odemeTipi || '')}|${odemeTutari.toFixed(2)}|${(masa.odemeler || []).length}`;
+    let islemAnahtari = odemeIslemAnahtarlariRef.current[odemeImzasi];
+
+    if (!islemAnahtari) {
+      islemAnahtari = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, karakter => {
+            const rastgele = Math.floor(Math.random() * 16);
+            const deger = karakter === 'x' ? rastgele : (rastgele & 0x3) | 0x8;
+            return deger.toString(16);
+          });
+      odemeIslemAnahtarlariRef.current[odemeImzasi] = islemAnahtari;
+    }
 
     const yeniOdeme = {
       tip: odemeTipi,
@@ -8105,6 +8120,7 @@ Toplam Ciro: {toplam}
       alinanTutar: girilenOdemeTutari,
       paraUstu: paraUstu,
       tarih: new Date().toISOString(),
+      islemAnahtari,
     };
 
     const yeniOdemeler = [...(masa.odemeler || []), yeniOdeme];
@@ -8116,21 +8132,25 @@ Toplam Ciro: {toplam}
     const yeniKalan = Math.max(Number(masa.tutar || 0) - toplamOdenen, 0);
 
     if (yeniKalan > 0) {
-      const { data, error } = await supabase
-        .from('masalar')
-        .update({
-          odemeler: yeniOdemeler,
-        })
-        .eq('id', masa.id)
-        .select()
-        .single();
+      let odemeSonucu;
 
-      if (error) {
-        console.error('Ödeme kaydı hatası:', error);
+      try {
+        odemeSonucu = await restoranAdisyonOdemeAtomik({
+          restaurantId: mevcutRestaurantId,
+          masaId: masa.id,
+          islemAnahtari,
+          odeme: yeniOdeme,
+          satisKayitlari: [],
+        });
+      } catch (error) {
+        console.error('Güvenli ödeme kaydı hatası:', error);
         alert('Ödeme kaydedilemedi: ' + error.message);
         setOdemeTutariInput('');
         return;
       }
+
+      const data = odemeSonucu.masa;
+      delete odemeIslemAnahtarlariRef.current[odemeImzasi];
 
       const guncelMasa = {
         id: data.id,
@@ -8149,7 +8169,7 @@ Toplam Ciro: {toplam}
         bolum: data.bolum || masa.bolum || aktifMasaBolumu || 'Salon',
       };
 
-      setMasalar(masalar.map(m => {
+      setMasalar(prevMasalar => prevMasalar.map(m => {
         if (m.id === guncelMasa.id) {
           return guncelMasa;
         }
@@ -8219,47 +8239,30 @@ Toplam Ciro: {toplam}
       ikram: Boolean(s.ikram),
       menu_grubu: s.menuGrubu || 'Genel',
       departman: s.departman || 'Mutfak',
-      kdv_orani: Number(s.kdvOrani || 10),
+      kdv_orani: Number(s.kdvOrani ?? 10),
       maliyet: birimMaliyet,
       toplam_maliyet: toplamMaliyet,
       garson_adi: masa.adisyonGarsonAdi || '',
     });
     });
-    const { error: satisError } = await supabase
-      .from('satis_gecmisi')
-      .insert(satisKayitlari);
+    let odemeSonucu;
 
-    if (satisError) {
-      console.error('Satış kaydı hatası:', satisError);
-      alert('Satış rapora işlenemedi: ' + satisError.message);
+    try {
+      odemeSonucu = await restoranAdisyonOdemeAtomik({
+        restaurantId: mevcutRestaurantId,
+        masaId: masa.id,
+        islemAnahtari,
+        odeme: yeniOdeme,
+        satisKayitlari,
+      });
+    } catch (error) {
+      console.error('Güvenli adisyon kapanışı hatası:', error);
+      alert('Adisyon kapatılamadı: ' + error.message);
       return;
     }
 
-    await stokDusur(masa.siparisler);
-
-    const { data, error: masaError } = await supabase
-      .from('masalar')
-      .update({
-        dolu: false,
-        tutar: 0,
-        brut_tutar: 0,
-        adisyon_indirim_yuzde: 0,
-        adisyon_indirim_tutari: 0,
-        siparisler: [],
-        odemeler: [],
-        adisyon_acilis_saati: null,
-        adisyon_garson_adi: null,
-        musteri_adi: null,
-      })
-      .eq('id', masa.id)
-      .select()
-      .single();
-
-    if (masaError) {
-      console.error('Masa sıfırlama hatası:', masaError);
-      alert('Satış kaydedildi ama masa sıfırlanamadı: ' + masaError.message);
-      return;
-    }
+    const data = odemeSonucu.masa;
+    delete odemeIslemAnahtarlariRef.current[odemeImzasi];
 
     // ödeme tamamlanınca fiş bilgisini saklayan ve yazdırma tercihine göre işlem yapan kod
     const sonFis = {
@@ -8314,14 +8317,14 @@ Toplam Ciro: {toplam}
       ikram: Boolean(s.ikram),
       menuGrubu: s.menuGrubu || 'Genel',
       departman: s.departman || 'Mutfak',
-      kdvOrani: Number(s.kdvOrani || 10),
+      kdvOrani: Number(s.kdvOrani ?? 10),
       maliyet: birimMaliyet,
       toplamMaliyet: toplamMaliyet,
       garsonAdi: masa.adisyonGarsonAdi || '',
     });
     });
 
-    setSatisGecmisi([...satisGecmisi, ...yeniRaporKayitlari]);
+    setSatisGecmisi(prevSatislar => [...prevSatislar, ...yeniRaporKayitlari]);
 
     const guncelMasa = {
       id: data.id,
@@ -8340,12 +8343,20 @@ Toplam Ciro: {toplam}
       bolum: data.bolum || masa?.bolum || aktifMasaBolumu || 'Salon',
     };
 
-    setMasalar(masalar.map(m => {
+    setMasalar(prevMasalar => prevMasalar.map(m => {
       if (m.id === guncelMasa.id) {
         return guncelMasa;
       }
       return m;
     }));
+    setOdemeTutariInput('');
+
+    Promise.all([
+      menuUrunleriniSupabasedenCek(mevcutRestaurantId),
+      stokMalzemeleriniSupabasedenCek(mevcutRestaurantId),
+    ]).catch(error => {
+      console.error('Satış sonrası stok görünümü yenilenemedi:', error);
+    });
 
   };
 
