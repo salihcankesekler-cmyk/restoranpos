@@ -14,6 +14,19 @@ import {
   restoranAlisFisleriniGetir,
   restoranIadeKaydiAtomik,
 } from './services/restaurantSaleService';
+import {
+  LANDING_ADVANTAGES,
+  LANDING_BUSINESS_TYPES,
+  LANDING_FAQS,
+  LANDING_HERO_FEATURES,
+  LANDING_MODULES,
+  LANDING_OPERATION_FLOW,
+  LANDING_PANEL_PREVIEWS,
+  LANDING_PANEL_SUMMARIES,
+  LANDING_SETUP_STEPS,
+  LANDING_SUPPORT_TOPICS,
+  LANDING_TRUST_FEATURES,
+} from './landing/landingContent';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
 const DepoApp = React.lazy(() => import('./depo/DepoApp'));
@@ -16233,7 +16246,7 @@ Toplam Ciro: {toplam}
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '22px' }}>
-                {['Satış & Kasa', 'Randevu Planı', 'Müşteri / Cari', 'Stok & Depo', 'Personel', 'Rapor & Gün Sonu'].map(item => (
+                {LANDING_HERO_FEATURES.map(item => (
                   <span
                     key={item}
                     style={{
@@ -16283,11 +16296,7 @@ Toplam Ciro: {toplam}
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '16px' }}>
-                    {[
-                      { ad: 'Satış & Kasa', tutar: '18.460 TL', durum: 'Günlük ciro', renk: '#fff7ed' },
-                      { ad: 'Randevu', tutar: '14 işlem', durum: '3 bekliyor', renk: '#faf5ff' },
-                      { ad: 'Stok & Depo', tutar: '2 sevk', durum: 'Onay bekliyor', renk: '#f0fdf4' },
-                    ].map(kart => (
+                    {LANDING_PANEL_SUMMARIES.map(kart => (
                       <div
                         key={kart.ad}
                         style={{
@@ -16332,12 +16341,7 @@ Toplam Ciro: {toplam}
 
           {/* PREMIUM GÜVEN ŞERİDİ */}
           <section style={styles.trustStripSection}>
-            {[
-              ['🧩', 'İşletmeye özel modüller', 'İhtiyacınız olan satış, randevu, stok, depo ve finans ekranlarını birlikte kullanın.'],
-              ['📱', 'Mobil / tablet / bilgisayar', 'Dokunmatik ekranlara ve farklı cihazlara uygun hızlı çalışma düzeni.'],
-              ['📊', 'Canlı rapor ve gün sonu', 'Kasa, ödeme, kâr, cari, işlem ve stok verileri anlık takip edilir.'],
-              ['🔐', 'Rol bazlı kullanım', 'Her personel yalnızca yetkili olduğu işletme ekranlarını görür.'],
-            ].map(([icon, title, text]) => (
+            {LANDING_TRUST_FEATURES.map(([icon, title, text]) => (
               <div key={title} style={styles.trustPillCard}>
                 <div style={styles.trustPillIcon}>{icon}</div>
                 <div>
@@ -16360,12 +16364,7 @@ Toplam Ciro: {toplam}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                {[
-                  ['1', 'Kayıt veya satış başlar', 'Masa, barkod, hızlı satış, randevu ya da müşteri kaydıyla doğru akış açılır.'],
-                  ['2', 'Personel görevini yürütür', 'Yetkili kullanıcı kendi ekranında siparişi, işlemi, stoğu veya sevki yönetir.'],
-                  ['3', 'Ödeme ve stok işlenir', 'Tahsilat, cari, stok düşümü ve depo hareketleri işlemle birlikte kaydedilir.'],
-                  ['4', 'Gün sonu rapora yansır', 'Satış, hizmet, ödeme, maliyet ve personel sonuçları tek raporda toplanır.'],
-                ].map(([no, title, text]) => (
+                {LANDING_OPERATION_FLOW.map(([no, title, text]) => (
                   <div key={title} style={{ background: 'linear-gradient(180deg, #fff 0%, #fff7ed 100%)', border: '1px solid #fed7aa', borderRadius: '20px', padding: '22px', boxShadow: '0 18px 40px -28px rgba(15,23,42,0.22)' }}>
                     <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#ff6b35', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', marginBottom: '14px' }}>{no}</div>
                     <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '17px' }}>{title}</h3>
@@ -16387,20 +16386,7 @@ Toplam Ciro: {toplam}
             </div>
 
             <div style={{ ...styles.featuresGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
-              {[
-                ['🍽️', 'Restoran', 'Masa, mutfak ve ödeme akışı'],
-                ['☕', 'Kafe', 'Hızlı ürün seçimi ve kasa kontrolü'],
-                ['🍔', 'Fast food', 'Yoğun saatlerde hızlı adisyon'],
-                ['🥔', 'Kumpirci / büfe', 'Seçenekli ürün ve not sistemi'],
-                ['🍰', 'Tatlıcı', 'Departman ve KDV takibi'],
-                ['🛵', 'Paket servis', 'Paket ekranına hazır altyapı'],
-                ['🏪', 'Market / Tekel', 'Barkodlu satış, stok ve etiket'],
-                ['🧺', 'Şarküteri / Büfe', 'Alış faturası, sayım ve fiyat yönetimi'],
-                ['✂️', 'Kuaför / Berber', 'Müşteri, randevu, personel ve gün sonu'],
-                ['💆', 'Güzellik / Bakım', 'İşlem planı, müşteri geçmişi ve ödeme'],
-                ['🧰', 'Servis / Atölye', 'Müşteri kaydı, iş takibi, stok ve tahsilat'],
-                ['🏢', 'Çok Şubeli İşletme', 'Merkez depo, şube sevki ve ortak rapor'],
-              ].map(([icon, title, text]) => (
+              {LANDING_BUSINESS_TYPES.map(([icon, title, text]) => (
                 <div key={title} style={{ ...styles.featureItem, padding: '22px' }}>
                   <div style={{ fontSize: '30px', marginBottom: '10px' }}>{icon}</div>
                   <h4 style={{ ...styles.featureTitle, fontSize: '16px' }}>{title}</h4>
@@ -16421,21 +16407,7 @@ Toplam Ciro: {toplam}
             </div>
 
             <div style={styles.featuresGrid}>
-              {[
-                ['🪑', 'Masa & Bölüm Yönetimi', 'Salon, bahçe, teras gibi bölümlere masa ekleyin; masa aktarımıyla adisyonu boş masaya taşıyın.'],
-                ['🍽️', 'Grup Bazlı Menü', 'Ana yemek, içecek, tatlı gibi gruplar; departman, KDV ve mutfağa gönderme ayarları.'],
-                ['👨‍🍳', 'Mutfak Ekranı', 'Mutfağa gidecek ürünler notlarıyla birlikte mutfak ekranına düşer, hazırlandı yapılınca listeden kalkar.'],
-                ['💳', 'Ödeme & Para Üstü', 'Nakit, kredi kartı ve parçalı ödeme; alınan tutara göre para üstü hesabı.'],
-                ['🏷️', 'İndirim & Fiyat Değiştirme', 'Satış anında ürün fiyatı değiştirin, yüzde veya TL indirim uygulayın.'],
-                ['📊', 'Raporlama', 'Günlük, aylık ve tarih aralıklı rapor; gün sonu çıktısı ve ödeme kırılımı.'],
-                ['🧾', 'Fiş & Adisyon Yazdırma', 'Hesap öncesi adisyon, ödeme sonrası fiş ve gün sonu raporu yazdırma.'],
-                ['👥', 'Personel Kullanımı', 'Patron, garson, mutfak ve admin akışlarını ayrı ekranlarla yönetin.'],
-                ['▥', 'Barkodlu Market Satışı', 'USB veya Bluetooth barkod okuyucuyla ürünü hızla bulun, satışı tamamlayın ve stoğu otomatik düşürün.'],
-                ['📋', 'Alış, Sayım & Etiket', 'Alış faturasıyla stok artırın, barkodla sayım yapın, toplu fiyat güncelleyip raf etiketi basın.'],
-                ['✂️', 'Randevu & Müşteri Geçmişi', 'Kayıtlı müşteri ve personelle gün planı oluşturun; işlem, malzeme, ödeme ve ziyaret geçmişini saklayın.'],
-                ['🏭', 'Merkez Depo & Şube Sevki', 'Alışı depoya alın; şubeye sevk edilen stoğu teslim onayından sonra işletme stoklarına aktarın.'],
-                ['💰', 'Cari & Finans', 'Tahsilat, ödeme, cari bakiye, kasa hareketi ve gün sonu sonuçlarını tek yerde izleyin.'],
-              ].map(([icon, title, text]) => (
+              {LANDING_MODULES.map(([icon, title, text]) => (
                 <div key={title} style={styles.featureItem}>
                   <div style={styles.featureIcon}>{icon}</div>
                   <h4 style={styles.featureTitle}>{title}</h4>
@@ -16453,14 +16425,7 @@ Toplam Ciro: {toplam}
             </div>
 
             <div style={{ maxWidth: '1120px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
-              {[
-                ['1', 'İşletme başvuru yapar', 'Admin panelinden hesap aktif edilir.'],
-                ['2', 'Gerekli modüller açılır', 'Restoran, market, kuaför, depo veya finans panelleri ihtiyaca göre yetkilendirilir.'],
-                ['3', 'Katalog ve kayıtlar hazırlanır', 'Ürün, hizmet, müşteri, personel, şube ve stok başlangıçları tanımlanır.'],
-                ['4', 'Günlük işlem yürütülür', 'Sipariş, barkodlu satış, randevu, alış veya sevk işlemi ilgili panelden yapılır.'],
-                ['5', 'Ödeme ve hareket kaydedilir', 'Nakit, kart, cari ve diğer hareketler işleme bağlanır.'],
-                ['6', 'Yönetici sonucu izler', 'Gün sonu, satış, hizmet, personel, stok ve kâr raporları takip edilir.'],
-              ].map(([no, title, text]) => (
+              {LANDING_SETUP_STEPS.map(([no, title, text]) => (
                 <div
                   key={no}
                   style={{
@@ -16503,12 +16468,7 @@ Toplam Ciro: {toplam}
             </div>
 
             <div style={{ maxWidth: '1180px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
-              {[
-                ['🪑 Restoran & Kafe', 'Masa, adisyon, mutfak, paket servis, reçete ve ödeme akışları.'],
-                ['▥ Market & Perakende', 'Barkodlu satış, hızlı tuşlar, alış, sayım, etiket ve cari takibi.'],
-                ['✂️ Kuaför & Hizmet', 'Müşteri kartı, kayıtlı personel, randevu planı, işlem ve ödeme geçmişi.'],
-                ['🏭 Depo & Yönetim', 'Merkez alış, şube sevki, stok, finans, yetki ve birleşik raporlar.'],
-              ].map(([title, text]) => (
+              {LANDING_PANEL_PREVIEWS.map(([title, text]) => (
                 <div
                   key={title}
                   style={{
@@ -16550,12 +16510,7 @@ Toplam Ciro: {toplam}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
-                {[
-                  ['Bulut', 'Kurulum gerektirmez'],
-                  ['Rol bazlı', 'Kullanıcı ekranları'],
-                  ['Anlık', 'Satış ve operasyon takibi'],
-                  ['Detaylı', 'Rapor ve gün sonu'],
-                ].map(([big, small]) => (
+                {LANDING_ADVANTAGES.map(([big, small]) => (
                   <div key={big} style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '18px', padding: '22px' }}>
                     <div style={{ fontSize: '24px', fontWeight: '900', color: '#ff6b35' }}>{big}</div>
                     <div style={{ fontSize: '13px', color: '#cbd5e1', marginTop: '6px', fontWeight: '700' }}>{small}</div>
@@ -16610,12 +16565,7 @@ Toplam Ciro: {toplam}
                 <h2 style={styles.sectionTitle}>İstek, hata ve geliştirme taleplerinizi bize gönderin.</h2>
                 <p style={styles.sectionSubtitle}>Müşterilerinizden gelen ihtiyaçlara göre sistemi büyütelim. Formdan gönderilen talepler ekibimize ulaşır; işletmenize uygun kurulum ve kullanım akışını birlikte planlarız.</p>
                 <div style={{ display: 'grid', gap: '12px', marginTop: '22px' }}>
-                  {[
-                    'Yeni özellik isteği',
-                    'Fiş/yazıcı desteği',
-                    'Kullanım veya kurulum desteği',
-                    'Hata bildirimi ve iyileştirme',
-                  ].map(item => (
+                  {LANDING_SUPPORT_TOPICS.map(item => (
                     <div key={item} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '14px', color: '#334155', fontWeight: '800' }}>
                       ✅ {item}
                     </div>
@@ -16653,14 +16603,7 @@ Toplam Ciro: {toplam}
             </div>
 
             <div style={{ maxWidth: '980px', margin: '0 auto', display: 'grid', gap: '12px' }}>
-              {[
-                ['Hangi işletmeler kullanabilir?', 'Restoran, kafe, market, kuaför, güzellik salonu, servis, atölye ve farklı satış/hizmet işletmeleri için gerekli modüller ayrı ayrı açılabilir.'],
-                ['Telefon ve tabletten kullanılabilir mi?', 'Evet. Sistem web tabanlıdır; telefon, dokunmatik tablet ve bilgisayar tarayıcısından kullanılabilir.'],
-                ['Her personel tüm ekranları görür mü?', 'Hayır. İşletme sahibi her kullanıcıya yalnızca görevinde ihtiyaç duyduğu panel ve işlem yetkilerini açabilir.'],
-                ['Randevu ve satış aynı rapora yansır mı?', 'Tamamlanıp ödemesi alınan randevu işlemleri gün sonu ve ana satış raporlarına aktarılır.'],
-                ['Depo ve şubeler birlikte çalışır mı?', 'Evet. Alış merkez depoya alınabilir; sevk, şube tarafından onaylanınca şube stoğuna geçer.'],
-                ['Kurulum gerekiyor mu?', 'Temel kullanım için ekstra kurulum gerekmez; internet olan cihazdan giriş yapılır. Yazıcı ve donanım bağlantıları ihtiyaca göre ayrıca kurulur.'],
-              ].map(([q, a]) => (
+              {LANDING_FAQS.map(([q, a]) => (
                 <details key={q} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px 18px' }}>
                   <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#1e293b' }}>{q}</summary>
                   <p style={{ color: '#64748b', lineHeight: '1.7', marginBottom: 0 }}>{a}</p>
