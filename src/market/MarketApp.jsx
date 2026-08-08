@@ -351,6 +351,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const satisAdediTuslamaRef = useRef(false);
   const satisKaydiSuruyorRef = useRef(false);
   const satisIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
+  const iadeIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
 
   const bildir = (mesaj, tip = 'info') => {
     if (typeof notify === 'function') notify(mesaj, tip);
@@ -1349,6 +1350,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     if (satisKaydiSuruyorRef.current) return;
     if (!sepet.length) return bildir('Satış sepeti boş.', 'warning');
     if (!ODEME_TIPLERI.includes(odemeTipi)) return;
+    if (!yetkiyiDogrula('odeme_al', 'Bu satışı tamamlamak için ödeme alma yetkisi gerekir.')) return;
     if ((sepetToplamlari.urunIndirimTutari > 0 || sepetToplamlari.genelIndirimTutari > 0)
       && !yetkiyiDogrula('indirim_yap', 'Bu indirimli satışı tamamlamak için indirim yetkisi gerekir.')) return;
     if (sepetToplamlari.genelArtisTutari > 0
@@ -1643,6 +1645,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
 
   const satisIadesiniKaydet = async (satis, tamIptal = false) => {
     if (iadeIsleniyor) return;
+    if (!yetkiyiDogrula('odeme_al', 'Satış iadesi için ödeme alma yetkisi gerekir.')) return;
     const kalemler = tamIptal ? [] : (satis.market_satis_kalemleri || [])
       .map(kalem => ({
         satisKalemId: kalem.id,
@@ -1651,11 +1654,31 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       .filter(kalem => kalem.adet > 0);
     if (!tamIptal && !kalemler.length) return bildir('İade edilecek ürün miktarını girin.', 'warning');
     if (tamIptal && !window.confirm('Bu satışın kalan tüm ürünleri iptal edilip stoğa geri alınacak. Devam edilsin mi?')) return;
+    const islemImzasi = JSON.stringify({
+      satisId: satis.id,
+      tamIptal,
+      aciklama: iadeAciklama.trim(),
+      kalemler: kalemler.map(kalem => [kalem.satisKalemId, kalem.adet]),
+    });
+    if (iadeIslemAnahtariRef.current.imza !== islemImzasi) {
+      iadeIslemAnahtariRef.current = {
+        anahtar: globalThis.crypto.randomUUID(),
+        imza: islemImzasi,
+      };
+    }
     setIadeIsleniyor(true);
     try {
-      await marketSatisIadeEt(restaurantId, satis.id, kalemler, iadeAciklama, tamIptal);
+      await marketSatisIadeEt(
+        restaurantId,
+        satis.id,
+        kalemler,
+        iadeAciklama,
+        tamIptal,
+        iadeIslemAnahtariRef.current.anahtar,
+      );
       setIadeAdetleri({});
       setIadeAciklama('');
+      iadeIslemAnahtariRef.current = { anahtar: '', imza: '' };
       await verileriYukle(true);
       bildir(tamIptal ? 'Satış iptal edildi; stok ve cari geri işlendi.' : 'Ürün iadesi tamamlandı.', 'success');
     } catch (error) {

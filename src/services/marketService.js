@@ -563,21 +563,6 @@ export async function marketSayimiKaydet(restaurantId, sayim) {
 
 export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId = '', islemAnahtari = '', indirim = {}, odemeler = []) {
   await marketOturumunuDogrula();
-  const cariOdemeTutari = Math.round(((odemeler || [])
-    .filter(odeme => odeme.tip === 'Cari / Veresiye')
-    .reduce((toplam, odeme) => toplam + Number(odeme.tutar || 0), 0) + Number.EPSILON) * 100) / 100;
-  const parcaliCariyiEsitle = async satis => {
-    if (!cariId || cariOdemeTutari <= 0 || odemeTipi === 'Cari / Veresiye') return satis;
-    await cariHareketiniEsitle(restaurantId, String(cariId), {
-      kaynak: 'market_satisi',
-      kaynakId: satis.id,
-      tip: 'Borç - Parçalı Satış',
-      tutar: cariOdemeTutari,
-      bakiyeEtkisi: cariOdemeTutari,
-      aciklama: `Market parçalı satışı · ${odemeTipi}`,
-    });
-    return satis;
-  };
   const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()
     || `00000000-0000-4000-8000-${String(Date.now()).slice(-12).padStart(12, '0')}`;
   const yuvarlanmisSepet = sepet.map(kalem => ({ ...kalem, adet: miktarYuvarla(kalem.adet) }));
@@ -606,7 +591,7 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
     })
     : yuvarlanmisSepet;
   const uygulanacakIndirim = fiyatArtisiMi ? { yon: 'azalt', tur: 'tutar', deger: 0 } : indirim;
-  const { data: indirimliAtomikSatis, error: indirimliAtomikHata } = await supabase.rpc('market_satis_kaydet_indirimli_atomik', {
+  const { data, error } = await supabase.rpc('market_satis_kaydet_v2_atomik', {
     p_restaurant_id: Number(restaurantId),
     p_kalemler: islemSepeti.map(kalem => ({
       id: kalem.id,
@@ -614,97 +599,24 @@ export async function marketSatisiKaydet(restaurantId, sepet, odemeTipi, cariId 
       liste_fiyati: Number(kalem.liste_fiyati ?? kalem.satis_fiyati),
       satis_fiyati: Number(kalem.satis_fiyati),
     })),
-    p_odeme_tipi: odemeTipi,
     p_cari_id: cariId ? String(cariId) : null,
     p_islem_anahtari: guvenliIslemAnahtari,
     p_indirim_turu: uygulanacakIndirim.tur || 'yuzde',
     p_indirim_degeri: Number(uygulanacakIndirim.deger || 0),
-  });
-  if (!indirimliAtomikHata) return parcaliCariyiEsitle(indirimliAtomikSatis);
-  const indirimliRpcEksik = ['42883', 'PGRST202'].includes(indirimliAtomikHata.code)
-    || String(indirimliAtomikHata.message || '').includes('market_satis_kaydet_indirimli_atomik');
-  if (!indirimliRpcEksik) throw marketHatasi(indirimliAtomikHata);
-
-  const araToplam = islemSepeti.reduce((toplam, kalem) => toplam + Number(kalem.adet) * Number(kalem.satis_fiyati), 0);
-  const indirimDegeri = Math.max(Number(uygulanacakIndirim.deger || 0), 0);
-  const hesaplananGenelIndirim = uygulanacakIndirim.tur === 'tutar'
-    ? indirimDegeri
-    : araToplam * Math.min(indirimDegeri, 100) / 100;
-  const genelIndirimTutari = Math.min(hesaplananGenelIndirim, araToplam);
-  const sepetKaydi = islemSepeti.map(kalem => {
-    const satirToplami = Number(kalem.adet) * Number(kalem.satis_fiyati);
-    const indirimPayi = araToplam > 0 ? genelIndirimTutari * satirToplami / araToplam : 0;
-    return {
-      ...kalem,
-      satis_fiyati: Number(kalem.adet) > 0 ? Math.max((satirToplami - indirimPayi) / Number(kalem.adet), 0) : 0,
-    };
-  });
-  const { data: atomikSatis, error: atomikHata } = await supabase.rpc('market_satis_kaydet_atomik', {
-    p_restaurant_id: Number(restaurantId),
-    p_kalemler: sepetKaydi.map(kalem => ({
-      id: kalem.id,
-      adet: Number(kalem.adet),
-      satis_fiyati: Number(kalem.satis_fiyati),
+    p_odemeler: (odemeler || []).map(odeme => ({
+      tip: odeme.tip,
+      tutar: Number(odeme.tutar || 0),
     })),
-    p_odeme_tipi: odemeTipi,
-    p_cari_id: cariId ? String(cariId) : null,
-    p_islem_anahtari: guvenliIslemAnahtari,
   });
-  if (!atomikHata) return parcaliCariyiEsitle(atomikSatis);
-  const rpcEksik = ['42883', 'PGRST202'].includes(atomikHata.code)
-    || String(atomikHata.message || '').includes('market_satis_kaydet_atomik');
-  if (!rpcEksik) throw marketHatasi(atomikHata);
-
-  const toplam = sepetKaydi.reduce((t, k) => t + Number(k.adet) * Number(k.satis_fiyati), 0);
-  const secilenCariId = cariId ? String(cariId) : null;
-  const { data: secilenCari } = secilenCariId
-    ? await supabase.from('cari_musteriler').select('id, ad').eq('restaurant_id', restaurantId).eq('id', secilenCariId).maybeSingle()
-    : { data: null };
-  const { data: satis, error: satisError } = await supabase.from('market_satislari').insert([{
-    restaurant_id: restaurantId,
-    cari_id: secilenCariId,
-    cari_adi: secilenCari?.ad || null,
-    odeme_tipi: odemeTipi,
-    toplam_tutar: toplam,
-  }]).select().single();
-  if (satisError) throw marketHatasi(satisError);
-
-  const { data: satisKalemleri, error: kalemError } = await supabase.from('market_satis_kalemleri').insert(sepetKaydi.map(k => ({
-    restaurant_id: restaurantId,
-    satis_id: satis.id,
-    urun_id: k.id,
-    barkod: k.barkod,
-    urun_adi: k.urun_adi,
-    adet: Number(k.adet),
-    birim_fiyat: Number(k.satis_fiyati),
-    toplam_tutar: Number(k.adet) * Number(k.satis_fiyati),
-  }))).select();
-  if (kalemError) throw marketHatasi(kalemError);
-  const stokToplamlari = sepetKaydi.reduce((toplamlar, kalem) => {
-    const urunId = String(kalem.id);
-    const mevcut = toplamlar.get(urunId) || { ...kalem, adet: 0 };
-    mevcut.adet += Number(kalem.adet || 0);
-    toplamlar.set(urunId, mevcut);
-    return toplamlar;
-  }, new Map());
-  await Promise.all(Array.from(stokToplamlari.values()).map(async kalem => {
-    const yeniStok = Number(kalem.stok_miktari || 0) - Number(kalem.adet);
-    const { error } = await supabase.from('market_urunleri')
-      .update({ stok_miktari: yeniStok })
-      .eq('id', kalem.id).eq('restaurant_id', restaurantId);
-    if (error) throw marketHatasi(error);
-  }));
-  if (secilenCariId) {
-    await cariHareketiniEsitle(restaurantId, secilenCariId, {
-      kaynak: 'market_satisi',
-      kaynakId: satis.id,
-      tip: odemeTipi === 'Cari / Veresiye' ? 'Borç' : `Satış - ${odemeTipi}`,
-      tutar: toplam,
-      bakiyeEtkisi: odemeTipi === 'Cari / Veresiye' ? toplam : 0,
-      aciklama: `Market satışı · ${odemeTipi}`,
-    });
+  if (error) {
+    const rpcEksik = ['42883', 'PGRST202'].includes(error.code)
+      || String(error.message || '').includes('market_satis_kaydet_v2_atomik');
+    if (rpcEksik) {
+      throw new Error('Güvenli market satış SQL’i eksik. Güncel Supabase migration dosyasını çalıştırın.');
+    }
+    throw marketHatasi(error);
   }
-  return parcaliCariyiEsitle({ ...satis, market_satis_kalemleri: satisKalemleri || [] });
+  return data;
 }
 
 export async function marketSatisFisiniKuyrugaEkle(restaurantId, satis, icerikText) {
@@ -743,9 +655,11 @@ export async function marketSatisFisiniKuyrugaEkle(restaurantId, satis, icerikTe
   return data;
 }
 
-export async function marketSatisIadeEt(restaurantId, satisId, kalemler, aciklama = '', tamIptal = false) {
+export async function marketSatisIadeEt(restaurantId, satisId, kalemler, aciklama = '', tamIptal = false, islemAnahtari = '') {
   await marketOturumunuDogrula();
-  const { data, error } = await supabase.rpc('market_satis_iade_atomik', {
+  const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()
+    || `00000000-0000-4000-8000-${String(Date.now()).slice(-12).padStart(12, '0')}`;
+  const { data, error } = await supabase.rpc('market_satis_iade_v2_atomik', {
     p_restaurant_id: Number(restaurantId),
     p_satis_id: satisId,
     p_kalemler: kalemler.map(kalem => ({
@@ -754,8 +668,14 @@ export async function marketSatisIadeEt(restaurantId, satisId, kalemler, aciklam
     })),
     p_aciklama: String(aciklama || '').trim() || null,
     p_tam_iptal: Boolean(tamIptal),
+    p_islem_anahtari: guvenliIslemAnahtari,
   });
-  if (error) throw marketHatasi(error);
+  if (error) {
+    const rpcEksik = ['42883', 'PGRST202'].includes(error.code)
+      || String(error.message || '').includes('market_satis_iade_v2_atomik');
+    if (rpcEksik) throw new Error('Güvenli market iade SQL’i eksik. Güncel Supabase migration dosyasını çalıştırın.');
+    throw marketHatasi(error);
+  }
   return data;
 }
 
