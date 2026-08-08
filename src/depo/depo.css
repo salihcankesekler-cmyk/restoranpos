@@ -110,6 +110,7 @@
 .depo-status { display: inline-flex; align-items: center; width: fit-content; padding: 5px 7px; border-radius: 999px; background: #f2f4f7; color: #475467; font-size: 9px; font-weight: 900; white-space: nowrap; }
 .depo-status.yolda { background: #fff7ed; color: #c2410c; }
 .depo-status.teslim-alındı { background: #ecfdf5; color: #047857; }
+.depo-status.kısmi-teslim { background: #fff7ed; color: #c2410c; }
 .depo-status.iptal { background: #fff1f2; color: #be123c; }
 .depo-status.hazırlanıyor { background: #eff6ff; color: #1d4ed8; }
 
@@ -173,7 +174,7 @@
 .depo-table tr.critical td { background: #fffbeb; }
 .depo-table .table-action { padding: 6px 8px; font-size: 10px; }
 
-.depo-line-entry { display: grid; grid-template-columns: 2fr .7fr .8fr auto; gap: 7px; margin-bottom: 9px; }
+.depo-line-entry { display: grid; grid-template-columns: 2fr .7fr .8fr; gap: 7px; margin-bottom: 9px; }
 .depo-line-entry.shipment { grid-template-columns: 2fr .7fr auto; }
 .depo-lines { display: grid; gap: 6px; margin-bottom: 10px; }
 .depo-lines > div { display: flex; align-items: center; gap: 10px; min-height: 45px; padding: 7px 9px; border: 1px solid var(--depo-line); border-radius: 9px; background: #fff; }
@@ -192,6 +193,9 @@
 .depo-history span { display: grid; }
 .depo-history strong, .depo-history b { font-size: 11px; }
 .depo-history small { color: var(--depo-muted); font-size: 9px; }
+.depo-history .expired { border-color: #fecaca; background: #fff1f2; }
+.lot-heading, .difference-heading { margin-top: 18px; }
+.depo-lot-list { max-height: 280px; }
 
 .depo-shipments { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .depo-shipments article { padding: 12px; border: 1px solid var(--depo-line); border-radius: 12px; background: #fff; }
@@ -205,6 +209,20 @@
 .depo-shipment-lines span { padding: 5px 7px; border-radius: 7px; background: var(--depo-soft); font-size: 9px; }
 .depo-shipments article p { color: var(--depo-muted); font-size: 10px; }
 .depo-shipments article footer { display: flex; gap: 7px; padding-top: 10px; margin-top: 10px; border-top: 1px solid #f0f1f3; }
+.depo-shipments.single-column { grid-template-columns: 1fr; }
+.depo-request-layout { display: grid; gap: 12px; }
+.difference-table { min-width: 820px; }
+.depo-receive-form { display: grid; gap: 8px; padding-top: 10px; margin-top: 10px; border-top: 1px solid #f0f1f3; }
+.depo-receive-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.depo-receive-head strong { font-size: 11px; }
+.depo-receive-head span { color: var(--depo-muted); font-size: 9px; }
+.depo-receive-line { display: grid; grid-template-columns: minmax(130px, 1.4fr) repeat(3, minmax(72px, .55fr)); gap: 6px; padding: 9px; border: 1px solid var(--depo-line); border-radius: 10px; background: var(--depo-soft); }
+.depo-receive-product { display: grid; align-content: center; }
+.depo-receive-product strong { font-size: 10px; }
+.depo-receive-product small { color: var(--depo-muted); font-size: 8px; }
+.depo-receive-line label { display: grid; gap: 3px; color: var(--depo-muted); font-size: 8px; font-weight: 800; }
+.depo-receive-line .target-product, .depo-receive-line .receive-note { grid-column: span 2; }
+.depo-receive-form > footer { justify-content: flex-end; }
 
 .depo-code { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px; border: 1px dashed #fdba74; border-radius: 11px; background: #fff7ed; }
 .depo-code strong { color: #c2410c; font-size: 23px; letter-spacing: .13em; }
@@ -242,4 +260,7 @@
   .depo-source-heading { align-items: flex-start; }
   .depo-code { align-items: stretch; flex-direction: column; }
   .depo-code strong { text-align: center; font-size: 19px; }
+  .depo-receive-head { align-items: flex-start; flex-direction: column; }
+  .depo-receive-line { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .depo-receive-product, .depo-receive-line .target-product, .depo-receive-line .receive-note { grid-column: 1 / -1; }
 }

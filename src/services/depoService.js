@@ -24,6 +24,12 @@ export async function depoVerileriniGetir(restaurantId) {
     menuUrunSonucu,
     stokMalzemeSonucu,
     marketUrunSonucu,
+    talepSonucu,
+    talepKalemSonucu,
+    talepUrunSonucu,
+    lotSonucu,
+    farkSonucu,
+    eslesmeSonucu,
   ] = await Promise.all([
     supabase
       .from('depo_urunleri')
@@ -70,6 +76,39 @@ export async function depoVerileriniGetir(restaurantId) {
       .eq('restaurant_id', restaurantId)
       .eq('aktif', true)
       .order('urun_adi'),
+    supabase
+      .from('depo_sevk_talepleri')
+      .select('*')
+      .or(`depo_restaurant_id.eq.${restaurantId},talep_eden_restaurant_id.eq.${restaurantId}`)
+      .order('created_at', { ascending: false })
+      .limit(200),
+    supabase
+      .from('depo_sevk_talep_kalemleri')
+      .select('*')
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('depo_urunleri')
+      .select('*')
+      .neq('restaurant_id', restaurantId)
+      .eq('aktif', true)
+      .order('urun_adi'),
+    supabase
+      .from('depo_lotlari')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .gt('kalan_miktar', 0)
+      .order('son_kullanma_tarihi', { ascending: true, nullsFirst: false })
+      .limit(500),
+    supabase
+      .from('depo_teslimat_farklari')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .order('created_at', { ascending: false })
+      .limit(300),
+    supabase
+      .from('depo_urun_eslesmeleri')
+      .select('*')
+      .eq('hedef_restaurant_id', restaurantId),
   ]);
 
   hataKontrol(urunSonucu.error, 'Depo ürünleri alınamadı.');
@@ -78,6 +117,12 @@ export async function depoVerileriniGetir(restaurantId) {
   hataKontrol(sevkKalemSonucu.error, 'Sevkiyat kalemleri alınamadı.');
   hataKontrol(baglantiSonucu.error, 'Bağlı işletmeler alınamadı.');
   hataKontrol(kodSonucu.error, 'Depo bağlantı kodu alınamadı.');
+  hataKontrol(talepSonucu.error, 'Depo talepleri alınamadı.');
+  hataKontrol(talepKalemSonucu.error, 'Depo talep kalemleri alınamadı.');
+  hataKontrol(talepUrunSonucu.error, 'Bağlı depo ürünleri alınamadı.');
+  hataKontrol(lotSonucu.error, 'Depo lotları alınamadı.');
+  hataKontrol(farkSonucu.error, 'Teslimat farkları alınamadı.');
+  hataKontrol(eslesmeSonucu.error, 'Depo ürün eşleşmeleri alınamadı.');
 
   const kaynakUrunHatalari = [
     ['Restoran ürünleri', menuUrunSonucu.error],
@@ -142,6 +187,12 @@ export async function depoVerileriniGetir(restaurantId) {
     sevkler: sevkSonucu.data || [],
     sevkKalemleri: sevkKalemSonucu.data || [],
     baglantilar: baglantiSonucu.data || [],
+    talepler: talepSonucu.data || [],
+    talepKalemleri: talepKalemSonucu.data || [],
+    talepUrunleri: talepUrunSonucu.data || [],
+    lotlar: lotSonucu.data || [],
+    teslimatFarklari: farkSonucu.data || [],
+    eslesmeler: eslesmeSonucu.data || [],
     kaynakUrunler,
     kaynakUrunHatalari,
     baglantiKodu: typeof kodSonucu.data === 'string'
@@ -178,6 +229,8 @@ export async function depoAlisiKaydet(restaurantId, form, kalemler) {
       urun_id: kalem.urunId,
       miktar: Number(kalem.miktar || 0),
       birim_fiyat: Number(kalem.birimFiyat || 0),
+      lot_no: String(kalem.lotNo || '').trim() || null,
+      son_kullanma_tarihi: kalem.sonKullanmaTarihi || null,
     })),
   });
 
@@ -226,5 +279,56 @@ export async function depoSubesiniBagla(restaurantId, baglantiKodu) {
   });
 
   hataKontrol(error, 'İşletme bağlantısı kurulamadı.');
+  return data;
+}
+
+export async function depoSevkTalebiOlustur(restaurantId, form, kalemler) {
+  const { data, error } = await supabase.rpc('depo_sevk_talebi_olustur', {
+    p_restaurant_id: restaurantId,
+    p_depo_restaurant_id: Number(form.depoRestaurantId),
+    p_hedef_stok_tipi: form.hedefStokTipi,
+    p_not_metni: String(form.notMetni || '').trim() || null,
+    p_kalemler: kalemler.map(kalem => ({
+      urun_id: kalem.urunId,
+      miktar: Number(kalem.miktar || 0),
+    })),
+  });
+  hataKontrol(error, 'Depo sevk talebi oluşturulamadı.');
+  return data;
+}
+
+export async function depoTalebiniSevkeDonustur(restaurantId, talepId) {
+  const { data, error } = await supabase.rpc('depo_talebini_sevke_donustur', {
+    p_restaurant_id: restaurantId,
+    p_talep_id: talepId,
+  });
+  hataKontrol(error, 'Depo talebi sevke dönüştürülemedi.');
+  return data;
+}
+
+export async function depoSevkTalebiniKapat(restaurantId, talepId, durum, cevapNotu = '') {
+  const { data, error } = await supabase.rpc('depo_sevk_talebi_kapat', {
+    p_restaurant_id: restaurantId,
+    p_talep_id: talepId,
+    p_durum: durum,
+    p_cevap_notu: String(cevapNotu || '').trim() || null,
+  });
+  hataKontrol(error, 'Depo talebi kapatılamadı.');
+  return data;
+}
+
+export async function depoSevkiniKismiTeslimAl(restaurantId, sevkId, kalemler) {
+  const { data, error } = await supabase.rpc('depo_sevkini_kismi_teslim_al', {
+    p_restaurant_id: restaurantId,
+    p_sevk_id: sevkId,
+    p_kalemler: kalemler.map(kalem => ({
+      kalem_id: kalem.kalemId,
+      teslim_alinan_miktar: Number(kalem.teslimAlinanMiktar || 0),
+      hasarli_miktar: Number(kalem.hasarliMiktar || 0),
+      hedef_urun_id: kalem.hedefUrunId || null,
+      teslim_notu: String(kalem.teslimNotu || '').trim() || null,
+    })),
+  });
+  hataKontrol(error, 'Sevk teslimi tamamlanamadı.');
   return data;
 }
