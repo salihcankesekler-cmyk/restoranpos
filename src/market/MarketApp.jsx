@@ -2146,6 +2146,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               {!satisUrunleri.length && <p className="market-empty">{satisArama.trim() ? 'Tüm ürünlerde aramaya uygun kayıt bulunamadı.' : 'Bu grupta ürün bulunamadı.'}</p>}
             </div>
           </div>
+          <aside className="market-pos-cash-rail" aria-label="Müşterinin verdiği nakit kupürleri">
+            <label><span>VERİLEN</span><strong>{Number(verilenTutar || 0).toLocaleString('tr-TR')} ₺</strong></label>
+            {[1, 5, 10, 20, 50, 100, 200].map(kupur => <button type="button" key={kupur} onClick={() => nakitKupurunuEkle(kupur)}>{kupur} ₺</button>)}
+            <button type="button" className="clear" onClick={() => setVerilenTutar('')} aria-label="Verilen tutarı temizle">C</button>
+          </aside>
         </div>
         <div className="market-card market-checkout">
           <div className="market-heading market-checkout-heading"><div><span>AKTİF SATIŞ</span><h2>{sepet.length} kalem · {miktarYaz(sepet.reduce((toplam, kalem) => toplam + Number(kalem.adet), 0))} ürün</h2></div><strong>{para(sepetToplamlari.netToplam)}</strong></div>
@@ -2187,9 +2192,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               {[4, 5, 6].map(rakam => <button type="button" key={rakam} onClick={() => kasaTusunaBas(rakam)}>{rakam}</button>)}<button type="button" className="control" onClick={() => kasaTusunaBas('sil')}>⌫</button>
               {[1, 2, 3].map(rakam => <button type="button" key={rakam} onClick={() => kasaTusunaBas(rakam)}>{rakam}</button>)}<button type="button" onClick={() => kasaTusunaBas('00')}>00</button>
               <button type="button" className="wide" onClick={() => kasaTusunaBas(0)}>0</button><button type="button" className="wide" onClick={() => kasaTusunaBas('.')}>.</button>
-            </div>
-            <div className="market-pos-cash-buttons" aria-label="Hızlı nakit kupürleri">
-              {[5, 10, 20, 50, 100, 200].map(kupur => <button type="button" key={kupur} onClick={() => nakitKupurunuEkle(kupur)}>+{kupur} ₺</button>)}
             </div>
           </div>
           <div className="market-change-calculator">
