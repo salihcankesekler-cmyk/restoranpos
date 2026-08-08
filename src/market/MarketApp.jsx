@@ -321,7 +321,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const [satisArama, setSatisArama] = useState('');
   const [sepet, setSepet] = useState([]);
   const [verilenTutar, setVerilenTutar] = useState('');
-  const [kasaTusModu, setKasaTusModu] = useState('adet');
   const [odemeParcalari, setOdemeParcalari] = useState([]);
   const [onFisYazdiriliyor, setOnFisYazdiriliyor] = useState(false);
   const [genelIndirim, setGenelIndirim] = useState({ yon: 'azalt', tur: 'yuzde', deger: '' });
@@ -1163,21 +1162,9 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   };
 
   const kasaTusunaBas = tus => {
-    if (kasaTusModu === 'adet') {
-      if (tus === 'C') satisAdediTuslariniTemizle();
-      else if (tus === 'sil') satisAdediTusunuSil();
-      else if (tus !== '.') satisAdediRakaminiGir(tus);
-      return;
-    }
-
-    setVerilenTutar(onceki => {
-      const mevcut = String(onceki || '');
-      if (tus === 'C') return '';
-      if (tus === 'sil') return mevcut.slice(0, -1);
-      if (tus === '.') return mevcut.includes('.') ? mevcut : `${mevcut || '0'}.`;
-      const yeniDeger = mevcut === '0' ? String(tus) : `${mevcut}${tus}`;
-      return yeniDeger.slice(0, 10);
-    });
+    if (tus === 'C') satisAdediTuslariniTemizle();
+    else if (tus === 'sil') satisAdediTusunuSil();
+    else if (tus !== '.') satisAdediRakaminiGir(tus);
   };
 
   const secilenUrunuSepeteEkle = urun => {
@@ -2178,9 +2165,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor || odemeBasladi} onClick={() => setBekleyenSepetPenceresi('kaydet')}><span>⏸</span><b>Beklet</b><small>F5</small></button>
             <button type="button" className={bekleyenSepetler.length ? 'active' : ''} disabled={bekleyenSepetIsleniyor} onClick={() => setBekleyenSepetPenceresi('liste')}><span>▶</span><b>Bekleyen</b><small>{bekleyenSepetler.length} fiş</small></button>
             <button type="button" className="danger" disabled={!sepet.length || bekleyenSepetIsleniyor} onClick={() => satisSepetiniTemizle(false)}><span>×</span><b>Fiş İptal</b></button>
-            <button type="button" className="payment cash" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}><span>💵</span><b>Nakit</b><small>F1</small></button>
-            <button type="button" className="payment card" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}><span>💳</span><b>Kart</b><small>F2</small></button>
-            <button type="button" className="payment credit" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}><span>👤</span><b>Cari</b><small>F3</small></button>
           </aside>
           {!sepet.length ? <div className="market-cart-empty"><strong>Satışa hazır</strong><span>Barkodu okutun veya ürün listesinden seçim yapın.</span></div> :
             <div className="market-table market-cart-table"><table><thead><tr><th>Ürün</th><th>Adet</th><th>Toplam</th><th></th></tr></thead><tbody>
@@ -2195,11 +2179,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           </div>
           <div className="market-pos-touch-console">
             <div className="market-pos-keypad-display">
-              <div role="group" aria-label="Tuş takımı kullanım alanı">
-                <button type="button" className={kasaTusModu === 'adet' ? 'active' : ''} onClick={() => setKasaTusModu('adet')}>ADET</button>
-                <button type="button" className={kasaTusModu === 'tutar' ? 'active' : ''} onClick={() => setKasaTusModu('tutar')}>VERİLEN ₺</button>
-              </div>
-              <strong>{kasaTusModu === 'adet' ? (satisAdedi || '0') : `${Number(verilenTutar || 0).toLocaleString('tr-TR')} ₺`}</strong>
+              <span><small>ADET</small><strong>{satisAdedi || '0'}</strong></span>
+              <span><small>VERİLEN</small><strong>{Number(verilenTutar || 0).toLocaleString('tr-TR')} ₺</strong></span>
             </div>
             <div className="market-pos-keypad" aria-label="Dokunmatik sayı tuş takımı">
               {[7, 8, 9].map(rakam => <button type="button" key={rakam} onClick={() => kasaTusunaBas(rakam)}>{rakam}</button>)}<button type="button" className="clear" onClick={() => kasaTusunaBas('C')}>C</button>
@@ -2208,7 +2189,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               <button type="button" className="wide" onClick={() => kasaTusunaBas(0)}>0</button><button type="button" className="wide" onClick={() => kasaTusunaBas('.')}>.</button>
             </div>
             <div className="market-pos-cash-buttons" aria-label="Hızlı nakit kupürleri">
-              {[5, 10, 20, 50, 100, 200].map(kupur => <button type="button" key={kupur} onClick={() => { setKasaTusModu('tutar'); nakitKupurunuEkle(kupur); }}>+{kupur} ₺</button>)}
+              {[5, 10, 20, 50, 100, 200].map(kupur => <button type="button" key={kupur} onClick={() => nakitKupurunuEkle(kupur)}>+{kupur} ₺</button>)}
             </div>
           </div>
           <div className="market-change-calculator">
@@ -2222,6 +2203,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
               <button type="button" onClick={odemeleriGeriAl}>Ödemeleri Geri Al</button>
             </div>}
           </div>
+          <div className="market-payment-buttons"><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}><kbd>F1</kbd>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}><kbd>F2</kbd>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}><kbd>F3</kbd>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
           <p className="market-note">Tutar yazıp ödeme türüne basın. Hesap tamamen ödenene kadar fiş açık kalır; boş bırakırsanız kalan tutarın tamamı seçilen yöntemle alınır.</p>
         </div>
         {satisCariPenceresi && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Satış carisi seç">

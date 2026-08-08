@@ -2397,7 +2397,7 @@
 }
 .market-pos-practical .market-catalog{
   display:grid;
-  grid-template-columns:88px minmax(0,1fr);
+  grid-template-columns:74px minmax(0,1fr);
   grid-template-rows:minmax(0,1fr);
   gap:1px;
   overflow:hidden;
@@ -2408,13 +2408,15 @@
   grid-row:1;
   gap:1px;
   padding:0;
+  justify-content:flex-start;
   background:#0f172a;
 }
 .market-pos-practical .market-group-tabs button{
-  min-height:48px;
-  flex:1 0 48px;
+  min-height:38px;
+  flex:0 0 38px;
+  padding:3px 2px;
   border-radius:0;
-  font-size:9px;
+  font-size:8px;
 }
 .market-pos-product-panel{
   grid-column:2;
@@ -2426,20 +2428,21 @@
 .market-pos-unified-search{height:37px;border-radius:3px}
 .market-pos-practical .market-sale-products{
   grid-template-columns:repeat(4,minmax(0,1fr));
-  grid-auto-rows:minmax(154px,1fr);
+  grid-auto-rows:150px;
   gap:1px;
-  align-content:stretch;
+  align-content:start;
 }
 .market-pos-practical .market-sale-products>button{
-  min-height:154px;
-  grid-template-rows:90px auto auto;
+  height:150px;
+  min-height:0;
+  grid-template-rows:84px minmax(0,1fr) auto;
   border-top-width:3px;
 }
-.market-sale-product-visual{height:90px}
+.market-sale-product-visual{height:84px}
 .market-pos-practical .market-checkout{
   display:grid;
   grid-template-columns:minmax(0,1fr) 76px;
-  grid-template-rows:52px minmax(170px,1fr) auto auto auto auto;
+  grid-template-rows:52px minmax(170px,1fr) auto auto auto auto auto;
   gap:1px;
   overflow:hidden;
   padding:0;
@@ -2475,8 +2478,8 @@
 }
 .market-pos-practical .market-pos-action-rail{
   grid-column:2;
-  grid-row:2/7;
-  grid-template-rows:repeat(10,minmax(45px,1fr));
+  grid-row:2/8;
+  grid-template-rows:repeat(7,minmax(45px,1fr));
   gap:1px;
   background:#cbd5e1;
 }
@@ -2487,18 +2490,11 @@
   padding:3px 2px;
   background:#f8fafc;
 }
-.market-pos-practical .market-pos-action-rail button.payment{color:#fff}
-.market-pos-practical .market-pos-action-rail button.payment span,
-.market-pos-practical .market-pos-action-rail button.payment small{color:#fff}
-.market-pos-practical .market-pos-action-rail button.payment.cash{background:#059669}
-.market-pos-practical .market-pos-action-rail button.payment.card{background:#2563eb}
-.market-pos-practical .market-pos-action-rail button.payment.credit{background:#7c3aed}
-.market-pos-practical .market-pos-action-rail button.payment:hover{filter:brightness(1.08)}
 .market-pos-touch-console{
   display:grid;
   grid-column:1;
   grid-row:4;
-  grid-template-columns:minmax(0,1fr) 72px;
+  grid-template-columns:72px minmax(0,1fr);
   grid-template-rows:42px minmax(132px,1fr);
   gap:1px;
   min-height:176px;
@@ -2507,20 +2503,20 @@
 .market-pos-keypad-display{
   display:grid;
   grid-column:1/-1;
-  grid-template-columns:auto minmax(0,1fr);
+  grid-template-columns:minmax(82px,.55fr) minmax(120px,1fr);
   align-items:center;
-  gap:6px;
-  padding:3px;
+  gap:1px;
+  padding:0;
   background:#fff;
 }
-.market-pos-keypad-display>div{display:flex;height:34px;border:1px solid #cbd5e1}
-.market-pos-keypad-display button{border:0;border-right:1px solid #cbd5e1;padding:0 8px;background:#f8fafc;color:#475569;font-size:8px;font-weight:950;cursor:pointer}
-.market-pos-keypad-display button:last-child{border-right:0}
-.market-pos-keypad-display button.active{background:#f97316;color:#fff}
-.market-pos-keypad-display>strong{min-width:0;overflow:hidden;color:#0f172a;font-size:22px;text-align:right;text-overflow:ellipsis;white-space:nowrap}
+.market-pos-keypad-display>span{display:flex;min-width:0;height:42px;align-items:center;justify-content:space-between;gap:5px;padding:0 8px;background:#fff}
+.market-pos-keypad-display>span:first-child{background:#f97316;color:#fff}
+.market-pos-keypad-display small{font-size:8px;font-weight:950;letter-spacing:.06em}
+.market-pos-keypad-display strong{min-width:0;overflow:hidden;font-size:18px;text-align:right;text-overflow:ellipsis;white-space:nowrap}
+.market-pos-keypad-display>span:last-child strong{color:#0f172a;font-size:21px}
 .market-pos-keypad{
   display:grid;
-  grid-column:1;
+  grid-column:2;
   grid-row:2;
   grid-template-columns:repeat(4,1fr);
   grid-template-rows:repeat(4,1fr);
@@ -2534,7 +2530,7 @@
 .market-pos-keypad button.wide{grid-column:span 2}
 .market-pos-cash-buttons{
   display:grid;
-  grid-column:2;
+  grid-column:1;
   grid-row:2;
   grid-template-rows:repeat(6,1fr);
   gap:1px;
@@ -2549,12 +2545,24 @@
 }
 .market-pos-practical>.market-checkout>.market-note{
   grid-column:1;
-  grid-row:6;
+  grid-row:7;
   margin:0;
   padding:3px 6px;
   background:#fff;
 }
-.market-pos-practical .market-payment-buttons{display:none}
+.market-pos-practical .market-payment-buttons{
+  display:grid;
+  grid-column:1;
+  grid-row:6;
+  grid-template-columns:repeat(3,1fr);
+  gap:1px;
+  margin:0;
+}
+.market-pos-practical .market-payment-buttons button{
+  min-height:52px;
+  border-radius:0;
+  padding:5px;
+}
 
 @media(max-width:1180px){
   .market-pos-practical{grid-template-columns:minmax(530px,1.25fr) minmax(410px,1fr)}
@@ -2566,9 +2574,11 @@
   .market-pos-practical .market-checkout{min-height:680px}
 }
 @media(max-width:640px){
-  .market-pos-practical .market-catalog{grid-template-columns:70px minmax(0,1fr)}
-  .market-pos-practical .market-sale-products{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(148px,auto)}
-  .market-pos-practical .market-checkout{grid-template-columns:minmax(0,1fr) 68px;grid-template-rows:52px minmax(230px,auto) auto auto auto auto}
-  .market-pos-practical .market-pos-action-rail{grid-column:2;grid-row:2/7;grid-template-columns:1fr;grid-template-rows:repeat(10,minmax(44px,1fr))}
-  .market-pos-touch-console{min-height:190px;grid-template-columns:minmax(0,1fr) 62px}
+  .market-pos-practical .market-catalog{grid-template-columns:62px minmax(0,1fr)}
+  .market-pos-practical .market-sale-products{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:142px}
+  .market-pos-practical .market-sale-products>button{height:142px;grid-template-rows:78px minmax(0,1fr) auto}
+  .market-sale-product-visual{height:78px}
+  .market-pos-practical .market-checkout{grid-template-columns:minmax(0,1fr) 68px;grid-template-rows:52px minmax(230px,auto) auto auto auto auto auto}
+  .market-pos-practical .market-pos-action-rail{grid-column:2;grid-row:2/8;grid-template-columns:1fr;grid-template-rows:repeat(7,minmax(44px,1fr))}
+  .market-pos-touch-console{min-height:190px;grid-template-columns:62px minmax(0,1fr)}
 }
