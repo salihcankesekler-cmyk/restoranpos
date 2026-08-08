@@ -501,16 +501,44 @@ export async function marketAlisFaturasiKaydet(restaurantId, fatura) {
 
 export async function marketAlisFaturasiSil(restaurantId, faturaId) {
   await marketOturumunuDogrula();
-  const { data, error } = await supabase.rpc('market_alis_faturasi_sil_atomik', {
+  const { data, error } = await supabase.rpc('market_alis_faturasi_sil_v2_atomik', {
     p_restaurant_id: Number(restaurantId),
     p_fatura_id: faturaId,
   });
   if (error) {
     const fonksiyonEksik = ['42883', 'PGRST202'].includes(error.code)
-      || String(error.message || '').includes('market_alis_faturasi_sil_atomik');
+      || String(error.message || '').includes('market_alis_faturasi_sil_v2_atomik');
     if (fonksiyonEksik) {
       throw new Error('Alış faturası silme SQL’i eksik. Supabase SQL Editor içinde 20260726_market_invoice_delete.sql dosyasını çalıştırın.');
     }
+    throw marketHatasi(error);
+  }
+  return data;
+}
+
+export async function marketAlisFaturasiKaydetAtomik(restaurantId, fatura, islemAnahtari = '') {
+  await marketOturumunuDogrula();
+  const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()
+    || `00000000-0000-4000-8000-${String(Date.now()).slice(-12).padStart(12, '0')}`;
+  const { data, error } = await supabase.rpc('market_alis_faturasi_kaydet_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_fatura_id: fatura.id || null,
+    p_cari_id: fatura.cariId ? String(fatura.cariId) : null,
+    p_tedarikci_adi: String(fatura.tedarikciAdi || '').trim() || null,
+    p_fatura_no: String(fatura.faturaNo || '').trim() || null,
+    p_fatura_tarihi: fatura.faturaTarihi,
+    p_kalemler: fatura.kalemler.map(kalem => ({
+      id: kalem.urunId,
+      miktar: Number(kalem.miktar || 0),
+      alis_fiyati: Number(kalem.alisFiyati || 0),
+      kdv_orani: Number(kalem.kdvOrani || 0),
+    })),
+    p_islem_anahtari: guvenliIslemAnahtari,
+  });
+  if (error) {
+    const rpcEksik = ['42883', 'PGRST202'].includes(error.code)
+      || String(error.message || '').includes('market_alis_faturasi_kaydet_atomik');
+    if (rpcEksik) throw new Error('Güvenli market alış faturası SQL’i eksik. Güncel Supabase migration dosyasını çalıştırın.');
     throw marketHatasi(error);
   }
   return data;

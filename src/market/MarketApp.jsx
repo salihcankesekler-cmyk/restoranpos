@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import JsBarcode from 'jsbarcode';
 import {
-  marketAlisFaturasiKaydet,
+  marketAlisFaturasiKaydetAtomik,
   marketAlisFaturasiSil,
   marketBekleyenSepetiKaydet,
   marketBekleyenSepetiSil,
@@ -353,6 +353,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const satisIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
   const iadeIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
   const sayimIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
+  const faturaIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
 
   const bildir = (mesaj, tip = 'info') => {
     if (typeof notify === 'function') notify(mesaj, tip);
@@ -1539,11 +1540,31 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   }, [fatura.kalemler]);
 
   const faturaKaydet = async () => {
-    if (!fatura.tedarikciAdi.trim() || fatura.kalemler.length === 0) return bildir('Tedarikçi ve en az bir kalem gereklidir.', 'warning');
+    if (!yetkiyiDogrula('urun_yonet', 'Alış faturası kaydetmek için ürün yönetme yetkisi gerekir.')) return;
+    if ((!fatura.cariId && !fatura.tedarikciAdi.trim()) || fatura.kalemler.length === 0) return bildir('Tedarikçi ve en az bir kalem gereklidir.', 'warning');
+    const islemImzasi = JSON.stringify({
+      id: fatura.id || '',
+      cariId: fatura.cariId || '',
+      tedarikciAdi: fatura.tedarikciAdi.trim(),
+      faturaNo: fatura.faturaNo.trim(),
+      faturaTarihi: fatura.faturaTarihi,
+      kalemler: fatura.kalemler.map(kalem => [kalem.urunId, Number(kalem.miktar), Number(kalem.alisFiyati), Number(kalem.kdvOrani)]),
+    });
+    if (faturaIslemAnahtariRef.current.imza !== islemImzasi) {
+      faturaIslemAnahtariRef.current = {
+        anahtar: globalThis.crypto.randomUUID(),
+        imza: islemImzasi,
+      };
+    }
     try {
       const duzenlemeMi = Boolean(fatura.id);
-      await marketAlisFaturasiKaydet(restaurantId, { ...fatura, ...faturaToplamlari });
+      await marketAlisFaturasiKaydetAtomik(
+        restaurantId,
+        { ...fatura, ...faturaToplamlari },
+        faturaIslemAnahtariRef.current.anahtar,
+      );
       setFatura(bosFatura());
+      faturaIslemAnahtariRef.current = { anahtar: '', imza: '' };
       await verileriYukle(true);
       bildir(duzenlemeMi ? 'Fatura ve stok farkları güncellendi.' : 'Fatura kaydedildi ve stoklar artırıldı.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
