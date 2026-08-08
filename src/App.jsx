@@ -7,12 +7,27 @@ import {
   sistemIslemKaydiEkle,
   sistemOlayiKaydet,
 } from './services/systemService';
-import { restoranAdisyonOdemeAtomik } from './services/restaurantSaleService';
+import {
+  restoranAdisyonOdemeAtomik,
+  restoranAlisFisiAtomik,
+  restoranAlisFisleriniGetir,
+  restoranIadeKaydiAtomik,
+} from './services/restaurantSaleService';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
 const DepoApp = React.lazy(() => import('./depo/DepoApp'));
 const KuaforApp = React.lazy(() => import('./kuafor/KuaforApp'));
 const SystemCenter = React.lazy(() => import('./system/SystemCenter'));
+
+const istemciIslemAnahtariOlustur = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, karakter => {
+    const rastgele = Math.floor(Math.random() * 16);
+    const deger = karakter === 'x' ? rastgele : (rastgele & 0x3) | 0x8;
+    return deger.toString(16);
+  });
+};
 
 export default function App() {
   return (
@@ -711,6 +726,7 @@ Toplam Ciro: {toplam}
   const [iadeUrunId, setIadeUrunId] = useState('');
   const [iadeAdet, setIadeAdet] = useState(1);
   const [iadeTutar, setIadeTutar] = useState('');
+  const [iadeStogaAl, setIadeStogaAl] = useState(true);
 
   // rezervasyon ekranı için kullanılan kod
   const [rezervasyonlar, setRezervasyonlar] = useState([]);
@@ -871,6 +887,8 @@ Toplam Ciro: {toplam}
   const [selectedMasaId, setSelectedMasaId] = useState(null);
   const selectedMasaIdRef = useRef(null);
   const odemeIslemAnahtarlariRef = useRef({});
+  const alisFisIslemAnahtarlariRef = useRef({});
+  const iadeIslemAnahtarlariRef = useRef({});
 
   useEffect(() => {
     selectedMasaIdRef.current = selectedMasaId;
@@ -3870,11 +3888,8 @@ Toplam Ciro: {toplam}
     const toplam = paraYuvarla(kalemler.reduce((t, k) => t + Number(k.toplam || 0), 0));
     const seciliAlisCari = (Array.isArray(cariMusteriler) ? cariMusteriler : []).find(c => String(c.id) === String(alisFisCariMusteriId));
 
-    const fis = {
-      id: `alis-${Date.now()}`,
-      restaurantId: mevcutRestaurantId,
+    const fisVerisi = {
       cariMusteriId: seciliAlisCari?.id || null,
-      cariMusteriAdi: seciliAlisCari?.ad || '',
       tedarikci: alisFisTedarikci || seciliAlisCari?.ad || 'Tedarikçi belirtilmedi',
       belgeNo: alisFisBelgeNo || '',
       odemeTipi: alisFisOdemeTipi || 'Nakit',
@@ -3884,116 +3899,56 @@ Toplam Ciro: {toplam}
       kalemler,
       giderOlarakIslendi: Boolean(alisFisGiderOlarakIsle),
       tarih: new Date().toISOString(),
-      durum: 'Stoğa İşlendi',
+    };
+    const islemImzasi = `${mevcutRestaurantId}|${fisVerisi.belgeNo}|${fisVerisi.tedarikci}|${toplam}|${kalemler.map(k => `${k.kalemTipi}:${k.malzemeId || k.urunId}:${k.miktar}:${k.birimFiyat}`).join(',')}`;
+    let islemAnahtari = alisFisIslemAnahtarlariRef.current[islemImzasi];
+    if (!islemAnahtari) {
+      islemAnahtari = istemciIslemAnahtariOlustur();
+      alisFisIslemAnahtarlariRef.current[islemImzasi] = islemAnahtari;
+    }
+
+    let sonuc;
+    try {
+      sonuc = await restoranAlisFisiAtomik({
+        restaurantId: mevcutRestaurantId,
+        islemAnahtari,
+        fis: fisVerisi,
+        kalemler,
+      });
+    } catch (error) {
+      console.error('Güvenli alış fişi kaydı hatası:', error);
+      alert('Alış fişi kaydedilemedi: ' + error.message);
+      return;
+    }
+
+    delete alisFisIslemAnahtarlariRef.current[islemImzasi];
+    const kayit = sonuc.fis;
+    const kaydedilenFis = {
+      id: kayit.id,
+      restaurantId: kayit.restaurant_id,
+      cariMusteriId: kayit.cari_musteri_id || null,
+      cariMusteriAdi: seciliAlisCari?.ad || '',
+      tedarikci: kayit.tedarikci,
+      belgeNo: kayit.belge_no || '',
+      odemeTipi: kayit.odeme_tipi || 'Nakit',
+      giderKategorisi: kayit.gider_kategorisi || 'Malzeme',
+      notu: kayit.notu || '',
+      toplam: Number(kayit.toplam || 0),
+      kalemler,
+      giderOlarakIslendi: Boolean(kayit.gider_olarak_islendi),
+      tarih: kayit.tarih || kayit.created_at,
+      durum: kayit.durum || 'Stoğa İşlendi',
     };
 
-    const guncellenenMalzemeKalemleri = [];
-    const guncellenenUrunKalemleri = [];
+    setAlisFisleri(prev => [kaydedilenFis, ...(Array.isArray(prev) ? prev : []).filter(f => String(f.id) !== String(kaydedilenFis.id))]);
 
-    for (const kalem of kalemler) {
-      const kalemTipi = String(kalem.kalemTipi || 'malzeme');
+    Promise.all([
+      stokMalzemeleriniSupabasedenCek(mevcutRestaurantId),
+      menuUrunleriniSupabasedenCek(mevcutRestaurantId),
+      giderleriSupabasedenCek(mevcutRestaurantId),
+      cariMusterileriSupabasedenCek(mevcutRestaurantId),
+    ]).catch(error => console.error('Alış fişi sonrası ekran verileri yenilenemedi:', error));
 
-      if (kalemTipi === 'urun') {
-        const urun = (Array.isArray(menuUrunleri) ? menuUrunleri : []).find(u => String(u.id) === String(kalem.urunId));
-        if (!urun) continue;
-
-        const yeniStok = paraYuvarla(Number(urun.stokAdedi || 0) + Number(kalem.miktar || 0));
-        const yeniMaliyet = Number(kalem.birimFiyat || 0) > 0 ? Number(kalem.birimFiyat || 0) : Number(urun.maliyet || 0);
-
-        const { data, error } = await supabase
-          .from('menu_urunleri')
-          .update({ stok_takip: true, stok_adedi: yeniStok, maliyet: yeniMaliyet })
-          .eq('id', kalem.urunId)
-          .eq('restaurant_id', mevcutRestaurantId)
-          .select()
-          .single();
-
-        if (error) {
-          alert(`${kalem.malzemeAdi} ürün stoğuna işlenemedi: ${error.message}`);
-          return;
-        }
-
-        guncellenenUrunKalemleri.push({ kalem, data, yeniStok, yeniMaliyet });
-        continue;
-      }
-
-      const malzeme = (Array.isArray(stokMalzemeleri) ? stokMalzemeleri : []).find(m => String(m.id) === String(kalem.malzemeId));
-      if (!malzeme) continue;
-
-      const yeniStok = paraYuvarla(stokMalzemeMiktari(malzeme) + Number(kalem.miktar || 0));
-      const yeniBirimMaliyet = Number(kalem.birimFiyat || 0) > 0 ? Number(kalem.birimFiyat || 0) : Number(malzeme.birimMaliyet || 0);
-
-      const { data, error } = await supabase
-        .from('stok_malzemeleri')
-        .update({ stok_miktari: yeniStok, birim_maliyet: yeniBirimMaliyet })
-        .eq('id', kalem.malzemeId)
-        .eq('restaurant_id', mevcutRestaurantId)
-        .select()
-        .single();
-
-      if (error) {
-        alert(`${kalem.malzemeAdi} stoğa işlenemedi: ${error.message}`);
-        return;
-      }
-
-      await supabase.from('stok_hareketleri').insert([{
-        restaurant_id: mevcutRestaurantId,
-        malzeme_id: kalem.malzemeId,
-        tip: 'Giriş',
-        miktar: Number(kalem.miktar || 0),
-        aciklama: `Alış fişi ${fis.belgeNo || fis.id} - ${fis.tedarikci}`,
-      }]);
-
-      guncellenenMalzemeKalemleri.push({ kalem, data, yeniStok, yeniBirimMaliyet });
-    }
-
-    if (guncellenenMalzemeKalemleri.length > 0) {
-      setStokMalzemeleri(prev => (Array.isArray(prev) ? prev : []).map(m => {
-        const guncel = guncellenenMalzemeKalemleri.find(k => String(k.kalem.malzemeId) === String(m.id));
-        if (!guncel) return m;
-        return {
-          ...m,
-          stokMiktari: Number(guncel.data?.stok_miktari ?? guncel.yeniStok),
-          birimMaliyet: Number(guncel.data?.birim_maliyet ?? guncel.yeniBirimMaliyet),
-        };
-      }));
-    }
-
-    if (guncellenenUrunKalemleri.length > 0) {
-      setMenuUrunleri(prev => (Array.isArray(prev) ? prev : []).map(u => {
-        const guncel = guncellenenUrunKalemleri.find(k => String(k.kalem.urunId) === String(u.id));
-        if (!guncel) return u;
-        return {
-          ...u,
-          stokTakip: true,
-          stokAdedi: Number(guncel.data?.stok_adedi ?? guncel.yeniStok),
-          maliyet: Number(guncel.data?.maliyet ?? guncel.yeniMaliyet),
-        };
-      }));
-    }
-
-    if (alisFisGiderOlarakIsle && toplam > 0) {
-      const bugun = new Date().toISOString().split('T')[0];
-      const aciklama = `Alış fişi${fis.belgeNo ? ` ${fis.belgeNo}` : ''} - ${fis.tedarikci}`;
-      const { data, error } = await supabase
-        .from('giderler')
-        .insert([{ restaurant_id: mevcutRestaurantId, tarih: bugun, kategori: fis.giderKategorisi, aciklama, tutar: toplam }])
-        .select()
-        .single();
-
-      if (!error && data) {
-        setGiderler(prev => [{ id: data.id, restaurantId: data.restaurant_id, tarih: data.tarih, kategori: data.kategori, aciklama: data.aciklama || '', tutar: Number(data.tutar || 0), createdAt: data.created_at, gunSonuKapandi: false, gunSonuRaporId: null }, ...(Array.isArray(prev) ? prev : [])]);
-      } else if (error) {
-        console.warn('Alış fişi gider kaydı oluşturulamadı:', error.message);
-      }
-    }
-
-    if (seciliAlisCari && alisFisOdemeTipi === 'Cari / Vadeli' && toplam > 0) {
-      const cariAciklama = `Alış fişi${fis.belgeNo ? ` ${fis.belgeNo}` : ''} - ${fis.tedarikci}`;
-      await cariHareketEkle(seciliAlisCari, 'Alacak', toplam, cariAciklama);
-    }
-
-    setAlisFisleri(prev => [fis, ...(Array.isArray(prev) ? prev : [])]);
     setAlisFisKalemleri([]);
     setAlisFisTedarikci('');
     setAlisFisCariMusteriId('');
@@ -6343,10 +6298,54 @@ Toplam Ciro: {toplam}
       adet: Number(i.adet || 1),
       tutar: Number(i.tutar || 0),
       kullaniciAdi: i.kullanici_adi || '',
+      stogaIadeEdildi: Boolean(i.stoga_iade_edildi),
       createdAt: i.created_at,
       gunSonuKapandi: Boolean(i.gun_sonu_kapatildi || i.gunsonu_kapandi),
       gunSonuRaporId: i.gun_sonu_rapor_id || i.gunsonu_rapor_id || null,
     })));
+  };
+
+  // restoran alış fişlerini tüm cihazlarda ortak göstermek için Supabase'den çeken kod
+  const restoranAlisFisleriniSupabasedenCek = async (restaurantId) => {
+    try {
+      const kayitlar = await restoranAlisFisleriniGetir(restaurantId);
+      const sunucuFisleri = kayitlar.map(f => ({
+        id: f.id,
+        restaurantId: f.restaurant_id,
+        cariMusteriId: f.cari_musteri_id || null,
+        cariMusteriAdi: '',
+        tedarikci: f.tedarikci || 'Tedarikçi belirtilmedi',
+        belgeNo: f.belge_no || '',
+        odemeTipi: f.odeme_tipi || 'Nakit',
+        giderKategorisi: f.gider_kategorisi || 'Malzeme',
+        notu: f.notu || '',
+        toplam: Number(f.toplam || 0),
+        giderOlarakIslendi: Boolean(f.gider_olarak_islendi),
+        tarih: f.tarih || f.created_at,
+        durum: f.durum || 'Stoğa İşlendi',
+        kalemler: (Array.isArray(f.restoran_alis_fis_kalemleri) ? f.restoran_alis_fis_kalemleri : []).map(k => ({
+          id: k.id,
+          kalemTipi: k.kalem_tipi,
+          malzemeId: k.malzeme_id,
+          urunId: k.urun_id,
+          malzemeAdi: k.kalem_adi,
+          birim: k.birim || 'adet',
+          miktar: Number(k.miktar || 0),
+          birimFiyat: Number(k.birim_fiyat || 0),
+          toplam: Number(k.toplam || 0),
+        })),
+      }));
+
+      setAlisFisleri(prev => {
+        const sunucuIdleri = new Set(sunucuFisleri.map(f => String(f.id)));
+        const eskiYerelFisler = (Array.isArray(prev) ? prev : []).filter(f =>
+          String(f.id || '').startsWith('alis-') && !sunucuIdleri.has(String(f.id))
+        );
+        return [...sunucuFisleri, ...eskiYerelFisler];
+      });
+    } catch (error) {
+      console.warn('Restoran alış fişleri yüklenemedi:', error.message);
+    }
   };
 
   // rezervasyonları Supabase'den çeken kod
@@ -8104,13 +8103,7 @@ Toplam Ciro: {toplam}
     let islemAnahtari = odemeIslemAnahtarlariRef.current[odemeImzasi];
 
     if (!islemAnahtari) {
-      islemAnahtari = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, karakter => {
-            const rastgele = Math.floor(Math.random() * 16);
-            const deger = karakter === 'x' ? rastgele : (rastgele & 0x3) | 0x8;
-            return deger.toString(16);
-          });
+      islemAnahtari = istemciIslemAnahtariOlustur();
       odemeIslemAnahtarlariRef.current[odemeImzasi] = islemAnahtari;
     }
 
@@ -10840,33 +10833,49 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    const bugun = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
-      .from('iade_kayitlari')
-      .insert([{
-        restaurant_id: mevcutRestaurantId,
-        tarih: bugun,
+    if (!adet || adet <= 0) {
+      alert('Geçerli bir adet girin.');
+      return;
+    }
+
+    const stogaIade = iadeTipi === 'İade' && Boolean(iadeStogaAl);
+    const islemImzasi = `${mevcutRestaurantId}|${iadeTipi}|${iadeSebebi}|${urun.id}|${adet}|${tutar}|${stogaIade}`;
+    let islemAnahtari = iadeIslemAnahtarlariRef.current[islemImzasi];
+    if (!islemAnahtari) {
+      islemAnahtari = istemciIslemAnahtariOlustur();
+      iadeIslemAnahtarlariRef.current[islemImzasi] = islemAnahtari;
+    }
+
+    let sonuc;
+    try {
+      sonuc = await restoranIadeKaydiAtomik({
+        restaurantId: mevcutRestaurantId,
+        islemAnahtari,
+        urunId: urun.id,
         tip: iadeTipi,
         sebep: iadeSebebi,
-        urun_id: urun.id,
-        urun_adi: urun.ad,
         adet,
         tutar,
-        kullanici_adi: user?.waiterName || user?.restaurant || user?.email || '',
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('İade/ikram kaydı eklenemedi:', error);
+        kullaniciAdi: user?.waiterName || user?.restaurant || user?.email || '',
+        stogaIade,
+      });
+    } catch (error) {
+      console.error('Güvenli iade/ikram kaydı eklenemedi:', error);
       alert('Kayıt eklenemedi: ' + error.message);
       return;
     }
 
-    setIadeKayitlari([{ id: data.id, restaurantId: data.restaurant_id, tarih: data.tarih, tip: data.tip, sebep: data.sebep, urunId: data.urun_id, urunAdi: data.urun_adi, adet: Number(data.adet || 1), tutar: Number(data.tutar || 0), kullaniciAdi: data.kullanici_adi || '', createdAt: data.created_at, gunSonuKapandi: false, gunSonuRaporId: null }, ...iadeKayitlari]);
+    delete iadeIslemAnahtarlariRef.current[islemImzasi];
+    const data = sonuc.kayit;
+
+    setIadeKayitlari(prev => [{ id: data.id, restaurantId: data.restaurant_id, tarih: data.tarih, tip: data.tip, sebep: data.sebep, urunId: data.urun_id, urunAdi: data.urun_adi, adet: Number(data.adet || 1), tutar: Number(data.tutar || 0), kullaniciAdi: data.kullanici_adi || '', stogaIadeEdildi: Boolean(data.stoga_iade_edildi), createdAt: data.created_at, gunSonuKapandi: false, gunSonuRaporId: null }, ...(Array.isArray(prev) ? prev : []).filter(i => String(i.id) !== String(data.id))]);
+    if (data.stoga_iade_edildi) {
+      menuUrunleriniSupabasedenCek(mevcutRestaurantId).catch(error => console.error('İade sonrası stok görünümü yenilenemedi:', error));
+    }
     setIadeUrunId('');
     setIadeAdet(1);
     setIadeTutar('');
+    setIadeStogaAl(true);
   };
 
   // rezervasyonda kayıtlı cari müşteri seçilince bilgileri forma dolduran kod
@@ -13866,6 +13875,7 @@ Toplam Ciro: {toplam}
         if (typeof mutfakFisleriniSupabasedenCek === 'function') await mutfakFisleriniSupabasedenCek(aktifRestaurantId);
         if (typeof giderleriSupabasedenCek === 'function') await giderleriSupabasedenCek(aktifRestaurantId);
         if (typeof iadeKayitlariniSupabasedenCek === 'function') await iadeKayitlariniSupabasedenCek(aktifRestaurantId);
+        if (typeof restoranAlisFisleriniSupabasedenCek === 'function') await restoranAlisFisleriniSupabasedenCek(aktifRestaurantId);
         if (typeof rezervasyonlariSupabasedenCek === 'function') await rezervasyonlariSupabasedenCek(aktifRestaurantId);
         if (typeof personelleriSupabasedenCek === 'function') await personelleriSupabasedenCek(aktifRestaurantId);
       }
@@ -14389,6 +14399,11 @@ Toplam Ciro: {toplam}
     localStorage.setItem('integra_alis_fisleri', JSON.stringify(alisFisleri));
   }, [alisFisleri]);
 
+  useEffect(() => {
+    if (!user || screen !== 'dashboard' || !mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return;
+    restoranAlisFisleriniSupabasedenCek(mevcutRestaurantId);
+  }, [user?.id, screen, mevcutRestaurantId]);
+
   // herkese açık QR menü linki açıldığında menü verisini yükleyen kod
   useEffect(() => {
     if (!qrMenuMusteriModu || !qrMenuLinkRestaurantId) return;
@@ -14515,6 +14530,12 @@ Toplam Ciro: {toplam}
         tablo: 'iade_kayitlari',
         yenile: async () => {
           if (typeof iadeKayitlariniSupabasedenCek === 'function') await iadeKayitlariniSupabasedenCek(aktifRestaurantId);
+        },
+      },
+      {
+        tablo: 'restoran_alis_fisleri',
+        yenile: async () => {
+          if (typeof restoranAlisFisleriniSupabasedenCek === 'function') await restoranAlisFisleriniSupabasedenCek(aktifRestaurantId);
         },
       },
       {
@@ -14802,6 +14823,10 @@ Toplam Ciro: {toplam}
 
         if (typeof iadeKayitlariniSupabasedenCek === 'function') {
           await iadeKayitlariniSupabasedenCek(aktifRestaurantId);
+        }
+
+        if (typeof restoranAlisFisleriniSupabasedenCek === 'function') {
+          await restoranAlisFisleriniSupabasedenCek(aktifRestaurantId);
         }
 
         if (typeof rezervasyonlariSupabasedenCek === 'function') {
@@ -20056,6 +20081,15 @@ Toplam Ciro: {toplam}
                   </select>
                   <input type="number" min="1" placeholder="Adet" value={iadeAdet} onChange={e => setIadeAdet(e.target.value)} style={{ ...styles.input, width: '90px', minWidth: '90px' }} />
                   <input type="number" placeholder="Tutar" value={iadeTutar} onChange={e => setIadeTutar(e.target.value)} style={styles.input} />
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', minHeight: '42px', padding: '0 10px', fontSize: '13px', fontWeight: '800', color: '#334155', opacity: iadeTipi === 'İade' ? 1 : 0.55 }}>
+                    <input
+                      type="checkbox"
+                      checked={iadeTipi === 'İade' && iadeStogaAl}
+                      disabled={iadeTipi !== 'İade'}
+                      onChange={e => setIadeStogaAl(e.target.checked)}
+                    />
+                    Stoğa geri al
+                  </label>
                   <button type="submit" style={styles.btnOrange}>Kaydet</button>
                 </form>
 
@@ -20064,7 +20098,7 @@ Toplam Ciro: {toplam}
                 ) : (
                   iadeKayitlari.map(i => (
                     <div key={i.id} style={styles.dataRow}>
-                      <span>{i.tip} — {i.adet}x {i.urunAdi} / {i.sebep}</span>
+                      <span>{i.tip} — {i.adet}x {i.urunAdi} / {i.sebep}{i.stogaIadeEdildi ? ' · Stoğa alındı' : ''}</span>
                       <strong>{i.tutar} TL</strong>
                     </div>
                   ))

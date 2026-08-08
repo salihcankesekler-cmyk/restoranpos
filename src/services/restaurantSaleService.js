@@ -4,7 +4,7 @@ const hataMesaji = (error) => {
   const mesaj = String(error?.message || 'Ödeme işlemi tamamlanamadı.');
 
   if (mesaj.includes('Could not find the function') || mesaj.includes('schema cache')) {
-    return 'Güvenli ödeme servisi Supabase üzerinde hazır değil. Son veritabanı güncellemesini çalıştırın.';
+    return 'Güvenli restoran işlem servisi Supabase üzerinde hazır değil. Son veritabanı güncellemesini çalıştırın.';
   }
 
   return mesaj;
@@ -41,5 +41,65 @@ export async function restoranAdisyonOdemeAtomik({
     throw new Error('Ödeme tamamlandı ancak güncel masa bilgisi alınamadı.');
   }
 
+  return data;
+}
+
+export async function restoranAlisFisleriniGetir(restaurantId, limit = 100) {
+  if (!restaurantId) return [];
+
+  const { data, error } = await supabase
+    .from('restoran_alis_fisleri')
+    .select('*, restoran_alis_fis_kalemleri(*)')
+    .eq('restaurant_id', Number(restaurantId))
+    .order('tarih', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(hataMesaji(error));
+  return Array.isArray(data) ? data : [];
+}
+
+export async function restoranAlisFisiAtomik({
+  restaurantId,
+  islemAnahtari,
+  fis,
+  kalemler,
+}) {
+  const { data, error } = await supabase.rpc('restoran_alis_fisi_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_islem_anahtari: islemAnahtari,
+    p_fis: fis,
+    p_kalemler: kalemler,
+  });
+
+  if (error) throw new Error(hataMesaji(error));
+  if (!data?.fis) throw new Error('Alış fişi kaydedildi ancak fiş bilgisi alınamadı.');
+  return data;
+}
+
+export async function restoranIadeKaydiAtomik({
+  restaurantId,
+  islemAnahtari,
+  urunId,
+  tip,
+  sebep,
+  adet,
+  tutar,
+  kullaniciAdi,
+  stogaIade = false,
+}) {
+  const { data, error } = await supabase.rpc('restoran_iade_kaydi_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_islem_anahtari: islemAnahtari,
+    p_urun_id: Number(urunId),
+    p_tip: tip,
+    p_sebep: sebep,
+    p_adet: Number(adet),
+    p_tutar: Number(tutar),
+    p_kullanici_adi: kullaniciAdi,
+    p_stoga_iade: Boolean(stogaIade),
+  });
+
+  if (error) throw new Error(hataMesaji(error));
+  if (!data?.kayit) throw new Error('İade/ikram kaydı tamamlandı ancak kayıt bilgisi alınamadı.');
   return data;
 }
