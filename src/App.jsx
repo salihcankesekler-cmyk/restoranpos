@@ -556,6 +556,12 @@ Toplam Ciro: {toplam}
 
   // rapor ekranında satış raporu / kapalı adisyonlar sekmesini tutan kod
   const [raporSekmesi, setRaporSekmesi] = useState('satis');
+  const [raporSatisGecmisi, setRaporSatisGecmisi] = useState([]);
+  const [raporGiderGecmisi, setRaporGiderGecmisi] = useState([]);
+  const [raporIadeGecmisi, setRaporIadeGecmisi] = useState([]);
+  const [raporAlisFisGecmisi, setRaporAlisFisGecmisi] = useState([]);
+  const [raporVerileriYukleniyor, setRaporVerileriYukleniyor] = useState(false);
+  const [raporVeriHatasi, setRaporVeriHatasi] = useState('');
 
 
   // paket servis siparişlerini tutan kod
@@ -4631,17 +4637,49 @@ Toplam Ciro: {toplam}
   };
 
   const raporCsvIndir = () => {
-    const satirlar = raporData.liste.map(item => ({
-      Urun: item.ad,
-      Grup: item.menuGrubu,
-      Departman: item.departman,
-      Adet: item.adet,
-      Ciro: item.ciro,
-      Maliyet: item.maliyet,
-      BrutKar: item.kar,
-      Kdv: item.kdvTutari,
-    }));
-    csvIndir(`integra-rapor-${raporTarihi || bugunRaporTarihi}.csv`, satirlar);
+    let satirlar = [];
+
+    if (raporSekmesi === 'gruplar') {
+      satirlar = (raporData.grupOzetleri || []).map(item => ({
+        Grup: item.grupAdi, Adet: item.adet, Ciro: item.ciro,
+        Maliyet: item.maliyet, BrutKar: item.kar, Indirim: item.indirimTutari,
+      }));
+    } else if (raporSekmesi === 'odeme') {
+      satirlar = (raporData.odemeOzetleri || []).map(item => ({
+        OdemeTipi: item.odemeTipi, IslemSayisi: item.islemSayisi, Toplam: item.toplam,
+      }));
+    } else if (raporSekmesi === 'alis_stok') {
+      satirlar = (raporData.raporAlisFisleri || []).map(fis => ({
+        Tarih: String(fis.tarih || '').substring(0, 10),
+        Tedarikci: fis.tedarikci,
+        BelgeNo: fis.belgeNo,
+        OdemeTipi: fis.odemeTipi,
+        Toplam: fis.toplam,
+        Durum: fis.durum,
+      }));
+    } else if (raporSekmesi === 'cari') {
+      satirlar = (raporData.cariHareketleri || []).map(hareket => ({
+        Tarih: hareket.tarih,
+        Cari: hareket.cariAdi,
+        Tip: hareket.tip,
+        OdemeTipi: hareket.odeme_tipi,
+        Aciklama: hareket.aciklama,
+        Tutar: hareket.tutar,
+      }));
+    } else {
+      satirlar = raporData.liste.map(item => ({
+        Urun: item.ad,
+        Grup: item.menuGrubu,
+        Departman: item.departman,
+        Adet: item.adet,
+        Ciro: item.ciro,
+        Maliyet: item.maliyet,
+        BrutKar: item.kar,
+        Kdv: item.kdvTutari,
+      }));
+    }
+
+    csvIndir(`integra-${raporSekmesi}-raporu-${raporTarihi || bugunRaporTarihi}.csv`, satirlar);
   };
 
   const stokCsvIndir = () => {
@@ -5908,6 +5946,159 @@ Toplam Ciro: {toplam}
     }));
 
     setSatisGecmisi(temizSatislar);
+  };
+
+  // rapor ekranında gün sonu yapılmış kayıtlar dahil seçili dönemin tamamını yükleyen kod
+  const raporVerileriniSupabasedenCek = async (restaurantId) => {
+    if (!restaurantId) return;
+
+    const seciliTarih = raporTarihi || new Date().toISOString().split('T')[0];
+    let baslangic = seciliTarih;
+    let bitis = seciliTarih;
+
+    if (reportType === 'aylik') {
+      const [yil, ay] = seciliTarih.substring(0, 7).split('-').map(Number);
+      baslangic = `${yil}-${String(ay).padStart(2, '0')}-01`;
+      bitis = `${yil}-${String(ay).padStart(2, '0')}-${String(new Date(yil, ay, 0).getDate()).padStart(2, '0')}`;
+    } else if (reportType === 'aralik') {
+      baslangic = raporBaslangicTarihi || seciliTarih;
+      bitis = raporBitisTarihi || baslangic;
+      if (baslangic > bitis) [baslangic, bitis] = [bitis, baslangic];
+    }
+
+    setRaporVerileriYukleniyor(true);
+    setRaporVeriHatasi('');
+
+    const raporSayfalariniGetir = async ({ tablo, select = '*', zamanDamgasi = false }) => {
+      const tumKayitlar = [];
+      const sayfaBoyutu = 1000;
+
+      for (let bas = 0; ; bas += sayfaBoyutu) {
+        let sorgu = supabase
+          .from(tablo)
+          .select(select)
+          .eq('restaurant_id', restaurantId);
+
+        sorgu = zamanDamgasi
+          ? sorgu.gte('tarih', `${baslangic}T00:00:00`).lte('tarih', `${bitis}T23:59:59.999`).order('tarih', { ascending: false })
+          : sorgu.gte('tarih', baslangic).lte('tarih', bitis).order('id', { ascending: false });
+
+        const { data, error } = await sorgu.range(bas, bas + sayfaBoyutu - 1);
+        if (error) return { data: [], error };
+
+        const sayfa = Array.isArray(data) ? data : [];
+        tumKayitlar.push(...sayfa);
+        if (sayfa.length < sayfaBoyutu) break;
+      }
+
+      return { data: tumKayitlar, error: null };
+    };
+
+    const [satisSonucu, giderSonucu, iadeSonucu, alisSonucu] = await Promise.all([
+      raporSayfalariniGetir({ tablo: 'satis_gecmisi' }),
+      raporSayfalariniGetir({ tablo: 'giderler' }),
+      raporSayfalariniGetir({ tablo: 'iade_kayitlari' }),
+      raporSayfalariniGetir({ tablo: 'restoran_alis_fisleri', select: '*, restoran_alis_fis_kalemleri(*)', zamanDamgasi: true }),
+    ]);
+
+    const hata = satisSonucu.error || giderSonucu.error || iadeSonucu.error || alisSonucu.error;
+    if (hata) {
+      console.error('Dönem raporu verileri yüklenemedi:', hata);
+      setRaporVeriHatasi(hata.message || 'Rapor verileri yüklenemedi.');
+      setRaporVerileriYukleniyor(false);
+      return;
+    }
+
+    setRaporSatisGecmisi((Array.isArray(satisSonucu.data) ? satisSonucu.data : []).map(s => ({
+      id: s.id,
+      restaurantId: s.restaurant_id,
+      masaId: s.masa_id,
+      masaAdi: s.masa_adi || null,
+      musteriAdi: s.musteri_adi || '',
+      ad: s.ad,
+      urunId: s.urun_id || null,
+      fiyat: Number(s.fiyat || 0),
+      adet: Number(s.adet || 1),
+      tarih: s.tarih || String(s.created_at || '').split('T')[0],
+      not: s.urun_notu || '',
+      ekstraUcret: Number(s.ekstra_ucret || 0),
+      normalFiyat: Number(s.normal_fiyat || s.fiyat || 0),
+      listeFiyati: Number(s.liste_fiyati || s.normal_fiyat || s.fiyat || 0),
+      satisFiyati: Number(s.satis_fiyati || s.fiyat || 0),
+      indirimYuzde: Number(s.indirim_yuzde || 0),
+      indirimTutari: Number(s.indirim_tutari || 0),
+      fiyatDegistirildi: Boolean(s.fiyat_degistirildi),
+      ikram: Boolean(s.ikram),
+      maliyet: Number(s.maliyet || 0),
+      toplamMaliyet: Number(s.toplam_maliyet || 0),
+      menuGrubu: s.menu_grubu || 'Genel',
+      departman: s.departman || 'Mutfak',
+      kdvOrani: Number(s.kdv_orani ?? 10),
+      garsonAdi: s.garson_adi || '',
+      siparisTipi: s.siparis_tipi || 'Masa',
+      paketSiparisId: s.paket_siparis_id || null,
+      gunSonuKapandi: Boolean(s.gun_sonu_kapatildi || s.gunsonu_kapandi),
+      gunSonuRaporId: s.gun_sonu_rapor_id || s.gunsonu_rapor_id || null,
+      odemeTipi: s.odeme_tipi || 'Belirtilmedi',
+      odemeler: Array.isArray(s.odemeler) ? s.odemeler : [],
+      adisyonId: s.adisyon_id || null,
+      adisyonAcilisSaati: s.adisyon_acilis_saati || null,
+      adisyonKapanisSaati: s.adisyon_kapanis_saati || s.created_at || null,
+    })));
+
+    setRaporGiderGecmisi((Array.isArray(giderSonucu.data) ? giderSonucu.data : []).map(g => ({
+      id: g.id,
+      restaurantId: g.restaurant_id,
+      tarih: g.tarih,
+      kategori: g.kategori || 'Diğer',
+      aciklama: g.aciklama || '',
+      tutar: Number(g.tutar || 0),
+      createdAt: g.created_at,
+      gunSonuKapandi: Boolean(g.gun_sonu_kapatildi || g.gunsonu_kapandi),
+    })));
+
+    setRaporIadeGecmisi((Array.isArray(iadeSonucu.data) ? iadeSonucu.data : []).map(i => ({
+      id: i.id,
+      restaurantId: i.restaurant_id,
+      tarih: i.tarih,
+      tip: i.tip || 'İade',
+      sebep: i.sebep || '',
+      urunId: i.urun_id,
+      urunAdi: i.urun_adi || '',
+      adet: Number(i.adet || 1),
+      tutar: Number(i.tutar || 0),
+      kullaniciAdi: i.kullanici_adi || '',
+      stogaIadeEdildi: Boolean(i.stoga_iade_edildi),
+      createdAt: i.created_at,
+      gunSonuKapandi: Boolean(i.gun_sonu_kapatildi || i.gunsonu_kapandi),
+    })));
+
+    setRaporAlisFisGecmisi((Array.isArray(alisSonucu.data) ? alisSonucu.data : []).map(f => ({
+      id: f.id,
+      restaurantId: f.restaurant_id,
+      cariMusteriId: f.cari_musteri_id || null,
+      tedarikci: f.tedarikci || 'Tedarikçi belirtilmedi',
+      belgeNo: f.belge_no || '',
+      odemeTipi: f.odeme_tipi || 'Nakit',
+      giderKategorisi: f.gider_kategorisi || 'Malzeme',
+      notu: f.notu || '',
+      toplam: Number(f.toplam || 0),
+      giderOlarakIslendi: Boolean(f.gider_olarak_islendi),
+      tarih: f.tarih || f.created_at,
+      durum: f.durum || 'Stoğa İşlendi',
+      kalemler: (Array.isArray(f.restoran_alis_fis_kalemleri) ? f.restoran_alis_fis_kalemleri : []).map(k => ({
+        id: k.id,
+        kalemTipi: k.kalem_tipi,
+        malzemeId: k.malzeme_id,
+        urunId: k.urun_id,
+        malzemeAdi: k.kalem_adi,
+        birim: k.birim || 'adet',
+        miktar: Number(k.miktar || 0),
+        birimFiyat: Number(k.birim_fiyat || 0),
+        toplam: Number(k.toplam || 0),
+      })),
+    })));
+    setRaporVerileriYukleniyor(false);
   };
 
   // paket servis siparişlerini Supabase'den çeken kod
@@ -13489,8 +13680,8 @@ Toplam Ciro: {toplam}
     const baslangic = raporBaslangicTarihi || seciliTarih;
     const bitis = raporBitisTarihi || baslangic;
 
-    let filtrelenmisSatislar = satisGecmisi.filter(s => {
-      return String(s.restaurantId) === String(mevcutRestaurantId) && !s.gunSonuKapandi;
+    let filtrelenmisSatislar = raporSatisGecmisi.filter(s => {
+      return String(s.restaurantId) === String(mevcutRestaurantId);
     });
 
     if (reportType === 'gunluk') {
@@ -13515,8 +13706,8 @@ Toplam Ciro: {toplam}
     const baslangic = raporBaslangicTarihi || seciliTarih;
     const bitis = raporBitisTarihi || baslangic;
 
-    let liste = giderler.filter(g => {
-      return String(g.restaurantId) === String(mevcutRestaurantId) && !g.gunSonuKapandi;
+    let liste = raporGiderGecmisi.filter(g => {
+      return String(g.restaurantId) === String(mevcutRestaurantId);
     });
 
     if (reportType === 'gunluk') {
@@ -13541,8 +13732,8 @@ Toplam Ciro: {toplam}
     const baslangic = raporBaslangicTarihi || seciliTarih;
     const bitis = raporBitisTarihi || baslangic;
 
-    let liste = iadeKayitlari.filter(i => {
-      return String(i.restaurantId) === String(mevcutRestaurantId) && !i.gunSonuKapandi;
+    let liste = raporIadeGecmisi.filter(i => {
+      return String(i.restaurantId) === String(mevcutRestaurantId);
     });
 
     if (reportType === 'gunluk') {
@@ -13555,6 +13746,25 @@ Toplam Ciro: {toplam}
 
     return liste.filter(i => {
       const tarih = String(i.tarih || '');
+      return tarih >= baslangic && tarih <= bitis;
+    });
+  };
+
+  // kalıcı restoran alış fişlerini seçili rapor dönemine göre filtreleyen kod
+  const raporAlisFisleriniFiltrele = () => {
+    const bugunStr = new Date().toISOString().split('T')[0];
+    const seciliTarih = raporTarihi || bugunStr;
+    const seciliAy = seciliTarih.substring(0, 7);
+    const baslangic = raporBaslangicTarihi || seciliTarih;
+    const bitis = raporBitisTarihi || baslangic;
+    const liste = (Array.isArray(raporAlisFisGecmisi) ? raporAlisFisGecmisi : []).filter(f =>
+      String(f.restaurantId) === String(mevcutRestaurantId)
+    );
+
+    return liste.filter(f => {
+      const tarih = String(f.tarih || '').substring(0, 10);
+      if (reportType === 'gunluk') return tarih === seciliTarih;
+      if (reportType === 'aylik') return tarih.startsWith(seciliAy);
       return tarih >= baslangic && tarih <= bitis;
     });
   };
@@ -13605,6 +13815,7 @@ Toplam Ciro: {toplam}
   const raporlariGetir = () => {
     const filtrelenmisSatislar = raporSatislariniFiltrele();
     const urunOzetMap = {};
+    const grupOzetMap = {};
     let toplamCiro = 0;
     let toplamIndirim = 0;
     let toplamKdv = 0;
@@ -13624,6 +13835,16 @@ Toplam Ciro: {toplam}
       toplamMatrah += satirKdvOzeti.matrah;
       toplamMaliyet += satirToplamMaliyet;
 
+      const grupAdi = s.menuGrubu || 'Genel';
+      if (!grupOzetMap[grupAdi]) {
+        grupOzetMap[grupAdi] = { grupAdi, adet: 0, ciro: 0, maliyet: 0, kar: 0, indirimTutari: 0 };
+      }
+      grupOzetMap[grupAdi].adet += Number(s.adet || 1);
+      grupOzetMap[grupAdi].ciro += toplamUrunTutari;
+      grupOzetMap[grupAdi].maliyet += satirToplamMaliyet;
+      grupOzetMap[grupAdi].indirimTutari += Number(s.indirimTutari || 0) * Number(s.adet || 1);
+      grupOzetMap[grupAdi].kar = grupOzetMap[grupAdi].ciro - grupOzetMap[grupAdi].maliyet;
+
       if (urunOzetMap[urunAnahtari]) {
         urunOzetMap[urunAnahtari].adet += Number(s.adet || 1);
         urunOzetMap[urunAnahtari].ciro += toplamUrunTutari;
@@ -13638,7 +13859,7 @@ Toplam Ciro: {toplam}
           not: s.not || '',
           menuGrubu: s.menuGrubu || 'Genel',
           departman: s.departman || 'Mutfak',
-          kdvOrani: Number(s.kdvOrani || 10),
+          kdvOrani: Number(s.kdvOrani ?? 10),
           adet: Number(s.adet || 1),
           ciro: toplamUrunTutari,
           indirimTutari: Number(s.indirimTutari || 0) * Number(s.adet || 1),
@@ -13762,9 +13983,81 @@ Toplam Ciro: {toplam}
 
     const paketRaporu = Object.values(paketMap).sort((a, b) => String(b.tarih).localeCompare(String(a.tarih)));
     const paketToplam = paketRaporu.reduce((t, p) => t + Number(p.toplam || 0), 0);
+    const adisyonOzetMap = {};
+
+    filtrelenmisSatislar.forEach(s => {
+      const anahtar = s.adisyonId || `${s.masaId || 'masa'}-${s.tarih}-${JSON.stringify(s.odemeler || [])}`;
+      if (!adisyonOzetMap[anahtar]) {
+        adisyonOzetMap[anahtar] = {
+          id: anahtar,
+          toplam: 0,
+          odemeler: Array.isArray(s.odemeler) ? s.odemeler : [],
+          kapanis: s.adisyonKapanisSaati || null,
+        };
+      }
+      adisyonOzetMap[anahtar].toplam += Number(s.fiyat || 0) * Number(s.adet || 1);
+    });
+
+    const odemeOzetMap = {};
+    const saatlikOzetMap = {};
+    Object.values(adisyonOzetMap).forEach(adisyon => {
+      const kapanis = adisyon.kapanis ? new Date(adisyon.kapanis) : null;
+      const saat = kapanis && !Number.isNaN(kapanis.getTime())
+        ? `${String(kapanis.getHours()).padStart(2, '0')}:00`
+        : 'Saat yok';
+      if (!saatlikOzetMap[saat]) saatlikOzetMap[saat] = { saat, adisyonSayisi: 0, ciro: 0 };
+      saatlikOzetMap[saat].adisyonSayisi += 1;
+      saatlikOzetMap[saat].ciro += adisyon.toplam;
+
+      const odemeler = adisyon.odemeler.length > 0
+        ? adisyon.odemeler
+        : [{ tip: 'Belirtilmedi', tutar: adisyon.toplam }];
+      odemeler.forEach(odeme => {
+        const tip = String(odeme.tip || 'Belirtilmedi');
+        if (!odemeOzetMap[tip]) odemeOzetMap[tip] = { odemeTipi: tip, islemSayisi: 0, toplam: 0 };
+        odemeOzetMap[tip].islemSayisi += 1;
+        odemeOzetMap[tip].toplam += Number(odeme.tutar || 0);
+      });
+    });
+
+    const raporAlisFisleri = raporAlisFisleriniFiltrele();
+    const tedarikciOzetMap = {};
+    raporAlisFisleri.forEach(fis => {
+      const tedarikci = fis.tedarikci || 'Tedarikçi belirtilmedi';
+      if (!tedarikciOzetMap[tedarikci]) tedarikciOzetMap[tedarikci] = { tedarikci, fisSayisi: 0, toplam: 0 };
+      tedarikciOzetMap[tedarikci].fisSayisi += 1;
+      tedarikciOzetMap[tedarikci].toplam += Number(fis.toplam || 0);
+    });
+    const alisToplam = raporAlisFisleri.reduce((toplam, fis) => toplam + Number(fis.toplam || 0), 0);
+
+    const menuStokOzeti = (Array.isArray(aktifMenu) ? aktifMenu : []).reduce((ozet, urun) => {
+      const miktar = Math.max(Number(urun.stokAdedi ?? urun.stok_adedi ?? 0), 0);
+      ozet.urunSayisi += miktar > 0 ? 1 : 0;
+      ozet.miktar += miktar;
+      ozet.alisDegeri += miktar * Number(urun.maliyet || 0);
+      ozet.satisDegeri += miktar * Number(urun.fiyat || 0);
+      return ozet;
+    }, { urunSayisi: 0, miktar: 0, alisDegeri: 0, satisDegeri: 0 });
+    const hammaddeStokDegeri = (Array.isArray(aktifStokMalzemeleri) ? aktifStokMalzemeleri : [])
+      .reduce((toplam, malzeme) => toplam + stokMalzemeMiktari(malzeme) * Number(malzeme.birimMaliyet ?? malzeme.birim_maliyet ?? malzeme.maliyet ?? 0), 0);
 
     return {
       liste: Object.values(urunOzetMap),
+      grupOzetleri: Object.values(grupOzetMap).sort((a, b) => b.ciro - a.ciro),
+      odemeOzetleri: Object.values(odemeOzetMap).sort((a, b) => b.toplam - a.toplam),
+      saatlikOzetler: Object.values(saatlikOzetMap).sort((a, b) => String(a.saat).localeCompare(String(b.saat))),
+      raporAlisFisleri,
+      tedarikciOzetleri: Object.values(tedarikciOzetMap).sort((a, b) => b.toplam - a.toplam),
+      alisToplam: paraYuvarla(alisToplam),
+      stokDegeri: {
+        menuUrunSayisi: menuStokOzeti.urunSayisi,
+        menuMiktari: paraYuvarla(menuStokOzeti.miktar),
+        menuAlisDegeri: paraYuvarla(menuStokOzeti.alisDegeri),
+        menuSatisDegeri: paraYuvarla(menuStokOzeti.satisDegeri),
+        hammaddeAlisDegeri: paraYuvarla(hammaddeStokDegeri),
+        toplamAlisDegeri: paraYuvarla(menuStokOzeti.alisDegeri + hammaddeStokDegeri),
+        tahminiMenuKarPotansiyeli: paraYuvarla(menuStokOzeti.satisDegeri - menuStokOzeti.alisDegeri),
+      },
       paketRaporu,
       paketToplam,
       toplamCiro: paraYuvarla(toplamCiro),
@@ -13912,6 +14205,7 @@ Toplam Ciro: {toplam}
         if (typeof giderleriSupabasedenCek === 'function') await giderleriSupabasedenCek(aktifRestaurantId);
         if (typeof iadeKayitlariniSupabasedenCek === 'function') await iadeKayitlariniSupabasedenCek(aktifRestaurantId);
         if (typeof restoranAlisFisleriniSupabasedenCek === 'function') await restoranAlisFisleriniSupabasedenCek(aktifRestaurantId);
+        if (activeTab === 'raporlar' && typeof raporVerileriniSupabasedenCek === 'function') await raporVerileriniSupabasedenCek(aktifRestaurantId);
         if (typeof rezervasyonlariSupabasedenCek === 'function') await rezervasyonlariSupabasedenCek(aktifRestaurantId);
         if (typeof personelleriSupabasedenCek === 'function') await personelleriSupabasedenCek(aktifRestaurantId);
       }
@@ -14440,6 +14734,11 @@ Toplam Ciro: {toplam}
     restoranAlisFisleriniSupabasedenCek(mevcutRestaurantId);
   }, [user?.id, screen, mevcutRestaurantId]);
 
+  useEffect(() => {
+    if (!user || screen !== 'dashboard' || activeTab !== 'raporlar' || !mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return;
+    raporVerileriniSupabasedenCek(mevcutRestaurantId);
+  }, [user?.id, screen, activeTab, mevcutRestaurantId, reportType, raporTarihi, raporBaslangicTarihi, raporBitisTarihi]);
+
   // herkese açık QR menü linki açıldığında menü verisini yükleyen kod
   useEffect(() => {
     if (!qrMenuMusteriModu || !qrMenuLinkRestaurantId) return;
@@ -14548,6 +14847,7 @@ Toplam Ciro: {toplam}
         tablo: 'satis_gecmisi',
         yenile: async () => {
           if (typeof satisGecmisiniSupabasedenCek === 'function') await satisGecmisiniSupabasedenCek(aktifRestaurantId);
+          if (typeof raporVerileriniSupabasedenCek === 'function') await raporVerileriniSupabasedenCek(aktifRestaurantId);
         },
       },
       {
@@ -14560,12 +14860,14 @@ Toplam Ciro: {toplam}
         tablo: 'giderler',
         yenile: async () => {
           if (typeof giderleriSupabasedenCek === 'function') await giderleriSupabasedenCek(aktifRestaurantId);
+          if (typeof raporVerileriniSupabasedenCek === 'function') await raporVerileriniSupabasedenCek(aktifRestaurantId);
         },
       },
       {
         tablo: 'iade_kayitlari',
         yenile: async () => {
           if (typeof iadeKayitlariniSupabasedenCek === 'function') await iadeKayitlariniSupabasedenCek(aktifRestaurantId);
+          if (typeof raporVerileriniSupabasedenCek === 'function') await raporVerileriniSupabasedenCek(aktifRestaurantId);
         },
       },
       {
@@ -14863,6 +15165,10 @@ Toplam Ciro: {toplam}
 
         if (typeof restoranAlisFisleriniSupabasedenCek === 'function') {
           await restoranAlisFisleriniSupabasedenCek(aktifRestaurantId);
+        }
+
+        if (activeTab === 'raporlar' && typeof raporVerileriniSupabasedenCek === 'function') {
+          await raporVerileriniSupabasedenCek(aktifRestaurantId);
         }
 
         if (typeof rezervasyonlariSupabasedenCek === 'function') {
@@ -22548,6 +22854,18 @@ Toplam Ciro: {toplam}
                   </div>
                 </div>
 
+                {raporVerileriYukleniyor && (
+                  <div style={{ ...styles.panelCard, marginBottom: '14px', padding: '12px 14px', color: '#1d4ed8', fontWeight: '800' }}>
+                    Seçili dönemin tüm geçmiş kayıtları yükleniyor…
+                  </div>
+                )}
+
+                {raporVeriHatasi && (
+                  <div style={{ ...styles.panelCard, marginBottom: '14px', padding: '12px 14px', borderColor: '#fecaca', color: '#b91c1c', fontWeight: '800' }}>
+                    Rapor verileri yüklenemedi: {raporVeriHatasi}
+                  </div>
+                )}
+
                 <div style={styles.statsGrid}>
                   <div style={styles.statsCard}>
                     <div style={styles.statsTitle}>Toplam Net Ciro</div>
@@ -22635,6 +22953,30 @@ Toplam Ciro: {toplam}
 
                     <button
                       type="button"
+                      onClick={() => setRaporSekmesi('gruplar')}
+                      style={raporSekmesi === 'gruplar' ? styles.filterBtnActive : styles.filterBtn}
+                    >
+                      🗂️ Grup Satışları
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRaporSekmesi('odeme')}
+                      style={raporSekmesi === 'odeme' ? styles.filterBtnActive : styles.filterBtn}
+                    >
+                      💳 Ödeme & Saatlik
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRaporSekmesi('alis_stok')}
+                      style={raporSekmesi === 'alis_stok' ? styles.filterBtnActive : styles.filterBtn}
+                    >
+                      🧾 Alış & Stok Değeri
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => setRaporSekmesi('kapali_adisyonlar')}
                       style={raporSekmesi === 'kapali_adisyonlar' ? styles.filterBtnActive : styles.filterBtn}
                     >
@@ -22711,6 +23053,94 @@ Toplam Ciro: {toplam}
                         </table>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {raporSekmesi === 'gruplar' && (
+                  <div style={{ ...styles.panelCard, marginTop: '25px' }}>
+                    <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>🗂️ Grup Bazlı Satış ve Kârlılık</h3>
+                    {(raporData.grupOzetleri || []).length === 0 ? (
+                      <div style={{ color: '#94a3b8', textAlign: 'center', padding: '30px' }}>Bu dönemde grup satışı bulunmuyor.</div>
+                    ) : (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={styles.table}>
+                          <thead><tr style={{ backgroundColor: '#f8fafc' }}>
+                            <th style={styles.th}>Grup</th><th style={styles.th}>Satılan Adet</th>
+                            <th style={styles.th}>Ciro</th><th style={styles.th}>Maliyet</th>
+                            <th style={styles.th}>Brüt Kâr</th><th style={styles.th}>İndirim</th>
+                          </tr></thead>
+                          <tbody>{raporData.grupOzetleri.map(grup => (
+                            <tr key={grup.grupAdi} style={styles.tr}>
+                              <td style={{ ...styles.td, fontWeight: '900' }}>{grup.grupAdi}</td>
+                              <td style={styles.td}>{paraYuvarla(grup.adet)}</td>
+                              <td style={{ ...styles.td, color: '#059669', fontWeight: '900' }}>{paraYuvarla(grup.ciro)} TL</td>
+                              <td style={{ ...styles.td, color: '#dc2626' }}>{paraYuvarla(grup.maliyet)} TL</td>
+                              <td style={{ ...styles.td, color: Number(grup.kar) >= 0 ? '#059669' : '#dc2626', fontWeight: '900' }}>{paraYuvarla(grup.kar)} TL</td>
+                              <td style={styles.td}>{paraYuvarla(grup.indirimTutari)} TL</td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {raporSekmesi === 'odeme' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '16px', marginTop: '25px' }}>
+                    <div style={styles.panelCard}>
+                      <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>💳 Ödeme Tipi Dağılımı</h3>
+                      {(raporData.odemeOzetleri || []).length === 0 ? (
+                        <div style={{ color: '#94a3b8', padding: '20px' }}>Ödeme kaydı bulunmuyor.</div>
+                      ) : raporData.odemeOzetleri.map(odeme => (
+                        <div key={odeme.odemeTipi} style={styles.dataRow}>
+                          <span><strong>{odeme.odemeTipi}</strong><small style={{ display: 'block', color: '#94a3b8' }}>{odeme.islemSayisi} ödeme hareketi</small></span>
+                          <strong style={{ color: '#2563eb' }}>{paraYuvarla(odeme.toplam)} TL</strong>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={styles.panelCard}>
+                      <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>🕒 Saatlik Satış Yoğunluğu</h3>
+                      {(raporData.saatlikOzetler || []).length === 0 ? (
+                        <div style={{ color: '#94a3b8', padding: '20px' }}>Saatlik satış verisi bulunmuyor.</div>
+                      ) : raporData.saatlikOzetler.map(saat => (
+                        <div key={saat.saat} style={styles.dataRow}>
+                          <span><strong>{saat.saat}</strong><small style={{ display: 'block', color: '#94a3b8' }}>{saat.adisyonSayisi} adisyon</small></span>
+                          <strong style={{ color: '#059669' }}>{paraYuvarla(saat.ciro)} TL</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {raporSekmesi === 'alis_stok' && (
+                  <div style={{ marginTop: '25px' }}>
+                    <div style={styles.statsGrid}>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Dönem Alış Toplamı</div><div style={{ ...styles.statsValue, color: '#dc2626' }}>{raporData.alisToplam || 0} TL</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Eldeki Stok Alış Değeri</div><div style={{ ...styles.statsValue, color: '#7c3aed' }}>{raporData.stokDegeri?.toplamAlisDegeri || 0} TL</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Menü Stok Satış Değeri</div><div style={{ ...styles.statsValue, color: '#059669' }}>{raporData.stokDegeri?.menuSatisDegeri || 0} TL</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Tahmini Menü Kâr Potansiyeli</div><div style={{ ...styles.statsValue, color: Number(raporData.stokDegeri?.tahminiMenuKarPotansiyeli || 0) >= 0 ? '#059669' : '#dc2626' }}>{raporData.stokDegeri?.tahminiMenuKarPotansiyeli || 0} TL</div></div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '16px', marginTop: '16px' }}>
+                      <div style={styles.panelCard}>
+                        <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>🏢 Tedarikçi Alış Özeti</h3>
+                        {(raporData.tedarikciOzetleri || []).length === 0 ? <div style={{ color: '#94a3b8', padding: '20px' }}>Bu dönemde kalıcı alış fişi bulunmuyor.</div> : raporData.tedarikciOzetleri.map(tedarikci => (
+                          <div key={tedarikci.tedarikci} style={styles.dataRow}>
+                            <span><strong>{tedarikci.tedarikci}</strong><small style={{ display: 'block', color: '#94a3b8' }}>{tedarikci.fisSayisi} fiş</small></span>
+                            <strong>{paraYuvarla(tedarikci.toplam)} TL</strong>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={styles.panelCard}>
+                        <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>📦 Güncel Stok Değeri</h3>
+                        <div style={styles.dataRow}><span>Stokta bulunan menü ürünü</span><strong>{raporData.stokDegeri?.menuUrunSayisi || 0} çeşit / {raporData.stokDegeri?.menuMiktari || 0} adet</strong></div>
+                        <div style={styles.dataRow}><span>Menü ürünleri alış değeri</span><strong>{raporData.stokDegeri?.menuAlisDegeri || 0} TL</strong></div>
+                        <div style={styles.dataRow}><span>Hammadde alış değeri</span><strong>{raporData.stokDegeri?.hammaddeAlisDegeri || 0} TL</strong></div>
+                        <div style={styles.dataRow}><span>Menü ürünleri satış değeri</span><strong style={{ color: '#059669' }}>{raporData.stokDegeri?.menuSatisDegeri || 0} TL</strong></div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
