@@ -20125,6 +20125,12 @@ Toplam Ciro: {toplam}
 
                   <div className="quick-sale-checkout">
                     <div className="quick-sale-cart-head"><span>AKTİF FİŞ</span><h3>Hızlı Satış Sepeti</h3><b>{hizliSatisUrunler.reduce((toplam, urun) => toplam + Number(urun.adet || 0), 0)} ürün</b></div>
+                    <aside className="quick-sale-action-rail" aria-label="Hızlı satış işlemleri">
+                      <button type="button" disabled={!hizliSatisUrunler.length} onClick={hizliSatisAdisyonYazdir}><span>🧾</span><b>Adisyon</b></button>
+                      <button type="button" className="cash" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Nakit')}><span>💵</span><b>Nakit</b><small>F1</small></button>
+                      <button type="button" className="card" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Kredi Kartı')}><span>💳</span><b>Kart</b><small>F2</small></button>
+                      <button type="button" className="credit" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Cari')}><span>👤</span><b>Cari</b><small>F3</small></button>
+                    </aside>
                     {hizliSatisUrunler.length === 0 ? (
                       <div className="quick-sale-cart-empty"><strong>Satışa hazır</strong><span>Soldaki ürünlerden seçerek başlayın.</span></div>
                     ) : (
@@ -20296,27 +20302,6 @@ Toplam Ciro: {toplam}
                       </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px', marginTop: '10px' }}>
-                      <button
-                        type="button"
-                        onClick={hizliSatisAdisyonYazdir}
-                        style={{ ...styles.checkoutBtn, backgroundColor: '#0f766e', marginTop: 0 }}
-                      >
-                        🧾 Adisyon
-                      </button>
-
-                      <button type="button" onClick={() => hizliSatisKapat('Nakit')} style={{ ...styles.checkoutBtn, marginTop: 0 }}>
-                        💵 Nakit Al
-                      </button>
-
-                      <button type="button" onClick={() => hizliSatisKapat('Kredi Kartı')} style={{ ...styles.checkoutBtn, backgroundColor: '#2563eb', marginTop: 0 }}>
-                        💳 Kredi Kartı
-                      </button>
-
-                      <button type="button" onClick={() => hizliSatisKapat('Cari')} style={{ ...styles.checkoutBtn, backgroundColor: '#7c3aed', marginTop: 0 }}>
-                        📒 Cariye Yaz
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>

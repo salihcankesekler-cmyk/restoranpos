@@ -107,7 +107,7 @@
   min-width:0;
   max-height:calc(100vh - 68px);
   overflow-y:auto;
-  padding:8px;
+  padding:8px 82px 8px 8px;
   background:#fff;
   scrollbar-width:thin;
 }
@@ -115,6 +115,40 @@
 .quick-sale-cart-head>span{grid-column:1;color:#fb923c;font-size:8px;font-weight:900;letter-spacing:.12em}
 .quick-sale-cart-head h3{grid-column:1;margin:0;font-size:13px}
 .quick-sale-cart-head>b{grid-column:2;grid-row:1/3;align-self:center;color:#fde047;font-size:12px}
+.quick-sale-action-rail{
+  position:absolute;
+  z-index:3;
+  top:48px;
+  right:0;
+  bottom:0;
+  width:74px;
+  display:grid;
+  grid-template-rows:repeat(4,minmax(74px,1fr));
+  gap:1px;
+  background:#cbd5e1;
+}
+.quick-sale-action-rail button{
+  display:flex;
+  min-width:0;
+  min-height:74px;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:2px;
+  border:0;
+  padding:5px 2px;
+  background:#0f766e;
+  color:#fff;
+  cursor:pointer;
+}
+.quick-sale-action-rail button.cash{background:#059669}
+.quick-sale-action-rail button.card{background:#2563eb}
+.quick-sale-action-rail button.credit{background:#7c3aed}
+.quick-sale-action-rail button:hover{filter:brightness(1.08)}
+.quick-sale-action-rail button:disabled{opacity:.42;cursor:not-allowed;filter:none}
+.quick-sale-action-rail span{font-size:20px;line-height:1}
+.quick-sale-action-rail b{font-size:10px;line-height:1.1;text-align:center}
+.quick-sale-action-rail small{font-size:8px;font-weight:900}
 .quick-sale-cart-empty{min-height:170px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;border:1px dashed #cbd5e1;background:#f8fafc;color:#94a3b8}
 .quick-sale-cart-empty strong{color:#334155;font-size:13px}
 .quick-sale-cart-empty span{font-size:10px}
@@ -148,4 +182,19 @@
   .quick-sale-cart-item{grid-template-columns:38px minmax(0,1fr)}
   .quick-sale-cart-image{width:38px;height:38px}
   .quick-sale-cart-item>div:last-child{grid-column:1/-1}
+}
+
+@media(max-width:1050px){
+  .quick-sale-checkout{padding-right:8px;padding-top:73px}
+  .quick-sale-action-rail{
+    top:0;
+    left:0;
+    right:0;
+    bottom:auto;
+    width:auto;
+    height:66px;
+    grid-template-columns:repeat(4,1fr);
+    grid-template-rows:66px;
+  }
+  .quick-sale-action-rail button{min-height:66px}
 }
