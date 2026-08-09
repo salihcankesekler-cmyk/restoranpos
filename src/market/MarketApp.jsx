@@ -1562,9 +1562,79 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
         imza: islemImzasi,
       };
     }
+    const satisiCevrimdisiKuyrugaAl = async () => {
+      const islemAnahtari = satisIslemAnahtariRef.current.anahtar || globalThis.crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+      const yerelSatis = {
+        id: `offline-${islemAnahtari}`,
+        restaurant_id: restaurantId,
+        created_at: createdAt,
+        odeme_tipi: odemeKaydi,
+        cari_id: satisCariId || null,
+        cari_adi: seciliSatisCarisi?.ad || '',
+        brut_toplam: sepetToplamlari.brutToplam,
+        indirim_toplami: sepetToplamlari.urunIndirimTutari + sepetToplamlari.genelIndirimTutari,
+        toplam_tutar: sepetToplamlari.netToplam,
+        cevrimdisi_bekliyor: true,
+        market_satis_kalemleri: satilanKalemler.map(kalem => ({
+          id: `offline-${islemAnahtari}-${kalem.id}`,
+          urun_id: kalem.id,
+          urun_adi: kalem.urun_adi,
+          barkod: kalem.barkod || '',
+          adet: Number(kalem.adet || 0),
+          birim_fiyat: Number(kalem.satis_fiyati || 0),
+          toplam_tutar: Number(kalem.adet || 0) * Number(kalem.satis_fiyati || 0),
+        })),
+      };
+      await cevrimdisiIslemEkle({
+        id: islemAnahtari,
+        restaurantId,
+        type: MARKET_OFFLINE_QUEUE_TYPE,
+        payload: {
+          sepet: satilanKalemler,
+          odemeTipi: odemeKaydi,
+          cariId: satisCariId || '',
+          islemAnahtari,
+          indirim: genelIndirim,
+          odemeler: yeniOdemeParcalari,
+          yerelSatis,
+        },
+      });
+      const satilanMiktarlar = satilanKalemler.reduce((toplamlar, kalem) => {
+        toplamlar.set(String(kalem.id), Number(toplamlar.get(String(kalem.id)) || 0) + Number(kalem.adet || 0));
+        return toplamlar;
+      }, new Map());
+      const stoguDusur = liste => liste.map(urun => {
+        const satilan = Number(satilanMiktarlar.get(String(urun.id)) || 0);
+        return satilan ? { ...urun, stok_miktari: Number(urun.stok_miktari || 0) - satilan } : urun;
+      });
+      setUrunler(stoguDusur);
+      setTumUrunler(stoguDusur);
+      setSatislar(prev => [yerelSatis, ...prev]);
+      if (cariOdemeTutari > 0 && satisCariId) {
+        setCariler(prev => prev.map(cari => String(cari.id) === String(satisCariId)
+          ? { ...cari, bakiye: Number(cari.bakiye || 0) + cariOdemeTutari }
+          : cari));
+      }
+      setSepet([]);
+      setVerilenTutar('');
+      setOdemeParcalari([]);
+      setGenelIndirim({ yon: 'azalt', tur: 'yuzde', deger: '' });
+      setGenelIndirimPenceresi(false);
+      setUrunIndirimFormu(null);
+      satisIslemAnahtariRef.current = { anahtar: '', imza: '' };
+      setBekleyenCevrimdisiSatis(prev => prev + 1);
+      setCevrimici(false);
+      void satisFisiKarariniUygula(yerelSatis);
+      window.setTimeout(() => barkodRef.current?.focus(), 80);
+    };
     satisKaydiSuruyorRef.current = true;
     setSatisKaydediliyor(true);
     try {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        await satisiCevrimdisiKuyrugaAl();
+        return;
+      }
       const beklenenToplam = sepetToplamlari.netToplam;
       const yeniSatis = await marketSatisiKaydet(
         restaurantId,
@@ -1610,72 +1680,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       window.setTimeout(() => barkodRef.current?.focus(), 80);
     } catch (error) {
       if (cevrimdisiAgHatasiMi(error)) {
-        const islemAnahtari = satisIslemAnahtariRef.current.anahtar || globalThis.crypto.randomUUID();
-        const createdAt = new Date().toISOString();
-        const yerelSatis = {
-          id: `offline-${islemAnahtari}`,
-          restaurant_id: restaurantId,
-          created_at: createdAt,
-          odeme_tipi: odemeKaydi,
-          cari_id: satisCariId || null,
-          cari_adi: seciliSatisCarisi?.ad || '',
-          brut_toplam: sepetToplamlari.brutToplam,
-          indirim_toplami: sepetToplamlari.urunIndirimTutari + sepetToplamlari.genelIndirimTutari,
-          toplam_tutar: sepetToplamlari.netToplam,
-          cevrimdisi_bekliyor: true,
-          market_satis_kalemleri: satilanKalemler.map(kalem => ({
-            id: `offline-${islemAnahtari}-${kalem.id}`,
-            urun_id: kalem.id,
-            urun_adi: kalem.urun_adi,
-            barkod: kalem.barkod || '',
-            adet: Number(kalem.adet || 0),
-            birim_fiyat: Number(kalem.satis_fiyati || 0),
-            toplam_tutar: Number(kalem.adet || 0) * Number(kalem.satis_fiyati || 0),
-          })),
-        };
         try {
-          await cevrimdisiIslemEkle({
-            id: islemAnahtari,
-            restaurantId,
-            type: MARKET_OFFLINE_QUEUE_TYPE,
-            payload: {
-              sepet: satilanKalemler,
-              odemeTipi: odemeKaydi,
-              cariId: satisCariId || '',
-              islemAnahtari,
-              indirim: genelIndirim,
-              odemeler: yeniOdemeParcalari,
-              yerelSatis,
-            },
-          });
-          const satilanMiktarlar = satilanKalemler.reduce((toplamlar, kalem) => {
-            toplamlar.set(String(kalem.id), Number(toplamlar.get(String(kalem.id)) || 0) + Number(kalem.adet || 0));
-            return toplamlar;
-          }, new Map());
-          const stoguDusur = liste => liste.map(urun => {
-            const satilan = Number(satilanMiktarlar.get(String(urun.id)) || 0);
-            return satilan ? { ...urun, stok_miktari: Number(urun.stok_miktari || 0) - satilan } : urun;
-          });
-          setUrunler(stoguDusur);
-          setTumUrunler(stoguDusur);
-          setSatislar(prev => [yerelSatis, ...prev]);
-          if (cariOdemeTutari > 0 && satisCariId) {
-            setCariler(prev => prev.map(cari => String(cari.id) === String(satisCariId)
-              ? { ...cari, bakiye: Number(cari.bakiye || 0) + cariOdemeTutari }
-              : cari));
-          }
-          setSepet([]);
-          setVerilenTutar('');
-          setOdemeParcalari([]);
-          setGenelIndirim({ yon: 'azalt', tur: 'yuzde', deger: '' });
-          setGenelIndirimPenceresi(false);
-          setUrunIndirimFormu(null);
-          satisIslemAnahtariRef.current = { anahtar: '', imza: '' };
-          setBekleyenCevrimdisiSatis(prev => prev + 1);
-          setCevrimici(false);
-          void satisFisiKarariniUygula(yerelSatis);
-          bildir('İnternet yok. Satış cihazda güvenle bekletiliyor; bağlantı gelince otomatik aktarılacak.', 'warning');
-          window.setTimeout(() => barkodRef.current?.focus(), 80);
+          await satisiCevrimdisiKuyrugaAl();
         } catch (kuyrukHatasi) {
           bildir(`Satış cihaz kuyruğuna alınamadı: ${kuyrukHatasi.message} Sepet korundu.`, 'error');
         }
