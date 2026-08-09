@@ -11006,33 +11006,45 @@ Toplam Ciro: {toplam}
     };
     let hizliSatisSonucu;
     let cevrimdisiKaydedildi = false;
-    try {
-      hizliSatisSonucu = await restoranHizliSatisKaydetAtomik(hizliSatisPayload);
-    } catch (error) {
-      if (!cevrimdisiAgHatasiMi(error)) {
-        console.error('Hızlı satış kaydedilemedi:', error);
-        alert('Hızlı satış kaydedilemedi: ' + error.message);
-        return;
-      }
+    const hizliSatisiCevrimdisiKuyrugaAl = async () => {
+      await cevrimdisiIslemEkle({
+        id: islemAnahtari,
+        restaurantId: mevcutRestaurantId,
+        type: RESTORAN_HIZLI_SATIS_OFFLINE_TYPE,
+        payload: hizliSatisPayload,
+      });
+      cevrimdisiKaydedildi = true;
+      setBekleyenCevrimdisiHizliSatis(prev => prev + 1);
+      setBaglantiOnline(false);
+      return {
+        satislar: satisKayitlari.map((kayit, index) => ({ ...kayit, id: `offline-${islemAnahtari}-${index}` })),
+        mutfakFisleri: hizliSatisMutfakKayitlari.map((kayit, index) => ({ ...kayit, id: `offline-${islemAnahtari}-mutfak-${index}`, created_at: kapanisSaati })),
+        cari: cariMusteri ? { ...cariMusteri, bakiye: Number(cariMusteri.bakiye || 0) + tutar } : null,
+      };
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       try {
-        await cevrimdisiIslemEkle({
-          id: islemAnahtari,
-          restaurantId: mevcutRestaurantId,
-          type: RESTORAN_HIZLI_SATIS_OFFLINE_TYPE,
-          payload: hizliSatisPayload,
-        });
-        cevrimdisiKaydedildi = true;
-        setBekleyenCevrimdisiHizliSatis(prev => prev + 1);
-        setBaglantiOnline(false);
-        hizliSatisSonucu = {
-          satislar: satisKayitlari.map((kayit, index) => ({ ...kayit, id: `offline-${islemAnahtari}-${index}` })),
-          mutfakFisleri: hizliSatisMutfakKayitlari.map((kayit, index) => ({ ...kayit, id: `offline-${islemAnahtari}-mutfak-${index}`, created_at: kapanisSaati })),
-          cari: cariMusteri ? { ...cariMusteri, bakiye: Number(cariMusteri.bakiye || 0) + tutar } : null,
-        };
-        bildirimGoster('İnternet yok. Hızlı satış cihazda bekletiliyor ve bağlantı gelince otomatik aktarılacak.', 'warning');
+        hizliSatisSonucu = await hizliSatisiCevrimdisiKuyrugaAl();
       } catch (kuyrukHatasi) {
         alert(`Satış cihaz kuyruğuna alınamadı: ${kuyrukHatasi.message}`);
         return;
+      }
+    } else {
+      try {
+        hizliSatisSonucu = await restoranHizliSatisKaydetAtomik(hizliSatisPayload);
+      } catch (error) {
+        if (!cevrimdisiAgHatasiMi(error)) {
+          console.error('Hızlı satış kaydedilemedi:', error);
+          alert('Hızlı satış kaydedilemedi: ' + error.message);
+          return;
+        }
+        try {
+          hizliSatisSonucu = await hizliSatisiCevrimdisiKuyrugaAl();
+        } catch (kuyrukHatasi) {
+          alert(`Satış cihaz kuyruğuna alınamadı: ${kuyrukHatasi.message}`);
+          return;
+        }
       }
     }
 
@@ -11237,6 +11249,10 @@ Toplam Ciro: {toplam}
       if (tus === '.') return mevcut.includes('.') ? mevcut : `${mevcut || '0'}.`;
       return `${mevcut}${tus}`.replace(/^0+(?=\d)/, '').slice(0, 10);
     });
+  };
+
+  const hizliSatisNakitKupurEkle = kupur => {
+    setHizliSatisAlinanTutar(prev => String(paraYuvarla(Math.max(sayiyaCevir(prev || 0), 0) + Number(kupur || 0))));
   };
 
   // rezervasyonda kayıtlı cari müşteri seçilince bilgileri forma dolduran kod
@@ -20234,15 +20250,27 @@ Toplam Ciro: {toplam}
                         })}
                       </div>
                     </div>
+                    <aside className="quick-sale-cash-rail" aria-label="Müşterinin verdiği nakit kupürleri">
+                      <label><span>VERİLEN</span><strong>{Number(hizliSatisAlinanTutar || 0).toLocaleString('tr-TR')} ₺</strong></label>
+                      {[1, 5, 10, 20, 50, 100, 200].map(kupur => <button type="button" key={kupur} onClick={() => hizliSatisNakitKupurEkle(kupur)}>{kupur} ₺</button>)}
+                      <button type="button" className="clear" onClick={() => setHizliSatisAlinanTutar('')} aria-label="Alınan tutarı temizle">C</button>
+                    </aside>
                   </div>
 
                   <div className="quick-sale-checkout">
                     <div className="quick-sale-cart-head"><span>AKTİF FİŞ</span><h3>Hızlı Satış Sepeti</h3><b>{hizliSatisUrunler.reduce((toplam, urun) => toplam + Number(urun.adet || 0), 0)} ürün</b></div>
                     <aside className="quick-sale-action-rail" aria-label="Hızlı satış işlemleri">
                       <button type="button" disabled={!hizliSatisUrunler.length} onClick={hizliSatisAdisyonYazdir}><span>🧾</span><b>Adisyon</b></button>
-                      <button type="button" className="cash" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Nakit')}><span>💵</span><b>Nakit</b><small>F1</small></button>
-                      <button type="button" className="card" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Kredi Kartı')}><span>💳</span><b>Kart</b><small>F2</small></button>
-                      <button type="button" className="credit" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Cari')}><span>👤</span><b>Cari</b><small>F3</small></button>
+                      <button type="button" className="customer" onClick={() => document.getElementById('hizli-satis-cari-ara')?.focus()}><span>👤</span><b>Cari Seç</b><small>{hizliSatisCariMusteriId ? 'Seçildi' : 'Seçilmedi'}</small></button>
+                      <button type="button" className="discount" disabled={!hizliSatisUrunler.length} onClick={() => document.getElementById('hizli-satis-indirim-yuzde')?.focus()}><span>%</span><b>İndirim</b><small>Yüzde / TL</small></button>
+                      <button type="button" className="danger" disabled={!hizliSatisUrunler.length} onClick={() => {
+                        setHizliSatisUrunler([]);
+                        setHizliSatisAlinanTutar('');
+                        setHizliSatisIndirimYuzde('');
+                        setHizliSatisIndirimTutari('');
+                        setHizliSatisCariMusteriId('');
+                        setHizliSatisCariArama('');
+                      }}><span>×</span><b>Fiş İptal</b></button>
                     </aside>
                     {hizliSatisUrunler.length === 0 ? (
                       <div className="quick-sale-cart-empty"><strong>Satışa hazır</strong><span>Soldaki ürünlerden seçerek başlayın.</span></div>
@@ -20321,8 +20349,9 @@ Toplam Ciro: {toplam}
                       ))}</div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
+                    <div className="quick-sale-discount-box">
                       <input
+                        id="hizli-satis-indirim-yuzde"
                         type="number"
                         min="0"
                         max="100"
@@ -20343,25 +20372,26 @@ Toplam Ciro: {toplam}
                     </div>
 
                     {hizliSatisToplamIndirim > 0 && (
-                      <div style={{ color: '#ef4444', fontWeight: '900', fontSize: '13px', marginTop: '8px' }}>
+                      <div className="quick-sale-discount-total">
                         Toplam indirim: -{hizliSatisToplamIndirim} TL
                       </div>
                     )}
 
-                    <div style={{ ...styles.totalRow, marginTop: '12px' }}>
+                    <div className="quick-sale-total-row">
                       <span>Toplam:</span>
-                      <strong style={{ color: '#ff6b35', fontSize: '22px' }}>{hizliSatisToplam} TL</strong>
+                      <strong>{hizliSatisToplam} TL</strong>
                     </div>
 
                     {hizliSatisUrunler.length > 0 && (
-                      <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 10px', fontSize: '12px', color: '#475569', fontWeight: '900', marginTop: '8px' }}>
+                      <div className="quick-sale-tax-summary">
                         KDV Matrahı: {hizliSatisKdvOzeti.matrahToplam} TL / KDV: {hizliSatisKdvOzeti.kdvToplam} TL
                       </div>
                     )}
 
-                    <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px' }}>
+                    <div className="quick-sale-customer-box">
                       <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Cari / Veresiye</div>
                       <input
+                        id="hizli-satis-cari-ara"
                         type="text"
                         placeholder="Cari müşteri ara..."
                         value={hizliSatisCariArama}
@@ -20394,26 +20424,29 @@ Toplam Ciro: {toplam}
                       )}
                     </div>
 
-                    <input
-                      type="number"
-                      placeholder={`${hizliSatisToplam} TL alındı`}
-                      value={hizliSatisAlinanTutar}
-                      onChange={e => setHizliSatisAlinanTutar(e.target.value)}
-                      className="quick-sale-received-input"
-                    />
+                    <div className="quick-sale-keypad-display">
+                      <span><small>TOPLAM</small><strong>{hizliSatisToplam} ₺</strong></span>
+                      <label><small>VERİLEN</small><input type="number" placeholder={`${hizliSatisToplam} TL`} value={hizliSatisAlinanTutar} onChange={e => setHizliSatisAlinanTutar(e.target.value)} className="quick-sale-received-input" /></label>
+                    </div>
 
                     <div className="quick-sale-keypad" aria-label="Alınan tutar dokunmatik tuş takımı">
-                      {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(rakam => <button type="button" key={rakam} onClick={() => hizliSatisAlinanTutarTusla(rakam)}>{rakam}</button>)}
-                      <button type="button" className="clear" onClick={() => hizliSatisAlinanTutarTusla('C')}>C</button>
-                      <button type="button" onClick={() => hizliSatisAlinanTutarTusla(0)}>0</button>
-                      <button type="button" onClick={() => hizliSatisAlinanTutarTusla('sil')}>⌫</button>
+                      {[7, 8, 9].map(rakam => <button type="button" key={rakam} onClick={() => hizliSatisAlinanTutarTusla(rakam)}>{rakam}</button>)}<button type="button" className="clear" onClick={() => hizliSatisAlinanTutarTusla('C')}>C</button>
+                      {[4, 5, 6].map(rakam => <button type="button" key={rakam} onClick={() => hizliSatisAlinanTutarTusla(rakam)}>{rakam}</button>)}<button type="button" className="control" onClick={() => hizliSatisAlinanTutarTusla('sil')}>⌫</button>
+                      {[1, 2, 3].map(rakam => <button type="button" key={rakam} onClick={() => hizliSatisAlinanTutarTusla(rakam)}>{rakam}</button>)}<button type="button" onClick={() => hizliSatisAlinanTutarTusla('00')}>00</button>
+                      <button type="button" className="wide" onClick={() => hizliSatisAlinanTutarTusla(0)}>0</button><button type="button" className="wide" onClick={() => hizliSatisAlinanTutarTusla('.')}>.</button>
                     </div>
 
                     {Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0) > 0 && (
-                      <div style={{ color: '#10b981', fontWeight: '900', fontSize: '13px', marginTop: '8px' }}>
+                      <div className="quick-sale-change">
                         Para üstü: {Math.max(sayiyaCevir(hizliSatisAlinanTutar || hizliSatisToplam) - hizliSatisToplam, 0)} TL
                       </div>
                     )}
+
+                    <div className="quick-sale-payment-buttons">
+                      <button type="button" className="cash" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Nakit')}><kbd>F1</kbd><span>💵</span><b>Nakit</b></button>
+                      <button type="button" className="card" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Kredi Kartı')}><kbd>F2</kbd><span>💳</span><b>Kart</b></button>
+                      <button type="button" className="credit" disabled={!hizliSatisUrunler.length} onClick={() => hizliSatisKapat('Cari')}><kbd>F3</kbd><span>👤</span><b>Cari</b></button>
+                    </div>
 
                   </div>
                 </div>
