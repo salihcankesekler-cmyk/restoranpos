@@ -22,6 +22,14 @@ import {
   marketUrunuSil,
   marketVerileriniGetir,
 } from '../services/marketService';
+import {
+  cevrimdisiAgHatasiMi,
+  cevrimdisiIslemEkle,
+  cevrimdisiIslemSil,
+  cevrimdisiIslemleriGetir,
+  cevrimdisiSnapshotGetir,
+  cevrimdisiSnapshotKaydet,
+} from '../lib/offlineStore';
 import './market.css';
 
 const bosUrun = {
@@ -53,6 +61,7 @@ const para = value => new Intl.NumberFormat('tr-TR', {
 }).format(Number(value || 0));
 
 const ODEME_TIPLERI = ['Nakit', 'Kredi Kartı', 'Cari / Veresiye'];
+const MARKET_OFFLINE_QUEUE_TYPE = 'market-sale';
 const paraYuvarla = value => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 const odemeDagiliminiCoz = (odemeTipi, toplamTutar = 0) => {
   const metin = String(odemeTipi || '').trim();
@@ -375,6 +384,8 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const [acikAlisRaporuId, setAcikAlisRaporuId] = useState('');
   const [yalnizKritik, setYalnizKritik] = useState(false);
   const [satisKaydediliyor, setSatisKaydediliyor] = useState(false);
+  const [cevrimici, setCevrimici] = useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
+  const [bekleyenCevrimdisiSatis, setBekleyenCevrimdisiSatis] = useState(0);
   const [iadeAdetleri, setIadeAdetleri] = useState({});
   const [iadeAciklama, setIadeAciklama] = useState('');
   const [iadeIsleniyor, setIadeIsleniyor] = useState(false);
@@ -406,6 +417,29 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     return false;
   };
 
+  const bekleyenSatislariVeriyeUygula = (data, islemler = []) => {
+    if (!islemler.length) return data;
+    const satilanMiktarlar = new Map();
+    const cevrimdisiSatislar = islemler.map(islem => {
+      const payload = islem.payload || {};
+      (payload.sepet || []).forEach(kalem => {
+        const urunId = String(kalem.id);
+        satilanMiktarlar.set(urunId, Number(satilanMiktarlar.get(urunId) || 0) + Number(kalem.adet || 0));
+      });
+      return payload.yerelSatis;
+    }).filter(Boolean);
+    const stoguDusur = liste => (liste || []).map(urun => {
+      const satilan = Number(satilanMiktarlar.get(String(urun.id)) || 0);
+      return satilan ? { ...urun, stok_miktari: Number(urun.stok_miktari || 0) - satilan } : urun;
+    });
+    return {
+      ...data,
+      urunler: stoguDusur(data.urunler),
+      tumUrunler: stoguDusur(data.tumUrunler || data.urunler),
+      satislar: [...cevrimdisiSatislar, ...(data.satislar || [])],
+    };
+  };
+
   const veriyiUygula = data => {
     setUrunler(data.urunler || []);
     setTumUrunler(data.tumUrunler || data.urunler || []);
@@ -429,9 +463,22 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     setHata('');
     try {
       const data = await marketVerileriniGetir(restaurantId);
-      veriyiUygula(data);
+      await cevrimdisiSnapshotKaydet(`market:${restaurantId}`, data);
+      const bekleyenler = await cevrimdisiIslemleriGetir({ restaurantId, type: MARKET_OFFLINE_QUEUE_TYPE });
+      setBekleyenCevrimdisiSatis(bekleyenler.length);
+      veriyiUygula(bekleyenSatislariVeriyeUygula(data, bekleyenler));
+      setCevrimici(true);
     } catch (error) {
-      setHata(error.message);
+      const snapshot = await cevrimdisiSnapshotGetir(`market:${restaurantId}`).catch(() => null);
+      const bekleyenler = await cevrimdisiIslemleriGetir({ restaurantId, type: MARKET_OFFLINE_QUEUE_TYPE }).catch(() => []);
+      setBekleyenCevrimdisiSatis(bekleyenler.length);
+      if (snapshot && cevrimdisiAgHatasiMi(error)) {
+        veriyiUygula(bekleyenSatislariVeriyeUygula(snapshot, bekleyenler));
+        setCevrimici(false);
+        setHata('');
+      } else {
+        setHata(error.message);
+      }
     } finally {
       if (!sessiz) setYukleniyor(false);
     }
@@ -440,19 +487,86 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   useEffect(() => {
     if (!restaurantId || String(restaurantId) === 'super_admin') return undefined;
     let aktif = true;
-    marketVerileriniGetir(restaurantId)
-      .then(data => {
+    Promise.all([
+      marketVerileriniGetir(restaurantId),
+      cevrimdisiIslemleriGetir({ restaurantId, type: MARKET_OFFLINE_QUEUE_TYPE }),
+    ])
+      .then(async ([data, bekleyenler]) => {
         if (!aktif) return;
-        veriyiUygula(data);
+        await cevrimdisiSnapshotKaydet(`market:${restaurantId}`, data);
+        veriyiUygula(bekleyenSatislariVeriyeUygula(data, bekleyenler));
+        setBekleyenCevrimdisiSatis(bekleyenler.length);
+        setCevrimici(true);
         setHata('');
       })
-      .catch(error => {
-        if (aktif) setHata(error.message);
+      .catch(async error => {
+        if (!aktif) return;
+        const snapshot = await cevrimdisiSnapshotGetir(`market:${restaurantId}`).catch(() => null);
+        const bekleyenler = await cevrimdisiIslemleriGetir({ restaurantId, type: MARKET_OFFLINE_QUEUE_TYPE }).catch(() => []);
+        if (snapshot && cevrimdisiAgHatasiMi(error)) {
+          veriyiUygula(bekleyenSatislariVeriyeUygula(snapshot, bekleyenler));
+          setBekleyenCevrimdisiSatis(bekleyenler.length);
+          setCevrimici(false);
+          setHata('');
+        } else {
+          setHata(error.message);
+        }
       })
       .finally(() => {
         if (aktif) setYukleniyor(false);
       });
     return () => { aktif = false; };
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (!restaurantId || String(restaurantId) === 'super_admin') return undefined;
+    let aktif = true;
+    const kuyruguEsitle = async () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      const islemler = await cevrimdisiIslemleriGetir({ restaurantId, type: MARKET_OFFLINE_QUEUE_TYPE }).catch(() => []);
+      if (aktif) setBekleyenCevrimdisiSatis(islemler.length);
+      let aktarilan = 0;
+      for (const islem of islemler) {
+        try {
+          const payload = islem.payload || {};
+          await marketSatisiKaydet(
+            restaurantId,
+            payload.sepet || [],
+            payload.odemeTipi,
+            payload.cariId || '',
+            payload.islemAnahtari,
+            payload.indirim || {},
+            payload.odemeler || []
+          );
+          await cevrimdisiIslemSil(islem.id);
+          aktarilan += 1;
+        } catch (error) {
+          if (cevrimdisiAgHatasiMi(error)) break;
+          console.error('Çevrimdışı market satışı senkronize edilemedi:', error);
+          break;
+        }
+      }
+      if (!aktif) return;
+      const kalanlar = await cevrimdisiIslemleriGetir({ restaurantId, type: MARKET_OFFLINE_QUEUE_TYPE }).catch(() => []);
+      setBekleyenCevrimdisiSatis(kalanlar.length);
+      setCevrimici(true);
+      if (aktarilan > 0) {
+        bildir(`${aktarilan} çevrimdışı satış merkeze aktarıldı.`, 'success');
+        await verileriYukle(true);
+      }
+    };
+    const online = () => { setCevrimici(true); void kuyruguEsitle(); };
+    const offline = () => setCevrimici(false);
+    window.addEventListener('online', online);
+    window.addEventListener('offline', offline);
+    void kuyruguEsitle();
+    return () => {
+      aktif = false;
+      window.removeEventListener('online', online);
+      window.removeEventListener('offline', offline);
+    };
+  // Bağlantı olayı yalnızca işletme değiştiğinde yeniden kurulmalıdır.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId]);
 
   useEffect(() => {
@@ -1434,23 +1548,23 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     const cariOdemeTutari = paraYuvarla(yeniOdemeParcalari
       .filter(odeme => odeme.tip === 'Cari / Veresiye')
       .reduce((toplam, odeme) => toplam + Number(odeme.tutar || 0), 0));
+    const satilanKalemler = sepet.map(kalem => ({ ...kalem }));
+    const islemImzasi = JSON.stringify({
+      odemeTipi: odemeKaydi,
+      odemeParcalari: yeniOdemeParcalari,
+      satisCariId,
+      genelIndirim,
+      kalemler: satilanKalemler.map(kalem => [kalem.id, kalem.adet, kalem.liste_fiyati, kalem.satis_fiyati]),
+    });
+    if (satisIslemAnahtariRef.current.imza !== islemImzasi) {
+      satisIslemAnahtariRef.current = {
+        anahtar: globalThis.crypto.randomUUID(),
+        imza: islemImzasi,
+      };
+    }
     satisKaydiSuruyorRef.current = true;
     setSatisKaydediliyor(true);
     try {
-      const satilanKalemler = sepet.map(kalem => ({ ...kalem }));
-      const islemImzasi = JSON.stringify({
-        odemeTipi: odemeKaydi,
-        odemeParcalari: yeniOdemeParcalari,
-        satisCariId,
-        genelIndirim,
-        kalemler: satilanKalemler.map(kalem => [kalem.id, kalem.adet, kalem.liste_fiyati, kalem.satis_fiyati]),
-      });
-      if (satisIslemAnahtariRef.current.imza !== islemImzasi) {
-        satisIslemAnahtariRef.current = {
-          anahtar: globalThis.crypto.randomUUID(),
-          imza: islemImzasi,
-        };
-      }
       const beklenenToplam = sepetToplamlari.netToplam;
       const yeniSatis = await marketSatisiKaydet(
         restaurantId,
@@ -1495,7 +1609,79 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       void verileriYukle(true);
       window.setTimeout(() => barkodRef.current?.focus(), 80);
     } catch (error) {
-      bildir(`${error.message} Sepet korundu; tekrar deneyebilirsiniz.`, 'error');
+      if (cevrimdisiAgHatasiMi(error)) {
+        const islemAnahtari = satisIslemAnahtariRef.current.anahtar || globalThis.crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        const yerelSatis = {
+          id: `offline-${islemAnahtari}`,
+          restaurant_id: restaurantId,
+          created_at: createdAt,
+          odeme_tipi: odemeKaydi,
+          cari_id: satisCariId || null,
+          cari_adi: seciliSatisCarisi?.ad || '',
+          brut_toplam: sepetToplamlari.brutToplam,
+          indirim_toplami: sepetToplamlari.urunIndirimTutari + sepetToplamlari.genelIndirimTutari,
+          toplam_tutar: sepetToplamlari.netToplam,
+          cevrimdisi_bekliyor: true,
+          market_satis_kalemleri: satilanKalemler.map(kalem => ({
+            id: `offline-${islemAnahtari}-${kalem.id}`,
+            urun_id: kalem.id,
+            urun_adi: kalem.urun_adi,
+            barkod: kalem.barkod || '',
+            adet: Number(kalem.adet || 0),
+            birim_fiyat: Number(kalem.satis_fiyati || 0),
+            toplam_tutar: Number(kalem.adet || 0) * Number(kalem.satis_fiyati || 0),
+          })),
+        };
+        try {
+          await cevrimdisiIslemEkle({
+            id: islemAnahtari,
+            restaurantId,
+            type: MARKET_OFFLINE_QUEUE_TYPE,
+            payload: {
+              sepet: satilanKalemler,
+              odemeTipi: odemeKaydi,
+              cariId: satisCariId || '',
+              islemAnahtari,
+              indirim: genelIndirim,
+              odemeler: yeniOdemeParcalari,
+              yerelSatis,
+            },
+          });
+          const satilanMiktarlar = satilanKalemler.reduce((toplamlar, kalem) => {
+            toplamlar.set(String(kalem.id), Number(toplamlar.get(String(kalem.id)) || 0) + Number(kalem.adet || 0));
+            return toplamlar;
+          }, new Map());
+          const stoguDusur = liste => liste.map(urun => {
+            const satilan = Number(satilanMiktarlar.get(String(urun.id)) || 0);
+            return satilan ? { ...urun, stok_miktari: Number(urun.stok_miktari || 0) - satilan } : urun;
+          });
+          setUrunler(stoguDusur);
+          setTumUrunler(stoguDusur);
+          setSatislar(prev => [yerelSatis, ...prev]);
+          if (cariOdemeTutari > 0 && satisCariId) {
+            setCariler(prev => prev.map(cari => String(cari.id) === String(satisCariId)
+              ? { ...cari, bakiye: Number(cari.bakiye || 0) + cariOdemeTutari }
+              : cari));
+          }
+          setSepet([]);
+          setVerilenTutar('');
+          setOdemeParcalari([]);
+          setGenelIndirim({ yon: 'azalt', tur: 'yuzde', deger: '' });
+          setGenelIndirimPenceresi(false);
+          setUrunIndirimFormu(null);
+          satisIslemAnahtariRef.current = { anahtar: '', imza: '' };
+          setBekleyenCevrimdisiSatis(prev => prev + 1);
+          setCevrimici(false);
+          void satisFisiKarariniUygula(yerelSatis);
+          bildir('İnternet yok. Satış cihazda güvenle bekletiliyor; bağlantı gelince otomatik aktarılacak.', 'warning');
+          window.setTimeout(() => barkodRef.current?.focus(), 80);
+        } catch (kuyrukHatasi) {
+          bildir(`Satış cihaz kuyruğuna alınamadı: ${kuyrukHatasi.message} Sepet korundu.`, 'error');
+        }
+      } else {
+        bildir(`${error.message} Sepet korundu; tekrar deneyebilirsiniz.`, 'error');
+      }
     } finally {
       satisKaydiSuruyorRef.current = false;
       setSatisKaydediliyor(false);
@@ -2096,6 +2282,11 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       <nav className="market-tabs" aria-label="Market modülü">{nav.map(([key, label]) =>
         <button type="button" key={key} className={sekme === key ? 'active' : ''} onClick={() => setSekme(key)}>{label}</button>
       )}<button type="button" className="market-tab-refresh" onClick={() => verileriYukle(false)} aria-label="Verileri yenile">↻</button></nav>
+      {(!cevrimici || bekleyenCevrimdisiSatis > 0) && <div className={`market-offline-status ${cevrimici ? 'syncing' : ''}`} role="status">
+        <span>{cevrimici ? '↻' : '●'}</span>
+        <strong>{cevrimici ? 'Bağlantı var, işlemler aktarılıyor' : 'Çevrimdışı satış modu'}</strong>
+        <small>{bekleyenCevrimdisiSatis} satış cihazda bekliyor</small>
+      </div>}
       {hata && <div className="market-alert"><strong>Kontrol gerekiyor:</strong> {hata}</div>}
       {yukleniyor && <div className="market-loading">Market verileri hazırlanıyor…</div>}
 

@@ -12,8 +12,17 @@ import {
   restoranAdisyonCariyeAtomik,
   restoranAlisFisiAtomik,
   restoranAlisFisleriniGetir,
+  restoranHizliSatisKaydetAtomik,
   restoranIadeKaydiAtomik,
 } from './services/restaurantSaleService';
+import {
+  cevrimdisiAgHatasiMi,
+  cevrimdisiIslemEkle,
+  cevrimdisiIslemSil,
+  cevrimdisiIslemleriGetir,
+  cevrimdisiSnapshotGetir,
+  cevrimdisiSnapshotKaydet,
+} from './lib/offlineStore';
 import {
   LANDING_ADVANTAGES,
   LANDING_BUSINESS_TYPES,
@@ -44,6 +53,8 @@ const istemciIslemAnahtariOlustur = () => {
     return deger.toString(16);
   });
 };
+
+const RESTORAN_HIZLI_SATIS_OFFLINE_TYPE = 'restaurant-quick-sale';
 
 export default function App() {
   return (
@@ -905,6 +916,7 @@ Toplam Ciro: {toplam}
     if (typeof navigator === 'undefined') return true;
     return navigator.onLine !== false;
   });
+  const [bekleyenCevrimdisiHizliSatis, setBekleyenCevrimdisiHizliSatis] = useState(0);
 
   const [selectedMasaId, setSelectedMasaId] = useState(null);
   const selectedMasaIdRef = useRef(null);
@@ -996,6 +1008,59 @@ Toplam Ciro: {toplam}
   ]);
 
   const mevcutRestaurantId = user?.role === 'waiter' ? user?.parentRestaurantId : user?.restaurantId;
+
+  useEffect(() => {
+    if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return undefined;
+    let aktif = true;
+    const kuyruguEsitle = async () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      const islemler = await cevrimdisiIslemleriGetir({ restaurantId: mevcutRestaurantId, type: RESTORAN_HIZLI_SATIS_OFFLINE_TYPE }).catch(() => []);
+      if (aktif) setBekleyenCevrimdisiHizliSatis(islemler.length);
+      let aktarilan = 0;
+      for (const islem of islemler) {
+        try {
+          await restoranHizliSatisKaydetAtomik(islem.payload || {});
+          await cevrimdisiIslemSil(islem.id);
+          aktarilan += 1;
+        } catch (error) {
+          if (cevrimdisiAgHatasiMi(error)) break;
+          console.error('Çevrimdışı hızlı satış senkronize edilemedi:', error);
+          break;
+        }
+      }
+      if (!aktif) return;
+      const kalanlar = await cevrimdisiIslemleriGetir({ restaurantId: mevcutRestaurantId, type: RESTORAN_HIZLI_SATIS_OFFLINE_TYPE }).catch(() => []);
+      setBekleyenCevrimdisiHizliSatis(kalanlar.length);
+      if (aktarilan > 0) {
+        bildirimGoster(`${aktarilan} çevrimdışı hızlı satış merkeze aktarıldı.`, 'success');
+      }
+    };
+    void cevrimdisiIslemleriGetir({ restaurantId: mevcutRestaurantId, type: RESTORAN_HIZLI_SATIS_OFFLINE_TYPE })
+      .then(islemler => { if (aktif) setBekleyenCevrimdisiHizliSatis(islemler.length); })
+      .catch(() => {});
+    if (baglantiOnline) void kuyruguEsitle();
+    return () => { aktif = false; };
+  }, [baglantiOnline, mevcutRestaurantId]);
+
+  useEffect(() => {
+    if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return;
+    const isletmeMenusu = menuUrunleri.filter(urun => String(urun.restaurantId) === String(mevcutRestaurantId));
+    const isletmeCarileri = cariMusteriler.filter(cari => !cari.restaurantId || String(cari.restaurantId) === String(mevcutRestaurantId));
+    if (!baglantiOnline || !isletmeMenusu.length) return;
+    void cevrimdisiSnapshotKaydet(`restoran-hizli:${mevcutRestaurantId}`, {
+      menuUrunleri: isletmeMenusu,
+      cariMusteriler: isletmeCarileri,
+    });
+  }, [baglantiOnline, mevcutRestaurantId, menuUrunleri, cariMusteriler]);
+
+  useEffect(() => {
+    if (baglantiOnline || !mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return;
+    void cevrimdisiSnapshotGetir(`restoran-hizli:${mevcutRestaurantId}`).then(snapshot => {
+      if (!snapshot) return;
+      if (Array.isArray(snapshot.menuUrunleri)) setMenuUrunleri(snapshot.menuUrunleri);
+      if (Array.isArray(snapshot.cariMusteriler)) setCariMusteriler(snapshot.cariMusteriler);
+    }).catch(() => {});
+  }, [baglantiOnline, mevcutRestaurantId]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mevcutRestaurantId) return undefined;
@@ -5335,6 +5400,14 @@ Toplam Ciro: {toplam}
 
     if (error) {
       console.error('Menü ürünleri çekilemedi:', error);
+      if (cevrimdisiAgHatasiMi(error)) {
+        const snapshot = await cevrimdisiSnapshotGetir(`restoran-hizli:${restaurantId}`).catch(() => null);
+        if (snapshot?.menuUrunleri) {
+          setMenuUrunleri(snapshot.menuUrunleri);
+          setBaglantiOnline(false);
+          return;
+        }
+      }
       alert('Menü ürünleri çekilemedi: ' + error.message);
       return;
     }
@@ -10844,11 +10917,6 @@ Toplam Ciro: {toplam}
       return;
     }
 
-    if (aktifOdemeTipi === 'Cari') {
-      const cariKaydi = await cariHareketEkle(cariMusteri, 'Borç', tutar, 'Hızlı satış / Gel-Al cariye yazıldı');
-      if (!cariKaydi) return;
-    }
-
     const paraUstu = aktifOdemeTipi === 'Nakit' ? Math.max(alinanTutar - tutar, 0) : 0;
     const bugun = new Date().toISOString().split('T')[0];
     const kapanisSaati = new Date().toISOString();
@@ -10899,18 +10967,6 @@ Toplam Ciro: {toplam}
     });
     });
 
-    const { error } = await supabase
-      .from('satis_gecmisi')
-      .insert(satisKayitlari);
-
-    if (error) {
-      console.error('Hızlı satış kaydedilemedi:', error);
-      alert('Hızlı satış kaydedilemedi: ' + error.message);
-      return;
-    }
-
-    await stokDusur(hizliSatisUrunler);
-
     // hızlı satıştan girilen mutfağa gidecek ürünleri mutfak ekranına düşüren kod
     const hizliSatisMutfakKayitlari = hizliSatisUrunler
       .filter(hizliUrun => {
@@ -10939,16 +10995,69 @@ Toplam Ciro: {toplam}
         };
       });
 
-    if (hizliSatisMutfakKayitlari.length > 0) {
-      const { data: mutfakData, error: mutfakError } = await supabase
-        .from('mutfak_fisleri')
-        .insert(hizliSatisMutfakKayitlari)
-        .select();
+    const islemAnahtari = istemciIslemAnahtariOlustur();
+    const hizliSatisPayload = {
+      restaurantId: mevcutRestaurantId,
+      islemAnahtari,
+      satisKayitlari,
+      siparisler: hizliSatisUrunler,
+      mutfakKayitlari: hizliSatisMutfakKayitlari,
+      cariMusteriId: cariMusteri?.id || null,
+    };
+    let hizliSatisSonucu;
+    let cevrimdisiKaydedildi = false;
+    try {
+      hizliSatisSonucu = await restoranHizliSatisKaydetAtomik(hizliSatisPayload);
+    } catch (error) {
+      if (!cevrimdisiAgHatasiMi(error)) {
+        console.error('Hızlı satış kaydedilemedi:', error);
+        alert('Hızlı satış kaydedilemedi: ' + error.message);
+        return;
+      }
+      try {
+        await cevrimdisiIslemEkle({
+          id: islemAnahtari,
+          restaurantId: mevcutRestaurantId,
+          type: RESTORAN_HIZLI_SATIS_OFFLINE_TYPE,
+          payload: hizliSatisPayload,
+        });
+        cevrimdisiKaydedildi = true;
+        setBekleyenCevrimdisiHizliSatis(prev => prev + 1);
+        setBaglantiOnline(false);
+        hizliSatisSonucu = {
+          satislar: satisKayitlari.map((kayit, index) => ({ ...kayit, id: `offline-${islemAnahtari}-${index}` })),
+          mutfakFisleri: hizliSatisMutfakKayitlari.map((kayit, index) => ({ ...kayit, id: `offline-${islemAnahtari}-mutfak-${index}`, created_at: kapanisSaati })),
+          cari: cariMusteri ? { ...cariMusteri, bakiye: Number(cariMusteri.bakiye || 0) + tutar } : null,
+        };
+        bildirimGoster('İnternet yok. Hızlı satış cihazda bekletiliyor ve bağlantı gelince otomatik aktarılacak.', 'warning');
+      } catch (kuyrukHatasi) {
+        alert(`Satış cihaz kuyruğuna alınamadı: ${kuyrukHatasi.message}`);
+        return;
+      }
+    }
 
-      if (mutfakError) {
-        console.error('Hızlı satış mutfak fişi oluşturulamadı:', mutfakError);
-        alert('Satış kaydedildi ama mutfak fişi oluşturulamadı: ' + mutfakError.message);
-      } else if (Array.isArray(mutfakData) && mutfakData.length > 0) {
+    setMenuUrunleri(prev => prev.map(urun => {
+      const satilan = hizliSatisUrunler
+        .filter(item => String(item.urunId) === String(urun.id))
+        .reduce((toplam, item) => toplam + Number(item.adet || 0), 0);
+      if (!satilan || !urun.stokTakip || urunSatistaUretilecekMi(urun)) return urun;
+      return { ...urun, stokAdedi: Math.max(0, Number(urun.stokAdedi || 0) - satilan) };
+    }));
+
+    if (!cevrimdisiKaydedildi) {
+      void menuUrunleriniSupabasedenCek(mevcutRestaurantId);
+      void stokMalzemeleriniSupabasedenCek(mevcutRestaurantId);
+    }
+
+    if (hizliSatisSonucu?.cari) {
+      const guncelCari = hizliSatisSonucu.cari;
+      setCariMusteriler(prev => prev.map(cari => String(cari.id) === String(guncelCari.id)
+        ? { ...cari, bakiye: Number(guncelCari.bakiye || 0), hareketler: Array.isArray(guncelCari.hareketler) ? guncelCari.hareketler : cari.hareketler }
+        : cari));
+    }
+
+    const mutfakData = Array.isArray(hizliSatisSonucu?.mutfakFisleri) ? hizliSatisSonucu.mutfakFisleri : [];
+    if (mutfakData.length > 0) {
         const yeniMutfakFisleri = mutfakData.map(f => ({
           id: f.id,
           restaurantId: f.restaurant_id,
@@ -10969,7 +11078,6 @@ Toplam Ciro: {toplam}
         ]);
 
         mutfakFisYazdirmaKontrolEt(yeniMutfakFisleri);
-      }
     }
 
     setSatisGecmisi([
@@ -20082,6 +20190,11 @@ Toplam Ciro: {toplam}
                   <div><span>INTEGRA DOKUNMATİK POS</span><h2>Hızlı Satış / Gel-Al</h2></div>
                   <strong>{hizliSatisToplam} TL</strong>
                 </div>
+                {(!baglantiOnline || bekleyenCevrimdisiHizliSatis > 0) && <div className={`quick-sale-offline-status ${baglantiOnline ? 'syncing' : ''}`} role="status">
+                  <span>{baglantiOnline ? '↻' : '●'}</span>
+                  <strong>{baglantiOnline ? 'Bağlantı var, satışlar aktarılıyor' : 'Çevrimdışı satış modu'}</strong>
+                  <small>{bekleyenCevrimdisiHizliSatis} hızlı satış cihazda bekliyor</small>
+                </div>}
                 <p className="quick-sale-intro">
                   Masa veya paket açmadan hızlı ürün seçip nakit/kart satış kapatabilirsiniz.
                 </p>

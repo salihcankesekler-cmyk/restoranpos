@@ -44,6 +44,27 @@ export async function restoranAdisyonOdemeAtomik({
   return data;
 }
 
+export async function restoranHizliSatisKaydetAtomik({
+  restaurantId,
+  islemAnahtari,
+  satisKayitlari,
+  siparisler,
+  mutfakKayitlari = [],
+  cariMusteriId = null,
+}) {
+  const { data, error } = await supabase.rpc('restoran_hizli_satis_kaydet_atomik', {
+    p_restaurant_id: Number(restaurantId),
+    p_islem_anahtari: islemAnahtari,
+    p_satis_kayitlari: satisKayitlari,
+    p_siparisler: siparisler,
+    p_mutfak_kayitlari: mutfakKayitlari,
+    p_cari_musteri_id: cariMusteriId ? Number(cariMusteriId) : null,
+  });
+  if (error) throw new Error(hataMesaji(error));
+  if (!data?.satislar) throw new Error('Hızlı satış tamamlandı ancak satış bilgisi alınamadı.');
+  return data;
+}
+
 export async function restoranAlisFisleriniGetir(restaurantId, limit = 100) {
   if (!restaurantId) return [];
 

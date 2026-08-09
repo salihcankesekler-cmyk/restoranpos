@@ -21,6 +21,8 @@
 .quick-sale-titlebar h2{margin:0;font-size:15px;line-height:1.15}
 .quick-sale-titlebar>strong{color:#fde047;font-size:clamp(25px,2.3vw,36px);letter-spacing:-.04em}
 .quick-sale-intro{margin:0;padding:5px 13px;background:#fff;color:#64748b;font-size:9px}
+.quick-sale-offline-status{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid #f59e0b;background:#fffbeb;color:#92400e;font-size:10px}
+.quick-sale-offline-status>span{color:#dc2626}.quick-sale-offline-status small{margin-left:auto}.quick-sale-offline-status.syncing{border-color:#60a5fa;background:#eff6ff;color:#1d4ed8}.quick-sale-offline-status.syncing>span{color:#2563eb}
 .quick-sale-layout{
   display:grid;
   grid-template-columns:minmax(600px,1.42fr) minmax(420px,.82fr);
