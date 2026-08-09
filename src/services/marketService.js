@@ -8,9 +8,10 @@ function marketHatasi(error) {
     : error.message || 'Market işlemi tamamlanamadı.');
 }
 
-const opsiyonelTabloEksikMi = error =>
-  !error || ['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error.code)
-  || String(error.message || '').includes('schema cache');
+const opsiyonelTabloEksikMi = error => Boolean(error) && (
+  ['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error.code)
+  || String(error.message || '').includes('schema cache')
+);
 
 const miktarYuvarla = value => Math.round((Number(value || 0) + Number.EPSILON) * 1000) / 1000;
 

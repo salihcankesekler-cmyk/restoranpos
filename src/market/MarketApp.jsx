@@ -361,6 +361,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const [etiketArama, setEtiketArama] = useState('');
   const [etiketAdetleri, setEtiketAdetleri] = useState({});
   const [etiketYeniFiyatlari, setEtiketYeniFiyatlari] = useState({});
+  const [etiketGorunumu, setEtiketGorunumu] = useState('tumu');
   const [etiketFiyatlariKaydediliyor, setEtiketFiyatlariKaydediliyor] = useState(false);
   const [etiketGenisligi, setEtiketGenisligi] = useState('58');
   const [etiketYuksekligi, setEtiketYuksekligi] = useState('40');
@@ -574,6 +575,14 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   }, [sekme]);
 
   useEffect(() => {
+    if (!['hareketler', 'etiket'].includes(sekme)) return undefined;
+    const zamanlayici = window.setTimeout(() => { void verileriYukle(true); }, 0);
+    return () => window.clearTimeout(zamanlayici);
+  // Hareket ve etiket ekranları açıldığında başka kasalardaki güncel kayıtları da al.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantId, sekme]);
+
+  useEffect(() => {
     localStorage.setItem(`integra-market-terazi-${restaurantId}`, JSON.stringify(teraziAyarlari));
   }, [restaurantId, teraziAyarlari]);
 
@@ -643,16 +652,20 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const paraUstuTutari = paraYuvarla(Math.max(verilenTutarSayisi - kalanOdemeTutari, 0));
   const eksikTutar = paraYuvarla(Math.max(kalanOdemeTutari - verilenTutarSayisi, 0));
 
+  const bekleyenEtiketUrunIdleri = useMemo(
+    () => [...new Set(etiketKuyrugu.map(kayit => String(kayit.urun_id)))],
+    [etiketKuyrugu]
+  );
+
   const filtreliEtiketUrunleri = useMemo(() => {
     const metin = etiketArama.trim().toLocaleLowerCase('tr-TR');
-    if (!metin && etiketUrunleri.length) {
-      const urunHaritasi = new Map(urunler.map(urun => [String(urun.id), urun]));
-      return etiketUrunleri.map(id => urunHaritasi.get(String(id))).filter(Boolean);
-    }
-    if (!metin) return urunler;
-    return urunler.filter(urun => [urun.urun_adi, urun.barkod]
+    const gorunumUrunleri = etiketGorunumu === 'degisenler'
+      ? urunler.filter(urun => bekleyenEtiketUrunIdleri.includes(String(urun.id)))
+      : urunler;
+    if (!metin) return gorunumUrunleri;
+    return gorunumUrunleri.filter(urun => [urun.urun_adi, urun.barkod]
       .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin)));
-  }, [etiketArama, etiketUrunleri, urunler]);
+  }, [bekleyenEtiketUrunIdleri, etiketArama, etiketGorunumu, urunler]);
   const etiketFiyatDegisiklikleri = useMemo(() => Object.entries(etiketYeniFiyatlari).map(([urunId, deger]) => {
     const urun = urunler.find(item => String(item.id) === String(urunId));
     const yeniFiyat = Number(deger);
@@ -663,11 +676,6 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   }).filter(Boolean), [etiketYeniFiyatlari, urunler]);
   const guvenliEtiketGenisligi = Math.min(Math.max(Number(etiketGenisligi || 58), 20), 120);
   const guvenliEtiketYuksekligi = Math.min(Math.max(Number(etiketYuksekligi || 40), 15), 100);
-
-  const bekleyenEtiketUrunIdleri = useMemo(
-    () => [...new Set(etiketKuyrugu.map(kayit => String(kayit.urun_id)))],
-    [etiketKuyrugu]
-  );
 
   const rapor = useMemo(() => {
     const simdi = new Date();
@@ -1123,6 +1131,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       const guncellenen = await marketUrunStokFiyatGuncelle(restaurantId, hizliDuzenleme.id, hizliDuzenleme);
       setUrunler(prev => prev.map(urun => String(urun.id) === String(guncellenen.id) ? guncellenen : urun));
       setHizliDuzenleme(null);
+      await verileriYukle(true);
       bildir('Stok ve fiyatlar güncellendi.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
   };
@@ -2209,9 +2218,20 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   };
 
   const fiyatDegisenleriSec = () => {
+    if (etiketGorunumu === 'degisenler') {
+      setEtiketGorunumu('tumu');
+      setEtiketArama('');
+      return;
+    }
     const kuyruktakiUrunler = urunler.filter(urun => bekleyenEtiketUrunIdleri.includes(String(urun.id))).map(urun => urun.id);
     setEtiketUrunleri(prev => [...new Set([...prev, ...kuyruktakiUrunler])]);
-    if (!kuyruktakiUrunler.length) bildir('Bekleyen fiyat etiketi bulunmuyor.', 'info');
+    setEtiketArama('');
+    if (!kuyruktakiUrunler.length) {
+      setEtiketGorunumu('tumu');
+      bildir('Bekleyen fiyat etiketi bulunmuyor.', 'info');
+      return;
+    }
+    setEtiketGorunumu('degisenler');
   };
 
   const etiketSeciminiDegistir = (urun, secili) => {
@@ -2255,17 +2275,22 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     }
     setEtiketFiyatlariKaydediliyor(true);
     try {
-      await Promise.all(etiketFiyatDegisiklikleri.map(({ urun, yeniFiyat }) => marketUrunStokFiyatGuncelle(restaurantId, urun.id, {
+      const kaydedilecekDegisiklikler = [...etiketFiyatDegisiklikleri];
+      const guncellenenUrunler = await Promise.all(kaydedilecekDegisiklikler.map(({ urun, yeniFiyat }) => marketUrunStokFiyatGuncelle(restaurantId, urun.id, {
         stokMiktari: urun.stok_miktari,
         alisFiyati: urun.alis_fiyati,
         satisFiyati: yeniFiyat,
         aciklama: 'Etiket ekranından toplu satış fiyatı güncellemesi',
       })));
-      const degisenIdler = new Set(etiketFiyatDegisiklikleri.map(({ urun }) => String(urun.id)));
+      const guncellenenUrunHaritasi = new Map(guncellenenUrunler.map(urun => [String(urun.id), urun]));
+      const urunleriGuncelle = liste => liste.map(urun => guncellenenUrunHaritasi.get(String(urun.id)) || urun);
+      setUrunler(urunleriGuncelle);
+      setTumUrunler(urunleriGuncelle);
+      const degisenIdler = new Set(kaydedilecekDegisiklikler.map(({ urun }) => String(urun.id)));
       setEtiketYeniFiyatlari(prev => Object.fromEntries(Object.entries(prev)
         .filter(([urunId]) => !degisenIdler.has(String(urunId)))));
       await verileriYukle(true);
-      bildir(`${etiketFiyatDegisiklikleri.length} ürünün satış fiyatı güncellendi.`, 'success');
+      bildir(`${kaydedilecekDegisiklikler.length} ürünün satış fiyatı güncellendi.`, 'success');
     } catch (error) {
       bildir(error.message, 'error');
     } finally {
@@ -2798,7 +2823,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
 
       {!yukleniyor && sekme === 'etiket' && <div className="market-card">
         <div className="market-heading"><div><span>RAF VE BARKOD</span><h2>Toplu fiyat ve etiket hazırlama</h2></div><div className="market-label-actions">
-          <button className={etiketKuyrugu.length ? 'market-queue-button active' : 'market-queue-button'} type="button" onClick={fiyatDegisenleriSec}>↻ Fiyatı Değişenler ({etiketKuyrugu.length})</button>
+          <button className={etiketGorunumu === 'degisenler' ? 'market-queue-button active' : 'market-queue-button'} type="button" onClick={fiyatDegisenleriSec}>{etiketGorunumu === 'degisenler' ? `← Tüm Ürünler · ${bekleyenEtiketUrunIdleri.length} değişiklik` : `↻ Fiyatı Değişenler (${bekleyenEtiketUrunIdleri.length})`}</button>
           <div className="market-label-size-manual"><label>En (mm)<input type="number" min="20" max="120" step="1" value={etiketGenisligi} onChange={event => setEtiketGenisligi(event.target.value)} /></label><span>×</span><label>Boy (mm)<input type="number" min="15" max="100" step="1" value={etiketYuksekligi} onChange={event => setEtiketYuksekligi(event.target.value)} /></label></div>
           <button className="market-save-prices" type="button" disabled={etiketFiyatlariKaydediliyor || !etiketFiyatDegisiklikleri.length} onClick={etiketFiyatlariniKaydet}>{etiketFiyatlariKaydediliyor ? 'Kaydediliyor…' : `💾 Fiyatları Kaydet${etiketFiyatDegisiklikleri.length ? ` (${etiketFiyatDegisiklikleri.length})` : ''}`}</button>
           <button className="market-primary" type="button" onClick={etiketleriYazdir}>🖨️ Seçilenleri Yazdır</button>
