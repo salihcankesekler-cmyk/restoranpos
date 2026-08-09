@@ -2365,21 +2365,29 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
                 const urunGrubu = grupHaritasi.get(String(urun.grup_id));
                 const urunRengi = urunGrubu?.urun_rengi || '#0f172a';
                 const urunResmi = marketUrunGorseli(urun);
+                const kritik = kritikUrunMu(urun);
+                const urunFiyati = Number(urun.satis_fiyati || 0) > 0
+                  ? `${para(urun.satis_fiyati)}${kilogramUrunuMu(urun) ? ' / kg' : ''}`
+                  : 'Satışta fiyat gir';
                 return <button
                   type="button"
                   key={urun.id}
-                  className={kritikUrunMu(urun) ? 'is-critical' : ''}
+                  className={`${kritik ? 'is-critical ' : ''}${urunResmi ? 'has-image' : 'no-image'}`}
                   style={{ '--market-product-color': urunRengi, '--market-product-text': kontrastYaziRengi(urunRengi) }}
                   onClick={() => secilenUrunuSepeteEkle(urun)}
                 >
-                  <span className="market-sale-product-visual">
-                    {urunResmi
-                      ? <img src={urunResmi} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} />
-                      : <span className="market-sale-product-placeholder" aria-hidden="true">{String(urun.urun_adi || 'Ü').trim().slice(0, 2).toLocaleUpperCase('tr-TR')}</span>}
-                    {kritikUrunMu(urun) && <em>KRİTİK</em>}
-                  </span>
-                  <span className="market-sale-product-copy"><strong>{urun.urun_adi}</strong><small>{urun.barkod || 'Barkodsuz'} · Stok {miktarYaz(urun.stok_miktari)}</small></span>
-                  <b>{Number(urun.satis_fiyati || 0) > 0 ? `${para(urun.satis_fiyati)}${kilogramUrunuMu(urun) ? ' / kg' : ''}` : 'Satışta fiyat gir'}</b>
+                  {urunResmi ? <>
+                    <span className="market-sale-product-visual">
+                      <img src={urunResmi} alt="" loading="lazy" />
+                      {kritik && <em>KRİTİK</em>}
+                    </span>
+                    <span className="market-sale-product-copy"><strong>{urun.urun_adi}</strong><small>{urun.barkod || 'Barkodsuz'} · Stok {miktarYaz(urun.stok_miktari)}</small></span>
+                    <b>{urunFiyati}</b>
+                  </> : <span className="market-sale-product-empty-copy">
+                    {kritik && <em>KRİTİK</em>}
+                    <strong>{urun.urun_adi}</strong>
+                    <b>{urunFiyati}</b>
+                  </span>}
                   <i>＋</i>
                 </button>;
               })}

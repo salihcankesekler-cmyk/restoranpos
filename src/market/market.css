@@ -2598,3 +2598,57 @@
   .market-pos-practical .market-pos-action-rail{grid-column:2;grid-row:2/8;grid-template-columns:1fr;grid-template-rows:repeat(7,minmax(44px,1fr))}
   .market-pos-touch-console{min-height:190px;grid-template-columns:minmax(0,1fr)}
 }
+
+/* Fotoğrafsız ürünler renkli hızlı satış tuşu, fotoğraflılar görsel kart olarak çalışır. */
+.market-pos-practical .market-sale-products>button.no-image{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px;
+  border-top:0;
+  background:var(--market-product-color,#0f172a);
+  color:var(--market-product-text,#fff);
+}
+.market-pos-practical .market-sale-products>button.no-image:hover{
+  background:var(--market-product-color,#0f172a);
+  filter:brightness(1.14);
+}
+.market-pos-practical .market-sale-products .market-sale-product-empty-copy{
+  position:relative;
+  display:flex;
+  width:100%;
+  height:100%;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:8px;
+  padding:8px;
+  color:var(--market-product-text,#fff);
+  text-align:center;
+}
+.market-pos-practical .market-sale-products .market-sale-product-empty-copy strong{
+  color:var(--market-product-text,#fff);
+  font-size:12px;
+  line-height:1.25;
+  text-align:center;
+}
+.market-pos-practical .market-sale-products .market-sale-product-empty-copy b{
+  color:var(--market-product-text,#fff);
+  font-size:15px;
+  line-height:1;
+}
+.market-pos-practical .market-sale-products .market-sale-product-empty-copy em{
+  position:absolute;
+  top:0;
+  right:0;
+  border-radius:3px;
+  padding:2px 4px;
+  background:#fff;
+  color:#b91c1c;
+  font-size:6px;
+  font-style:normal;
+  font-weight:950;
+}
+.market-pos-practical .market-sale-products>button.has-image>b{
+  color:var(--market-product-color,#c2410c);
+}
