@@ -1236,13 +1236,23 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     });
   };
 
+  const barkodAlaniniHazirla = (gecikme = 0) => {
+    window.setTimeout(() => {
+      const alan = barkodRef.current;
+      if (!alan) return;
+      alan.focus({ preventScroll: true });
+      alan.select();
+    }, gecikme);
+  };
+
   const urunuFiyatKontrolluEkle = (urun, adet) => {
     if (Number(urun.satis_fiyati || 0) <= 0) {
       setFiyatBekleyenUrun({ urun, adet: Math.max(Number(adet || 1), 0.001) });
       setAnlikSatisFiyati('');
-      return;
+      return false;
     }
     urunuSepeteEkle(urun, adet);
+    return true;
   };
 
   const satisAdediRakaminiGir = rakam => {
@@ -1289,9 +1299,10 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
       setSatisTeraziGirisTuru('gram');
       return;
     }
-    urunuFiyatKontrolluEkle(urun, satisAdedi);
+    const sepeteEklendi = urunuFiyatKontrolluEkle(urun, satisAdedi);
     setSatisAdedi('1');
     satisAdediTuslamaRef.current = false;
+    if (sepeteEklendi) barkodAlaniniHazirla();
   };
 
   const odemeKisayolTusunuCalistir = event => {
@@ -1376,22 +1387,29 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     event.preventDefault();
     if (!odemeSurerkenSepetDegisebilirMi()) return;
     const aranan = satisArama.trim();
-    if (!aranan) return barkodRef.current?.focus();
+    if (!aranan) return barkodAlaniniHazirla();
     const kucukAranan = aranan.toLocaleLowerCase('tr-TR');
     const dogrudanUrun = urunler.find(item => String(item.barkod || '').trim() === aranan)
       || urunler.find(item => String(item.urun_adi || '').trim().toLocaleLowerCase('tr-TR') === kucukAranan);
     const teraziSonucu = dogrudanUrun ? null : teraziBarkodunuCoz(aranan);
-    if (teraziSonucu?.hata) return bildir(teraziSonucu.hata, 'warning');
+    if (teraziSonucu?.hata) {
+      bildir(teraziSonucu.hata, 'warning');
+      barkodAlaniniHazirla();
+      return;
+    }
     const urun = dogrudanUrun || (!teraziSonucu && satisUrunleri.length === 1 ? satisUrunleri[0] : null);
     if (!urun && !teraziSonucu) {
-      return bildir(satisUrunleri.length > 1
+      bildir(satisUrunleri.length > 1
         ? 'Birden fazla ürün bulundu. Listeden istediğiniz ürünü seçin.'
         : 'Barkod veya ürün adıyla eşleşen ürün bulunamadı.', 'warning');
+      barkodAlaniniHazirla();
+      return;
     }
-    urunuFiyatKontrolluEkle(urun || teraziSonucu.urun, urun ? satisAdedi : teraziSonucu.adet);
+    const sepeteEklendi = urunuFiyatKontrolluEkle(urun || teraziSonucu.urun, urun ? satisAdedi : teraziSonucu.adet);
     setSatisArama('');
     setSatisAdedi('1');
     satisAdediTuslamaRef.current = false;
+    if (sepeteEklendi) barkodAlaniniHazirla();
   };
 
   const sepetiBeklemeyeAl = async (event, sepetAdi = bekleyenSepetAdi) => {
