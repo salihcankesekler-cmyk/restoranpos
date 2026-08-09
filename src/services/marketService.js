@@ -88,7 +88,7 @@ async function cariHareketiniKaldir(restaurantId, cariId, kaynak, kaynakId) {
 
 export async function marketVerileriniGetir(restaurantId) {
   const [urunler, gruplar, faturalar, sayimlar, cariler, satislar, stokHareketleri, fiyatGecmisi, vardiyalar, kasaHareketleri, iadeler, bekleyenSepetler, etiketKuyrugu] = await Promise.all([
-    supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('urun_adi'),
+    supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('sira').order('urun_adi'),
     supabase.from('market_gruplari').select('*').eq('restaurant_id', restaurantId).order('sira').order('grup_adi'),
     supabase.from('market_alis_faturalari').select('*, market_alis_fatura_kalemleri(*)').eq('restaurant_id', restaurantId).order('fatura_tarihi', { ascending: false }).limit(1000),
     supabase.from('market_sayimlari').select('*, market_sayim_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(20),
@@ -244,6 +244,25 @@ export async function marketGrubuKaydet(restaurantId, grup) {
       .eq('restaurant_id', restaurantId)
       .eq('grup_id', grup.id);
     if (urunError) throw marketHatasi(urunError);
+  }
+  return data;
+}
+
+export async function marketSatisSirasiniKaydet(restaurantId, tur, kayitIds) {
+  await marketOturumunuDogrula();
+  const ids = [...new Set((kayitIds || []).map(String).filter(Boolean))];
+  if (!['grup', 'urun'].includes(tur)) throw new Error('Geçersiz sıralama türü.');
+  if (!ids.length) throw new Error('Sıralanacak kayıt bulunamadı.');
+  const { data, error } = await supabase.rpc('market_satis_sirasi_kaydet', {
+    p_restaurant_id: Number(restaurantId),
+    p_tur: tur,
+    p_ids: ids,
+  });
+  if (error) {
+    if (['42883', 'PGRST202'].includes(error.code)) {
+      throw new Error('Satış sıralaması SQL’i eksik. En güncel Supabase migration dosyasını çalıştırın.');
+    }
+    throw marketHatasi(error);
   }
   return data;
 }

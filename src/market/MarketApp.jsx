@@ -15,6 +15,7 @@ import {
   marketSayimiKaydet,
   marketSatisIadeEt,
   marketSatisFisiniKuyrugaEkle,
+  marketSatisSirasiniKaydet,
   marketSatisiKaydet,
   marketUrunStokFiyatGuncelle,
   marketUrunleriniTopluKaydet,
@@ -378,6 +379,7 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
   const [topluAktarim, setTopluAktarim] = useState({ dosyaAdi: '', satirlar: [], hatalar: [] });
   const [topluAktariliyor, setTopluAktariliyor] = useState(false);
   const [silinenUrunId, setSilinenUrunId] = useState('');
+  const [siralamaKaydediliyor, setSiralamaKaydediliyor] = useState('');
   const [raporAraligi, setRaporAraligi] = useState('bugun');
   const [raporSekmesi, setRaporSekmesi] = useState('gun_sonu');
   const [raporTarihi, setRaporTarihi] = useState(() => gunAnahtari(new Date()));
@@ -601,6 +603,19 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
     () => new Map(gruplar.map(grup => [String(grup.id), grup])),
     [gruplar]
   );
+  const urunSiraBilgileri = useMemo(() => {
+    const grupListeleri = new Map();
+    urunler.forEach(urun => {
+      const grupId = String(urun.grup_id || '');
+      if (!grupListeleri.has(grupId)) grupListeleri.set(grupId, []);
+      grupListeleri.get(grupId).push(urun);
+    });
+    const bilgiler = new Map();
+    grupListeleri.forEach(liste => liste.forEach((urun, index) => {
+      bilgiler.set(String(urun.id), { index, toplam: liste.length });
+    }));
+    return bilgiler;
+  }, [urunler]);
 
   const filtreliUrunler = useMemo(() => {
     const metin = arama.trim().toLocaleLowerCase('tr-TR');
@@ -1024,6 +1039,41 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
         : item));
       bildir(!grup.satis_ekraninda_goster ? 'Grup satış ekranında gösterilecek.' : 'Grup satış ekranından gizlendi.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
+  };
+
+  const satisSirasiniDegistir = async (tur, kayit, yon) => {
+    if (!yetkiyiDogrula('urun_yonet', 'Satış sırasını değiştirmek için ürün yönetme yetkisi gerekir.')) return;
+    const mevcutListe = tur === 'grup'
+      ? [...gruplar]
+      : urunler.filter(urun => String(urun.grup_id) === String(kayit.grup_id));
+    const mevcutIndex = mevcutListe.findIndex(item => String(item.id) === String(kayit.id));
+    const hedefIndex = mevcutIndex + yon;
+    if (mevcutIndex < 0 || hedefIndex < 0 || hedefIndex >= mevcutListe.length) return;
+
+    const yeniListe = [...mevcutListe];
+    [yeniListe[mevcutIndex], yeniListe[hedefIndex]] = [yeniListe[hedefIndex], yeniListe[mevcutIndex]];
+    const siraHaritasi = new Map(yeniListe.map((item, index) => [String(item.id), index + 1]));
+    const siraliHali = liste => liste
+      .map(item => siraHaritasi.has(String(item.id)) ? { ...item, sira: siraHaritasi.get(String(item.id)) } : item)
+      .sort((a, b) => Number(a.sira ?? 2147483647) - Number(b.sira ?? 2147483647));
+
+    if (tur === 'grup') {
+      setGruplar(siraliHali);
+    } else {
+      setUrunler(siraliHali);
+      setTumUrunler(siraliHali);
+    }
+
+    const islemAnahtari = `${tur}:${kayit.id}`;
+    setSiralamaKaydediliyor(islemAnahtari);
+    try {
+      await marketSatisSirasiniKaydet(restaurantId, tur, yeniListe.map(item => item.id));
+    } catch (error) {
+      await verileriYukle(true);
+      bildir(error.message, 'error');
+    } finally {
+      setSiralamaKaydediliyor('');
+    }
   };
 
   const urunKaydet = async event => {
@@ -2578,11 +2628,13 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
           <button className="market-primary" type="submit">{grupFormu.id ? 'Grubu Güncelle' : 'Grubu Aç'}</button>
         </form>
         <div className="market-card">
-          <div className="market-heading"><div><span>GRUPLAR</span><h2>{gruplar.length} grup</h2></div></div>
-          <div className="market-group-list">{gruplar.map(grup => <div key={grup.id}>
+          <div className="market-heading"><div><span>GRUPLAR</span><h2>{gruplar.length} grup</h2><small>Oklarla satış ekranındaki yerini değiştirin.</small></div></div>
+          <div className="market-group-list">{gruplar.map((grup, grupIndex) => <div key={grup.id}>
             <i className="market-group-color-chip" style={{ background: `linear-gradient(90deg, ${grup.grup_rengi || '#c2410c'} 0 50%, ${grup.urun_rengi || '#0f172a'} 50%)` }} />
             <span><strong>{grup.grup_adi}</strong><small>{urunler.filter(urun => String(urun.grup_id) === String(grup.id)).length} ürün · KDV %{Number(grup.kdv_orani ?? 20)} · Sıra {grup.sira}</small></span>
             <div className="market-inline-actions">
+              <button type="button" title="Grubu sola taşı" aria-label={`${grup.grup_adi} grubunu sola taşı`} disabled={grupIndex === 0 || Boolean(siralamaKaydediliyor)} onClick={() => satisSirasiniDegistir('grup', grup, -1)}>←</button>
+              <button type="button" title="Grubu sağa taşı" aria-label={`${grup.grup_adi} grubunu sağa taşı`} disabled={grupIndex === gruplar.length - 1 || Boolean(siralamaKaydediliyor)} onClick={() => satisSirasiniDegistir('grup', grup, 1)}>→</button>
               <button type="button" className={grup.satis_ekraninda_goster ? 'active' : ''} onClick={() => grupGorunurlugunuDegistir(grup)}>{grup.satis_ekraninda_goster ? '👁 Görünüyor' : '⊘ Gizli'}</button>
               <button type="button" aria-label={`${grup.grup_adi} grubunu düzenle`} onClick={() => setGrupFormu({ id: grup.id, grupAdi: grup.grup_adi, kdvOrani: Number(grup.kdv_orani ?? 20), satisEkranindaGoster: grup.satis_ekraninda_goster, sira: grup.sira, grupRengi: grup.grup_rengi || '#c2410c', urunRengi: grup.urun_rengi || '#0f172a' })}>✎ Düzenle</button>
             </div>
@@ -2658,8 +2710,9 @@ export default function MarketApp({ restaurantId, restaurantName, notify, canPer
             {filtreliUrunler.map(urun => {
               const kar = Number(urun.satis_fiyati) - Number(urun.alis_fiyati);
               const acik = String(hizliDuzenleme?.id) === String(urun.id);
+              const urunSiraBilgisi = urunSiraBilgileri.get(String(urun.id)) || { index: 0, toplam: 1 };
               return <Fragment key={urun.id}>
-                <tr><td><strong>{urun.urun_adi}</strong><small>{urun.barkod}{urun.son_kullanma_tarihi ? ` · SKT ${tarihYaz(urun.son_kullanma_tarihi)}` : ''}{urun.lot_no ? ` · Lot ${urun.lot_no}` : ''}</small></td><td>{urun.kategori}</td><td className={kritikUrunMu(urun) ? 'red' : ''}>{urun.stok_miktari} {urun.birim}</td><td>{para(urun.alis_fiyati)}</td><td><strong>{para(urun.satis_fiyati)}</strong></td><td className={kar < 0 ? 'red' : 'green'}>{para(kar)}</td><td><div className="market-inline-actions"><button type="button" title="Stok ve fiyatı düzenle" aria-label={`${urun.urun_adi} stok ve fiyatını düzenle`} onClick={() => acik ? setHizliDuzenleme(null) : hizliDuzenlemeyiAc(urun)}>✎</button><button type="button" onClick={() => urunuDuzenle(urun)}>Detay</button><button className="market-product-delete" type="button" disabled={String(silinenUrunId) === String(urun.id)} onClick={() => urunuSil(urun)}>{String(silinenUrunId) === String(urun.id) ? 'Siliniyor…' : 'Sil'}</button></div></td></tr>
+                <tr><td><strong>{urun.urun_adi}</strong><small>{urun.barkod}{urun.son_kullanma_tarihi ? ` · SKT ${tarihYaz(urun.son_kullanma_tarihi)}` : ''}{urun.lot_no ? ` · Lot ${urun.lot_no}` : ''}</small></td><td>{urun.kategori}</td><td className={kritikUrunMu(urun) ? 'red' : ''}>{urun.stok_miktari} {urun.birim}</td><td>{para(urun.alis_fiyati)}</td><td><strong>{para(urun.satis_fiyati)}</strong></td><td className={kar < 0 ? 'red' : 'green'}>{para(kar)}</td><td><div className="market-inline-actions"><button type="button" title="Ürünü satış ekranında sola taşı" aria-label={`${urun.urun_adi} ürününü sola taşı`} disabled={urunSiraBilgisi.index <= 0 || Boolean(siralamaKaydediliyor)} onClick={() => satisSirasiniDegistir('urun', urun, -1)}>←</button><button type="button" title="Ürünü satış ekranında sağa taşı" aria-label={`${urun.urun_adi} ürününü sağa taşı`} disabled={urunSiraBilgisi.index === urunSiraBilgisi.toplam - 1 || Boolean(siralamaKaydediliyor)} onClick={() => satisSirasiniDegistir('urun', urun, 1)}>→</button><button type="button" title="Stok ve fiyatı düzenle" aria-label={`${urun.urun_adi} stok ve fiyatını düzenle`} onClick={() => acik ? setHizliDuzenleme(null) : hizliDuzenlemeyiAc(urun)}>✎</button><button type="button" onClick={() => urunuDuzenle(urun)}>Detay</button><button className="market-product-delete" type="button" disabled={String(silinenUrunId) === String(urun.id)} onClick={() => urunuSil(urun)}>{String(silinenUrunId) === String(urun.id) ? 'Siliniyor…' : 'Sil'}</button></div></td></tr>
                 {acik && <tr className="market-inline-edit-row"><td colSpan="7"><div className="market-inline-edit">
                   <label>Stok<input type="number" step="0.001" value={hizliDuzenleme.stokMiktari} onChange={event => setHizliDuzenleme({ ...hizliDuzenleme, stokMiktari: event.target.value })} /></label>
                   <label>Alış fiyatı<input type="number" min="0" step="0.01" value={hizliDuzenleme.alisFiyati} onChange={event => setHizliDuzenleme({ ...hizliDuzenleme, alisFiyati: event.target.value })} /></label>

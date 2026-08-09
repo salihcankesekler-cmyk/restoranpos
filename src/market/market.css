@@ -2649,6 +2649,24 @@
   font-style:normal;
   font-weight:950;
 }
+.market-pos-practical .market-sale-products>button.has-image{
+  background:#fff;
+  color:#0f172a;
+}
+.market-pos-practical .market-sale-products>button.has-image:hover{
+  background:#fff7ed;
+}
+.market-pos-practical .market-sale-products>button.has-image .market-sale-product-copy{
+  background:#fff;
+}
+.market-pos-practical .market-sale-products>button.has-image .market-sale-product-copy strong,
 .market-pos-practical .market-sale-products>button.has-image>b{
-  color:var(--market-product-color,#c2410c);
+  color:#0f172a;
+}
+.market-pos-practical .market-sale-products>button.has-image .market-sale-product-copy small{
+  color:#64748b;
+}
+.market-inline-actions button:disabled{
+  opacity:.35;
+  cursor:not-allowed;
 }
