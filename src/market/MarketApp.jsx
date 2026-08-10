@@ -365,6 +365,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [personelSiparisArama, setPersonelSiparisArama] = useState('');
   const [personelSiparisGrubu, setPersonelSiparisGrubu] = useState('tumu');
   const [personelSiparisSepeti, setPersonelSiparisSepeti] = useState([]);
+  const [personelSiparisCariId, setPersonelSiparisCariId] = useState('');
   const [personelSiparisNotu, setPersonelSiparisNotu] = useState('');
   const [personelSiparisKaydediliyor, setPersonelSiparisKaydediliyor] = useState(false);
   const [urunIndirimFormu, setUrunIndirimFormu] = useState(null);
@@ -429,6 +430,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [raporCariId, setRaporCariId] = useState('');
   const [raporOdeme, setRaporOdeme] = useState('');
   const barkodRef = useRef(null);
+  const personelSiparisBarkodRef = useRef(null);
   const satisAdediTuslamaRef = useRef(false);
   const satisKaydiSuruyorRef = useRef(false);
   const satisIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
@@ -1013,6 +1015,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     : [];
 
   const seciliSatisCarisi = cariler.find(cari => String(cari.id) === String(satisCariId));
+  const seciliPersonelSiparisCarisi = cariler.find(cari => String(cari.id) === String(personelSiparisCariId));
   const satisCariAramaMetni = satisCariArama.trim().toLocaleLowerCase('tr-TR');
   const filtreliSatisCarileri = cariler.filter(cari => {
     if (!satisCariAramaMetni) return true;
@@ -1674,8 +1677,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     });
   };
 
-  const personelSipariseUrunEkle = urun => {
-    const artis = kilogramUrunuMu(urun) ? 0.1 : 1;
+  const personelSiparisMiktarinaEkle = (urun, artis) => {
     setPersonelSiparisSepeti(prev => {
       const mevcut = prev.find(kalem => String(kalem.id) === String(urun.id));
       if (mevcut) return prev.map(kalem => String(kalem.id) === String(urun.id)
@@ -1691,6 +1693,36 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     });
   };
 
+  const personelSipariseUrunEkle = urun => {
+    personelSiparisMiktarinaEkle(urun, kilogramUrunuMu(urun) ? 0.1 : 1);
+    window.setTimeout(() => personelSiparisBarkodRef.current?.focus(), 0);
+  };
+
+  const personelSiparisBarkodunuEkle = event => {
+    event.preventDefault();
+    const aranan = personelSiparisArama.trim();
+    if (!aranan) return personelSiparisBarkodRef.current?.focus();
+    const dogrudanUrun = urunler.find(urun => String(urun.barkod || '').trim() === aranan)
+      || urunler.find(urun => {
+        const stokKodu = String(urun.stok_kodu || '').trim();
+        return stokKodu && (stokKodu === aranan || stokKodu.padStart(5, '0') === aranan.padStart(5, '0'));
+      });
+    const teraziSonucu = dogrudanUrun ? null : teraziBarkodunuCoz(aranan);
+    if (teraziSonucu?.hata) {
+      bildir(teraziSonucu.hata, 'warning');
+      setPersonelSiparisArama('');
+      return window.setTimeout(() => personelSiparisBarkodRef.current?.focus(), 0);
+    }
+    const urun = dogrudanUrun || teraziSonucu?.urun || (personelSiparisUrunleri.length === 1 ? personelSiparisUrunleri[0] : null);
+    if (!urun) {
+      bildir('Barkodla eşleşen ürün bulunamadı.', 'warning');
+      return window.setTimeout(() => personelSiparisBarkodRef.current?.select(), 0);
+    }
+    personelSiparisMiktarinaEkle(urun, teraziSonucu?.adet || (kilogramUrunuMu(urun) ? 0.1 : 1));
+    setPersonelSiparisArama('');
+    window.setTimeout(() => personelSiparisBarkodRef.current?.focus(), 0);
+  };
+
   const personelSiparisiKasayaGonder = async event => {
     event.preventDefault();
     if (!personelSiparisSepeti.length) return bildir('Kasaya gönderilecek sipariş boş.', 'warning');
@@ -1698,6 +1730,8 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     try {
       const kayit = await marketBekleyenSepetiKaydet(restaurantId, {
         sepetAdi: `${currentUserName || 'Personel'} siparişi`,
+        cariId: personelSiparisCariId,
+        cariAdi: seciliPersonelSiparisCarisi?.ad,
         kalemler: personelSiparisSepeti,
         genelIndirim: {},
         kaynak: 'personel_siparisi',
@@ -1706,6 +1740,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       });
       setBekleyenSepetler(prev => [kayit, ...prev.filter(item => String(item.id) !== String(kayit.id))]);
       setPersonelSiparisSepeti([]);
+      setPersonelSiparisCariId('');
       setPersonelSiparisNotu('');
       setPersonelSiparisArama('');
       bildir('Sipariş kasadaki Bekleyenler listesine gönderildi.', 'success');
@@ -2785,7 +2820,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               const kalemler = Array.isArray(kayit.kalemler) ? kayit.kalemler : [];
               const toplam = kalemler.reduce((tutar, kalem) => tutar + Number(kalem.adet || 0) * Number(kalem.satis_fiyati || 0), 0);
               const personelSiparisi = kayit.kaynak === 'personel_siparisi';
-              return <div key={kayit.id} className={personelSiparisi ? 'is-staff-order' : ''}><span><strong>{personelSiparisi ? '🧑‍💼 ' : ''}{kayit.sepet_adi}</strong><small>{personelSiparisi ? `${kayit.olusturan_adi || 'Personel'} · Kasaya gönderildi` : kayit.cari_adi || 'Cari yok'} · {kalemler.length} kalem · {new Date(kayit.updated_at).toLocaleString('tr-TR')}</small>{kayit.siparis_notu && <em>Not: {kayit.siparis_notu}</em>}</span><b>{para(toplam)}</b><button type="button" disabled={bekleyenSepetIsleniyor} onClick={() => bekleyenSepetiAc(kayit)}>Aç</button><button className="market-remove" type="button" disabled={bekleyenSepetIsleniyor} onClick={() => bekleyenSepetiSil(kayit)}>Sil</button></div>;
+              return <div key={kayit.id} className={personelSiparisi ? 'is-staff-order' : ''}><span><strong>{personelSiparisi ? '🧑‍💼 ' : ''}{kayit.sepet_adi}</strong><small>{personelSiparisi ? `${kayit.olusturan_adi || 'Personel'} · ${kayit.cari_adi ? `Cari: ${kayit.cari_adi}` : 'Cari seçilmedi'} · Kasaya gönderildi` : kayit.cari_adi || 'Cari yok'} · {kalemler.length} kalem · {new Date(kayit.updated_at).toLocaleString('tr-TR')}</small>{kayit.siparis_notu && <em>Not: {kayit.siparis_notu}</em>}</span><b>{para(toplam)}</b><button type="button" disabled={bekleyenSepetIsleniyor} onClick={() => bekleyenSepetiAc(kayit)}>Aç</button><button className="market-remove" type="button" disabled={bekleyenSepetIsleniyor} onClick={() => bekleyenSepetiSil(kayit)}>Sil</button></div>;
             })}{!bekleyenSepetler.length && <p className="market-empty">Bekleyen sepet bulunmuyor.</p>}</div>
             <div className="market-park-modal-footer"><button className="market-remove" type="button" onClick={() => setBekleyenSepetPenceresi('')}>Kapat</button></div>
           </div>
@@ -2795,7 +2830,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       {!yukleniyor && sekme === 'personel-siparis' && <div className="market-staff-order-layout">
         <div className="market-card market-staff-order-catalog">
           <div className="market-heading"><div><span>PERSONEL SİPARİŞİ</span><h2>Ürünleri seçip kasaya gönderin</h2><small>Gönderilen sipariş barkodlu satış ekranındaki Bekleyenler listesine düşer.</small></div></div>
-          <input className="market-staff-order-search" value={personelSiparisArama} onChange={event => setPersonelSiparisArama(event.target.value)} placeholder="Ürün adı, barkod veya terazi kodu ara" autoFocus />
+          <form className="market-staff-order-scan" onSubmit={personelSiparisBarkodunuEkle}><input ref={personelSiparisBarkodRef} className="market-staff-order-search" value={personelSiparisArama} onChange={event => setPersonelSiparisArama(event.target.value)} placeholder="Barkod okutun veya ürün adı yazın" autoFocus /><button type="submit">＋ Ekle</button></form>
           <div className="market-staff-order-groups">
             <button type="button" className={personelSiparisGrubu === 'tumu' ? 'active' : ''} onClick={() => setPersonelSiparisGrubu('tumu')}>Tüm Ürünler</button>
             {gruplar.map(grup => <button type="button" key={grup.id} className={String(personelSiparisGrubu) === String(grup.id) ? 'active' : ''} onClick={() => setPersonelSiparisGrubu(grup.id)}>{grup.grup_adi}</button>)}
@@ -2817,6 +2852,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
         </div>
         <form className="market-card market-staff-order-cart" onSubmit={personelSiparisiKasayaGonder}>
           <div className="market-heading"><div><span>HAZIRLANAN SİPARİŞ</span><h2>{personelSiparisSepeti.length} kalem</h2><small>{currentUserName || 'Personel'}</small></div><strong>{para(personelSiparisToplami)}</strong></div>
+          <label className="market-staff-order-customer">Müşteri / Cari<select value={personelSiparisCariId} onChange={event => setPersonelSiparisCariId(event.target.value)}><option value="">Cari seçmeden gönder</option>{cariler.map(cari => <option key={cari.id} value={cari.id}>{cari.ad}{cari.telefon ? ` · ${cari.telefon}` : ''} · Bakiye ${para(cari.bakiye)}</option>)}</select>{seciliPersonelSiparisCarisi && <small>Seçilen cari: <strong>{seciliPersonelSiparisCarisi.ad}</strong> · {para(seciliPersonelSiparisCarisi.bakiye)}</small>}</label>
           <div className="market-staff-order-lines">
             {personelSiparisSepeti.map(kalem => {
               const artis = kilogramUrunuMu(kalem) ? 0.1 : 1;
@@ -2825,7 +2861,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             {!personelSiparisSepeti.length && <p className="market-empty">Soldaki ürünlere dokunarak siparişi oluşturun.</p>}
           </div>
           <label className="market-staff-order-note">Sipariş notu<textarea value={personelSiparisNotu} onChange={event => setPersonelSiparisNotu(event.target.value)} maxLength="1000" placeholder="Örn. Müşteri adı, masa/teslim bilgisi veya hazırlanma notu" /></label>
-          <div className="market-staff-order-footer"><button className="market-remove" type="button" disabled={!personelSiparisSepeti.length || personelSiparisKaydediliyor} onClick={() => { setPersonelSiparisSepeti([]); setPersonelSiparisNotu(''); }}>Temizle</button><button className="market-primary" type="submit" disabled={!personelSiparisSepeti.length || personelSiparisKaydediliyor}>{personelSiparisKaydediliyor ? 'Gönderiliyor…' : 'Kasadaki Bekleyenlere Gönder'}</button></div>
+          <div className="market-staff-order-footer"><button className="market-remove" type="button" disabled={!personelSiparisSepeti.length || personelSiparisKaydediliyor} onClick={() => { setPersonelSiparisSepeti([]); setPersonelSiparisCariId(''); setPersonelSiparisNotu(''); }}>Temizle</button><button className="market-primary" type="submit" disabled={!personelSiparisSepeti.length || personelSiparisKaydediliyor}>{personelSiparisKaydediliyor ? 'Gönderiliyor…' : 'Kasadaki Bekleyenlere Gönder'}</button></div>
         </form>
       </div>}
 

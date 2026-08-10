@@ -2679,7 +2679,9 @@
 
 .market-staff-order-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,.75fr);gap:12px;align-items:start}
 .market-staff-order-catalog{min-width:0}
+.market-staff-order-scan{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
 .market-staff-order-search{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;font:inherit}
+.market-staff-order-scan button{min-width:82px;border:0;border-radius:8px;background:#1d4ed8;color:#fff;font-size:11px;font-weight:900;cursor:pointer}
 .market-staff-order-groups{display:flex;gap:5px;overflow-x:auto;padding:9px 0}
 .market-staff-order-groups button{min-height:38px;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;background:#fff;color:#475569;font-size:10px;font-weight:900;white-space:nowrap;cursor:pointer}
 .market-staff-order-groups button.active{border-color:#f97316;background:#fff7ed;color:#c2410c}
@@ -2692,6 +2694,9 @@
 .market-staff-order-products small{color:#64748b;font-size:9px;font-weight:800}
 .market-staff-order-products>button>b{position:absolute;top:5px;right:5px;display:grid;min-width:25px;height:25px;place-items:center;border-radius:999px;background:#f97316;color:#fff;font-size:9px}
 .market-staff-order-cart{position:sticky;top:8px}
+.market-staff-order-customer{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;color:#475569;font-size:10px;font-weight:900}
+.market-staff-order-customer select{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px;background:#fff;font:inherit}
+.market-staff-order-customer small{padding:6px 8px;border-left:3px solid #8b5cf6;background:#faf5ff;color:#6d28d9}
 .market-staff-order-lines{display:flex;max-height:460px;min-height:250px;overflow-y:auto;flex-direction:column}
 .market-staff-order-lines>div{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #e2e8f0}
 .market-staff-order-lines>div>span{display:flex;min-width:0;flex-direction:column}
