@@ -284,6 +284,7 @@ function IntegraApp() {
   const [yeniPersonelTelefon, setYeniPersonelTelefon] = useState('');
   const [personelIslemiYukleniyor, setPersonelIslemiYukleniyor] = useState(false);
   const [personelGirisDuzenlenenId, setPersonelGirisDuzenlenenId] = useState(null);
+  const [personelDetayPaneliId, setPersonelDetayPaneliId] = useState(null);
   const [personelGirisFormu, setPersonelGirisFormu] = useState({
     email: '',
     password: '',
@@ -2815,22 +2816,32 @@ Toplam Ciro: {toplam}
   };
 
   const personelDetayYetkiSecenekleri = [
-    { key: 'odeme_al', label: 'Ödeme alabilir' },
-    { key: 'fis_yazdir', label: 'Satış fişi yazdırabilir' },
-    { key: 'indirim_yap', label: 'İndirim yapabilir' },
-    { key: 'adisyon_duzenle', label: 'Adisyon düzenleyebilir' },
-    { key: 'kapali_adisyon_ac', label: 'Kapalı adisyon açabilir' },
-    { key: 'fiyat_degistir', label: 'Ürün fiyatı değiştirebilir' },
-    { key: 'rapor_gor', label: 'Raporları görebilir' },
-    { key: 'kasa_gor', label: 'Kasayı görebilir' },
-    { key: 'masa_yonet', label: 'Masa/bölüm ekleyebilir' },
-    { key: 'urun_yonet', label: 'Menü ürünü yönetebilir' },
+    { key: 'odeme_al', label: 'Satışı tamamlayabilir / ödeme alabilir', grup: 'Satış ve Kasa' },
+    { key: 'fis_yazdir', label: 'Satış ve ön fiş yazdırabilir', grup: 'Satış ve Kasa' },
+    { key: 'indirim_yap', label: 'İndirim ve ikram yapabilir', grup: 'Satış ve Kasa' },
+    { key: 'fiyat_degistir', label: 'Satış sırasında fiyatı değiştirebilir', grup: 'Satış ve Kasa' },
+    { key: 'iade_yap', label: 'Satış iadesi ve iptali yapabilir', grup: 'Satış ve Kasa' },
+    { key: 'kasa_gor', label: 'Kasa, vardiya ve para hareketlerini yönetebilir', grup: 'Satış ve Kasa' },
+    { key: 'urun_yonet', label: 'Ürün, menü ve grup ekleyip düzenleyebilir', grup: 'Ürün ve Stok' },
+    { key: 'stok_duzenle', label: 'Stok düzenleyebilir ve sayım tamamlayabilir', grup: 'Ürün ve Stok' },
+    { key: 'alis_yonet', label: 'Alış faturası ekleyip düzenleyebilir', grup: 'Ürün ve Stok' },
+    { key: 'silme_yap', label: 'Ürün, alış faturası ve bekleyen kayıt silebilir', grup: 'Ürün ve Stok' },
+    { key: 'sevk_yonet', label: 'Depo ve şube sevki yönetebilir', grup: 'Ürün ve Stok' },
+    { key: 'cari_yonet', label: 'Cari, müşteri ve tedarikçi yönetebilir', grup: 'Cari ve Rapor' },
+    { key: 'rapor_gor', label: 'Satış, stok ve performans raporlarını görebilir', grup: 'Cari ve Rapor' },
+    { key: 'adisyon_duzenle', label: 'Adisyon ve bekleyen sipariş düzenleyebilir', grup: 'Restoran ve Yönetim' },
+    { key: 'kapali_adisyon_ac', label: 'Kapalı adisyonu yeniden açabilir', grup: 'Restoran ve Yönetim' },
+    { key: 'masa_yonet', label: 'Masa ve bölüm ekleyip düzenleyebilir', grup: 'Restoran ve Yönetim' },
+    { key: 'ayar_yonet', label: 'İşletme ve sistem ayarlarını yönetebilir', grup: 'Restoran ve Yönetim' },
   ];
+
+  const personelDetayYetkiGruplari = ['Satış ve Kasa', 'Ürün ve Stok', 'Cari ve Rapor', 'Restoran ve Yönetim'];
 
   const goreveGoreVarsayilanDetayYetkileri = (gorev = 'Garson') => {
     const metin = String(gorev || '').toLocaleLowerCase('tr-TR');
     if (metin.includes('müdür') || metin.includes('mudur')) return personelDetayYetkiSecenekleri.map(y => y.key);
     if (metin.includes('kasiyer')) return ['odeme_al', 'fis_yazdir', 'adisyon_duzenle', 'rapor_gor', 'kasa_gor'];
+    if (metin.includes('depo')) return ['urun_yonet', 'stok_duzenle', 'alis_yonet', 'sevk_yonet', 'rapor_gor'];
     if (metin.includes('mutfak')) return ['rapor_gor'];
     if (metin.includes('kurye')) return ['adisyon_duzenle'];
     return ['adisyon_duzenle', 'masa_yonet'];
@@ -21214,28 +21225,26 @@ Toplam Ciro: {toplam}
                                 <div style={{ color: '#0f172a', fontWeight: '950' }}>{p.ad || p.email || 'Personel'}</div>
                                 <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '750' }}>{p.gorev || 'Garson'} · {p.email || '-'}</div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => personelDetayYetkileriniKaydet(p, personelDetayYetkiSecenekleri.map(y => y.key))}
-                                style={{ ...styles.addBtnMini, backgroundColor: '#0f172a' }}
-                              >
-                                Tümünü Aç
-                              </button>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                <button type="button" onClick={() => personelDetayYetkileriniKaydet(p, goreveGoreVarsayilanDetayYetkileri(p.gorev))} style={{ ...styles.addBtnMini, backgroundColor: '#475569' }}>Göreve Göre</button>
+                                <button type="button" onClick={() => personelDetayYetkileriniKaydet(p, personelDetayYetkiSecenekleri.map(y => y.key))} style={{ ...styles.addBtnMini, backgroundColor: '#0f766e' }}>Tümünü Aç</button>
+                                <button type="button" onClick={() => personelDetayYetkileriniKaydet(p, [])} style={{ ...styles.addBtnMini, backgroundColor: '#b91c1c' }}>Tümünü Kapat</button>
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                              {personelDetayYetkiSecenekleri.map(secenek => {
-                                const aktif = detayYetkiler.includes(secenek.key);
-                                return (
-                                  <button
-                                    key={secenek.key}
-                                    type="button"
-                                    onClick={() => personelDetayYetkisiniDegistir(p, secenek.key, !aktif)}
-                                    style={ayarToggleButonuStili(aktif)}
-                                  >
-                                    {aktif ? '✅' : '⬜'} {secenek.label}
-                                  </button>
-                                );
-                              })}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '9px' }}>
+                              {personelDetayYetkiGruplari.map(grupAdi => <div key={`${p.id}-${grupAdi}`} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', backgroundColor: '#f8fafc' }}>
+                                <strong style={{ display: 'block', color: '#334155', fontSize: '12px', marginBottom: '7px' }}>{grupAdi}</strong>
+                                <div style={{ display: 'grid', gap: '6px' }}>
+                                  {personelDetayYetkiSecenekleri.filter(secenek => secenek.grup === grupAdi).map(secenek => {
+                                    const aktif = detayYetkiler.includes(secenek.key);
+                                    return (
+                                      <button key={secenek.key} type="button" onClick={() => personelDetayYetkisiniDegistir(p, secenek.key, !aktif)} style={{ ...ayarToggleButonuStili(aktif), width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}>
+                                        {aktif ? '✅' : '⬜'} {secenek.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>)}
                             </div>
                           </div>
                         );
@@ -22811,6 +22820,13 @@ Toplam Ciro: {toplam}
                           <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelDurumDegistir(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: p.durum === 'Aktif' ? '#dc2626' : '#16a34a' }}>
                             {p.durum === 'Aktif' ? 'Pasifleştir' : 'Aktifleştir'}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setPersonelDetayPaneliId(prev => String(prev) === String(p.id) ? null : p.id)}
+                            style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: String(personelDetayPaneliId) === String(p.id) ? '#7c3aed' : '#475569' }}
+                          >
+                            🔐 {String(personelDetayPaneliId) === String(p.id) ? 'Detay Yetkileri Kapat' : 'Detay Yetkiler'}
+                          </button>
                         </div>
                         )}
 
@@ -22872,6 +22888,49 @@ Toplam Ciro: {toplam}
                           ))}
                         </div>
                       </div>
+
+                      {user?.role === 'owner' && String(personelDetayPaneliId) === String(p.id) && (() => {
+                        const detayYetkiler = personelDetayYetkileriniHazirla(p);
+                        return (
+                          <div style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '16px', padding: '14px', boxSizing: 'border-box' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                              <div>
+                                <strong style={{ display: 'block', color: '#0f172a', fontSize: '14px' }}>🔐 {p.ad} — İşlem Yetkileri</strong>
+                                <small style={{ display: 'block', color: '#64748b', marginTop: '4px', fontWeight: '700' }}>Ekran yetkisi bölümü gösterir; aşağıdaki yetkiler o ekranda hangi işlemleri yapabileceğini belirler.</small>
+                              </div>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelDetayYetkileriniKaydet(p, goreveGoreVarsayilanDetayYetkileri(p.gorev))} style={{ ...styles.addBtnMini, backgroundColor: '#475569' }}>Göreve Göre Ayarla</button>
+                                <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelDetayYetkileriniKaydet(p, personelDetayYetkiSecenekleri.map(y => y.key))} style={{ ...styles.addBtnMini, backgroundColor: '#0f766e' }}>Tümünü Aç</button>
+                                <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelDetayYetkileriniKaydet(p, [])} style={{ ...styles.addBtnMini, backgroundColor: '#b91c1c' }}>Tümünü Kapat</button>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
+                              {personelDetayYetkiGruplari.map(grupAdi => (
+                                <div key={`${p.id}-${grupAdi}`} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '13px', padding: '11px' }}>
+                                  <strong style={{ display: 'block', color: '#334155', fontSize: '12px', marginBottom: '8px' }}>{grupAdi}</strong>
+                                  <div style={{ display: 'grid', gap: '6px' }}>
+                                    {personelDetayYetkiSecenekleri.filter(secenek => secenek.grup === grupAdi).map(secenek => {
+                                      const aktif = detayYetkiler.includes(secenek.key);
+                                      return (
+                                        <button
+                                          key={`${p.id}-detay-${secenek.key}`}
+                                          type="button"
+                                          disabled={personelIslemiYukleniyor}
+                                          onClick={() => personelDetayYetkisiniDegistir(p, secenek.key, !aktif)}
+                                          style={{ ...ayarToggleButonuStili(aktif), width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                                        >
+                                          {aktif ? '✅' : '⬜'} {secenek.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))
                 )}
