@@ -25,6 +25,7 @@ async function marketOturumunuDogrula() {
   if (!data?.session?.user) {
     throw new Error('Market için güvenli Supabase oturumu bulunamadı. Hesaptan çıkış yapıp tekrar giriş yapın.');
   }
+  return data.session.user;
 }
 
 async function cariHareketiniEsitle(restaurantId, cariId, hareket) {
@@ -123,9 +124,13 @@ export async function marketVerileriniGetir(restaurantId) {
 }
 
 export async function marketBekleyenSepetiKaydet(restaurantId, sepet) {
-  await marketOturumunuDogrula();
+  const authKullanici = await marketOturumunuDogrula();
   const kalemler = Array.isArray(sepet.kalemler) ? sepet.kalemler : [];
   if (!kalemler.length) throw new Error('Beklemeye alınacak sepet boş.');
+  const varsayilanOlusturan = authKullanici.user_metadata?.full_name
+    || authKullanici.user_metadata?.name
+    || String(authKullanici.email || '').split('@')[0]
+    || 'Personel';
   const { data, error } = await supabase.from('market_bekleyen_sepetler').insert([{
     restaurant_id: restaurantId,
     sepet_adi: String(sepet.sepetAdi || '').trim() || `Sepet ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`,
@@ -133,9 +138,23 @@ export async function marketBekleyenSepetiKaydet(restaurantId, sepet) {
     cari_adi: String(sepet.cariAdi || '').trim() || null,
     kalemler,
     genel_indirim: sepet.genelIndirim || {},
+    kaynak: sepet.kaynak === 'personel_siparisi' ? 'personel_siparisi' : 'kasa',
+    olusturan_adi: String(sepet.olusturanAdi || varsayilanOlusturan).trim().slice(0, 150) || 'Personel',
+    siparis_notu: String(sepet.notMetni || '').trim().slice(0, 1000) || null,
   }]).select().single();
   if (error) throw marketHatasi(error);
   return data;
+}
+
+export async function marketBekleyenSepetleriGetir(restaurantId) {
+  await marketOturumunuDogrula();
+  const { data, error } = await supabase.from('market_bekleyen_sepetler')
+    .select('*')
+    .eq('restaurant_id', restaurantId)
+    .order('updated_at', { ascending: false })
+    .limit(100);
+  if (error) throw marketHatasi(error);
+  return data || [];
 }
 
 export async function marketBekleyenSepetiSil(restaurantId, sepetId) {
@@ -343,7 +362,12 @@ export async function marketUrunuKaydet(restaurantId, urun) {
       : supabase.from('market_urunleri').insert([payload]);
   }
   const { data, error } = await sorgu.select().single();
-  if (error) throw marketHatasi(error);
+  if (error) {
+    if (error.code === '23505' && String(error.message || '').includes('market_urunleri_terazi_kodu_unique')) {
+      throw new Error('Bu 5 haneli terazi ürün kodu başka bir üründe kullanılıyor. Yeni kod atayın.');
+    }
+    throw marketHatasi(error);
+  }
   return data;
 }
 

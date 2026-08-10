@@ -17547,6 +17547,7 @@ Toplam Ciro: {toplam}
                 <MarketApp
                   restaurantId={mevcutRestaurantId}
                   restaurantName={user?.restaurant}
+                  currentUserName={user?.waiterName || user?.restaurant || user?.email || 'Personel'}
                   notify={bildirimGoster}
                   canPerform={aktifKullaniciDetayYetkisiVar}
                 />

@@ -2670,3 +2670,51 @@
   opacity:.35;
   cursor:not-allowed;
 }
+
+.market-barcode-assignment{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+.market-barcode-assignment>div{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.market-barcode-assignment button{min-height:34px;border:1px solid #bfdbfe;border-radius:7px;background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:900;cursor:pointer}
+.market-barcode-assignment button.scale{border-color:#a7f3d0;background:#ecfdf5;color:#047857}
+.market-product-form label>small{color:#64748b;font-size:9px;font-weight:700}
+
+.market-staff-order-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,.75fr);gap:12px;align-items:start}
+.market-staff-order-catalog{min-width:0}
+.market-staff-order-search{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;font:inherit}
+.market-staff-order-groups{display:flex;gap:5px;overflow-x:auto;padding:9px 0}
+.market-staff-order-groups button{min-height:38px;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;background:#fff;color:#475569;font-size:10px;font-weight:900;white-space:nowrap;cursor:pointer}
+.market-staff-order-groups button.active{border-color:#f97316;background:#fff7ed;color:#c2410c}
+.market-staff-order-products{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:calc(100vh - 245px);min-height:420px;overflow-y:auto}
+.market-staff-order-products>button{position:relative;display:grid;grid-template-rows:58px auto auto;gap:4px;min-height:118px;overflow:hidden;border:2px solid transparent;border-radius:9px;padding:6px;background:#fff;text-align:center;cursor:pointer;box-shadow:inset 0 3px var(--staff-product-color,#0f172a)}
+.market-staff-order-products>button:hover,.market-staff-order-products>button.selected{border-color:#f97316;background:#fff7ed}
+.market-staff-order-products img,.market-staff-order-products>button>span{width:100%;height:58px;object-fit:contain;border-radius:5px;background:#fff}
+.market-staff-order-products>button>span{display:grid;place-items:center;background:var(--staff-product-color,#0f172a);color:var(--staff-product-text,#fff);font-size:19px;font-weight:950}
+.market-staff-order-products strong{display:-webkit-box;overflow:hidden;color:#0f172a;font-size:10px;line-height:1.2;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.market-staff-order-products small{color:#64748b;font-size:9px;font-weight:800}
+.market-staff-order-products>button>b{position:absolute;top:5px;right:5px;display:grid;min-width:25px;height:25px;place-items:center;border-radius:999px;background:#f97316;color:#fff;font-size:9px}
+.market-staff-order-cart{position:sticky;top:8px}
+.market-staff-order-lines{display:flex;max-height:460px;min-height:250px;overflow-y:auto;flex-direction:column}
+.market-staff-order-lines>div{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #e2e8f0}
+.market-staff-order-lines>div>span{display:flex;min-width:0;flex-direction:column}
+.market-staff-order-lines>div>span strong{overflow:hidden;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.market-staff-order-lines>div>span small{color:#64748b;font-size:9px}
+.market-staff-order-lines>div>div{display:grid;grid-template-columns:30px 56px 30px;gap:3px}
+.market-staff-order-lines button,.market-staff-order-lines input{height:32px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;background:#fff;text-align:center;font:inherit;font-weight:900}
+.market-staff-order-lines input{width:56px;padding:3px}
+.market-staff-order-lines>div>b{min-width:64px;text-align:right;font-size:11px}
+.market-staff-order-note{display:flex;flex-direction:column;gap:5px;margin-top:12px;color:#475569;font-size:10px;font-weight:900}
+.market-staff-order-note textarea{min-height:70px;resize:vertical;border:1px solid #cbd5e1;border-radius:8px;padding:9px;font:inherit}
+.market-staff-order-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.market-park-list>div.is-staff-order{border-left:4px solid #8b5cf6;padding-left:9px;background:#faf5ff}
+.market-park-list>div span em{display:block;margin-top:3px;color:#7c3aed;font-size:9px;font-style:normal;font-weight:800}
+
+@media(max-width:1050px){
+  .market-staff-order-layout{grid-template-columns:1fr}
+  .market-staff-order-cart{position:static}
+  .market-staff-order-products{max-height:520px}
+}
+@media(max-width:700px){
+  .market-staff-order-products{grid-template-columns:repeat(2,minmax(0,1fr));min-height:320px}
+  .market-barcode-assignment>div{grid-template-columns:1fr}
+  .market-staff-order-lines>div{grid-template-columns:minmax(0,1fr) auto}
+  .market-staff-order-lines>div>b{grid-column:2;text-align:center}
+}
