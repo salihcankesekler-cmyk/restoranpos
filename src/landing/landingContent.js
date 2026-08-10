@@ -69,6 +69,54 @@ export const LANDING_PANEL_PREVIEWS = [
   ['🏭 Depo & Yönetim', 'Merkez alış, şube sevki, stok, finans, yetki ve birleşik raporlar.'],
 ];
 
+export const LANDING_PRODUCTS = [
+  {
+    icon: '▣',
+    kategori: 'POS Donanımı',
+    ad: 'Dokunmatik POS Bilgisayar',
+    aciklama: 'Yoğun satış noktaları için dokunmatik ekranlı, masaüstü kullanıma uygun POS bilgisayarı.',
+    ozellikler: ['15,6 inç dokunmatik ekran', 'Windows işletim sistemi', 'Wi-Fi ve hoparlör'],
+    fiyat: 'Teklif alın',
+  },
+  {
+    icon: '▤',
+    kategori: 'Yazıcı',
+    ad: '80 mm Fiş Yazıcı',
+    aciklama: 'Satış fişi, adisyon ve mutfak çıktıları için hızlı termal yazıcı.',
+    ozellikler: ['80 mm termal baskı', 'USB ve Ethernet', '203 DPI baskı kalitesi'],
+    fiyat: 'Teklif alın',
+  },
+  {
+    icon: '▱',
+    kategori: 'Kasa Donanımı',
+    ad: 'Otomatik Para Çekmecesi',
+    aciklama: 'Fiş yazıcıyla birlikte otomatik açılan dayanıklı metal para çekmecesi.',
+    ozellikler: ['5 + 8 bölmeli', 'Otomatik açılma', 'Metal gövde'],
+    fiyat: 'Teklif alın',
+  },
+  {
+    icon: '⌘',
+    kategori: 'Yazılım',
+    ad: 'Integra POS Yazılımı',
+    aciklama: 'Satış, stok, personel, masa ve rapor yönetimini tek merkezde birleştiren işletme yazılımı.',
+    ozellikler: ['Stok ve personel takibi', 'Satış analizleri', 'Hızlı satış ve masa takibi'],
+    fiyat: 'İşletmeye özel',
+  },
+];
+
+export const LANDING_CAMPAIGNS = [
+  {
+    etiket: 'Yeni işletmelere özel',
+    ad: 'Donanımlı Integra POS Seti',
+    aciklama: 'Satışa başlamak için gereken temel donanım ve Integra POS yazılımı tek kampanya setinde.',
+    fiyat: '35.999 TL',
+    vergi: 'KDV dahil',
+    gorsel: '/campaigns/donanimli-pos-seti.webp',
+    icerik: ['Dokunmatik POS bilgisayar', '80 mm fiş yazıcı', 'Otomatik para çekmecesi', 'Integra POS programı'],
+    avantajlar: ['Yıllık ücret yok', 'Kurulum desteği', 'Satışa hazır set'],
+  },
+];
+
 export const LANDING_ADVANTAGES = [
   ['Bulut', 'Kurulum gerektirmez'],
   ['Rol bazlı', 'Kullanıcı ekranları'],

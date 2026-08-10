@@ -1,11 +1,13 @@
 import {
   LANDING_ADVANTAGES,
   LANDING_BUSINESS_TYPES,
+  LANDING_CAMPAIGNS,
   LANDING_FAQS,
   LANDING_HERO_FEATURES,
   LANDING_MODULES,
   LANDING_OPERATION_FLOW,
   LANDING_PANEL_PREVIEWS,
+  LANDING_PRODUCTS,
   LANDING_SETUP_STEPS,
   LANDING_SUPPORT_TOPICS,
   LANDING_TRUST_FEATURES,
@@ -45,11 +47,11 @@ export default function LandingPage({
       <header className="lp-header">
         <a className="lp-logo-link" href="#anasayfa" aria-label="Integra POS ana sayfa"><Brand light /></a>
         <nav className="lp-nav" aria-label="Ana menü">
+          <a href="#urunler">Ürünler</a>
+          <a href="#kampanyalar">Kampanyalar</a>
           <a href="#cozumler">Çözümler</a>
           <a href="#isletmeler">İşletmeler</a>
           <a href="#nasil-calisir">Nasıl çalışır?</a>
-          <a href="#paketler">Paketler</a>
-          <a href="#destek">İletişim</a>
         </nav>
         <div className="lp-header-actions">
           <button type="button" className="lp-login-btn" onClick={onLogin}>Giriş Yap</button>
@@ -112,6 +114,42 @@ export default function LandingPage({
         <section className="lp-proof">
           <div className="lp-shell lp-proof-grid">
             {LANDING_TRUST_FEATURES.map(([icon, title, text]) => <article key={title} className="lp-proof-item"><span className="lp-proof-icon">{icon}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}
+          </div>
+        </section>
+
+        <section id="urunler" className="lp-section lp-products-section">
+          <div className="lp-shell">
+            <div className="lp-section-heading lp-section-heading--split">
+              <div><span className="lp-eyebrow">POS DONANIMI VE YAZILIM</span><h2>İşletmenize uygun ürünleri<br /><em>tek noktadan tamamlayın.</em></h2></div>
+              <p>Dokunmatik satış bilgisayarından fiş yazıcısına, para çekmecesinden Integra POS yazılımına kadar ihtiyacınız olan ürünleri birlikte planlayın.</p>
+            </div>
+            <div className="lp-product-catalog">
+              {LANDING_PRODUCTS.map(urun => <article className="lp-product-card" key={urun.ad}>
+                <div className="lp-product-card-top"><span className="lp-product-card-icon" aria-hidden="true">{urun.icon}</span><small>{urun.kategori}</small></div>
+                <h3>{urun.ad}</h3><p>{urun.aciklama}</p>
+                <ul>{urun.ozellikler.map(ozellik => <li key={ozellik}>{ozellik}</li>)}</ul>
+                <div className="lp-product-card-footer"><strong>{urun.fiyat}</strong><button type="button" onClick={() => onRegister(urun.ad)}>Bilgi Al <ArrowIcon /></button></div>
+              </article>)}
+            </div>
+          </div>
+        </section>
+
+        <section id="kampanyalar" className="lp-campaigns-section">
+          <div className="lp-shell">
+            {LANDING_CAMPAIGNS.map(kampanya => <article className="lp-campaign-card" key={kampanya.ad}>
+              <div className="lp-campaign-media">
+                <img src={kampanya.gorsel} alt={`${kampanya.ad}: dokunmatik bilgisayar, fiş yazıcı ve para çekmecesi`} loading="lazy" />
+                <div className="lp-campaign-image-update"><small>GÜNCEL KAMPANYA</small><strong>{kampanya.fiyat}</strong><span>{kampanya.vergi}</span></div>
+              </div>
+              <div className="lp-campaign-copy">
+                <span className="lp-campaign-label">{kampanya.etiket}</span>
+                <h2>{kampanya.ad}</h2><p>{kampanya.aciklama}</p>
+                <div className="lp-campaign-price"><strong>{kampanya.fiyat}</strong><span>{kampanya.vergi}</span></div>
+                <ul>{kampanya.icerik.map(urun => <li key={urun}><span>✓</span>{urun}</li>)}</ul>
+                <div className="lp-campaign-benefits">{kampanya.avantajlar.map(avantaj => <span key={avantaj}>{avantaj}</span>)}</div>
+                <button type="button" onClick={() => onRegister(kampanya.ad)}>Kampanyadan Yararlan <ArrowIcon /></button>
+              </div>
+            </article>)}
           </div>
         </section>
 
@@ -197,7 +235,7 @@ export default function LandingPage({
       </main>
 
       <footer className="lp-footer">
-        <div className="lp-shell"><div className="lp-footer-top"><div className="lp-footer-brand"><Brand light /><p>Satış, hizmet ve operasyon yönetiminde işletmenizin dijital çalışma merkezi.</p></div><div className="lp-footer-links"><strong>Çözümler</strong><a href="#isletmeler">İşletmeler</a><a href="#cozumler">Modüller</a><a href="#paketler">Paketler</a></div><div className="lp-footer-links"><strong>İletişim</strong><a href="tel:05325014277">0532 501 42 77</a><a href="mailto:info@integraposbilisim.com">info@integraposbilisim.com</a><span>integraposbilisim.com</span></div></div><div className="lp-footer-bottom"><span>© 2026 Integra Yazılım Teknolojileri A.Ş.</span><span>Tüm hakları saklıdır.</span></div></div>
+        <div className="lp-shell"><div className="lp-footer-top"><div className="lp-footer-brand"><Brand light /><p>Satış, hizmet ve operasyon yönetiminde işletmenizin dijital çalışma merkezi.</p></div><div className="lp-footer-links"><strong>Çözümler</strong><a href="#urunler">Ürünler</a><a href="#kampanyalar">Kampanyalar</a><a href="#isletmeler">İşletmeler</a><a href="#cozumler">Modüller</a><a href="#paketler">Yazılım Paketleri</a></div><div className="lp-footer-links"><strong>İletişim</strong><a href="tel:05325014277">0532 501 42 77</a><a href="mailto:info@integraposbilisim.com">info@integraposbilisim.com</a><span>integraposbilisim.com</span></div></div><div className="lp-footer-bottom"><span>© 2026 Integra Yazılım Teknolojileri A.Ş.</span><span>Tüm hakları saklıdır.</span></div></div>
       </footer>
     </div>
   );
