@@ -700,6 +700,67 @@ export async function marketSatisFisiniKuyrugaEkle(restaurantId, satis, icerikTe
   return data;
 }
 
+export async function marketEtiketleriniKuyrugaEkle(restaurantId, etiketler = []) {
+  await marketOturumunuDogrula();
+  const yazdirilacakEtiketler = (Array.isArray(etiketler) ? etiketler : []).filter(etiket => etiket?.urunId);
+  if (!yazdirilacakEtiketler.length) throw new Error('Yazdırılacak etiket oluşturulamadı.');
+
+  // Her fiziksel etiket ayrı bir kuyruk satırıdır. Printer Agent her satırı
+  // Windows'a bağımsız bir yazdırma işi olarak gönderir; adet tek işte birleştirilmez.
+  const kuyrukSatirlari = yazdirilacakEtiketler.map((etiket, index) => {
+    const urunAdi = String(etiket.urunAdi || 'Ürün').replace(/\s+/g, ' ').trim();
+    const isletmeAdi = String(etiket.isletmeAdi || 'Integra Market').replace(/\s+/g, ' ').trim();
+    const barkod = String(etiket.barkod || '').trim();
+    const fiyat = Number(etiket.satisFiyati || 0);
+    return {
+      restaurant_id: restaurantId,
+      yazici_tipi: 'etiket',
+      fis_tipi: 'etiket',
+      baslik: `${urunAdi} Etiketi`,
+      icerik_text: [
+        isletmeAdi,
+        urunAdi,
+        `${fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`,
+        barkod,
+      ].filter(Boolean).join('\r\n'),
+      payload_json: {
+        modul: 'market',
+        belge_turu: 'raf_etiketi',
+        tek_etiket: true,
+        etiket_sira: index + 1,
+        urun_id: String(etiket.urunId),
+        urun_adi: urunAdi,
+        barkod,
+        satis_fiyati: fiyat,
+        isletme_adi: isletmeAdi,
+        genislik_mm: Number(etiket.genislikMm || 58),
+        yukseklik_mm: Number(etiket.yukseklikMm || 40),
+        barkod_svg: String(etiket.barkodSvg || ''),
+      },
+      kaynak_tablo: 'market_urunleri',
+      kaynak_id: String(etiket.urunId),
+      durum: 'Bekliyor',
+      yazdirildi: false,
+    };
+  });
+
+  const { data, error } = await supabase
+    .from('yazdirma_kuyrugu')
+    .insert(kuyrukSatirlari)
+    .select();
+
+  if (error) {
+    if (['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error.code)) {
+      throw new Error('Etiket yazdırma kuyruğu hazır değil. Yazıcı ayarlarından Printer Agent kurulumunu tamamlayın.');
+    }
+    if (error.code === '42501') {
+      throw new Error('Etiket yazdırma kuyruğuna erişim yetkisi bulunamadı.');
+    }
+    throw marketHatasi(error);
+  }
+  return data || [];
+}
+
 export async function marketSatisIadeEt(restaurantId, satisId, kalemler, aciklama = '', tamIptal = false, islemAnahtari = '') {
   await marketOturumunuDogrula();
   const guvenliIslemAnahtari = islemAnahtari || globalThis.crypto?.randomUUID?.()

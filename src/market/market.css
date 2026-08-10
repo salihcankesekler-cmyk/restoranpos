@@ -670,6 +670,11 @@
   max-height:92vh;
   overflow:auto;
 }
+.market-price-modal .market-misc-price-modal{
+  width:min(100%,430px);
+  max-height:94vh;
+  overflow:auto;
+}
 .market-scale-sale-modes,
 .market-adjust-direction{
   display:grid!important;
@@ -721,6 +726,11 @@
 }
 .market-scale-keypad button.wide{
   grid-column:span 2;
+}
+.market-misc-price-keypad button{
+  min-height:52px;
+  font-size:20px;
+  touch-action:manipulation;
 }
 
 .market-price-modal .market-total-adjust-modal{

@@ -16,6 +16,7 @@ import {
   marketKasaVardiyasiKapat,
   marketSayimiKaydet,
   marketSatisIadeEt,
+  marketEtiketleriniKuyrugaEkle,
   marketSatisFisiniKuyrugaEkle,
   marketSatisSirasiniKaydet,
   marketSatisiKaydet,
@@ -195,6 +196,24 @@ const kilogramUrunuMu = urun =>
   ['kg', 'kilogram'].includes(String(urun?.birim || '').trim().toLocaleLowerCase('tr-TR'));
 
 const marketUrunGorseli = urun => String(urun?.resim_url || urun?.resimUrl || '').trim();
+
+const barkodSvgMetniOlustur = value => {
+  const barkod = String(value || '').trim();
+  if (!barkod || typeof document === 'undefined') return '';
+  try {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    JsBarcode(svg, barkod, {
+      format: 'CODE128',
+      displayValue: false,
+      height: 42,
+      width: 1.5,
+      margin: 0,
+    });
+    return svg.outerHTML;
+  } catch {
+    return '';
+  }
+};
 
 const marketUrunGorseliniHazirla = dosya => new Promise((resolve, reject) => {
   if (!dosya || !String(dosya.type || '').startsWith('image/')) {
@@ -402,6 +421,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [etiketYeniFiyatlari, setEtiketYeniFiyatlari] = useState({});
   const [etiketGorunumu, setEtiketGorunumu] = useState('tumu');
   const [etiketFiyatlariKaydediliyor, setEtiketFiyatlariKaydediliyor] = useState(false);
+  const [etiketlerYazdiriliyor, setEtiketlerYazdiriliyor] = useState(false);
   const [etiketGenisligi, setEtiketGenisligi] = useState('58');
   const [etiketYuksekligi, setEtiketYuksekligi] = useState('40');
   const [teraziAyarlari, setTeraziAyarlari] = useState(() => {
@@ -618,6 +638,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
 
   useEffect(() => {
     if (['satis', 'alis', 'sayim'].includes(sekme)) window.setTimeout(() => barkodRef.current?.focus(), 80);
+    if (sekme === 'personel-siparis') window.setTimeout(() => personelSiparisBarkodRef.current?.focus({ preventScroll: true }), 80);
   }, [sekme]);
 
   useEffect(() => {
@@ -1817,7 +1838,13 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
 
   const personelSipariseUrunEkle = urun => {
     personelSiparisMiktarinaEkle(urun, kilogramUrunuMu(urun) ? 0.1 : 1);
-    window.setTimeout(() => personelSiparisBarkodRef.current?.focus(), 0);
+    window.setTimeout(() => personelSiparisBarkodRef.current?.focus({ preventScroll: true }), 0);
+  };
+
+  const personelSiparisBarkodAlaniniHazirla = event => {
+    const hedef = event?.target;
+    if (hedef?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+    window.setTimeout(() => personelSiparisBarkodRef.current?.focus({ preventScroll: true }), 0);
   };
 
   const personelSiparisBarkodunuEkle = event => {
@@ -1871,7 +1898,26 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       bildir(error.message, 'error');
     } finally {
       setPersonelSiparisKaydediliyor(false);
+      window.setTimeout(() => personelSiparisBarkodRef.current?.focus({ preventScroll: true }), 0);
     }
+  };
+
+  const anlikSatisFiyatiTusunaBas = tus => {
+    setAnlikSatisFiyati(onceki => {
+      const mevcut = String(onceki || '').replace(',', '.').replace(/[^\d.]/g, '');
+      if (tus === 'C') return '';
+      if (tus === 'sil') return mevcut.slice(0, -1);
+      if (tus === '.') return mevcut.includes('.') ? mevcut : `${mevcut || '0'}.`;
+
+      const eklenecek = String(tus).replace(/\D/g, '');
+      if (!eklenecek) return mevcut;
+      if (mevcut.includes('.')) {
+        const ondalikUzunlugu = mevcut.split('.')[1]?.length || 0;
+        return `${mevcut}${eklenecek.slice(0, Math.max(2 - ondalikUzunlugu, 0))}`;
+      }
+      const yeniDeger = mevcut === '0' ? eklenecek.replace(/^0+/, '') || '0' : `${mevcut}${eklenecek}`;
+      return yeniDeger.slice(0, 8);
+    });
   };
 
   const anlikSatisFiyatiniUygula = event => {
@@ -2759,15 +2805,45 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     if (!yetkiyiDogrula('fis_yazdir', 'Etiket yazdırmak için yazdırma yetkisi gerekir.')) return;
     if (!etiketUrunleri.length) return bildir('Önce ürün seçin.', 'warning');
     if (etiketFiyatDegisiklikleri.length) return bildir('Etiket basmadan önce üstteki Fiyatları Kaydet düğmesine basın.', 'warning');
-    window.print();
-    const seciliIdler = new Set(etiketUrunleri.map(String));
-    const tamamlanacaklar = etiketKuyrugu.filter(kayit => seciliIdler.has(String(kayit.urun_id))).map(kayit => kayit.id);
-    if (!tamamlanacaklar.length) return;
+    const seciliUrunler = etiketUrunleri
+      .map(id => urunler.find(urun => String(urun.id) === String(id)))
+      .filter(Boolean);
+    const yazdirilacakEtiketler = seciliUrunler.flatMap(urun => Array.from(
+      { length: Math.max(Math.min(Number(etiketAdetleri[urun.id] || 1), 100), 1) },
+      () => ({
+        urunId: urun.id,
+        urunAdi: urun.urun_adi,
+        barkod: urun.barkod,
+        satisFiyati: urun.satis_fiyati,
+        isletmeAdi: restaurantName,
+        genislikMm: guvenliEtiketGenisligi,
+        yukseklikMm: guvenliEtiketYuksekligi,
+        barkodSvg: barkodSvgMetniOlustur(urun.barkod),
+      })
+    ));
+    if (!yazdirilacakEtiketler.length) return bildir('Yazdırılacak etiket oluşturulamadı.', 'warning');
+
+    setEtiketlerYazdiriliyor(true);
     try {
-      await marketEtiketKuyrugunuTamamla(restaurantId, tamamlanacaklar);
-      setEtiketKuyrugu(prev => prev.filter(kayit => !tamamlanacaklar.includes(kayit.id)));
+      await marketEtiketleriniKuyrugaEkle(restaurantId, yazdirilacakEtiketler);
+      const seciliIdler = new Set(etiketUrunleri.map(String));
+      const tamamlanacaklar = etiketKuyrugu
+        .filter(kayit => seciliIdler.has(String(kayit.urun_id)))
+        .map(kayit => kayit.id);
+      if (tamamlanacaklar.length) {
+        try {
+          await marketEtiketKuyrugunuTamamla(restaurantId, tamamlanacaklar);
+          setEtiketKuyrugu(prev => prev.filter(kayit => !tamamlanacaklar.includes(kayit.id)));
+        } catch (error) {
+          bildir(`${yazdirilacakEtiketler.length} etiket ayrı iş olarak yazıcıya gönderildi; fiyat değişikliği listesi güncellenemedi: ${error.message}`, 'warning');
+          return;
+        }
+      }
+      bildir(`${yazdirilacakEtiketler.length} etiket, yazıcı kuyruğuna ayrı ayrı gönderildi.`, 'success');
     } catch (error) {
-      bildir(`Etiket basıldı ancak kuyruk güncellenemedi: ${error.message}`, 'warning');
+      bildir(error.message, 'error');
+    } finally {
+      setEtiketlerYazdiriliyor(false);
     }
   };
 
@@ -2935,11 +3011,17 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           </div>
         </div>}
         {fiyatBekleyenUrun && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Satış fiyatı gir">
-          <form onSubmit={anlikSatisFiyatiniUygula}>
+          <form className="market-misc-price-modal" onSubmit={anlikSatisFiyatiniUygula}>
             <span>SATIŞ FİYATI</span>
             <h2>{fiyatBekleyenUrun.urun.urun_adi}</h2>
             <p>Bu ürünün kayıtlı satış fiyatı yok. Yalnızca bu fişte kullanılacak fiyatı girin.</p>
-            <label>Fiyat (TL)<input type="number" min="0.01" step="0.01" value={anlikSatisFiyati} onChange={event => setAnlikSatisFiyati(event.target.value)} autoFocus /></label>
+            <label>Fiyat (TL)<input type="number" min="0.01" step="0.01" inputMode="decimal" value={anlikSatisFiyati} onChange={event => setAnlikSatisFiyati(event.target.value)} placeholder="0,00" autoFocus /></label>
+            <div className="market-scale-keypad market-misc-price-keypad" aria-label="Dokunmatik fiyat tuş takımı">
+              {[7, 8, 9].map(rakam => <button type="button" key={rakam} onClick={() => anlikSatisFiyatiTusunaBas(rakam)}>{rakam}</button>)}<button type="button" className="control" onClick={() => anlikSatisFiyatiTusunaBas('sil')}>⌫</button>
+              {[4, 5, 6].map(rakam => <button type="button" key={rakam} onClick={() => anlikSatisFiyatiTusunaBas(rakam)}>{rakam}</button>)}<button type="button" className="control" onClick={() => anlikSatisFiyatiTusunaBas('C')}>C</button>
+              {[1, 2, 3, 0].map(rakam => <button type="button" key={rakam} onClick={() => anlikSatisFiyatiTusunaBas(rakam)}>{rakam}</button>)}
+              <button type="button" className="wide" onClick={() => anlikSatisFiyatiTusunaBas('00')}>00</button><button type="button" className="wide" onClick={() => anlikSatisFiyatiTusunaBas('.')}>Virgül</button>
+            </div>
             <small>{fiyatBekleyenUrun.adet} adet sepete eklenecek.</small>
             <div><button className="market-remove" type="button" onClick={() => setFiyatBekleyenUrun(null)}>Vazgeç</button><button className="market-primary" type="submit">Fiyatı Uygula</button></div>
           </form>
@@ -3025,10 +3107,10 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
         </div>}
       </div>}
 
-      {!yukleniyor && sekme === 'personel-siparis' && <div className="market-staff-order-layout">
+      {!yukleniyor && sekme === 'personel-siparis' && <div className="market-staff-order-layout" onPointerUp={personelSiparisBarkodAlaniniHazirla}>
         <div className="market-card market-staff-order-catalog">
           <div className="market-heading"><div><span>PERSONEL SİPARİŞİ</span><h2>Ürünleri seçip kasaya gönderin</h2><small>Gönderilen sipariş barkodlu satış ekranındaki Bekleyenler listesine düşer.</small></div></div>
-          <form className="market-staff-order-scan" onSubmit={personelSiparisBarkodunuEkle}><input ref={personelSiparisBarkodRef} className="market-staff-order-search" value={personelSiparisArama} onChange={event => setPersonelSiparisArama(event.target.value)} placeholder="Barkod okutun veya ürün adı yazın" autoFocus /><button type="submit">＋ Ekle</button></form>
+          <form className="market-staff-order-scan" onSubmit={personelSiparisBarkodunuEkle}><input ref={personelSiparisBarkodRef} className="market-staff-order-search" value={personelSiparisArama} onChange={event => setPersonelSiparisArama(event.target.value)} onBlur={event => personelSiparisBarkodAlaniniHazirla({ target: event.relatedTarget })} placeholder="Barkod okutun veya ürün adı yazın" autoFocus /><button type="submit">＋ Ekle</button></form>
           <div className="market-staff-order-groups">
             <button type="button" className={personelSiparisGrubu === 'tumu' ? 'active' : ''} onClick={() => setPersonelSiparisGrubu('tumu')}>Tüm Ürünler</button>
             {gruplar.map(grup => <button type="button" key={grup.id} className={String(personelSiparisGrubu) === String(grup.id) ? 'active' : ''} onClick={() => setPersonelSiparisGrubu(grup.id)}>{grup.grup_adi}</button>)}
@@ -3348,7 +3430,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           <button className={etiketGorunumu === 'degisenler' ? 'market-queue-button active' : 'market-queue-button'} type="button" onClick={fiyatDegisenleriSec}>{etiketGorunumu === 'degisenler' ? `← Tüm Ürünler · ${bekleyenEtiketUrunIdleri.length} değişiklik` : `↻ Fiyatı Değişenler (${bekleyenEtiketUrunIdleri.length})`}</button>
           <div className="market-label-size-manual"><label>En (mm)<input type="number" min="20" max="120" step="1" value={etiketGenisligi} onChange={event => setEtiketGenisligi(event.target.value)} /></label><span>×</span><label>Boy (mm)<input type="number" min="15" max="100" step="1" value={etiketYuksekligi} onChange={event => setEtiketYuksekligi(event.target.value)} /></label></div>
           {yetkiVar('urun_yonet') && <button className="market-save-prices" type="button" disabled={etiketFiyatlariKaydediliyor || !etiketFiyatDegisiklikleri.length} onClick={etiketFiyatlariniKaydet}>{etiketFiyatlariKaydediliyor ? 'Kaydediliyor…' : `💾 Fiyatları Kaydet${etiketFiyatDegisiklikleri.length ? ` (${etiketFiyatDegisiklikleri.length})` : ''}`}</button>}
-          {yetkiVar('fis_yazdir') && <button className="market-primary" type="button" onClick={etiketleriYazdir}>🖨️ Seçilenleri Yazdır</button>}
+          {yetkiVar('fis_yazdir') && <button className="market-primary" type="button" disabled={etiketlerYazdiriliyor} onClick={etiketleriYazdir}>{etiketlerYazdiriliyor ? 'Kuyruğa gönderiliyor…' : '🖨️ Seçilenleri Yazdır'}</button>}
         </div></div>
         <input className="market-label-search" value={etiketArama} onChange={event => setEtiketArama(event.target.value)} onKeyDown={etiketAramasindaEnter} placeholder="Barkodu okutun ve Enter'a basın veya ürün adıyla arayın" autoFocus />
         <div className="market-label-columns"><span>Seç</span><span>Ürün / Barkod</span><span>Adet</span><span>Alış</span><span>Satış</span><span>Yeni Fiyat</span></div>
