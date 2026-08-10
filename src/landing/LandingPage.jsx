@@ -129,7 +129,7 @@ export default function LandingPage({
               <div><span className="lp-eyebrow">KURULUMLARIMIZDAN</span><h2>Sadece anlatmıyoruz.<br /><em>Sahada kurup çalıştırıyoruz.</em></h2></div>
               <p>Integra POS yazılımını, dokunmatik satış bilgisayarlarını ve ödeme ekipmanlarını işletmenin çalışma düzenine göre hazırlıyoruz.</p>
             </div>
-            <div className="lp-reference-grid">
+            <div className="lp-reference-grid" role="region" aria-label="Integra POS kurulum referansları" tabIndex="0">
               {LANDING_REFERENCES.map((referans, index) => (
                 <article className="lp-reference-card" key={referans.gorsel}>
                   <div className="lp-reference-media"><img src={referans.gorsel} alt={referans.baslik} loading="lazy" /><span>{String(index + 1).padStart(2, '0')}</span></div>
