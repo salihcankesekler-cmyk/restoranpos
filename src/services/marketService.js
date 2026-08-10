@@ -88,12 +88,13 @@ async function cariHareketiniKaldir(restaurantId, cariId, kaynak, kaynakId) {
 }
 
 export async function marketVerileriniGetir(restaurantId) {
-  const [urunler, gruplar, faturalar, sayimlar, cariler, satislar, stokHareketleri, fiyatGecmisi, vardiyalar, kasaHareketleri, iadeler, bekleyenSepetler, etiketKuyrugu] = await Promise.all([
+  const [urunler, gruplar, faturalar, sayimlar, cariler, cariGruplari, satislar, stokHareketleri, fiyatGecmisi, vardiyalar, kasaHareketleri, iadeler, bekleyenSepetler, etiketKuyrugu] = await Promise.all([
     supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('sira').order('urun_adi'),
     supabase.from('market_gruplari').select('*').eq('restaurant_id', restaurantId).order('sira').order('grup_adi'),
     supabase.from('market_alis_faturalari').select('*, market_alis_fatura_kalemleri(*)').eq('restaurant_id', restaurantId).order('fatura_tarihi', { ascending: false }).limit(1000),
     supabase.from('market_sayimlari').select('*, market_sayim_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(20),
-    supabase.from('cari_musteriler').select('id, ad, telefon, bakiye, not_metni, hareketler').eq('restaurant_id', restaurantId).order('ad'),
+    supabase.from('cari_musteriler').select('id, ad, telefon, bakiye, not_metni, hareketler, cari_grup_id, cari_tipi, vergi_no, vergi_dairesi, adres').eq('restaurant_id', restaurantId).order('ad'),
+    supabase.from('cari_gruplari').select('id, grup_adi, grup_turu, sira').eq('restaurant_id', restaurantId).eq('aktif', true).order('sira').order('grup_adi'),
     supabase.from('market_satislari').select('*, market_satis_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(1000),
     supabase.from('market_stok_hareketleri').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(1000),
     supabase.from('market_fiyat_gecmisi').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(500),
@@ -103,7 +104,7 @@ export async function marketVerileriniGetir(restaurantId) {
     supabase.from('market_bekleyen_sepetler').select('*').eq('restaurant_id', restaurantId).order('updated_at', { ascending: false }).limit(100),
     supabase.from('market_etiket_kuyrugu').select('*').eq('restaurant_id', restaurantId).eq('durum', 'Bekliyor').order('created_at', { ascending: false }).limit(1000),
   ]);
-  const error = urunler.error || gruplar.error || faturalar.error || sayimlar.error || cariler.error || satislar.error;
+  const error = urunler.error || gruplar.error || faturalar.error || sayimlar.error || cariler.error || cariGruplari.error || satislar.error;
   if (error) throw marketHatasi(error);
   return {
     urunler: (urunler.data || []).filter(urun => urun.aktif !== false),
@@ -112,6 +113,7 @@ export async function marketVerileriniGetir(restaurantId) {
     faturalar: faturalar.data || [],
     sayimlar: sayimlar.data || [],
     cariler: cariler.data || [],
+    cariGruplari: cariGruplari.data || [],
     satislar: satislar.data || [],
     stokHareketleri: opsiyonelTabloEksikMi(stokHareketleri.error) ? [] : stokHareketleri.data || [],
     fiyatGecmisi: opsiyonelTabloEksikMi(fiyatGecmisi.error) ? [] : fiyatGecmisi.data || [],
@@ -292,12 +294,34 @@ export async function marketCariKaydet(restaurantId, cari) {
     restaurant_id: restaurantId,
     ad: String(cari.ad || '').trim(),
     telefon: String(cari.telefon || '').trim() || null,
+    cari_grup_id: cari.grupId ? Number(cari.grupId) : null,
+    cari_tipi: ['musteri', 'tedarikci', 'karma'].includes(cari.cariTipi) ? cari.cariTipi : 'musteri',
+    vergi_no: String(cari.vergiNo || '').trim() || null,
+    vergi_dairesi: String(cari.vergiDairesi || '').trim() || null,
+    adres: String(cari.adres || '').trim() || null,
     not_metni: String(cari.notMetni || '').trim() || null,
     bakiye: 0,
     hareketler: [],
   };
   if (!payload.ad) throw new Error('Cari adı zorunludur.');
+  if (!payload.cari_grup_id) throw new Error('Cari grubu seçimi zorunludur.');
   const { data, error } = await supabase.from('cari_musteriler').insert([payload]).select().single();
+  if (error) throw marketHatasi(error);
+  return data;
+}
+
+export async function marketCariGrubuKaydet(restaurantId, grup) {
+  await marketOturumunuDogrula();
+  const payload = {
+    restaurant_id: restaurantId,
+    grup_adi: String(grup.grupAdi || '').trim(),
+    grup_turu: ['musteri', 'tedarikci', 'karma'].includes(grup.grupTuru) ? grup.grupTuru : 'musteri',
+    sira: Number(grup.sira || 0),
+    aktif: true,
+  };
+  if (!payload.grup_adi) throw new Error('Cari grup adı zorunludur.');
+  const { data, error } = await supabase.from('cari_gruplari').insert([payload]).select().single();
+  if (error?.code === '23505') throw new Error('Bu isimde bir cari grubu zaten var.');
   if (error) throw marketHatasi(error);
   return data;
 }

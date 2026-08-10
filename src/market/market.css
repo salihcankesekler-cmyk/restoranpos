@@ -2678,6 +2678,29 @@
 .market-barcode-assignment button.scale.count{border-color:#fde68a;background:#fffbeb;color:#a16207}
 .market-product-form label>small{color:#64748b;font-size:9px;font-weight:700}
 
+.market-cari-form label{display:flex;min-width:0;flex-direction:column;gap:4px;color:#475569;font-size:10px;font-weight:850}
+.market-cari-form select,.market-cari-form textarea{min-width:0;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:8px 9px;background:#fff;font:inherit}
+.market-cari-form textarea{min-height:54px;resize:vertical}
+.market-cari-form .market-cari-address{grid-column:span 2}
+.market-cari-group-manager{margin:8px 0 4px;padding:9px;border:1px solid #e2e8f0;border-radius:9px;background:#f8fafc}
+.market-cari-group-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#334155;font-size:11px}
+.market-cari-group-head button{border:1px solid #cbd5e1;border-radius:7px;padding:6px 8px;background:#fff;color:#c2410c;font-size:10px;font-weight:900;cursor:pointer}
+.market-cari-group-chips{display:flex;gap:5px;overflow-x:auto;margin-top:7px;padding-bottom:2px}
+.market-cari-group-chips>span{display:flex;min-width:max-content;flex-direction:column;border:1px solid #cbd5e1;border-radius:7px;padding:5px 8px;background:#fff;color:#334155;font-size:10px;font-weight:900}
+.market-cari-group-chips small{margin-top:1px;color:#64748b;font-size:8px}
+.market-cari-group-form{display:grid;grid-template-columns:minmax(130px,1fr) minmax(120px,.8fr) auto;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0}
+.market-cari-group-form input,.market-cari-group-form select{min-width:0;border:1px solid #cbd5e1;border-radius:7px;padding:7px 8px;background:#fff;font:inherit;font-size:10px}
+.market-cari-balance-group{border-top:1px solid #e2e8f0}
+.market-cari-balance-group>header{display:flex;align-items:center;justify-content:space-between;padding:8px 5px;background:#f8fafc;color:#334155;font-size:10px}
+.market-cari-balance-group>header small{color:#64748b}
+.market-cari-balance-group>button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;border:0;border-bottom:1px solid #e2e8f0;padding:10px 5px;background:#fff;text-align:left;cursor:pointer}
+.market-cari-balance-group>button.active{border-left:3px solid #f97316;padding-left:9px;background:#fff7ed}
+
+@media(max-width:700px){
+  .market-cari-form .market-cari-address{grid-column:auto}
+  .market-cari-group-form{grid-template-columns:1fr}
+}
+
 .market-staff-order-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,.75fr);gap:12px;align-items:start}
 .market-staff-order-catalog{min-width:0}
 .market-staff-order-scan{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
