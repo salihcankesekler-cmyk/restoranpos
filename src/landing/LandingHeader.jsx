@@ -130,6 +130,7 @@ export default function LandingHeader({ onLogin, compact = false }) {
         <a href="/#referanslar">Referanslar</a>
         <a href="/#isletmeler">İşletmeler</a>
         <a href="/#nasil-calisir">Nasıl çalışır?</a>
+        <a href="/#destek">Destek ve Geliştirme</a>
       </nav>
 
       <div className="lp-header-actions">
@@ -145,6 +146,7 @@ export default function LandingHeader({ onLogin, compact = false }) {
               <a href="/#referanslar">Referanslar</a>
               <a href="/#isletmeler">İşletmeler</a>
               <a href="/#nasil-calisir">Nasıl çalışır?</a>
+              <a href="/#destek">Destek ve Geliştirme</a>
             </div>
           </div>
         </details>
