@@ -1,13 +1,11 @@
 import {
   LANDING_ADVANTAGES,
   LANDING_BUSINESS_TYPES,
-  LANDING_CAMPAIGNS,
   LANDING_FAQS,
   LANDING_HERO_FEATURES,
   LANDING_MODULES,
   LANDING_OPERATION_FLOW,
   LANDING_PANEL_PREVIEWS,
-  LANDING_PRODUCTS,
   LANDING_SETUP_STEPS,
   LANDING_SOLUTION_PAGES,
   LANDING_SUPPORT_TOPICS,
@@ -121,42 +119,6 @@ export default function LandingPage({
         <section className="lp-proof">
           <div className="lp-shell lp-proof-grid">
             {LANDING_TRUST_FEATURES.map(([icon, title, text]) => <article key={title} className="lp-proof-item"><span className="lp-proof-icon">{icon}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}
-          </div>
-        </section>
-
-        <section id="urunler" className="lp-section lp-products-section">
-          <div className="lp-shell">
-            <div className="lp-section-heading lp-section-heading--split">
-              <div><span className="lp-eyebrow">POS DONANIMI VE YAZILIM</span><h2>İşletmenize uygun ürünleri<br /><em>tek noktadan tamamlayın.</em></h2></div>
-              <p>Dokunmatik satış bilgisayarından fiş yazıcısına, para çekmecesinden Integra POS yazılımına kadar ihtiyacınız olan ürünleri birlikte planlayın.</p>
-            </div>
-            <div className="lp-product-catalog">
-              {LANDING_PRODUCTS.map(urun => <article className="lp-product-card" key={urun.ad}>
-                <div className="lp-product-card-top"><span className="lp-product-card-icon" aria-hidden="true">{urun.icon}</span><small>{urun.kategori}</small></div>
-                <h3>{urun.ad}</h3><p>{urun.aciklama}</p>
-                <ul>{urun.ozellikler.map(ozellik => <li key={ozellik}>{ozellik}</li>)}</ul>
-                <div className="lp-product-card-footer"><strong>{urun.fiyat}</strong><button type="button" onClick={() => onRegister(urun.ad)}>Bilgi Al <ArrowIcon /></button></div>
-              </article>)}
-            </div>
-          </div>
-        </section>
-
-        <section id="kampanyalar" className="lp-campaigns-section">
-          <div className="lp-shell">
-            {LANDING_CAMPAIGNS.map(kampanya => <article className="lp-campaign-card" key={kampanya.ad}>
-              <div className="lp-campaign-media">
-                <img src={kampanya.gorsel} alt={`${kampanya.ad}: dokunmatik bilgisayar, fiş yazıcı ve para çekmecesi`} loading="lazy" />
-                <div className="lp-campaign-image-update"><small>GÜNCEL KAMPANYA</small><strong>{kampanya.fiyat}</strong><span>{kampanya.vergi}</span></div>
-              </div>
-              <div className="lp-campaign-copy">
-                <span className="lp-campaign-label">{kampanya.etiket}</span>
-                <h2>{kampanya.ad}</h2><p>{kampanya.aciklama}</p>
-                <div className="lp-campaign-price"><strong>{kampanya.fiyat}</strong><span>{kampanya.vergi}</span></div>
-                <ul>{kampanya.icerik.map(urun => <li key={urun}><span>✓</span>{urun}</li>)}</ul>
-                <div className="lp-campaign-benefits">{kampanya.avantajlar.map(avantaj => <span key={avantaj}>{avantaj}</span>)}</div>
-                <button type="button" onClick={() => onRegister(kampanya.ad)}>Kampanyadan Yararlan <ArrowIcon /></button>
-              </div>
-            </article>)}
           </div>
         </section>
 
