@@ -95,8 +95,15 @@ function IntegraApp() {
 
   const izinliScreens = ['landing', 'login', 'register', 'forgot_password', 'dashboard'];
 
+  // Tanıtım sitesindeki çözüm adresleri doğrudan açıldığında, tarayıcıda daha önce
+  // kalmış bir panel oturumu yerine ilgili herkese açık çözüm sayfasını gösterir.
+  const halkaAcikCozumSayfasi = typeof window !== 'undefined'
+    && /^\/cozumler(?:\/|$)/.test(window.location.pathname || '');
+
   const baslangicScreen =
-    kayitliScreen === 'dashboard' && kayitliUser
+    halkaAcikCozumSayfasi
+      ? 'landing'
+      : kayitliScreen === 'dashboard' && kayitliUser
       ? 'dashboard'
       : izinliScreens.includes(kayitliScreen) && kayitliScreen !== 'dashboard'
         ? kayitliScreen

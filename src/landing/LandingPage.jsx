@@ -9,9 +9,12 @@ import {
   LANDING_PANEL_PREVIEWS,
   LANDING_PRODUCTS,
   LANDING_SETUP_STEPS,
+  LANDING_SOLUTION_PAGES,
   LANDING_SUPPORT_TOPICS,
   LANDING_TRUST_FEATURES,
 } from './landingContent';
+import LandingHeader from './LandingHeader';
+import SolutionDetailPage from './SolutionDetailPage';
 import './landing.css';
 
 const HERO_MODULES = [
@@ -42,22 +45,18 @@ export default function LandingPage({
   supportForm,
   setSupportField,
 }) {
+  const cozumYolu = typeof window === 'undefined'
+    ? ''
+    : window.location.pathname.match(/^\/cozumler\/([^/]+)\/?$/)?.[1] || '';
+  const seciliCozum = LANDING_SOLUTION_PAGES.find(cozum => cozum.slug === cozumYolu);
+
+  if (seciliCozum) {
+    return <SolutionDetailPage solution={seciliCozum} onLogin={onLogin} onRegister={onRegister} />;
+  }
+
   return (
     <div className="lp-page">
-      <header className="lp-header">
-        <a className="lp-logo-link" href="#anasayfa" aria-label="Integra POS ana sayfa"><Brand light /></a>
-        <nav className="lp-nav" aria-label="Ana menü">
-          <a href="#urunler">Ürünler</a>
-          <a href="#kampanyalar">Kampanyalar</a>
-          <a href="#cozumler">Çözümler</a>
-          <a href="#isletmeler">İşletmeler</a>
-          <a href="#nasil-calisir">Nasıl çalışır?</a>
-        </nav>
-        <div className="lp-header-actions">
-          <button type="button" className="lp-login-btn" onClick={onLogin}>Giriş Yap</button>
-          <a className="lp-header-cta" href="#destek">Ücretsiz Görüşme <ArrowIcon /></a>
-        </div>
-      </header>
+      <LandingHeader onLogin={onLogin} />
 
       <main>
         <section id="anasayfa" className="lp-hero">
