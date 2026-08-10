@@ -300,12 +300,13 @@ export async function marketCariKaydet(restaurantId, cari) {
     vergi_dairesi: String(cari.vergiDairesi || '').trim() || null,
     adres: String(cari.adres || '').trim() || null,
     not_metni: String(cari.notMetni || '').trim() || null,
-    bakiye: 0,
-    hareketler: [],
   };
   if (!payload.ad) throw new Error('Cari adı zorunludur.');
   if (!payload.cari_grup_id) throw new Error('Cari grubu seçimi zorunludur.');
-  const { data, error } = await supabase.from('cari_musteriler').insert([payload]).select().single();
+  const sorgu = cari.id
+    ? supabase.from('cari_musteriler').update(payload).eq('id', cari.id).eq('restaurant_id', restaurantId)
+    : supabase.from('cari_musteriler').insert([{ ...payload, bakiye: 0, hareketler: [] }]);
+  const { data, error } = await sorgu.select().single();
   if (error) throw marketHatasi(error);
   return data;
 }

@@ -46,7 +46,7 @@ const bosGrup = {
   grupRengi: '#c2410c', urunRengi: '#0f172a',
 };
 const bosCari = {
-  ad: '', telefon: '', grupId: '', cariTipi: 'musteri', vergiNo: '', vergiDairesi: '', adres: '', notMetni: '',
+  id: '', ad: '', telefon: '', grupId: '', cariTipi: 'musteri', vergiNo: '', vergiDairesi: '', adres: '', notMetni: '',
 };
 const bosCariGrubu = { grupAdi: '', grupTuru: 'musteri' };
 const bosFinansHareketi = () => ({
@@ -391,6 +391,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [cariFormYeri, setCariFormYeri] = useState('');
   const [cariGrupFormu, setCariGrupFormu] = useState(bosCariGrubu);
   const [cariGrupFormuAcik, setCariGrupFormuAcik] = useState(false);
+  const [finansCariGrupFiltresi, setFinansCariGrupFiltresi] = useState('');
   const [finansCariId, setFinansCariId] = useState('');
   const [finansHareketi, setFinansHareketi] = useState(bosFinansHareketi);
   const [sayim, setSayim] = useState({});
@@ -1047,8 +1048,11 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       cariler: cariler.filter(cari => String(cari.cari_grup_id) === String(grup.id)),
     })).filter(grup => grup.cariler.length);
     const grupsuz = cariler.filter(cari => !cariGruplari.some(grup => String(grup.id) === String(cari.cari_grup_id)));
-    return grupsuz.length ? [...gruplu, { id: 'grupsuz', grup_adi: 'Grupsuz Cariler', grup_turu: 'karma', cariler: grupsuz }] : gruplu;
-  }, [cariGruplari, cariler]);
+    const tumGruplar = grupsuz.length ? [...gruplu, { id: 'grupsuz', grup_adi: 'Grupsuz Cariler', grup_turu: 'karma', cariler: grupsuz }] : gruplu;
+    return finansCariGrupFiltresi
+      ? tumGruplar.filter(grup => String(grup.id) === String(finansCariGrupFiltresi))
+      : tumGruplar;
+  }, [cariGruplari, cariler, finansCariGrupFiltresi]);
   const acikVardiya = vardiyalar.find(vardiya => vardiya.durum === 'Açık');
   const kasaOzeti = useMemo(() => {
     if (!acikVardiya) return { nakitSatis: 0, nakitIade: 0, giris: 0, cikis: 0, beklenen: 0 };
@@ -2030,6 +2034,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const cariKaydet = async event => {
     event.preventDefault();
     try {
+      const duzenlemeMi = Boolean(cariFormu.id);
       const seciliGrup = cariGruplari.find(grup => String(grup.id) === String(cariFormu.grupId));
       const yeniCari = await marketCariKaydet(restaurantId, {
         ...cariFormu,
@@ -2043,7 +2048,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       setCariFormu(bosCari);
       setCariFormYeri('');
       await verileriYukle(true);
-      bildir('Cari kaydedildi ve seçildi.', 'success');
+      bildir(duzenlemeMi ? 'Cari bilgileri güncellendi.' : 'Cari kaydedildi ve seçildi.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
   };
 
@@ -2056,6 +2061,11 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       setCariGrupFormuAcik(false);
       bildir('Cari grubu kaydedildi.', 'success');
     } catch (error) { bildir(error.message, 'error'); }
+  };
+
+  const finansCariGrubunuFiltrele = grupId => {
+    setFinansCariGrupFiltresi(prev => String(prev) === String(grupId) ? '' : String(grupId));
+    setFinansCariId('');
   };
 
   const finansHareketiKaydet = async event => {
@@ -2093,10 +2103,27 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     setCariFormu({ ...bosCari, cariTipi: varsayilanTur, grupId: varsayilanGrup ? String(varsayilanGrup.id) : '' });
   };
 
+  const cariyiDuzenle = (cari, yer) => {
+    const grup = cariGrubu(cari);
+    setCariFormYeri(yer);
+    setCariFormu({
+      id: cari.id,
+      ad: cari.ad || '',
+      telefon: cari.telefon || '',
+      grupId: cari.cari_grup_id ? String(cari.cari_grup_id) : '',
+      cariTipi: cari.cari_tipi || grup?.grup_turu || 'musteri',
+      vergiNo: cari.vergi_no || '',
+      vergiDairesi: cari.vergi_dairesi || '',
+      adres: cari.adres || '',
+      notMetni: cari.not_metni || '',
+    });
+  };
+
   const cariKayitAlani = yer => (
     <>
-      <button type="button" className="market-link-button" onClick={() => cariFormunuAcKapat(yer)}>＋ Yeni cari kaydet</button>
+      <button type="button" className="market-link-button" onClick={() => cariFormunuAcKapat(yer)}>{cariFormYeri === yer ? '✕ Cari formunu kapat' : '＋ Yeni cari kaydet'}</button>
       {cariFormYeri === yer && <form className="market-cari-form" onSubmit={cariKaydet}>
+        {cariFormu.id && <div className="market-cari-edit-heading"><strong>Cari kartını düzenle</strong><small>Bakiye ve hesap hareketleri korunur.</small></div>}
         <label>Cari grubu *<select required value={cariFormu.grupId} onChange={event => {
           const grup = cariGruplari.find(item => String(item.id) === String(event.target.value));
           setCariFormu({ ...cariFormu, grupId: event.target.value, cariTipi: grup?.grup_turu || 'musteri' });
@@ -2107,18 +2134,19 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
         <label>Vergi dairesi<input value={cariFormu.vergiDairesi} onChange={event => setCariFormu({ ...cariFormu, vergiDairesi: event.target.value })} placeholder="Vergi dairesi" /></label>
         <label className="market-cari-address">Adres<textarea value={cariFormu.adres} onChange={event => setCariFormu({ ...cariFormu, adres: event.target.value })} placeholder="Fatura / teslimat adresi" /></label>
         <label>Not<input value={cariFormu.notMetni} onChange={event => setCariFormu({ ...cariFormu, notMetni: event.target.value })} placeholder="Cari notu" /></label>
-        <button className="market-primary" type="submit">Cariyi Kaydet</button>
+        <button className="market-primary" type="submit">{cariFormu.id ? 'Değişiklikleri Kaydet' : 'Cariyi Kaydet'}</button>
       </form>}
     </>
   );
 
-  const cariOzeti = cari => {
+  const cariOzeti = (cari, duzenlemeYeri = '') => {
     if (!cari) return null;
     const bakiye = Number(cari.bakiye || 0);
     const bakiyeBasligi = bakiye > 0 ? 'Alacağınız' : bakiye < 0 ? 'Borcunuz' : 'Bakiye';
     return <div className="market-cari-summary">
       <span><strong>{cari.ad}</strong><small>{cariGrubu(cari)?.grup_adi || 'Grupsuz'} · {cari.telefon || 'Telefon yok'}</small>{(cari.vergi_no || cari.vergi_dairesi) && <small>{cari.vergi_no || 'Vergi no yok'} · {cari.vergi_dairesi || 'Vergi dairesi yok'}</small>}{cari.adres && <small>{cari.adres}</small>}</span>
       <b className={bakiye < 0 ? 'red' : 'green'}>{bakiyeBasligi}: {para(Math.abs(bakiye))}</b>
+      {duzenlemeYeri && <button className="market-cari-edit-button" type="button" onClick={() => cariyiDuzenle(cari, duzenlemeYeri)}>✎ Cariyi Düzenle</button>}
       {Array.isArray(cari.hareketler) && cari.hareketler.length > 0 &&
         <small>Son hareket: {cari.hareketler[0].tip} · {para(cari.hareketler[0].tutar)}</small>}
     </div>;
@@ -2800,7 +2828,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             <span>CARİ SEÇİMİ</span>
             <h2>Müşteri / cari seçin</h2>
             <input className="market-customer-search" value={satisCariArama} onChange={event => setSatisCariArama(event.target.value)} placeholder="İsim veya telefon ile ara" autoFocus />
-            {seciliSatisCarisi && cariOzeti(seciliSatisCarisi)}
+            {seciliSatisCarisi && cariOzeti(seciliSatisCarisi, 'satis')}
             <button className={!satisCariId ? 'market-customer-none active' : 'market-customer-none'} type="button" onClick={() => { setSatisCariId(''); setSatisCariPenceresi(false); }}>Cari seçmeden satış</button>
             <div className="market-customer-list">
               {filtreliSatisCarileri.map(cari => <button type="button" key={cari.id} className={String(satisCariId) === String(cari.id) ? 'active' : ''} onClick={() => { setSatisCariId(String(cari.id)); setSatisCariPenceresi(false); }}>
@@ -3067,7 +3095,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             <label>Tarih<input type="date" value={fatura.faturaTarihi} onChange={event => setFatura({ ...fatura, faturaTarihi: event.target.value })} /></label>
           </div>
           {cariKayitAlani('alis')}
-          {cariOzeti(seciliAlisCarisi)}
+          {cariOzeti(seciliAlisCarisi, 'alis')}
           <form className="market-scan" onSubmit={faturayaEkle}><label>Barkod<input ref={barkodRef} value={fatura.barkod} onChange={event => setFatura({ ...fatura, barkod: event.target.value })} placeholder="Okutun ve Enter'a basın" /></label><label>Miktar<input type="number" min="0.001" step="0.001" value={fatura.miktar} onChange={event => setFatura({ ...fatura, miktar: event.target.value })} /></label><label>Alış fiyatı<input type="number" min="0" step="0.01" value={fatura.alisFiyati} onChange={event => setFatura({ ...fatura, alisFiyati: event.target.value })} placeholder="Kayıtlı fiyat" /></label><button className="market-primary" type="submit">Kalem Ekle</button></form>
           <div className="market-table"><table><thead><tr><th>Ürün</th><th>Miktar</th><th>Alış</th><th>KDV</th><th>Toplam</th><th></th></tr></thead><tbody>
             {fatura.kalemler.map(kalem => <tr key={kalem.urunId}><td><strong>{kalem.urunAdi}</strong><small>{kalem.barkod}</small></td><td><input className="market-table-input" type="number" min="0.001" step="0.001" value={kalem.miktar} onChange={event => faturaKalemiGuncelle(kalem.urunId, 'miktar', event.target.value)} /></td><td><input className="market-table-input" type="number" min="0" step="0.01" value={kalem.alisFiyati} onChange={event => faturaKalemiGuncelle(kalem.urunId, 'alisFiyati', event.target.value)} /></td><td>%{kalem.kdvOrani}</td><td>{para(kalem.satirToplami)}</td><td><button className="market-remove" type="button" onClick={() => setFatura(prev => ({ ...prev, kalemler: prev.kalemler.filter(item => item.urunId !== kalem.urunId) }))}>Sil</button></td></tr>)}
@@ -3104,7 +3132,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           </div>
           <div className="market-cari-group-manager">
             <div className="market-cari-group-head"><strong>Cari grupları</strong><button type="button" onClick={() => setCariGrupFormuAcik(prev => !prev)}>＋ Grup aç</button></div>
-            <div className="market-cari-group-chips">{cariGruplari.map(grup => <span key={grup.id}>{grup.grup_adi}<small>{grup.grup_turu === 'tedarikci' ? 'Tedarikçi' : grup.grup_turu === 'karma' ? 'Müşteri + Tedarikçi' : 'Müşteri'}</small></span>)}</div>
+            <div className="market-cari-group-chips">{cariGruplari.map(grup => <button type="button" className={String(finansCariGrupFiltresi) === String(grup.id) ? 'active' : ''} key={grup.id} onClick={() => finansCariGrubunuFiltrele(grup.id)}>{grup.grup_adi}<small>{grup.grup_turu === 'tedarikci' ? 'Tedarikçi' : grup.grup_turu === 'karma' ? 'Müşteri + Tedarikçi' : 'Müşteri'}</small></button>)}</div>
             {cariGrupFormuAcik && <form className="market-cari-group-form" onSubmit={cariGrubuKaydet}>
               <input required value={cariGrupFormu.grupAdi} onChange={event => setCariGrupFormu({ ...cariGrupFormu, grupAdi: event.target.value })} placeholder="Grup adı (örn. VIP Müşteriler)" autoFocus />
               <select value={cariGrupFormu.grupTuru} onChange={event => setCariGrupFormu({ ...cariGrupFormu, grupTuru: event.target.value })}><option value="musteri">Satış / Müşteri</option><option value="tedarikci">Alış / Tedarikçi</option><option value="karma">Müşteri + Tedarikçi</option></select>
@@ -3121,7 +3149,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
                 <b className={bakiye < 0 ? 'red' : 'green'}>{bakiye > 0 ? 'Alacak ' : bakiye < 0 ? 'Borç ' : ''}{para(Math.abs(bakiye))}</b>
               </button>;
             })}
-          </section>)}{!cariler.length && <p className="market-empty">Henüz cari kaydı yok.</p>}</div>
+          </section>)}{!finansCariGruplari.length && <p className="market-empty">{finansCariGrupFiltresi ? 'Bu grupta henüz cari kaydı yok. Gruba tekrar basarak tüm carileri görebilirsiniz.' : 'Henüz cari kaydı yok.'}</p>}</div>
         </div>
         <div className="market-card">
           <div className="market-heading"><div><span>ÖDEME / TAHSİLAT</span><h2>Cari hareket gir</h2></div></div>
@@ -3136,7 +3164,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             <button className="market-primary" type="submit">{finansHareketi.islemTipi === 'tahsilat' ? 'Tahsilatı Kaydet' : 'Ödemeyi Kaydet'}</button>
           </form>
           {seciliFinansCarisi ? <>
-            {cariOzeti(seciliFinansCarisi)}
+            {cariOzeti(seciliFinansCarisi, 'finans')}
             <div className="market-heading"><div><span>HAREKETLER</span><h2>Hesap geçmişi</h2></div></div>
             <div className="market-finance-history">{(Array.isArray(seciliFinansCarisi.hareketler) ? seciliFinansCarisi.hareketler : []).map(hareket => <div key={hareket.id}>
               <span><strong>{hareket.tip}</strong><small>{hareket.aciklama || 'Açıklama yok'} · {new Date(hareket.tarih).toLocaleString('tr-TR')}</small></span>
