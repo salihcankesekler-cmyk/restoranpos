@@ -17477,10 +17477,10 @@ Toplam Ciro: {toplam}
           </div>
 
           {/* MAIN */}
-          <div style={['market', 'kuafor'].includes(activeTab)
+          <div style={['market', 'kuafor', 'masalar', 'hizli_satis'].includes(activeTab)
             ? (isMobile ? styles.marketMainContentMobile : styles.marketMainContentFull)
             : (isMobile ? styles.mainContentMobile : styles.mainContentFull)}>
-            {!['market', 'kuafor'].includes(activeTab) && <div
+            {!['market', 'kuafor', 'masalar', 'hizli_satis'].includes(activeTab) && <div
               style={{
                 backgroundColor: '#ffffff',
                 border: '1px solid #e2e8f0',
@@ -17524,8 +17524,8 @@ Toplam Ciro: {toplam}
                 {manuelYenilemeYapiliyor ? '⏳ Yenileniyor' : '🔄 Verileri Yenile'}
               </button>
             </div>}
-            {!['market', 'kuafor'].includes(activeTab) && renderEkranRehberi()}
-            {!['market', 'kuafor'].includes(activeTab) && rehberGizli ? (
+            {!['market', 'kuafor', 'masalar', 'hizli_satis'].includes(activeTab) && renderEkranRehberi()}
+            {!['market', 'kuafor', 'masalar', 'hizli_satis'].includes(activeTab) && rehberGizli ? (
               <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideShowBtn}>💡 Ekran rehberini göster</button>
             ) : null}
             {activeTab !== 'market' && aktifKullaniciLisansRozeti && ['Yaklaşıyor', 'Ödeme Gecikti', 'Ödeme Bekliyor'].includes(aktifKullaniciLisansRozeti.etiket) && (
