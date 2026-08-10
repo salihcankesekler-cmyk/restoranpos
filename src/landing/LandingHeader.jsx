@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LANDING_SOLUTION_GROUPS } from './landingContent';
+import { LANDING_DISCOVERY_LINKS, LANDING_SOLUTION_GROUPS } from './landingContent';
 
 function HeaderBrand() {
   return (
@@ -29,6 +29,26 @@ function SolutionLinks({ onNavigate }) {
       </div>
     </section>
   ));
+}
+
+function DiscoveryLinks({ onNavigate }) {
+  return (
+    <section className="lp-mega-group lp-mega-group--discovery">
+      <div className="lp-mega-group-title">
+        <h2>Keşfet</h2>
+        <p>Ürünleri, kampanyaları ve bağlantı seçeneklerini inceleyin</p>
+      </div>
+      <div className="lp-mega-links">
+        {LANDING_DISCOVERY_LINKS.map(item => (
+          <a href={item.href} key={item.href} onClick={onNavigate}>
+            <span aria-hidden="true">{item.icon}</span>
+            <div><strong>{item.ad}</strong><small>{item.kisa}</small></div>
+            <b aria-hidden="true">›</b>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export default function LandingHeader({ onLogin, compact = false }) {
@@ -65,11 +85,12 @@ export default function LandingHeader({ onLogin, compact = false }) {
             </aside>
             <div className="lp-mega-groups">
               <SolutionLinks onNavigate={() => setMegaMenuAcik(false)} />
+              <DiscoveryLinks onNavigate={() => setMegaMenuAcik(false)} />
             </div>
           </div>
         </div>
-        <a href="/#urunler">Ürünler</a>
-        <a href="/#kampanyalar">Kampanyalar</a>
+        <a href="/donanimlar">Ürünler</a>
+        <a href="/kampanyalar">Kampanyalar</a>
         <a href="/#isletmeler">İşletmeler</a>
         <a href="/#nasil-calisir">Nasıl çalışır?</a>
       </nav>
@@ -80,9 +101,10 @@ export default function LandingHeader({ onLogin, compact = false }) {
           <div className="lp-mobile-nav-panel">
             <strong>Çözümler</strong>
             <SolutionLinks />
+            <DiscoveryLinks />
             <div className="lp-mobile-main-links">
-              <a href="/#urunler">Ürünler</a>
-              <a href="/#kampanyalar">Kampanyalar</a>
+              <a href="/donanimlar">Ürünler</a>
+              <a href="/kampanyalar">Kampanyalar</a>
               <a href="/#isletmeler">İşletmeler</a>
               <a href="/#nasil-calisir">Nasıl çalışır?</a>
             </div>

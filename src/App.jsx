@@ -98,7 +98,7 @@ function IntegraApp() {
   // Tanıtım sitesindeki çözüm adresleri doğrudan açıldığında, tarayıcıda daha önce
   // kalmış bir panel oturumu yerine ilgili herkese açık çözüm sayfasını gösterir.
   const halkaAcikCozumSayfasi = typeof window !== 'undefined'
-    && /^\/cozumler(?:\/|$)/.test(window.location.pathname || '');
+    && /^\/(?:cozumler(?:\/|$)|donanimlar\/?$|kampanyalar\/?$|fiyatlandirma\/?$|entegrasyonlar\/?$)/.test(window.location.pathname || '');
 
   const baslangicScreen =
     halkaAcikCozumSayfasi

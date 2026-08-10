@@ -14,6 +14,7 @@ import {
   LANDING_TRUST_FEATURES,
 } from './landingContent';
 import LandingHeader from './LandingHeader';
+import DiscoveryPage from './DiscoveryPage';
 import SolutionDetailPage from './SolutionDetailPage';
 import './landing.css';
 
@@ -49,6 +50,13 @@ export default function LandingPage({
     ? ''
     : window.location.pathname.match(/^\/cozumler\/([^/]+)\/?$/)?.[1] || '';
   const seciliCozum = LANDING_SOLUTION_PAGES.find(cozum => cozum.slug === cozumYolu);
+  const kesifSayfasi = typeof window === 'undefined'
+    ? ''
+    : window.location.pathname.match(/^\/(donanimlar|kampanyalar|fiyatlandirma|entegrasyonlar)\/?$/)?.[1] || '';
+
+  if (kesifSayfasi) {
+    return <DiscoveryPage page={kesifSayfasi} onLogin={onLogin} onRegister={onRegister} />;
+  }
 
   if (seciliCozum) {
     return <SolutionDetailPage solution={seciliCozum} onLogin={onLogin} onRegister={onRegister} />;
@@ -234,7 +242,7 @@ export default function LandingPage({
       </main>
 
       <footer className="lp-footer">
-        <div className="lp-shell"><div className="lp-footer-top"><div className="lp-footer-brand"><Brand light /><p>Satış, hizmet ve operasyon yönetiminde işletmenizin dijital çalışma merkezi.</p></div><div className="lp-footer-links"><strong>Çözümler</strong><a href="#urunler">Ürünler</a><a href="#kampanyalar">Kampanyalar</a><a href="#isletmeler">İşletmeler</a><a href="#cozumler">Modüller</a><a href="#paketler">Yazılım Paketleri</a></div><div className="lp-footer-links"><strong>İletişim</strong><a href="tel:05325014277">0532 501 42 77</a><a href="mailto:info@integraposbilisim.com">info@integraposbilisim.com</a><span>integraposbilisim.com</span></div></div><div className="lp-footer-bottom"><span>© 2026 Integra Yazılım Teknolojileri A.Ş.</span><span>Tüm hakları saklıdır.</span></div></div>
+        <div className="lp-shell"><div className="lp-footer-top"><div className="lp-footer-brand"><Brand light /><p>Satış, hizmet ve operasyon yönetiminde işletmenizin dijital çalışma merkezi.</p></div><div className="lp-footer-links"><strong>Çözümler</strong><a href="/donanimlar">Ürünler</a><a href="/kampanyalar">Kampanyalar</a><a href="#isletmeler">İşletmeler</a><a href="#cozumler">Modüller</a><a href="/fiyatlandirma">Yazılım Paketleri</a></div><div className="lp-footer-links"><strong>İletişim</strong><a href="tel:05325014277">0532 501 42 77</a><a href="mailto:info@integraposbilisim.com">info@integraposbilisim.com</a><span>integraposbilisim.com</span></div></div><div className="lp-footer-bottom"><span>© 2026 Integra Yazılım Teknolojileri A.Ş.</span><span>Tüm hakları saklıdır.</span></div></div>
       </footer>
     </div>
   );

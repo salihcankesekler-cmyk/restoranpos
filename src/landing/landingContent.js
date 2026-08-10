@@ -219,6 +219,114 @@ export const LANDING_SOLUTION_PAGES = LANDING_SOLUTION_GROUPS.flatMap(grup =>
   grup.cozumler.map(cozum => ({ ...cozum, grup: grup.baslik })),
 );
 
+export const LANDING_DISCOVERY_LINKS = [
+  { icon: '📣', ad: 'Kampanyalar', kisa: 'Hazır POS setleri ve güncel fırsatlar', href: '/kampanyalar' },
+  { icon: '🏷️', ad: 'Fiyatlandırma', kisa: 'İşletmenize uygun yazılım paketleri', href: '/fiyatlandirma' },
+  { icon: '🖥️', ad: 'Donanımlar', kisa: 'POS cihazları ve satış ekipmanları', href: '/donanimlar' },
+  { icon: '⚙️', ad: 'Entegrasyonlar', kisa: 'Yazıcı, barkod ve çevre birimleri', href: '/entegrasyonlar' },
+];
+
+export const LANDING_HARDWARE_CATEGORIES = [
+  {
+    slug: 'dokunmatik-bilgisayarlar',
+    ad: 'Dokunmatik Bilgisayarlar',
+    aciklama: 'Yoğun satış noktalarında hızlı, sade ve uzun süreli kullanım için POS bilgisayarları.',
+    urunler: [
+      {
+        icon: '🖥️',
+        ad: '15,6 inç Dokunmatik POS Bilgisayar',
+        aciklama: 'Kasa ve servis noktalarında Integra POS ekranlarını rahat kullanmak için kompakt dokunmatik bilgisayar.',
+        ozellikler: ['15,6 inç dokunmatik ekran', 'Windows işletim sistemi', 'Wi-Fi ve dahili hoparlör'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+      {
+        icon: '▣',
+        ad: 'All-in-One Dokunmatik POS',
+        aciklama: 'Bilgisayar kasasını ve ekranı tek gövdede birleştiren, tezgâhta az yer kaplayan satış noktası çözümü.',
+        ozellikler: ['Tek gövdeli tasarım', 'Dokunmatik hızlı kullanım', 'Yazıcı ve barkod bağlantısı'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+    ],
+  },
+  {
+    slug: 'adisyon-yazicilari',
+    ad: 'Adisyon ve Fiş Yazıcıları',
+    aciklama: 'Kasa fişi, müşteri adisyonu ve mutfak siparişi için hızlı termal yazıcı seçenekleri.',
+    urunler: [
+      {
+        icon: '🖨️',
+        ad: '80 mm Adisyon / Fiş Yazıcı',
+        aciklama: 'Satış fişleri ve hesap öncesi adisyonlar için yüksek hızlı termal yazıcı.',
+        ozellikler: ['80 mm termal baskı', 'USB ve Ethernet bağlantısı', '203 DPI baskı kalitesi'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+      {
+        icon: '▤',
+        ad: 'Mutfak Sipariş Yazıcısı',
+        aciklama: 'Siparişleri mutfak ve bar gibi hazırlık bölümlerine otomatik iletmek için dayanıklı yazıcı.',
+        ozellikler: ['Sesli uyarı desteği', 'Yoğun kullanıma uygun', 'Bölüm bazlı yönlendirme'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+    ],
+  },
+  {
+    slug: 'yazar-kasalar',
+    ad: 'Yazar Kasalar',
+    aciklama: 'İşletme yapınıza ve mevzuat ihtiyaçlarınıza göre planlanan yeni nesil ödeme ve yazar kasa çözümleri.',
+    urunler: [
+      {
+        icon: '▥',
+        ad: 'Yeni Nesil Yazar Kasa Çözümü',
+        aciklama: 'Satış noktanızdaki ödeme ve mali belge ihtiyaçları için işletmeye uygun cihaz seçimi ve kurulum desteği.',
+        ozellikler: ['İşletmeye uygun cihaz seçimi', 'POS alanına uygun kurulum', 'Teknik destek planlaması'],
+        fiyat: 'Model için teklif alın',
+      },
+      {
+        icon: '💳',
+        ad: 'Mobil Ödeme Terminali',
+        aciklama: 'Masada veya hareketli satış noktasında kartla ödeme almak için taşınabilir terminal seçeneği.',
+        ozellikler: ['Taşınabilir kullanım', 'Kartla ödeme desteği', 'Servis akışına uygun'],
+        fiyat: 'Model için teklif alın',
+      },
+    ],
+  },
+  {
+    slug: 'diger-urunler',
+    ad: 'Diğer Ürünler',
+    aciklama: 'Satış noktasını tamamlayan barkod, kasa, etiket ve müşteri ekranı ekipmanları.',
+    urunler: [
+      {
+        icon: '▱',
+        ad: 'Otomatik Para Çekmecesi',
+        aciklama: 'Fiş yazıcı üzerinden otomatik açılabilen, dayanıklı metal para çekmecesi.',
+        ozellikler: ['5 + 8 bölmeli', 'Otomatik açılma', 'Metal gövde'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+      {
+        icon: '▥',
+        ad: 'Barkod Okuyucu',
+        aciklama: 'Market ve perakende satışlarında ürünleri saniyeler içinde sepete ekleyen okuyucu.',
+        ozellikler: ['USB bağlantı', 'EAN-8 ve EAN-13 desteği', 'Hızlı okutma'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+      {
+        icon: '🏷️',
+        ad: 'Barkod Etiket Yazıcısı',
+        aciklama: 'Raf ve ürün etiketlerini istenen ölçüde tek tek basmak için termal etiket yazıcısı.',
+        ozellikler: ['Özel etiket ölçüsü', 'Barkod baskısı', 'Sıralı yazıcı kuyruğu'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+      {
+        icon: '▰',
+        ad: 'Müşteri Fiyat Göstergesi',
+        aciklama: 'Satış sırasında ürün ve toplam tutarı müşteriye anlık göstermek için ikinci ekran.',
+        ozellikler: ['Anlık tutar gösterimi', 'Kasa yanı kullanım', 'Kolay okunur ekran'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+    ],
+  },
+];
+
 export const LANDING_PANEL_SUMMARIES = [
   { ad: 'Satış & Kasa', tutar: '18.460 TL', durum: 'Günlük ciro', renk: '#fff7ed' },
   { ad: 'Randevu', tutar: '14 işlem', durum: '3 bekliyor', renk: '#faf5ff' },
