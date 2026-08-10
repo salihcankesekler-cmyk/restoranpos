@@ -234,10 +234,10 @@ export const LANDING_HARDWARE_CATEGORIES = [
     urunler: [
       {
         icon: '🖥️',
-        gorsel: '/references/integra-pos-kurulumu-1.webp',
-        ad: '15,6 inç Dokunmatik POS Bilgisayar',
+        gorsel: '/products/18-5-dokunmatik-pos.webp',
+        ad: '18,5 inç Dokunmatik POS Bilgisayar',
         aciklama: 'Kasa ve servis noktalarında Integra POS ekranlarını rahat kullanmak için kompakt dokunmatik bilgisayar.',
-        ozellikler: ['15,6 inç dokunmatik ekran', 'Windows işletim sistemi', 'Wi-Fi ve dahili hoparlör'],
+        ozellikler: ['18,5 inç dokunmatik ekran', 'Windows işletim sistemi', 'Wi-Fi ve dahili hoparlör'],
         fiyat: 'Fiyat için teklif alın',
       },
       {
@@ -349,10 +349,16 @@ export const LANDING_HARDWARE_CATEGORIES = [
 
 export const LANDING_REFERENCES = [
   {
-    gorsel: '/references/integra-pos-kurulumu-1.webp',
-    baslik: 'Dokunmatik POS ve ödeme sistemi kurulumu',
-    aciklama: 'Satış bilgisayarı, ödeme cihazları ve Integra yazılımı işletmenin çalışma düzenine göre hazırlanıp kullanıma teslim edildi.',
-    etiketler: ['Yerinde kurulum', 'Cihaz bağlantıları', 'Kullanıma hazır teslim'],
+    gorsel: '/references/rocca-cafe-pos-kurulumu.webp',
+    baslik: 'Rocca Cafe POS kurulumu',
+    aciklama: 'Dokunmatik POS bilgisayarı ve kasa ekipmanları işletmenin servis düzenine uygun biçimde konumlandırıldı.',
+    etiketler: ['Kafe kurulumu', 'Dokunmatik POS', 'Kullanıma hazır teslim'],
+  },
+  {
+    gorsel: '/references/kafe-pos-kurulumu-2.webp',
+    baslik: 'Kafe satış noktası kurulumu',
+    aciklama: 'Dokunmatik POS, müşteri ekranı ve fiş yazıcı işletmenin kasa alanına göre birlikte hazırlandı.',
+    etiketler: ['Satış noktası', 'Müşteri ekranı', 'Fiş yazıcı'],
   },
 ];
 
@@ -427,9 +433,9 @@ export const LANDING_PRODUCTS = [
   {
     icon: '▣',
     kategori: 'POS Donanımı',
-    ad: 'Dokunmatik POS Bilgisayar',
+    ad: '18,5 inç Dokunmatik POS Bilgisayar',
     aciklama: 'Yoğun satış noktaları için dokunmatik ekranlı, masaüstü kullanıma uygun POS bilgisayarı.',
-    ozellikler: ['15,6 inç dokunmatik ekran', 'Windows işletim sistemi', 'Wi-Fi ve hoparlör'],
+    ozellikler: ['18,5 inç dokunmatik ekran', 'Windows işletim sistemi', 'Wi-Fi ve hoparlör'],
     fiyat: 'Teklif alın',
   },
   {
