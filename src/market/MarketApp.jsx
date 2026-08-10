@@ -235,27 +235,27 @@ const varsayilanTeraziAyarlari = {
   bolen: 1000,
 };
 
-const eanKontrolHanesi = govde => {
-  const toplam = String(govde).split('').reverse().reduce((sonuc, rakam, index) =>
-    sonuc + Number(rakam) * (index % 2 === 0 ? 3 : 1), 0);
-  return String((10 - (toplam % 10)) % 10);
-};
-
-const rastgeleRakamlar = adet => {
-  const sayilar = new Uint32Array(adet);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(sayilar);
-  else sayilar.forEach((_, index) => { sayilar[index] = Math.floor(Math.random() * 10); });
-  return [...sayilar].map(sayi => String(sayi % 10)).join('');
-};
-
-const eanBarkoduOlustur = (uzunluk, kullanilanBarkodlar) => {
-  const ean8Mi = Number(uzunluk) === 8;
-  for (let deneme = 0; deneme < 500; deneme += 1) {
-    const govde = ean8Mi ? `2${rastgeleRakamlar(6)}` : `29${rastgeleRakamlar(10)}`;
-    const barkod = `${govde}${eanKontrolHanesi(govde)}`;
-    if (!kullanilanBarkodlar.has(barkod)) return barkod;
+const siradakiBarkoduOlustur = (baslangic, bitis, kullanilanBarkodlar) => {
+  const kullanilanSayilar = [...kullanilanBarkodlar]
+    .filter(kod => /^\d+$/.test(String(kod)))
+    .map(Number)
+    .filter(kod => Number.isSafeInteger(kod) && kod >= baslangic && kod <= bitis)
+    .sort((a, b) => a - b);
+  let aday = baslangic;
+  for (const kullanilan of kullanilanSayilar) {
+    if (kullanilan < aday) continue;
+    if (kullanilan === aday) aday += 1;
+    else break;
   }
-  throw new Error('Boş otomatik barkod üretilemedi. Tekrar deneyin.');
+  if (aday > bitis) throw new Error('Bu otomatik barkod serisinde kullanılabilir kod kalmadı.');
+  return String(aday);
+};
+
+const teraziKoduAnahtari = value => {
+  const kod = String(value || '').trim();
+  if (/^(24|27)\d{4}$/.test(kod)) return kod;
+  if (/^\d{1,5}$/.test(kod)) return kod.padStart(5, '0');
+  return '';
 };
 
 const csvBasliginiTemizle = value => String(value || '')
@@ -1144,48 +1144,57 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
         .filter(urun => String(urun.id) !== String(urunFormu.id || ''))
         .map(urun => String(urun.barkod || '').trim())
         .filter(Boolean));
-      setUrunFormu(prev => ({ ...prev, barkod: eanBarkoduOlustur(uzunluk, kullanilanlar) }));
+      const ean8Mi = Number(uzunluk) === 8;
+      const barkod = siradakiBarkoduOlustur(
+        ean8Mi ? 99000001 : 9990000000001,
+        ean8Mi ? 99999999 : 9999999999999,
+        kullanilanlar,
+      );
+      setUrunFormu(prev => ({ ...prev, barkod }));
     } catch (error) {
       bildir(error.message, 'warning');
     }
   };
 
-  const otomatikTeraziKoduAta = () => {
-    const kullanilanKodlar = new Set(tumUrunler
-      .filter(urun => String(urun.id) !== String(urunFormu.id || ''))
-      .map(urun => String(urun.stok_kodu || '').trim())
-      .filter(kod => /^\d{1,5}$/.test(kod))
-      .map(kod => kod.padStart(5, '0')));
-    let yeniKod = '';
-    for (let sayi = 1; sayi <= 99999; sayi += 1) {
-      const aday = String(sayi).padStart(5, '0');
-      if (!kullanilanKodlar.has(aday)) {
-        yeniKod = aday;
-        break;
-      }
+  const otomatikTeraziKoduAta = tur => {
+    try {
+      const tartimMi = tur === 'tartim';
+      const kullanilanKodlar = new Set(tumUrunler
+        .filter(urun => String(urun.id) !== String(urunFormu.id || ''))
+        .flatMap(urun => [urun.barkod, urun.stok_kodu])
+        .map(kod => String(kod || '').trim())
+        .filter(Boolean));
+      const yeniKod = siradakiBarkoduOlustur(
+        tartimMi ? 270001 : 240001,
+        tartimMi ? 279999 : 249999,
+        kullanilanKodlar,
+      );
+      setUrunFormu(prev => ({
+        ...prev,
+        barkod: yeniKod,
+        stokKodu: yeniKod,
+        birim: tartimMi ? 'Kg' : 'Adet',
+      }));
+      setTeraziAyarlari(prev => ({ ...prev, aktif: true }));
+    } catch (error) {
+      bildir(error.message, 'warning');
     }
-    if (!yeniKod) return bildir('Kullanılabilir terazi ürün kodu kalmadı.', 'warning');
-    let barkod = urunFormu.barkod;
-    if (!barkod) {
-      const kullanilanBarkodlar = new Set(tumUrunler.map(urun => String(urun.barkod || '').trim()).filter(Boolean));
-      barkod = eanBarkoduOlustur(13, kullanilanBarkodlar);
-    }
-    setUrunFormu(prev => ({ ...prev, barkod, stokKodu: yeniKod, birim: 'Kg' }));
-    setTeraziAyarlari(prev => ({ ...prev, aktif: true }));
   };
 
   const urunKaydet = async event => {
     event.preventDefault();
     if (!urunFormu.barkod.trim() || !urunFormu.urunAdi.trim()) return bildir('Barkod ve ürün adı zorunludur.', 'warning');
     if (!urunFormu.grupId) return bildir('Ürün grubu seçimi zorunludur.', 'warning');
-    if (kilogramUrunuMu({ birim: urunFormu.birim }) && !/^\d{5}$/.test(String(urunFormu.stokKodu || ''))) {
-      return bildir('Terazili ürün için 5 haneli terazi ürün kodu seçin.', 'warning');
+    const barkod = String(urunFormu.barkod || '').trim();
+    const stokKodu = String(urunFormu.stokKodu || '').trim();
+    const yeniTartimKoduMu = /^27\d{4}$/.test(barkod) && stokKodu === barkod;
+    if (kilogramUrunuMu({ birim: urunFormu.birim }) && !yeniTartimKoduMu && !/^\d{5}$/.test(stokKodu)) {
+      return bildir('Terazili ürün için Terazi Tartım kodu veya 5 haneli eski terazi kodu seçin.', 'warning');
     }
-    const girilenTeraziKodu = String(urunFormu.stokKodu || '').trim();
-    const ayniTeraziKodluUrun = /^\d{1,5}$/.test(girilenTeraziKodu)
+    const girilenTeraziKodu = teraziKoduAnahtari(stokKodu);
+    const ayniTeraziKodluUrun = girilenTeraziKodu
       ? tumUrunler.find(urun => String(urun.id) !== String(urunFormu.id || '')
-        && /^\d{1,5}$/.test(String(urun.stok_kodu || '').trim())
-        && String(urun.stok_kodu).trim().padStart(5, '0') === girilenTeraziKodu.padStart(5, '0'))
+        && teraziKoduAnahtari(urun.stok_kodu) === girilenTeraziKodu)
       : null;
     if (ayniTeraziKodluUrun) return bildir(`Bu terazi kodu ${ayniTeraziKodluUrun.urun_adi} ürününde kullanılıyor.`, 'warning');
     try {
@@ -1530,7 +1539,23 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
 
   const teraziBarkodunuCoz = barkod => {
     const kod = String(barkod || '').trim();
-    if (!teraziAyarlari.aktif || !/^\d{13}$/.test(kod)) return null;
+    if (!/^\d{13}$/.test(kod)) return null;
+    const yeniTeraziUrunu = urunler.find(item => {
+      const adaylar = [item.barkod, item.stok_kodu].map(value => String(value || '').trim());
+      return adaylar.some(aday => /^(24|27)\d{4}$/.test(aday) && kod.startsWith(aday));
+    });
+    if (yeniTeraziUrunu) {
+      const urunKodu = [yeniTeraziUrunu.barkod, yeniTeraziUrunu.stok_kodu]
+        .map(value => String(value || '').trim())
+        .find(aday => /^(24|27)\d{4}$/.test(aday) && kod.startsWith(aday));
+      const hamDeger = Number(kod.slice(6, 12));
+      if (!hamDeger) return { hata: `Terazi barkodunda ${urunKodu} için miktar bulunamadı.` };
+      if (urunKodu.startsWith('24')) {
+        return { urun: yeniTeraziUrunu, adet: hamDeger, bilgi: `${hamDeger} adet` };
+      }
+      return { urun: yeniTeraziUrunu, adet: hamDeger / 1000, bilgi: `${hamDeger / 1000} kg` };
+    }
+    if (!teraziAyarlari.aktif) return null;
     const onEkler = String(teraziAyarlari.onEk || '').split(',').map(item => item.trim()).filter(Boolean);
     if (!onEkler.includes(kod.slice(0, 2))) return null;
     const urunKodu = kod.slice(2, 7);
@@ -2896,8 +2921,8 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       {!yukleniyor && sekme === 'urunler' && <div className="market-grid-form">
         <form className="market-card market-form market-product-form" onSubmit={urunKaydet}>
           <div className="market-heading market-product-form-heading"><div><span>ÜRÜN KARTI</span><h2>{urunFormu.id ? 'Ürünü düzenle' : 'Yeni barkodlu ürün'}</h2></div><div className="market-product-form-actions">{urunFormu.id && <button className="market-remove" type="button" onClick={() => setUrunFormu(bosUrun)}>Vazgeç</button>}<button className="market-primary" type="submit">{urunFormu.id ? 'Kaydet' : 'Ürünü Kaydet'}</button></div></div>
-          <div className="market-row"><label>Barkod<div className="market-barcode-assignment"><input autoFocus value={urunFormu.barkod} onChange={event => setUrunFormu({ ...urunFormu, barkod: event.target.value })} onKeyDown={urunBarkoduEnter} placeholder="Okutun veya kendiniz yazın" /><div><button type="button" onClick={() => otomatikBarkodAta(8)}>EAN-8 Ata</button><button type="button" onClick={() => otomatikBarkodAta(13)}>EAN-13 Ata</button><button type="button" className="scale" onClick={otomatikTeraziKoduAta}>⚖ Terazi Ürünü</button></div></div></label><label>Ürün adı<input name="urunAdi" value={urunFormu.urunAdi} onChange={event => setUrunFormu({ ...urunFormu, urunAdi: event.target.value })} /></label></div>
-          <div className="market-row"><label>Stok / terazi ürün kodu<input value={urunFormu.stokKodu} onChange={event => setUrunFormu({ ...urunFormu, stokKodu: event.target.value })} placeholder="Terazi için 5 haneli kod" /><small>{urunFormu.birim === 'Kg' && urunFormu.stokKodu ? `${String(teraziAyarlari.onEk || '20').split(',')[0].trim() || '20'} + ${urunFormu.stokKodu.padStart(5, '0')} + ağırlık/tutar` : 'Terazi ürünü seçildiğinde otomatik verilir.'}</small></label><label>Ürün grubu *<select required value={urunFormu.grupId} onChange={event => {
+          <div className="market-row"><label>Barkod<div className="market-barcode-assignment"><input autoFocus value={urunFormu.barkod} onChange={event => setUrunFormu({ ...urunFormu, barkod: event.target.value })} onKeyDown={urunBarkoduEnter} placeholder="Okutun veya kendiniz yazın" /><div><button type="button" onClick={() => otomatikBarkodAta(8)}>EAN-8 Ata</button><button type="button" onClick={() => otomatikBarkodAta(13)}>EAN-13 Ata</button><button type="button" className="scale" onClick={() => otomatikTeraziKoduAta('tartim')}>⚖ Terazi Tartım</button><button type="button" className="scale count" onClick={() => otomatikTeraziKoduAta('adet')}>▦ Terazi Adet</button></div></div></label><label>Ürün adı<input name="urunAdi" value={urunFormu.urunAdi} onChange={event => setUrunFormu({ ...urunFormu, urunAdi: event.target.value })} /></label></div>
+          <div className="market-row"><label>Stok / terazi ürün kodu<input value={urunFormu.stokKodu} onChange={event => setUrunFormu({ ...urunFormu, stokKodu: event.target.value })} placeholder="Terazi kodu otomatik atanır" /><small>{/^(24|27)\d{4}$/.test(String(urunFormu.stokKodu || '').trim()) ? `${String(urunFormu.stokKodu).startsWith('27') ? 'Tartım' : 'Adet'} serisi · ${urunFormu.stokKodu}` : urunFormu.birim === 'Kg' && urunFormu.stokKodu ? `${String(teraziAyarlari.onEk || '20').split(',')[0].trim() || '20'} + ${urunFormu.stokKodu.padStart(5, '0')} + ağırlık/tutar` : 'Terazi Tartım 270001, Terazi Adet 240001 serisinden ilerler.'}</small></label><label>Ürün grubu *<select required value={urunFormu.grupId} onChange={event => {
               const grup = gruplar.find(item => String(item.id) === String(event.target.value));
               setUrunFormu({
                 ...urunFormu,

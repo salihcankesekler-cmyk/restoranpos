@@ -2672,9 +2672,10 @@
 }
 
 .market-barcode-assignment{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
-.market-barcode-assignment>div{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.market-barcode-assignment>div{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
 .market-barcode-assignment button{min-height:34px;border:1px solid #bfdbfe;border-radius:7px;background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:900;cursor:pointer}
 .market-barcode-assignment button.scale{border-color:#a7f3d0;background:#ecfdf5;color:#047857}
+.market-barcode-assignment button.scale.count{border-color:#fde68a;background:#fffbeb;color:#a16207}
 .market-product-form label>small{color:#64748b;font-size:9px;font-weight:700}
 
 .market-staff-order-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,.75fr);gap:12px;align-items:start}
