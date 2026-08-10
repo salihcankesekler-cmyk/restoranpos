@@ -234,6 +234,7 @@ export const LANDING_HARDWARE_CATEGORIES = [
     urunler: [
       {
         icon: '🖥️',
+        gorsel: '/references/integra-pos-kurulumu-1.webp',
         ad: '15,6 inç Dokunmatik POS Bilgisayar',
         aciklama: 'Kasa ve servis noktalarında Integra POS ekranlarını rahat kullanmak için kompakt dokunmatik bilgisayar.',
         ozellikler: ['15,6 inç dokunmatik ekran', 'Windows işletim sistemi', 'Wi-Fi ve dahili hoparlör'],
@@ -255,6 +256,7 @@ export const LANDING_HARDWARE_CATEGORIES = [
     urunler: [
       {
         icon: '🖨️',
+        gorsel: '/products/80mm-fis-yazici.webp',
         ad: '80 mm Adisyon / Fiş Yazıcı',
         aciklama: 'Satış fişleri ve hesap öncesi adisyonlar için yüksek hızlı termal yazıcı.',
         ozellikler: ['80 mm termal baskı', 'USB ve Ethernet bağlantısı', '203 DPI baskı kalitesi'],
@@ -283,6 +285,7 @@ export const LANDING_HARDWARE_CATEGORIES = [
       },
       {
         icon: '💳',
+        gorsel: '/products/mobil-odeme-terminali.webp',
         ad: 'Mobil Ödeme Terminali',
         aciklama: 'Masada veya hareketli satış noktasında kartla ödeme almak için taşınabilir terminal seçeneği.',
         ozellikler: ['Taşınabilir kullanım', 'Kartla ödeme desteği', 'Servis akışına uygun'],
@@ -297,6 +300,7 @@ export const LANDING_HARDWARE_CATEGORIES = [
     urunler: [
       {
         icon: '▱',
+        gorsel: '/products/para-cekmecesi.webp',
         ad: 'Otomatik Para Çekmecesi',
         aciklama: 'Fiş yazıcı üzerinden otomatik açılabilen, dayanıklı metal para çekmecesi.',
         ozellikler: ['5 + 8 bölmeli', 'Otomatik açılma', 'Metal gövde'],
@@ -317,6 +321,22 @@ export const LANDING_HARDWARE_CATEGORIES = [
         fiyat: 'Fiyat için teklif alın',
       },
       {
+        icon: '⚖️',
+        gorsel: '/products/cas-hassas-terazi.webp',
+        ad: 'CAS Hassas Satış Terazisi',
+        aciklama: 'Gramaj ve kilogram üzerinden satılan ürünlerde hızlı ağırlık ve tutar hesabı için masaüstü terazi.',
+        ozellikler: ['Hassas ağırlık ölçümü', 'Birim fiyat ve tutar hesabı', 'Market ve şarküteri kullanımına uygun'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+      {
+        icon: '⚖️',
+        gorsel: '/products/cas-barkodlu-terazi.webp',
+        ad: 'CAS Barkod Etiketli Terazi',
+        aciklama: 'Tartılan ürüne gramaj, fiyat ve barkod bilgisi içeren etiket basmak için profesyonel satış terazisi.',
+        ozellikler: ['Dahili etiket yazıcısı', 'Müşteri göstergesi', 'Barkodlu tartım desteği'],
+        fiyat: 'Fiyat için teklif alın',
+      },
+      {
         icon: '▰',
         ad: 'Müşteri Fiyat Göstergesi',
         aciklama: 'Satış sırasında ürün ve toplam tutarı müşteriye anlık göstermek için ikinci ekran.',
@@ -324,6 +344,15 @@ export const LANDING_HARDWARE_CATEGORIES = [
         fiyat: 'Fiyat için teklif alın',
       },
     ],
+  },
+];
+
+export const LANDING_REFERENCES = [
+  {
+    gorsel: '/references/integra-pos-kurulumu-1.webp',
+    baslik: 'Dokunmatik POS ve ödeme sistemi kurulumu',
+    aciklama: 'Satış bilgisayarı, ödeme cihazları ve Integra yazılımı işletmenin çalışma düzenine göre hazırlanıp kullanıma teslim edildi.',
+    etiketler: ['Yerinde kurulum', 'Cihaz bağlantıları', 'Kullanıma hazır teslim'],
   },
 ];
 

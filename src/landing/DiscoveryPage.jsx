@@ -61,7 +61,12 @@ function HardwareCatalog({ onRegister }) {
             <div className="lp-hardware-grid">
               {kategori.urunler.map(urun => (
                 <article className="lp-hardware-card" key={urun.ad}>
-                  <div className="lp-hardware-visual"><span>{urun.icon}</span><small>INTEGRA DONANIM</small></div>
+                  <div className={urun.gorsel ? 'lp-hardware-visual has-image' : 'lp-hardware-visual'}>
+                    {urun.gorsel
+                      ? <img src={urun.gorsel} alt={urun.ad} loading="lazy" />
+                      : <span>{urun.icon}</span>}
+                    <small>INTEGRA DONANIM</small>
+                  </div>
                   <div className="lp-hardware-copy"><h3>{urun.ad}</h3><p>{urun.aciklama}</p><ul>{urun.ozellikler.map(ozellik => <li key={ozellik}>✓ {ozellik}</li>)}</ul></div>
                   <footer><div><small>Fiyat</small><strong>{urun.fiyat}</strong></div><button type="button" onClick={() => onRegister(urun.ad)}>Bilgi alın <span>↗</span></button></footer>
                 </article>

@@ -6,6 +6,7 @@ import {
   LANDING_MODULES,
   LANDING_OPERATION_FLOW,
   LANDING_PANEL_PREVIEWS,
+  LANDING_REFERENCES,
   LANDING_SETUP_STEPS,
   LANDING_SOLUTION_PAGES,
   LANDING_SUPPORT_TOPICS,
@@ -119,6 +120,23 @@ export default function LandingPage({
         <section className="lp-proof">
           <div className="lp-shell lp-proof-grid">
             {LANDING_TRUST_FEATURES.map(([icon, title, text]) => <article key={title} className="lp-proof-item"><span className="lp-proof-icon">{icon}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}
+          </div>
+        </section>
+
+        <section id="referanslar" className="lp-references-section">
+          <div className="lp-shell">
+            <div className="lp-reference-heading">
+              <div><span className="lp-eyebrow">KURULUMLARIMIZDAN</span><h2>Sadece anlatmıyoruz.<br /><em>Sahada kurup çalıştırıyoruz.</em></h2></div>
+              <p>Integra POS yazılımını, dokunmatik satış bilgisayarlarını ve ödeme ekipmanlarını işletmenin çalışma düzenine göre hazırlıyoruz.</p>
+            </div>
+            <div className="lp-reference-grid">
+              {LANDING_REFERENCES.map((referans, index) => (
+                <article className="lp-reference-card" key={referans.gorsel}>
+                  <div className="lp-reference-media"><img src={referans.gorsel} alt={referans.baslik} loading="lazy" /><span>{String(index + 1).padStart(2, '0')}</span></div>
+                  <div className="lp-reference-copy"><small>INTEGRA POS KURULUMU</small><h3>{referans.baslik}</h3><p>{referans.aciklama}</p><div>{referans.etiketler.map(etiket => <span key={etiket}>✓ {etiket}</span>)}</div></div>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 

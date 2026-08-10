@@ -127,6 +127,7 @@ export default function LandingHeader({ onLogin, compact = false }) {
         </div>
         <a href="/donanimlar">Ürünler</a>
         <a href="/kampanyalar">Kampanyalar</a>
+        <a href="/#referanslar">Referanslar</a>
         <a href="/#isletmeler">İşletmeler</a>
         <a href="/#nasil-calisir">Nasıl çalışır?</a>
       </nav>
@@ -141,6 +142,7 @@ export default function LandingHeader({ onLogin, compact = false }) {
             <div className="lp-mobile-main-links">
               <a href="/donanimlar">Ürünler</a>
               <a href="/kampanyalar">Kampanyalar</a>
+              <a href="/#referanslar">Referanslar</a>
               <a href="/#isletmeler">İşletmeler</a>
               <a href="/#nasil-calisir">Nasıl çalışır?</a>
             </div>
