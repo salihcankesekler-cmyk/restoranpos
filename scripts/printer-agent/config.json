@@ -1,0 +1,14 @@
+{
+  "installationCode": "",
+  "restaurantId": null,
+  "restaurantName": "",
+  "checkIntervalMs": 3000,
+  "printers": {
+    "adisyon": "adisyon",
+    "mutfak": "mutfak",
+    "bar": "bar",
+    "etiket": "etiket"
+  },
+  "barFallbackToMutfak": true,
+  "printLegacyKitchenTickets": true
+}

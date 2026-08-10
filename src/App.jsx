@@ -20998,7 +20998,7 @@ Toplam Ciro: {toplam}
                         🧩 Printer Agent Kurulumu
                       </div>
                       <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700', lineHeight: 1.5 }}>
-                        Müşteri bilgisayarına kurulacak yazıcı programı için kurulum kodu üretin. Windows yazıcı adları standart: adisyon, mutfak, bar.
+                        Müşteri bilgisayarına kurulacak Printer Agent v3.5 için kurulum kodu üretin. Fiş ve barkod/etiket yazıcıları kurulumda ayrı seçilir.
                       </div>
                     </div>
 

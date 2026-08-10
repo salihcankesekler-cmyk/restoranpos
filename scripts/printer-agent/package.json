@@ -1,0 +1,17 @@
+{
+  "name": "integra-printer-agent",
+  "version": "3.5.0",
+  "private": true,
+  "description": "Integra POS Windows Printer Agent",
+  "main": "index.cjs",
+  "bin": "index.cjs",
+  "scripts": {
+    "build:exe": "pkg index.cjs --targets node18-win-x64 --output dist/IntegraPrinterAgent.exe"
+  },
+  "pkg": {
+    "scripts": [
+      "index.cjs"
+    ],
+    "outputPath": "dist"
+  }
+}

@@ -712,17 +712,23 @@ export async function marketEtiketleriniKuyrugaEkle(restaurantId, etiketler = []
     const isletmeAdi = String(etiket.isletmeAdi || 'Integra Market').replace(/\s+/g, ' ').trim();
     const barkod = String(etiket.barkod || '').trim();
     const fiyat = Number(etiket.satisFiyati || 0);
+    const genislikMm = Number(etiket.genislikMm || 58);
+    const yukseklikMm = Number(etiket.yukseklikMm || 40);
+    const etiketPng = String(etiket.etiketPng || '').replace(/^data:image\/png;base64,/, '');
+    const etiketIcerigi = etiketPng
+      ? `INTEGRA_ETIKET_V1\n${genislikMm}\n${yukseklikMm}\n${etiketPng}`
+      : [
+        isletmeAdi,
+        urunAdi,
+        `${fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`,
+        barkod,
+      ].filter(Boolean).join('\r\n');
     return {
       restaurant_id: restaurantId,
       yazici_tipi: 'etiket',
       fis_tipi: 'etiket',
       baslik: `${urunAdi} Etiketi`,
-      icerik_text: [
-        isletmeAdi,
-        urunAdi,
-        `${fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`,
-        barkod,
-      ].filter(Boolean).join('\r\n'),
+      icerik_text: etiketIcerigi,
       payload_json: {
         modul: 'market',
         belge_turu: 'raf_etiketi',
@@ -733,9 +739,8 @@ export async function marketEtiketleriniKuyrugaEkle(restaurantId, etiketler = []
         barkod,
         satis_fiyati: fiyat,
         isletme_adi: isletmeAdi,
-        genislik_mm: Number(etiket.genislikMm || 58),
-        yukseklik_mm: Number(etiket.yukseklikMm || 40),
-        barkod_svg: String(etiket.barkodSvg || ''),
+        genislik_mm: genislikMm,
+        yukseklik_mm: yukseklikMm,
       },
       kaynak_tablo: 'market_urunleri',
       kaynak_id: String(etiket.urunId),

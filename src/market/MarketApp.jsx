@@ -197,19 +197,45 @@ const kilogramUrunuMu = urun =>
 
 const marketUrunGorseli = urun => String(urun?.resim_url || urun?.resimUrl || '').trim();
 
-const barkodSvgMetniOlustur = value => {
-  const barkod = String(value || '').trim();
-  if (!barkod || typeof document === 'undefined') return '';
+const etiketPngOlustur = ({ urunAdi, barkod, satisFiyati, isletmeAdi, genislikMm, yukseklikMm }) => {
+  if (typeof document === 'undefined') return '';
   try {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    JsBarcode(svg, barkod, {
-      format: 'CODE128',
-      displayValue: false,
-      height: 42,
-      width: 1.5,
-      margin: 0,
-    });
-    return svg.outerHTML;
+    const pikselMm = 8;
+    const genislik = Math.max(Math.round(Number(genislikMm || 58) * pikselMm), 160);
+    const yukseklik = Math.max(Math.round(Number(yukseklikMm || 40) * pikselMm), 120);
+    const tuval = document.createElement('canvas');
+    tuval.width = genislik;
+    tuval.height = yukseklik;
+    const cizim = tuval.getContext('2d');
+    if (!cizim) return '';
+    cizim.fillStyle = '#ffffff';
+    cizim.fillRect(0, 0, genislik, yukseklik);
+    cizim.fillStyle = '#000000';
+    cizim.textAlign = 'center';
+    cizim.textBaseline = 'middle';
+    cizim.font = `600 ${Math.max(Math.round(yukseklik * 0.055), 10)}px Arial`;
+    cizim.fillText(String(isletmeAdi || 'Integra Market').slice(0, 42), genislik / 2, yukseklik * 0.08, genislik * 0.92);
+    cizim.font = `700 ${Math.max(Math.round(yukseklik * 0.08), 13)}px Arial`;
+    cizim.fillText(String(urunAdi || 'Ürün').slice(0, 50), genislik / 2, yukseklik * 0.21, genislik * 0.92);
+    cizim.font = `900 ${Math.max(Math.round(yukseklik * 0.16), 22)}px Arial`;
+    cizim.fillText(para(satisFiyati), genislik / 2, yukseklik * 0.38, genislik * 0.92);
+
+    const temizBarkod = String(barkod || '').trim();
+    if (temizBarkod) {
+      const barkodTuvali = document.createElement('canvas');
+      JsBarcode(barkodTuvali, temizBarkod, {
+        format: 'CODE128',
+        displayValue: false,
+        height: Math.max(Math.round(yukseklik * 0.25), 34),
+        width: 2,
+        margin: 0,
+      });
+      cizim.imageSmoothingEnabled = false;
+      cizim.drawImage(barkodTuvali, genislik * 0.08, yukseklik * 0.51, genislik * 0.84, yukseklik * 0.27);
+      cizim.font = `600 ${Math.max(Math.round(yukseklik * 0.06), 10)}px monospace`;
+      cizim.fillText(temizBarkod, genislik / 2, yukseklik * 0.88, genislik * 0.9);
+    }
+    return tuval.toDataURL('image/png');
   } catch {
     return '';
   }
@@ -2818,7 +2844,14 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
         isletmeAdi: restaurantName,
         genislikMm: guvenliEtiketGenisligi,
         yukseklikMm: guvenliEtiketYuksekligi,
-        barkodSvg: barkodSvgMetniOlustur(urun.barkod),
+        etiketPng: etiketPngOlustur({
+          urunAdi: urun.urun_adi,
+          barkod: urun.barkod,
+          satisFiyati: urun.satis_fiyati,
+          isletmeAdi: restaurantName,
+          genislikMm: guvenliEtiketGenisligi,
+          yukseklikMm: guvenliEtiketYuksekligi,
+        }),
       })
     ));
     if (!yazdirilacakEtiketler.length) return bildir('Yazdırılacak etiket oluşturulamadı.', 'warning');
@@ -3213,7 +3246,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
                 ['sor', 'Sor'],
               ].map(([deger, etiket]) => <button type="button" key={deger} className={fisDavranisi === deger ? 'active' : ''} disabled={deger !== 'yazdirma' && !yetkiVar('fis_yazdir')} title={deger !== 'yazdirma' && !yetkiVar('fis_yazdir') ? 'Fiş yazdırma yetkisi gerekli' : ''} onClick={() => setFisDavranisi(deger)}>{etiket}</button>)}
             </div>
-            <a href="/integra-printer-agent-kurulum.zip" download>Yazıcı kurulumu</a>
+            <a href="/integra-printer-agent-kurulum.zip" download>Yazıcı Agent v3.5</a>
           </div>
           <div className="market-bulk-import">
             <div><span>TOPLU ÜRÜN AKTARIMI</span><strong>Excel uyumlu CSV</strong><small>Yeni gruplar otomatik açılır; aynı barkodlu ürünler güncellenir.</small></div>
