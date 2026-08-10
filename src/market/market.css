@@ -2751,3 +2751,20 @@
   .market-staff-order-lines>div{grid-template-columns:minmax(0,1fr) auto}
   .market-staff-order-lines>div>b{grid-column:2;text-align:center}
 }
+
+/* Satış ekranından dokunmatik ürün sıralama */
+.market-pos-entrybar{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:4px}
+.market-sale-order-toggle{height:37px;border:1px solid #cbd5e1;border-radius:3px;padding:0 9px;background:#f8fafc;color:#475569;font-size:8px;font-weight:950;white-space:nowrap;cursor:pointer}
+.market-sale-order-toggle.active{border-color:#f97316;background:#fff7ed;color:#c2410c;box-shadow:inset 0 0 0 1px #fed7aa}
+.market-pos-unified-search input:disabled{background:#fff7ed;color:#9a3412;opacity:1;cursor:default}
+.market-pos-unified-search button:disabled{opacity:.35;cursor:not-allowed}
+.market-pos-practical .market-sale-products>button.is-ordering{position:relative;box-shadow:inset 0 0 0 3px #fbbf24!important;cursor:crosshair}
+.market-pos-practical .market-sale-products>button.is-ordering:hover{filter:brightness(1.06)}
+.market-pos-practical .market-sale-products>button.is-order-selected{box-shadow:inset 0 0 0 5px #f97316,0 0 0 2px #fff!important;transform:scale(.97)}
+.market-pos-practical .market-sale-products>button.is-ordering i{position:absolute;top:5px;right:5px;z-index:3;display:grid!important;width:26px;height:26px;border:2px solid #fff;border-radius:999px;background:#0f172a;color:#fff;font-size:10px;box-shadow:0 2px 7px #0f172a66}
+.market-pos-practical .market-sale-products>button.is-order-selected i{background:#f97316}
+
+@media(max-width:640px){
+  .market-pos-entrybar{grid-template-columns:104px minmax(0,1fr)}
+  .market-sale-order-toggle{height:37px;padding:0 5px;overflow:hidden;font-size:7px;white-space:normal;line-height:1.05}
+}

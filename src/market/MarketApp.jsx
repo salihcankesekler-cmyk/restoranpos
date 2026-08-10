@@ -418,6 +418,8 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [topluAktariliyor, setTopluAktariliyor] = useState(false);
   const [silinenUrunId, setSilinenUrunId] = useState('');
   const [siralamaKaydediliyor, setSiralamaKaydediliyor] = useState('');
+  const [satisSiralamaModu, setSatisSiralamaModu] = useState(false);
+  const [satisSiralamaSeciliId, setSatisSiralamaSeciliId] = useState('');
   const [raporAraligi, setRaporAraligi] = useState('bugun');
   const [raporSekmesi, setRaporSekmesi] = useState('gun_sonu');
   const [raporTarihi, setRaporTarihi] = useState(() => gunAnahtari(new Date()));
@@ -1154,6 +1156,68 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     setSiralamaKaydediliyor(islemAnahtari);
     try {
       await marketSatisSirasiniKaydet(restaurantId, tur, yeniListe.map(item => item.id));
+    } catch (error) {
+      await verileriYukle(true);
+      bildir(error.message, 'error');
+    } finally {
+      setSiralamaKaydediliyor('');
+    }
+  };
+
+  const satisSiralamaModunuDegistir = () => {
+    if (!satisSiralamaModu && !yetkiyiDogrula('urun_yonet', 'Ürünlerin yerini değiştirmek için ürün yönetme yetkisi gerekir.')) return;
+    setSatisSiralamaModu(prev => !prev);
+    setSatisSiralamaSeciliId('');
+    setSatisArama('');
+    requestAnimationFrame(() => barkodRef.current?.focus());
+  };
+
+  const satisSiralamaKartiTikla = async hedefUrun => {
+    if (!satisSiralamaModu) {
+      secilenUrunuSepeteEkle(hedefUrun);
+      return;
+    }
+    if (siralamaKaydediliyor) return;
+    if (!satisSiralamaSeciliId) {
+      setSatisSiralamaSeciliId(String(hedefUrun.id));
+      return;
+    }
+    if (String(satisSiralamaSeciliId) === String(hedefUrun.id)) {
+      setSatisSiralamaSeciliId('');
+      return;
+    }
+
+    const grupUrunleri = urunler.filter(urun => String(urun.grup_id) === String(hedefUrun.grup_id));
+    const kaynakIndex = grupUrunleri.findIndex(urun => String(urun.id) === String(satisSiralamaSeciliId));
+    const hedefIndex = grupUrunleri.findIndex(urun => String(urun.id) === String(hedefUrun.id));
+    if (kaynakIndex < 0 || hedefIndex < 0) {
+      setSatisSiralamaSeciliId('');
+      return;
+    }
+
+    const yeniListe = [...grupUrunleri];
+    const [tasinanUrun] = yeniListe.splice(kaynakIndex, 1);
+    yeniListe.splice(hedefIndex, 0, tasinanUrun);
+    const siraHaritasi = new Map(yeniListe.map((urun, index) => [String(urun.id), index + 1]));
+    const aktifListeyiGuncelle = liste => {
+      let grupIndex = 0;
+      return liste.map(urun => {
+        if (String(urun.grup_id) !== String(hedefUrun.grup_id)) return urun;
+        const siradaki = yeniListe[grupIndex];
+        grupIndex += 1;
+        return siradaki ? { ...siradaki, sira: grupIndex } : urun;
+      });
+    };
+    const tumListeyiGuncelle = liste => liste.map(urun => siraHaritasi.has(String(urun.id))
+      ? { ...urun, sira: siraHaritasi.get(String(urun.id)) }
+      : urun);
+
+    setUrunler(aktifListeyiGuncelle);
+    setTumUrunler(tumListeyiGuncelle);
+    setSatisSiralamaSeciliId('');
+    setSiralamaKaydediliyor(`urun:${tasinanUrun.id}`);
+    try {
+      await marketSatisSirasiniKaydet(restaurantId, 'urun', yeniListe.map(urun => urun.id));
     } catch (error) {
       await verileriYukle(true);
       bildir(error.message, 'error');
@@ -2714,16 +2778,17 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               key={grup.id}
               className={String(aktifSatisGrubu) === String(grup.id) ? 'active' : ''}
               style={{ '--market-group-color': grup.grup_rengi || '#c2410c', '--market-group-text': kontrastYaziRengi(grup.grup_rengi || '#c2410c') }}
-              onClick={() => setSatisGrubu(grup.id)}
+              onClick={() => { setSatisGrubu(grup.id); setSatisSiralamaSeciliId(''); }}
             >{grup.grup_adi}</button>)}
           </div>
           <div className="market-pos-product-panel">
             <div className="market-pos-entrybar">
+              <button type="button" className={`market-sale-order-toggle${satisSiralamaModu ? ' active' : ''}`} aria-pressed={satisSiralamaModu} onClick={satisSiralamaModunuDegistir} title={satisSiralamaModu ? 'Sıralamayı bitir' : 'Ürünlerin satış ekranındaki yerini değiştir'}>{satisSiralamaModu ? '✓ Sıralamayı Bitir' : '↔ Ürünlerin Yerini Değiştir'}</button>
               <form className="market-pos-unified-search" onSubmit={satisaEkle}>
                 <span aria-hidden="true">⌕</span>
-                <input ref={barkodRef} value={satisArama} onChange={event => setSatisArama(event.target.value)} placeholder="Barkod okutun veya ürün adı yazın" aria-label="Barkod veya ürün ara" />
+                <input ref={barkodRef} disabled={satisSiralamaModu} value={satisArama} onChange={event => setSatisArama(event.target.value)} placeholder={satisSiralamaModu ? (satisSiralamaSeciliId ? 'Şimdi ürünün taşınacağı yere dokunun' : 'Önce taşınacak ürüne dokunun') : 'Barkod okutun veya ürün adı yazın'} aria-label="Barkod veya ürün ara" />
                 {satisArama && <button type="button" className="clear" onClick={() => { setSatisArama(''); barkodRef.current?.focus(); }} aria-label="Aramayı temizle">×</button>}
-                <button type="submit" className="submit" aria-label="Bulunan ürünü sepete ekle">＋</button>
+                <button type="submit" disabled={satisSiralamaModu} className="submit" aria-label="Bulunan ürünü sepete ekle">＋</button>
               </form>
             </div>
             {!gorunenGruplar.length && !satisArama.trim() && <p className="market-empty">Satış ekranında gösterilen grup yok. Gruplar bölümünden en az bir grubu görünür yapın veya ürün arayın.</p>}
@@ -2739,9 +2804,9 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
                 return <button
                   type="button"
                   key={urun.id}
-                  className={`${kritik ? 'is-critical ' : ''}${urunResmi ? 'has-image' : 'no-image'}`}
+                  className={`${kritik ? 'is-critical ' : ''}${urunResmi ? 'has-image' : 'no-image'}${satisSiralamaModu ? ' is-ordering' : ''}${String(satisSiralamaSeciliId) === String(urun.id) ? ' is-order-selected' : ''}`}
                   style={{ '--market-product-color': urunRengi, '--market-product-text': kontrastYaziRengi(urunRengi) }}
-                  onClick={() => secilenUrunuSepeteEkle(urun)}
+                  onClick={() => satisSiralamaKartiTikla(urun)}
                 >
                   {urunResmi ? <>
                     <span className="market-sale-product-visual">
@@ -2755,7 +2820,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
                     <strong>{urun.urun_adi}</strong>
                     <b>{urunFiyati}</b>
                   </span>}
-                  <i>＋</i>
+                  <i>{satisSiralamaModu ? Number(urunSiraBilgileri.get(String(urun.id))?.index || 0) + 1 : '＋'}</i>
                 </button>;
               })}
               {!satisUrunleri.length && <p className="market-empty">{satisArama.trim() ? 'Tüm ürünlerde aramaya uygun kayıt bulunamadı.' : 'Bu grupta ürün bulunamadı.'}</p>}
