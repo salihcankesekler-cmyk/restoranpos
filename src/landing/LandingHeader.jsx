@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LANDING_DISCOVERY_LINKS, LANDING_SOLUTION_GROUPS } from './landingContent';
 
 function HeaderBrand() {
@@ -53,6 +53,35 @@ function DiscoveryLinks({ onNavigate }) {
 
 export default function LandingHeader({ onLogin, compact = false }) {
   const [megaMenuAcik, setMegaMenuAcik] = useState(false);
+  const menuKapatmaZamanlayici = useRef(null);
+
+  const menuKapatmaZamanlayicisiniTemizle = () => {
+    if (!menuKapatmaZamanlayici.current) return;
+    window.clearTimeout(menuKapatmaZamanlayici.current);
+    menuKapatmaZamanlayici.current = null;
+  };
+
+  const megaMenuyuAc = () => {
+    menuKapatmaZamanlayicisiniTemizle();
+    setMegaMenuAcik(true);
+  };
+
+  const megaMenuyuGecikmeliKapat = () => {
+    menuKapatmaZamanlayicisiniTemizle();
+    menuKapatmaZamanlayici.current = window.setTimeout(() => {
+      setMegaMenuAcik(false);
+      menuKapatmaZamanlayici.current = null;
+    }, 320);
+  };
+
+  const megaMenuyuHemenKapat = () => {
+    menuKapatmaZamanlayicisiniTemizle();
+    setMegaMenuAcik(false);
+  };
+
+  useEffect(() => () => {
+    if (menuKapatmaZamanlayici.current) window.clearTimeout(menuKapatmaZamanlayici.current);
+  }, []);
 
   return (
     <header className={compact ? 'lp-header lp-header--compact' : 'lp-header'}>
@@ -61,18 +90,25 @@ export default function LandingHeader({ onLogin, compact = false }) {
       <nav className="lp-nav" aria-label="Ana menü">
         <div
           className={megaMenuAcik ? 'lp-mega-trigger is-open' : 'lp-mega-trigger'}
-          onMouseEnter={() => setMegaMenuAcik(true)}
-          onMouseLeave={() => setMegaMenuAcik(false)}
+          onMouseEnter={megaMenuyuAc}
+          onMouseLeave={megaMenuyuGecikmeliKapat}
+          onFocus={megaMenuyuAc}
+          onBlur={event => {
+            if (!event.currentTarget.contains(event.relatedTarget)) megaMenuyuGecikmeliKapat();
+          }}
         >
           <button
             type="button"
             aria-expanded={megaMenuAcik}
             aria-controls="landing-solutions-menu"
-            onClick={() => setMegaMenuAcik(acik => !acik)}
+            onClick={() => {
+              menuKapatmaZamanlayicisiniTemizle();
+              setMegaMenuAcik(acik => !acik);
+            }}
           >
             Çözümler <span aria-hidden="true">⌄</span>
           </button>
-          <div id="landing-solutions-menu" className="lp-mega-panel">
+          <div id="landing-solutions-menu" className="lp-mega-panel" onMouseEnter={megaMenuyuAc}>
             <aside className="lp-mega-promo">
               <span className="lp-mega-promo-label">INTEGRA ÇÖZÜMLERİ</span>
               <div className="lp-mega-promo-screen" aria-hidden="true">
@@ -81,11 +117,11 @@ export default function LandingHeader({ onLogin, compact = false }) {
               </div>
               <h2>İşletmenize uyan sistemi birlikte kurun.</h2>
               <p>İhtiyacınız olan modülleri seçin, gereksiz kalabalık olmadan kullanmaya başlayın.</p>
-              <a href="/#destek" onClick={() => setMegaMenuAcik(false)}>Ücretsiz görüşme <span>↗</span></a>
+              <a href="/#destek" onClick={megaMenuyuHemenKapat}>Ücretsiz görüşme <span>↗</span></a>
             </aside>
             <div className="lp-mega-groups">
-              <SolutionLinks onNavigate={() => setMegaMenuAcik(false)} />
-              <DiscoveryLinks onNavigate={() => setMegaMenuAcik(false)} />
+              <SolutionLinks onNavigate={megaMenuyuHemenKapat} />
+              <DiscoveryLinks onNavigate={megaMenuyuHemenKapat} />
             </div>
           </div>
         </div>
