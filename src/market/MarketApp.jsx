@@ -3056,7 +3056,10 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               <button type="button" className="wide" onClick={() => anlikSatisFiyatiTusunaBas('00')}>00</button><button type="button" className="wide" onClick={() => anlikSatisFiyatiTusunaBas('.')}>Virgül</button>
             </div>
             <small>{fiyatBekleyenUrun.adet} adet sepete eklenecek.</small>
-            <div><button className="market-remove" type="button" onClick={() => setFiyatBekleyenUrun(null)}>Vazgeç</button><button className="market-primary" type="submit">Fiyatı Uygula</button></div>
+            <div className="market-misc-price-actions">
+              <button className="cancel" type="button" aria-label="Vazgeç" title="Vazgeç" onClick={() => setFiyatBekleyenUrun(null)}>✕</button>
+              <button className="confirm" type="submit" aria-label="Fiyatı uygula" title="Fiyatı uygula">✓</button>
+            </div>
           </form>
         </div>}
         {gramajBekleyenUrun && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Terazili ürün miktarını gir">

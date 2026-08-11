@@ -732,6 +732,32 @@
   font-size:20px;
   touch-action:manipulation;
 }
+.market-price-modal .market-misc-price-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  justify-content:stretch;
+}
+.market-misc-price-actions button{
+  min-height:58px;
+  border:0;
+  border-radius:11px;
+  color:#fff;
+  font-size:29px;
+  font-weight:950;
+  line-height:1;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.market-misc-price-actions .cancel{
+  background:#dc2626;
+}
+.market-misc-price-actions .confirm{
+  background:#16a34a;
+}
+.market-misc-price-actions button:active{
+  transform:scale(.97);
+}
 
 .market-price-modal .market-total-adjust-modal{
   width:min(100%,460px);
