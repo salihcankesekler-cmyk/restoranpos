@@ -15361,7 +15361,61 @@ Toplam Ciro: {toplam}
       if (profilError || !profil || profil.durum !== 'Aktif') {
         await supabase.auth.signOut();
         if (kontrolAktif) yerelOturumuTemizle();
+        return;
       }
+
+      const parentRestaurantId = profil.parentRestaurantId || profil.parent_restaurant_id || profil.id;
+      let isletmeAyarKaydi = profil;
+
+      if (profil.rol !== 'owner' && parentRestaurantId && String(parentRestaurantId) !== String(profil.id)) {
+        const { data: parentData, error: parentError } = await supabase
+          .from('restaurants')
+          .select('id, aktif_sekmeler, modul_paketi, paket_adi, basvuru_paketi, kullanici_limiti')
+          .eq('id', parentRestaurantId)
+          .maybeSingle();
+        if (!parentError && parentData) isletmeAyarKaydi = { ...profil, ...parentData };
+      }
+
+      if (!kontrolAktif) return;
+
+      const aktifIsletmeSekmeleri = isletmeSekmeleriniHazirla(
+        isletmeAyarKaydi.aktif_sekmeler,
+        isletmeAyarKaydi.modul_paketi || isletmeAyarKaydi.paket_adi || isletmeAyarKaydi.basvuru_paketi || 'Premium'
+      );
+      const geriYuklenenKullanici = {
+        id: profil.id,
+        email: profil.email,
+        restaurant: profil.restaurant_name || profil.name,
+        restaurantId: profil.id,
+        parentRestaurantId,
+        role: profil.rol,
+        durum: profil.durum,
+        waiterName: profil.waiter_name || profil.name || profil.restaurant_name || profil.email,
+        personelId: profil.personel_id || null,
+        personelGorev: profil.personel_gorev || profil.gorev || (profil.rol === 'owner' ? 'İşletme Sahibi' : 'Garson'),
+        tabYetkileri: yetkiListesiniHazirla(profil.tab_yetkileri, profil.personel_gorev || 'Garson'),
+        detayYetkileri: Array.isArray(profil.detay_yetkileri) ? profil.detay_yetkileri : [],
+        detayYetkileriAyarlanmis: profil.detay_yetkileri_ayarlandi === true,
+        aktifSekmeler: aktifIsletmeSekmeleri,
+        modulPaketi: isletmeAyarKaydi.modul_paketi || isletmeAyarKaydi.paket_adi || isletmeAyarKaydi.basvuru_paketi || 'Premium',
+        kullaniciLimiti: Number(isletmeAyarKaydi.kullanici_limiti || profil.kullanici_limiti || 3),
+      };
+      const kullaniciIzinliSekmeleri = profil.rol === 'owner'
+        ? aktifIsletmeSekmeleri
+        : yetkiListesiniHazirla(profil.tab_yetkileri, profil.personel_gorev || 'Garson').filter(sekme => aktifIsletmeSekmeleri.includes(sekme));
+      const kayitliPanel = localStorage.getItem('integra_activeTab');
+      const kayitliPanelGecerli = kullaniciIzinliSekmeleri.includes(kayitliPanel)
+        || (kayitliPanel === 'arka_ekran' && kullaniciIzinliSekmeleri.includes('masalar'));
+      const geriYuklenecekPanel = kayitliPanelGecerli
+        ? kayitliPanel
+        : ilkGirisSekmesi(profil.rol, profil.tab_yetkileri, profil.personel_gorev || 'Garson', aktifIsletmeSekmeleri);
+
+      localStorage.setItem('integra_user', JSON.stringify(geriYuklenenKullanici));
+      localStorage.setItem('integra_screen', 'dashboard');
+      localStorage.setItem('integra_activeTab', geriYuklenecekPanel);
+      setUser(geriYuklenenKullanici);
+      setScreen('dashboard');
+      setActiveTab(geriYuklenecekPanel);
     };
 
     guvenliOturumuGeriYukle();

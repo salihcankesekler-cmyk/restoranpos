@@ -188,6 +188,25 @@
   padding:6px 8px;
   font-size:10px;
 }
+.market-pos-practical .market-group-tabs .market-customer-display-tab{
+  display:flex;
+  min-width:110px;
+  flex-basis:110px;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:1px;
+  background:#172033;
+  color:#fff;
+  box-shadow:inset 0 -3px #f97316;
+}
+.market-pos-practical .market-group-tabs .market-customer-display-tab.configured{
+  background:#075985;
+  box-shadow:inset 0 -3px #38bdf8;
+}
+.market-pos-practical .market-group-tabs .market-customer-display-tab span{font-size:15px;line-height:1}
+.market-pos-practical .market-group-tabs .market-customer-display-tab strong{font-size:9px;line-height:1.05}
+.market-pos-practical .market-group-tabs .market-customer-display-tab small{color:#cbd5e1;font-size:7px;line-height:1}
 .market-pos-practical .market-group-tabs button.active{
   background:#f97316;
   border-color:#f97316;
@@ -2661,7 +2680,8 @@
 .market-pos-practical .market-pos-action-rail{
   grid-column:2;
   grid-row:2/8;
-  grid-template-rows:repeat(8,minmax(45px,1fr));
+  grid-template-rows:none;
+  grid-auto-rows:minmax(45px,1fr);
   gap:1px;
   background:#cbd5e1;
 }
@@ -2752,7 +2772,7 @@
   .market-pos-practical .market-sale-products>button{height:142px;grid-template-rows:78px minmax(0,1fr) auto}
   .market-sale-product-visual{height:78px}
   .market-pos-practical .market-checkout{grid-template-columns:minmax(0,1fr) 68px;grid-template-rows:52px minmax(230px,auto) auto auto auto auto auto}
-  .market-pos-practical .market-pos-action-rail{grid-column:2;grid-row:2/8;grid-template-columns:1fr;grid-template-rows:repeat(8,minmax(44px,1fr))}
+  .market-pos-practical .market-pos-action-rail{grid-column:2;grid-row:2/8;grid-template-columns:1fr;grid-template-rows:none;grid-auto-rows:minmax(44px,1fr)}
   .market-pos-touch-console{min-height:190px;grid-template-columns:minmax(0,1fr)}
 }
 

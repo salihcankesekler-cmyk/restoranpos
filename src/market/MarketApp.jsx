@@ -435,7 +435,12 @@ function BarkodSvg({ value }) {
 }
 
 export default function MarketApp({ restaurantId, restaurantName, currentUserName, notify, canPerform }) {
-  const [sekme, setSekme] = useState('satis');
+  const [sekme, setSekme] = useState(() => {
+    const kayitliSekme = localStorage.getItem(`integra-market-sekme-${restaurantId}`);
+    return ['satis', 'personel-siparis', 'gruplar', 'urunler', 'alis', 'finans', 'kasa', 'sayim', 'hareketler', 'etiket', 'raporlar'].includes(kayitliSekme)
+      ? kayitliSekme
+      : 'satis';
+  });
   const [urunler, setUrunler] = useState([]);
   const [tumUrunler, setTumUrunler] = useState([]);
   const [gruplar, setGruplar] = useState([]);
@@ -768,6 +773,10 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   useEffect(() => {
     localStorage.setItem(`integra-market-fis-${restaurantId}`, fisDavranisi);
   }, [fisDavranisi, restaurantId]);
+
+  useEffect(() => {
+    localStorage.setItem(`integra-market-sekme-${restaurantId}`, sekme);
+  }, [restaurantId, sekme]);
 
   const gorunenGruplar = useMemo(
     () => gruplar.filter(grup => grup.satis_ekraninda_goster),
@@ -1755,6 +1764,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   };
 
   const odemeKisayolTusunuCalistir = event => {
+    if (event.key === 'F5' && sekme === 'satis') event.preventDefault();
     if (sekme !== 'satis' || satisKaydediliyor || bekleyenSepetIsleniyor || fiyatBekleyenUrun || gramajBekleyenUrun
       || urunIndirimFormu || genelIndirimPenceresi || bekleyenSepetPenceresi || satisCariPenceresi) return;
     const odemeTipi = { F1: 'Nakit', F2: 'Kredi Kartı', F3: 'Cari / Veresiye' }[event.key];
@@ -2309,6 +2319,12 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       setSatisKaydediliyor(false);
     }
   };
+
+  useEffect(() => {
+    const marketKisayolunuYakala = event => odemeKisayolTusunuCalistir(event);
+    window.addEventListener('keydown', marketKisayolunuYakala);
+    return () => window.removeEventListener('keydown', marketKisayolunuYakala);
+  });
 
   const cariKaydet = async event => {
     event.preventDefault();
@@ -3028,7 +3044,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   ].filter(([, , gerekliYetkiler]) => gerekliYetkiler.length === 0 || yetkilerdenBiriVar(...gerekliYetkiler));
 
   return (
-    <section className="market-shell" onKeyDown={odemeKisayolTusunuCalistir}>
+    <section className="market-shell">
       <nav className="market-tabs" aria-label="Market modülü">{nav.map(([key, label]) =>
         <button type="button" key={key} className={sekme === key ? 'active' : ''} onClick={() => setSekme(key)}>{label}</button>
       )}<button type="button" className="market-tab-refresh" onClick={() => verileriYukle(false)} aria-label="Verileri yenile">↻</button></nav>
@@ -3050,6 +3066,12 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               style={{ '--market-group-color': grup.grup_rengi || '#c2410c', '--market-group-text': kontrastYaziRengi(grup.grup_rengi || '#c2410c') }}
               onClick={() => { setSatisGrubu(grup.id); setSatisSiralamaSeciliId(''); }}
             >{grup.grup_adi}</button>)}
+            <button
+              type="button"
+              className={`market-customer-display-tab${arkaEkranGorselleri.length ? ' configured' : ''}`}
+              onClick={() => setArkaEkranAyarlariAcik(true)}
+              title="Arka ekran görsellerini ve müşteri ekranını yönet"
+            ><span>🖥</span><strong>Arka Ekran</strong><small>{arkaEkranGorselleri.length ? `${arkaEkranGorselleri.length} görsel` : 'Görsel ekle'}</small></button>
           </div>
           <div className="market-pos-product-panel">
             <div className="market-pos-entrybar">
@@ -3111,7 +3133,6 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           </div>
           <aside className="market-pos-action-rail" aria-label="Hızlı satış işlemleri">
             <button type="button" className={satisCariId ? 'active' : ''} onClick={() => { setSatisCariArama(''); setSatisCariPenceresi(true); }}><span>👤</span><b>Cari</b><small>{seciliSatisCarisi?.ad || 'Seçilmedi'}</small></button>
-            <button type="button" className={arkaEkranGorselleri.length ? 'active' : ''} onClick={() => setArkaEkranAyarlariAcik(true)}><span>🖥</span><b>Arka Ekran</b><small>{arkaEkranGorselleri.length ? `${arkaEkranGorselleri.length} görsel` : 'Görsel ekle'}</small></button>
             {yetkiVar('rapor_gor') && <button type="button" onClick={() => { setSekme('raporlar'); setRaporSekmesi('fisler'); }}><span>🧾</span><b>Fiş Listesi</b></button>}
             {yetkiVar('fis_yazdir') && <button type="button" disabled={!sepet.length || onFisYazdiriliyor} onClick={onFisiYazdir}><span>🖨</span><b>Ön Fiş Yazdır</b><small>{onFisYazdiriliyor ? 'Gönderiliyor…' : 'Satış öncesi'}</small></button>}
             {(yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) && <button type="button" disabled={!sepet.length || odemeBasladi} onClick={() => {
