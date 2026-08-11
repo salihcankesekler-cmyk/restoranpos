@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import JsBarcode from 'jsbarcode';
 import {
   marketAlisFaturasiKaydetAtomik,
@@ -9,6 +9,7 @@ import {
   marketCariGrubuKaydet,
   marketCariKaydet,
   marketCariHareketiKaydet,
+  marketEtiketKuyrugunuGetir,
   marketEtiketKuyrugunuTamamla,
   marketGrubuKaydet,
   marketKasaHareketiKaydet,
@@ -38,6 +39,7 @@ import {
 import './market.css';
 
 const URUN_LISTE_SAYFA_BOYUTU = 100;
+const ETIKET_LISTE_SAYFA_BOYUTU = 80;
 
 const bosUrun = {
   barkod: '', urunAdi: '', stokKodu: '', grupId: '', kategori: '', marka: '',
@@ -418,25 +420,6 @@ const csvSayisi = value => {
   return Number.isFinite(sonuc) ? sonuc : 0;
 };
 
-function BarkodSvg({ value }) {
-  const svgRef = useRef(null);
-  useEffect(() => {
-    if (!svgRef.current || !value) return;
-    try {
-      JsBarcode(svgRef.current, String(value), {
-        format: 'CODE128',
-        displayValue: false,
-        height: 42,
-        width: 1.5,
-        margin: 0,
-      });
-    } catch {
-      svgRef.current.replaceChildren();
-    }
-  }, [value]);
-  return <svg ref={svgRef} className="market-barcode-svg" aria-label={`Barkod ${value}`} />;
-}
-
 export default function MarketApp({ restaurantId, restaurantName, currentUserName, notify, canPerform }) {
   const [sekme, setSekme] = useState(() => {
     const kayitliSekme = localStorage.getItem(`integra-market-sekme-${restaurantId}`);
@@ -519,6 +502,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [sayimBarkodu, setSayimBarkodu] = useState('');
   const [etiketUrunleri, setEtiketUrunleri] = useState([]);
   const [etiketArama, setEtiketArama] = useState('');
+  const [etiketListeSayfasi, setEtiketListeSayfasi] = useState(1);
   const [etiketAdetleri, setEtiketAdetleri] = useState({});
   const [etiketYeniFiyatlari, setEtiketYeniFiyatlari] = useState({});
   const [etiketGorunumu, setEtiketGorunumu] = useState('tumu');
@@ -762,11 +746,25 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   }, [restaurantId, sekme]);
 
   useEffect(() => {
-    if (!['hareketler', 'etiket'].includes(sekme)) return undefined;
+    if (sekme !== 'hareketler') return undefined;
     const zamanlayici = window.setTimeout(() => { void verileriYukle(true); }, 0);
     return () => window.clearTimeout(zamanlayici);
-  // Hareket ve etiket ekranları açıldığında başka kasalardaki güncel kayıtları da al.
+  // Hareket ekranı açıldığında başka kasalardaki güncel kayıtları da al.
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantId, sekme]);
+
+  useEffect(() => {
+    if (sekme !== 'etiket' || !restaurantId || String(restaurantId) === 'super_admin') return undefined;
+    let aktif = true;
+    const zamanlayici = window.setTimeout(() => {
+      void marketEtiketKuyrugunuGetir(restaurantId)
+        .then(kayitlar => { if (aktif) setEtiketKuyrugu(kayitlar); })
+        .catch(error => { if (aktif) setHata(error.message); });
+    }, 0);
+    return () => {
+      aktif = false;
+      window.clearTimeout(zamanlayici);
+    };
   }, [restaurantId, sekme]);
 
   useEffect(() => {
@@ -884,28 +882,51 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const paraUstuTutari = paraYuvarla(Math.max(verilenTutarSayisi - kalanOdemeTutari, 0));
   const eksikTutar = paraYuvarla(Math.max(kalanOdemeTutari - verilenTutarSayisi, 0));
 
-  const bekleyenEtiketUrunIdleri = useMemo(
-    () => [...new Set(etiketKuyrugu.map(kayit => String(kayit.urun_id)))],
+  const etiketUrunHaritasi = useMemo(
+    () => new Map(urunler.map(urun => [String(urun.id), urun])),
+    [urunler]
+  );
+  const etiketBarkodHaritasi = useMemo(
+    () => new Map(urunler.map(urun => [String(urun.barkod || '').trim(), urun]).filter(([barkod]) => barkod)),
+    [urunler]
+  );
+  const etiketSeciliUrunIdSeti = useMemo(
+    () => new Set(etiketUrunleri.map(String)),
+    [etiketUrunleri]
+  );
+  const bekleyenEtiketUrunIdSeti = useMemo(
+    () => new Set(etiketKuyrugu.map(kayit => String(kayit.urun_id))),
     [etiketKuyrugu]
   );
+  const bekleyenEtiketUrunIdleri = useMemo(
+    () => [...bekleyenEtiketUrunIdSeti],
+    [bekleyenEtiketUrunIdSeti]
+  );
+  const gecikmeliEtiketArama = useDeferredValue(etiketArama);
 
   const filtreliEtiketUrunleri = useMemo(() => {
-    const metin = etiketArama.trim().toLocaleLowerCase('tr-TR');
+    const metin = gecikmeliEtiketArama.trim().toLocaleLowerCase('tr-TR');
     const gorunumUrunleri = etiketGorunumu === 'degisenler'
-      ? urunler.filter(urun => bekleyenEtiketUrunIdleri.includes(String(urun.id)))
+      ? urunler.filter(urun => bekleyenEtiketUrunIdSeti.has(String(urun.id)))
       : urunler;
     if (!metin) return gorunumUrunleri;
     return gorunumUrunleri.filter(urun => [urun.urun_adi, urun.barkod]
       .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin)));
-  }, [bekleyenEtiketUrunIdleri, etiketArama, etiketGorunumu, urunler]);
+  }, [bekleyenEtiketUrunIdSeti, etiketGorunumu, gecikmeliEtiketArama, urunler]);
+  const etiketListeSayfaSayisi = Math.max(1, Math.ceil(filtreliEtiketUrunleri.length / ETIKET_LISTE_SAYFA_BOYUTU));
+  const aktifEtiketListeSayfasi = Math.min(etiketListeSayfasi, etiketListeSayfaSayisi);
+  const sayfadakiEtiketUrunleri = useMemo(() => {
+    const baslangic = (aktifEtiketListeSayfasi - 1) * ETIKET_LISTE_SAYFA_BOYUTU;
+    return filtreliEtiketUrunleri.slice(baslangic, baslangic + ETIKET_LISTE_SAYFA_BOYUTU);
+  }, [aktifEtiketListeSayfasi, filtreliEtiketUrunleri]);
   const etiketFiyatDegisiklikleri = useMemo(() => Object.entries(etiketYeniFiyatlari).map(([urunId, deger]) => {
-    const urun = urunler.find(item => String(item.id) === String(urunId));
+    const urun = etiketUrunHaritasi.get(String(urunId));
     const yeniFiyat = Number(deger);
     return urun && String(deger).trim() !== '' && Number.isFinite(yeniFiyat) && yeniFiyat >= 0
       && Math.abs(yeniFiyat - Number(urun.satis_fiyati || 0)) >= 0.005
       ? { urun, yeniFiyat: paraYuvarla(yeniFiyat) }
       : null;
-  }).filter(Boolean), [etiketYeniFiyatlari, urunler]);
+  }).filter(Boolean), [etiketYeniFiyatlari, etiketUrunHaritasi]);
   const guvenliEtiketGenisligi = Math.min(Math.max(Number(etiketGenisligi || 58), 20), 120);
   const guvenliEtiketYuksekligi = Math.min(Math.max(Number(etiketYuksekligi || 40), 15), 100);
 
@@ -2936,11 +2957,13 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     if (etiketGorunumu === 'degisenler') {
       setEtiketGorunumu('tumu');
       setEtiketArama('');
+      setEtiketListeSayfasi(1);
       return;
     }
-    const kuyruktakiUrunler = urunler.filter(urun => bekleyenEtiketUrunIdleri.includes(String(urun.id))).map(urun => urun.id);
+    const kuyruktakiUrunler = urunler.filter(urun => bekleyenEtiketUrunIdSeti.has(String(urun.id))).map(urun => urun.id);
     setEtiketUrunleri(prev => [...new Set([...prev, ...kuyruktakiUrunler])]);
     setEtiketArama('');
+    setEtiketListeSayfasi(1);
     if (!kuyruktakiUrunler.length) {
       setEtiketGorunumu('tumu');
       bildir('Bekleyen fiyat etiketi bulunmuyor.', 'info');
@@ -2967,9 +2990,9 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     event.preventDefault();
     const barkod = etiketArama.trim();
     if (!barkod) return;
-    const urun = urunler.find(item => String(item.barkod || '').trim() === barkod);
+    const urun = etiketBarkodHaritasi.get(barkod);
     if (!urun) return bildir('Bu barkodla kayıtlı ürün bulunamadı.', 'warning');
-    const zatenSecili = etiketUrunleri.some(id => String(id) === String(urun.id));
+    const zatenSecili = etiketSeciliUrunIdSeti.has(String(urun.id));
     setEtiketUrunleri(prev => zatenSecili ? prev : [...prev, urun.id]);
     setEtiketAdetleri(prev => ({
       ...prev,
@@ -2980,7 +3003,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
 
   const etiketYeniFiyatiniDegistir = (urun, deger) => {
     setEtiketYeniFiyatlari(prev => ({ ...prev, [urun.id]: deger }));
-    setEtiketUrunleri(prev => prev.some(id => String(id) === String(urun.id)) ? prev : [...prev, urun.id]);
+    setEtiketUrunleri(prev => etiketSeciliUrunIdSeti.has(String(urun.id)) ? prev : [...prev, urun.id]);
   };
 
   const etiketFiyatlariniKaydet = async () => {
@@ -3005,7 +3028,8 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       const degisenIdler = new Set(kaydedilecekDegisiklikler.map(({ urun }) => String(urun.id)));
       setEtiketYeniFiyatlari(prev => Object.fromEntries(Object.entries(prev)
         .filter(([urunId]) => !degisenIdler.has(String(urunId)))));
-      await verileriYukle(true);
+      const guncelEtiketKuyrugu = await marketEtiketKuyrugunuGetir(restaurantId);
+      setEtiketKuyrugu(guncelEtiketKuyrugu);
       bildir(`${kaydedilecekDegisiklikler.length} ürünün satış fiyatı güncellendi.`, 'success');
     } catch (error) {
       bildir(error.message, 'error');
@@ -3019,11 +3043,22 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     if (!etiketUrunleri.length) return bildir('Önce ürün seçin.', 'warning');
     if (etiketFiyatDegisiklikleri.length) return bildir('Etiket basmadan önce üstteki Fiyatları Kaydet düğmesine basın.', 'warning');
     const seciliUrunler = etiketUrunleri
-      .map(id => urunler.find(urun => String(urun.id) === String(id)))
+      .map(id => etiketUrunHaritasi.get(String(id)))
       .filter(Boolean);
-    const yazdirilacakEtiketler = seciliUrunler.flatMap(urun => Array.from(
-      { length: Math.max(Math.min(Number(etiketAdetleri[urun.id] || 1), 100), 1) },
-      () => ({
+    setEtiketlerYazdiriliyor(true);
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    const yazdirilacakEtiketler = seciliUrunler.flatMap(urun => {
+      const etiketPng = etiketPngOlustur({
+        urunAdi: urun.urun_adi,
+        barkod: urun.barkod,
+        satisFiyati: urun.satis_fiyati,
+        isletmeAdi: restaurantName,
+        genislikMm: guvenliEtiketGenisligi,
+        yukseklikMm: guvenliEtiketYuksekligi,
+      });
+      return Array.from(
+        { length: Math.max(Math.min(Number(etiketAdetleri[urun.id] || 1), 100), 1) },
+        () => ({
         urunId: urun.id,
         urunAdi: urun.urun_adi,
         barkod: urun.barkod,
@@ -3031,19 +3066,14 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
         isletmeAdi: restaurantName,
         genislikMm: guvenliEtiketGenisligi,
         yukseklikMm: guvenliEtiketYuksekligi,
-        etiketPng: etiketPngOlustur({
-          urunAdi: urun.urun_adi,
-          barkod: urun.barkod,
-          satisFiyati: urun.satis_fiyati,
-          isletmeAdi: restaurantName,
-          genislikMm: guvenliEtiketGenisligi,
-          yukseklikMm: guvenliEtiketYuksekligi,
-        }),
-      })
-    ));
-    if (!yazdirilacakEtiketler.length) return bildir('Yazdırılacak etiket oluşturulamadı.', 'warning');
+        etiketPng,
+      }));
+    });
+    if (!yazdirilacakEtiketler.length) {
+      setEtiketlerYazdiriliyor(false);
+      return bildir('Yazdırılacak etiket oluşturulamadı.', 'warning');
+    }
 
-    setEtiketlerYazdiriliyor(true);
     try {
       await marketEtiketleriniKuyrugaEkle(restaurantId, yazdirilacakEtiketler);
       const seciliIdler = new Set(etiketUrunleri.map(String));
@@ -3683,19 +3713,26 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           {yetkiVar('urun_yonet') && <button className="market-save-prices" type="button" disabled={etiketFiyatlariKaydediliyor || !etiketFiyatDegisiklikleri.length} onClick={etiketFiyatlariniKaydet}>{etiketFiyatlariKaydediliyor ? 'Kaydediliyor…' : `💾 Fiyatları Kaydet${etiketFiyatDegisiklikleri.length ? ` (${etiketFiyatDegisiklikleri.length})` : ''}`}</button>}
           {yetkiVar('fis_yazdir') && <button className="market-primary" type="button" disabled={etiketlerYazdiriliyor} onClick={etiketleriYazdir}>{etiketlerYazdiriliyor ? 'Kuyruğa gönderiliyor…' : '🖨️ Seçilenleri Yazdır'}</button>}
         </div></div>
-        <input className="market-label-search" value={etiketArama} onChange={event => setEtiketArama(event.target.value)} onKeyDown={etiketAramasindaEnter} placeholder="Barkodu okutun ve Enter'a basın veya ürün adıyla arayın" autoFocus />
+        <input className="market-label-search" value={etiketArama} onChange={event => { setEtiketArama(event.target.value); setEtiketListeSayfasi(1); }} onKeyDown={etiketAramasindaEnter} placeholder="Barkodu okutun ve Enter'a basın veya ürün adıyla arayın" autoFocus />
         <div className="market-label-columns"><span>Seç</span><span>Ürün / Barkod</span><span>Adet</span><span>Alış</span><span>Satış</span><span>Yeni Fiyat</span></div>
-        <div className="market-label-list">{filtreliEtiketUrunleri.map(urun => {
+        <div className="market-label-list">{sayfadakiEtiketUrunleri.map(urun => {
           return <div className="market-label-row" key={urun.id}>
-            <input aria-label={`${urun.urun_adi} etiketini seç`} type="checkbox" checked={etiketUrunleri.some(id => String(id) === String(urun.id))} onChange={event => etiketSeciminiDegistir(urun, event.target.checked)} />
-            <span><strong>{urun.urun_adi}{bekleyenEtiketUrunIdleri.includes(String(urun.id)) && <em className="market-queue-badge">Yeni fiyat</em>}</strong><small>{urun.barkod}</small></span>
+            <input aria-label={`${urun.urun_adi} etiketini seç`} type="checkbox" checked={etiketSeciliUrunIdSeti.has(String(urun.id))} onChange={event => etiketSeciminiDegistir(urun, event.target.checked)} />
+            <span><strong>{urun.urun_adi}{bekleyenEtiketUrunIdSeti.has(String(urun.id)) && <em className="market-queue-badge">Yeni fiyat</em>}</strong><small>{urun.barkod}</small></span>
             <input className="market-label-count" aria-label={`${urun.urun_adi} etiket adedi`} type="number" min="1" max="100" value={etiketAdetleri[urun.id] || 1} onChange={event => setEtiketAdetleri(prev => ({ ...prev, [urun.id]: Math.max(Number(event.target.value || 1), 1) }))} />
             <b>{para(urun.alis_fiyati)}</b>
             <b>{para(urun.satis_fiyati)}</b>
             <input className="market-label-new-price" aria-label={`${urun.urun_adi} yeni satış fiyatı`} type="number" min="0" step="0.01" disabled={!yetkiVar('urun_yonet')} value={etiketYeniFiyatlari[urun.id] ?? ''} onChange={event => etiketYeniFiyatiniDegistir(urun, event.target.value)} placeholder={Number(urun.satis_fiyati || 0).toFixed(2)} />
           </div>;
         })}{!filtreliEtiketUrunleri.length && <p className="market-empty">Aramaya uygun ürün bulunamadı.</p>}</div>
-        <div className="market-print-labels size-custom" style={{ '--market-label-width': `${guvenliEtiketGenisligi}mm`, '--market-label-height': `${guvenliEtiketYuksekligi}mm` }} aria-hidden="true">{etiketUrunleri.map(id => urunler.find(urun => String(urun.id) === String(id))).filter(Boolean).flatMap(urun => Array.from({ length: Number(etiketAdetleri[urun.id] || 1) }, (_, index) => <article key={`${urun.id}-${index}`}><div>{restaurantName}</div><strong>{urun.urun_adi}</strong><b>{para(urun.satis_fiyati)}</b><BarkodSvg value={urun.barkod} /><small>{urun.barkod}</small></article>))}</div>
+        {filtreliEtiketUrunleri.length > ETIKET_LISTE_SAYFA_BOYUTU && <div className="market-product-pagination">
+          <small>{filtreliEtiketUrunleri.length} ürün · {etiketUrunleri.length} seçili</small>
+          <button type="button" disabled={aktifEtiketListeSayfasi <= 1} onClick={() => setEtiketListeSayfasi(1)}>İlk</button>
+          <button type="button" disabled={aktifEtiketListeSayfasi <= 1} onClick={() => setEtiketListeSayfasi(sayfa => Math.max(1, sayfa - 1))}>← Önceki</button>
+          <strong>{aktifEtiketListeSayfasi} / {etiketListeSayfaSayisi}</strong>
+          <button type="button" disabled={aktifEtiketListeSayfasi >= etiketListeSayfaSayisi} onClick={() => setEtiketListeSayfasi(sayfa => Math.min(etiketListeSayfaSayisi, sayfa + 1))}>Sonraki →</button>
+          <button type="button" disabled={aktifEtiketListeSayfasi >= etiketListeSayfaSayisi} onClick={() => setEtiketListeSayfasi(etiketListeSayfaSayisi)}>Son</button>
+        </div>}
       </div>}
 
       {!yukleniyor && sekme === 'raporlar' && <div className="market-stack">

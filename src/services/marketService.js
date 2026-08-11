@@ -190,6 +190,21 @@ export async function marketBekleyenSepetiSil(restaurantId, sepetId) {
   if (error) throw marketHatasi(error);
 }
 
+export async function marketEtiketKuyrugunuGetir(restaurantId) {
+  await marketOturumunuDogrula();
+  const { data, error } = await supabase.from('market_etiket_kuyrugu')
+    .select('*')
+    .eq('restaurant_id', restaurantId)
+    .eq('durum', 'Bekliyor')
+    .order('created_at', { ascending: false })
+    .limit(1000);
+  if (error) {
+    if (opsiyonelTabloEksikMi(error)) return [];
+    throw marketHatasi(error);
+  }
+  return data || [];
+}
+
 export async function marketEtiketKuyrugunuTamamla(restaurantId, kuyrukIds) {
   await marketOturumunuDogrula();
   const ids = [...new Set((kuyrukIds || []).filter(Boolean))];
@@ -788,7 +803,7 @@ export async function marketEtiketleriniKuyrugaEkle(restaurantId, etiketler = []
   const { data, error } = await supabase
     .from('yazdirma_kuyrugu')
     .insert(kuyrukSatirlari)
-    .select();
+    .select('id');
 
   if (error) {
     if (['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error.code)) {
