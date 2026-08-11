@@ -37,6 +37,11 @@ import {
   LANDING_TRUST_FEATURES,
 } from './landing/landingContent';
 import LandingPage from './landing/LandingPage';
+import {
+  ikinciEkranPenceresiniAc,
+  musteriEkranGorseliniHazirla,
+  musteriEkraniBelgesiniYaz,
+} from './lib/customerDisplay';
 import './quick-sale.css';
 
 const MarketApp = React.lazy(() => import('./market/MarketApp'));
@@ -345,6 +350,10 @@ function IntegraApp() {
       return {};
     }
   });
+  const [restoranArkaEkranGorselleri, setRestoranArkaEkranGorselleri] = useState([]);
+  const [restoranArkaEkranDurumu, setRestoranArkaEkranDurumu] = useState('Kapalı');
+  const [restoranArkaEkranYukleniyor, setRestoranArkaEkranYukleniyor] = useState(false);
+  const restoranArkaEkranPenceresiRef = useRef(null);
 
   // QR menüden sipariş, garson çağırma ve hesap isteme için kullanılan kod
   const [qrSepet, setQrSepet] = useState([]);
@@ -1016,6 +1025,104 @@ Toplam Ciro: {toplam}
   ]);
 
   const mevcutRestaurantId = user?.role === 'waiter' ? user?.parentRestaurantId : user?.restaurantId;
+
+  const restoranArkaEkranAnahtari = `integra-restoran-arka-ekran-${mevcutRestaurantId || 'genel'}`;
+
+  useEffect(() => {
+    const yuklemeZamanlayicisi = window.setTimeout(() => {
+      if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') {
+        setRestoranArkaEkranGorselleri([]);
+        return;
+      }
+      try {
+        const kayitli = JSON.parse(localStorage.getItem(restoranArkaEkranAnahtari) || '[]');
+        setRestoranArkaEkranGorselleri(Array.isArray(kayitli) ? kayitli : []);
+      } catch {
+        setRestoranArkaEkranGorselleri([]);
+      }
+    }, 0);
+    return () => window.clearTimeout(yuklemeZamanlayicisi);
+  }, [mevcutRestaurantId, restoranArkaEkranAnahtari]);
+
+  useEffect(() => {
+    musteriEkraniBelgesiniYaz(restoranArkaEkranPenceresiRef.current, {
+      isletmeAdi: fisAyarlari.firmaAdi || user?.restaurant || 'Integra POS',
+      gorseller: restoranArkaEkranGorselleri,
+    });
+  }, [fisAyarlari.firmaAdi, restoranArkaEkranGorselleri, user?.restaurant]);
+
+  useEffect(() => () => {
+    if (restoranArkaEkranPenceresiRef.current && !restoranArkaEkranPenceresiRef.current.closed) {
+      restoranArkaEkranPenceresiRef.current.close();
+    }
+  }, []);
+
+  const restoranArkaEkranGorselleriniKaydet = yeniGorseller => {
+    try {
+      localStorage.setItem(restoranArkaEkranAnahtari, JSON.stringify(yeniGorseller));
+      setRestoranArkaEkranGorselleri(yeniGorseller);
+      return true;
+    } catch {
+      bildirimGoster('Görseller bu bilgisayara kaydedilemedi. Daha az veya daha küçük görsel deneyin.', 'warning');
+      return false;
+    }
+  };
+
+  const restoranArkaEkranGorseliEkle = async event => {
+    const kalanHak = Math.max(6 - restoranArkaEkranGorselleri.length, 0);
+    const dosyalar = [...(event.target.files || [])].slice(0, kalanHak);
+    event.target.value = '';
+    if (!dosyalar.length) {
+      if (!kalanHak) bildirimGoster('Arka ekrana en fazla 6 görsel eklenebilir.', 'warning');
+      return;
+    }
+    setRestoranArkaEkranYukleniyor(true);
+    try {
+      const hazirlananlar = await Promise.all(dosyalar.map(musteriEkranGorseliniHazirla));
+      if (restoranArkaEkranGorselleriniKaydet([...restoranArkaEkranGorselleri, ...hazirlananlar].slice(0, 6))) {
+        bildirimGoster(`${hazirlananlar.length} arka ekran görseli kaydedildi.`, 'success');
+      }
+    } catch (error) {
+      bildirimGoster(error.message || 'Görsel hazırlanamadı.', 'warning');
+    } finally {
+      setRestoranArkaEkranYukleniyor(false);
+    }
+  };
+
+  const restoranArkaEkranGorseliniSil = gorselId => {
+    restoranArkaEkranGorselleriniKaydet(restoranArkaEkranGorselleri.filter(gorsel => gorsel.id !== gorselId));
+  };
+
+  const restoranArkaEkraniAc = async () => {
+    setRestoranArkaEkranDurumu('Açılıyor…');
+    const sonuc = await ikinciEkranPenceresiniAc();
+    if (!sonuc.pencere) {
+      setRestoranArkaEkranDurumu('Açılamadı');
+      bildirimGoster('Arka ekran penceresi engellendi. Tarayıcıda açılır pencerelere izin verin.', 'warning');
+      return;
+    }
+    restoranArkaEkranPenceresiRef.current = sonuc.pencere;
+    musteriEkraniBelgesiniYaz(sonuc.pencere, {
+      isletmeAdi: fisAyarlari.firmaAdi || user?.restaurant || 'Integra POS',
+      gorseller: restoranArkaEkranGorselleri,
+    });
+    sonuc.pencere.focus();
+    if (sonuc.ikincilEkranBulundu) {
+      setRestoranArkaEkranDurumu('İkinci ekranda açık');
+      bildirimGoster('Arka ekran Windows ikinci ekranına yansıtıldı.', 'success');
+    } else {
+      setRestoranArkaEkranDurumu('Pencere açık');
+      bildirimGoster('İkinci ekran otomatik seçilemedi. Açılan pencereyi ikinci ekrana taşıyın.', 'warning');
+    }
+  };
+
+  const restoranArkaEkraniKapat = () => {
+    if (restoranArkaEkranPenceresiRef.current && !restoranArkaEkranPenceresiRef.current.closed) {
+      restoranArkaEkranPenceresiRef.current.close();
+    }
+    restoranArkaEkranPenceresiRef.current = null;
+    setRestoranArkaEkranDurumu('Kapalı');
+  };
 
   useEffect(() => {
     if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return undefined;
@@ -4092,6 +4199,7 @@ Toplam Ciro: {toplam}
     { key: 'menu', label: '🍔 Menü & Ayarlar' },
     { key: 'receteler', label: '🧾 Reçeteler' },
     { key: 'qr_menu', label: '📱 QR Menü' },
+    { key: 'arka_ekran', label: '🖥️ Arka Ekran Görselleri' },
     { key: 'servis_talepleri', label: '🔔 Servis Talepleri' },
     { key: 'sadakat', label: '🎁 Sadakat' },
     { key: 'kiosk', label: '🧍 Kiosk' },
@@ -4267,6 +4375,7 @@ Toplam Ciro: {toplam}
 
   // sekmenin kullanıcı için görünür olup olmadığını kontrol eden kod
   const tabGorunur = (tabKey) => {
+    if (tabKey === 'arka_ekran') return Boolean(user) && kullaniciSekmeleri.includes('masalar');
     if (['sistem_durumu', 'ayarlar', 'guclendirme', 'islem_gecmisi', 'yedekleme', 'fis_onizleme'].includes(tabKey)) return Boolean(user);
     return kullaniciSekmeleri.includes(tabKey);
   };
@@ -17386,6 +17495,16 @@ Toplam Ciro: {toplam}
                 </button>
               )}
 
+              {tabGorunur('arka_ekran') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('arka_ekran')}
+                  style={activeTab === 'arka_ekran' ? styles.navItemActive : styles.navItem}
+                >
+                  🖥️ Arka Ekran Görselleri
+                </button>
+              )}
+
               {tabGorunur('servis_talepleri') && (
                 <button
                   type="button"
@@ -17542,8 +17661,8 @@ Toplam Ciro: {toplam}
                 {manuelYenilemeYapiliyor ? '⏳ Yenileniyor' : '🔄 Verileri Yenile'}
               </button>
             </div>}
-            {!['market', 'kuafor', 'masalar', 'hizli_satis'].includes(activeTab) && renderEkranRehberi()}
-            {!['market', 'kuafor', 'masalar', 'hizli_satis'].includes(activeTab) && rehberGizli ? (
+            {!['market', 'kuafor', 'masalar', 'hizli_satis', 'arka_ekran'].includes(activeTab) && renderEkranRehberi()}
+            {!['market', 'kuafor', 'masalar', 'hizli_satis', 'arka_ekran'].includes(activeTab) && rehberGizli ? (
               <button type="button" onClick={kullanimRehberiniDegistir} style={styles.smartGuideShowBtn}>💡 Ekran rehberini göster</button>
             ) : null}
             {activeTab !== 'market' && aktifKullaniciLisansRozeti && ['Yaklaşıyor', 'Ödeme Gecikti', 'Ödeme Bekliyor'].includes(aktifKullaniciLisansRozeti.etiket) && (
@@ -17614,6 +17733,66 @@ Toplam Ciro: {toplam}
                   notify={bildirimGoster}
                 />
               </React.Suspense>
+            )}
+
+            {activeTab === 'arka_ekran' && (
+              <div style={{ ...styles.panelCard, maxWidth: '1180px', margin: '0 auto' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' }}>
+                  <div>
+                    <div style={{ color: '#f97316', fontSize: '10px', fontWeight: '950', letterSpacing: '.14em' }}>RESTORAN MÜŞTERİ EKRANI</div>
+                    <h2 style={{ ...styles.pageTitle, margin: '5px 0 7px' }}>🖥️ Arka Ekran Görselleri</h2>
+                    <p style={{ maxWidth: '720px', margin: 0, color: '#64748b', fontSize: '13px', lineHeight: 1.6 }}>
+                      Kampanya, menü ve duyuru görsellerini ekleyin. Ekrana yansıttığınızda görseller Windows'taki ikinci ekranda sırayla gösterilir.
+                    </p>
+                  </div>
+                  <div style={{ minWidth: '190px', padding: '11px 14px', border: `1px solid ${restoranArkaEkranDurumu.includes('açık') || restoranArkaEkranDurumu.includes('Açık') ? '#86efac' : '#cbd5e1'}`, borderRadius: '12px', backgroundColor: restoranArkaEkranDurumu.includes('açık') || restoranArkaEkranDurumu.includes('Açık') ? '#f0fdf4' : '#f8fafc' }}>
+                    <div style={{ color: '#64748b', fontSize: '10px', fontWeight: '850' }}>EKRAN DURUMU</div>
+                    <strong style={{ display: 'block', marginTop: '4px', color: '#0f172a', fontSize: '14px' }}>{restoranArkaEkranDurumu}</strong>
+                  </div>
+                </div>
+
+                <div className="restaurant-customer-display-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(260px,.72fr) minmax(0,1.28fr)', gap: '14px', alignItems: 'start' }}>
+                  <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '14px', backgroundColor: '#f8fafc' }}>
+                    <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '16px' }}>Görsel ekleyin</h3>
+                    <p style={{ margin: '0 0 13px', color: '#64748b', fontSize: '11px', lineHeight: 1.55 }}>Yatay 16:9 görseller arka ekranı daha iyi doldurur. En fazla 6 görsel eklenebilir.</p>
+                    <label style={{ minHeight: '92px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '5px', border: '2px dashed #fb923c', borderRadius: '12px', backgroundColor: '#fff7ed', color: '#c2410c', fontWeight: '950', cursor: restoranArkaEkranYukleniyor ? 'wait' : 'pointer' }}>
+                      <span>{restoranArkaEkranYukleniyor ? '⏳ Görsel hazırlanıyor…' : '＋ Bilgisayardan Görsel Seç'}</span>
+                      <small style={{ color: '#64748b', fontWeight: '750' }}>JPG, PNG veya WEBP</small>
+                      <input type="file" accept="image/*" multiple disabled={restoranArkaEkranYukleniyor || restoranArkaEkranGorselleri.length >= 6} onChange={restoranArkaEkranGorseliEkle} style={{ display: 'none' }} />
+                    </label>
+                    <div style={{ display: 'grid', gap: '8px', marginTop: '14px' }}>
+                      <button type="button" onClick={restoranArkaEkraniAc} style={{ ...styles.btnOrange, width: '100%', minHeight: '46px' }}>🖥️ İkinci Ekrana Yansıt</button>
+                      <button type="button" onClick={restoranArkaEkraniKapat} style={{ width: '100%', minHeight: '42px', border: '1px solid #fecaca', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b91c1c', fontWeight: '900', cursor: 'pointer' }}>× Arka Ekranı Kapat</button>
+                    </div>
+                    <div style={{ marginTop: '14px', padding: '11px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#1e3a8a', fontSize: '10px', lineHeight: 1.55 }}>
+                      İlk kullanımda tarayıcı ekran yerleştirme izni isteyebilir. İzin verdiğinizde Windows'taki birinci olmayan ekran otomatik seçilir.
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '9px' }}>
+                      <h3 style={{ margin: 0, color: '#1e293b', fontSize: '16px' }}>Yayın sırası</h3>
+                      <span style={{ color: '#64748b', fontSize: '11px', fontWeight: '850' }}>{restoranArkaEkranGorselleri.length} / 6 görsel</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px' }}>
+                      {restoranArkaEkranGorselleri.map((gorsel, index) => (
+                        <article key={gorsel.id} style={{ position: 'relative', overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '13px', backgroundColor: '#fff' }}>
+                          <img src={gorsel.veri} alt={gorsel.ad || 'Arka ekran görseli'} style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 10px' }}>
+                            <span style={{ minWidth: 0, overflow: 'hidden', color: '#475569', fontSize: '10px', fontWeight: '850', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{index + 1}. {gorsel.ad || 'Kampanya görseli'}</span>
+                            <button type="button" aria-label={`${gorsel.ad || 'Görsel'} sil`} onClick={() => restoranArkaEkranGorseliniSil(gorsel.id)} style={{ flex: '0 0 auto', width: '28px', height: '28px', border: 0, borderRadius: '50%', backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '18px', fontWeight: '950', cursor: 'pointer' }}>×</button>
+                          </div>
+                        </article>
+                      ))}
+                      {!restoranArkaEkranGorselleri.length && (
+                        <div style={{ gridColumn: '1 / -1', minHeight: '240px', display: 'grid', placeItems: 'center', padding: '28px', border: '1px dashed #cbd5e1', borderRadius: '14px', backgroundColor: '#f8fafc', color: '#64748b', textAlign: 'center' }}>
+                          <div><div style={{ fontSize: '42px', marginBottom: '9px' }}>🖼️</div><strong style={{ display: 'block', color: '#334155' }}>Henüz arka ekran görseli yok</strong><small style={{ display: 'block', marginTop: '5px' }}>Soldaki alandan kampanya veya menü görsellerini ekleyin.</small></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* masalar ve canlı adisyon ekranını gösteren kod */}

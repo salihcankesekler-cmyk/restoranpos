@@ -10,3 +10,8 @@ body {
   font-family: Inter, Arial, sans-serif;
   background: #f8fafc;
 }
+@media (max-width: 800px) {
+  .restaurant-customer-display-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
