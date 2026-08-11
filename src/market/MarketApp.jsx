@@ -487,7 +487,6 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [satisCariId, setSatisCariId] = useState('');
   const [satisCariPenceresi, setSatisCariPenceresi] = useState(false);
   const [satisCariArama, setSatisCariArama] = useState('');
-  const [arkaEkranAyarlariAcik, setArkaEkranAyarlariAcik] = useState(false);
   const [arkaEkranGorselleri, setArkaEkranGorselleri] = useState(() => {
     try {
       const kayitli = JSON.parse(localStorage.getItem(`integra-market-arka-ekran-${restaurantId}`) || '[]');
@@ -3066,12 +3065,6 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               style={{ '--market-group-color': grup.grup_rengi || '#c2410c', '--market-group-text': kontrastYaziRengi(grup.grup_rengi || '#c2410c') }}
               onClick={() => { setSatisGrubu(grup.id); setSatisSiralamaSeciliId(''); }}
             >{grup.grup_adi}</button>)}
-            <button
-              type="button"
-              className={`market-customer-display-tab${arkaEkranGorselleri.length ? ' configured' : ''}`}
-              onClick={() => setArkaEkranAyarlariAcik(true)}
-              title="Arka ekran görsellerini ve müşteri ekranını yönet"
-            ><span>🖥</span><strong>Arka Ekran</strong><small>{arkaEkranGorselleri.length ? `${arkaEkranGorselleri.length} görsel` : 'Görsel ekle'}</small></button>
           </div>
           <div className="market-pos-product-panel">
             <div className="market-pos-entrybar">
@@ -3180,28 +3173,6 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           <div className="market-payment-buttons"><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}><kbd>F1</kbd>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}><kbd>F2</kbd>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}><kbd>F3</kbd>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
           <p className="market-note">Tutar yazıp ödeme türüne basın. Hesap tamamen ödenene kadar fiş açık kalır; boş bırakırsanız kalan tutarın tamamı seçilen yöntemle alınır.</p>
         </div>
-        {arkaEkranAyarlariAcik && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Arka ekran görselleri">
-          <div className="market-customer-display-modal">
-            <span>MÜŞTERİ EKRANI</span>
-            <h2>Arka ekran görselleri</h2>
-            <p>Satış yokken bu görseller sırayla gösterilir. Satış başladığında ekran otomatik olarak ürünlere ve toplam tutara geçer.</p>
-            <label className="market-customer-display-upload">
-              <span>＋ Görsel Ekle</span>
-              <small>Yatay kampanya görselleri daha iyi görünür · En fazla 6 adet</small>
-              <input type="file" accept="image/*" multiple onChange={arkaEkranGorseliEkle} />
-            </label>
-            <div className="market-customer-display-images">
-              {arkaEkranGorselleri.map(gorsel => <article key={gorsel.id}>
-                <img src={gorsel.veri} alt={gorsel.ad || 'Arka ekran görseli'} />
-                <span>{gorsel.ad || 'Kampanya görseli'}</span>
-                <button type="button" aria-label={`${gorsel.ad || 'Görsel'} sil`} onClick={() => arkaEkranGorseliniSil(gorsel.id)}>×</button>
-              </article>)}
-              {!arkaEkranGorselleri.length && <div className="market-customer-display-empty">Henüz görsel eklenmedi. Ekran boştayken işletme adı gösterilecek.</div>}
-            </div>
-            <small className="market-customer-display-note">Görseller bu kasa bilgisayarında saklanır. Açılan pencereyi Windows ekran ayarlarından arka ekrana taşıyıp tam ekran yapın.</small>
-            <footer><button className="market-remove" type="button" onClick={() => setArkaEkranAyarlariAcik(false)}>Kapat</button><button className="market-primary" type="button" onClick={arkaEkraniAc}>🖥 Arka Ekranı Aç</button></footer>
-          </div>
-        </div>}
         {satisCariPenceresi && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Satış carisi seç">
           <div className="market-customer-modal">
             <span>CARİ SEÇİMİ</span>
@@ -3383,6 +3354,26 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               <button type="button" aria-label={`${grup.grup_adi} grubunu düzenle`} onClick={() => setGrupFormu({ id: grup.id, grupAdi: grup.grup_adi, kdvOrani: Number(grup.kdv_orani ?? 20), satisEkranindaGoster: grup.satis_ekraninda_goster, sira: grup.sira, grupRengi: grup.grup_rengi || '#c2410c', urunRengi: grup.urun_rengi || '#0f172a' })}>✎ Düzenle</button>
             </div>
           </div>)}</div>
+        </div>
+        <div className="market-card market-customer-display-modal market-group-customer-display-card">
+          <span>MÜŞTERİ EKRANI</span>
+          <h2>Arka ekran görselleri</h2>
+          <p>Satış yokken seçtiğiniz görseller sırayla gösterilir. Satış başladığında müşteri ekranı ürünleri ve toplam tutarı otomatik gösterir.</p>
+          <label className="market-customer-display-upload">
+            <span>＋ Görsel Ekle</span>
+            <small>Yatay kampanya görselleri daha iyi görünür · En fazla 6 adet</small>
+            <input type="file" accept="image/*" multiple onChange={arkaEkranGorseliEkle} />
+          </label>
+          <div className="market-customer-display-images">
+            {arkaEkranGorselleri.map(gorsel => <article key={gorsel.id}>
+              <img src={gorsel.veri} alt={gorsel.ad || 'Arka ekran görseli'} />
+              <span>{gorsel.ad || 'Kampanya görseli'}</span>
+              <button type="button" aria-label={`${gorsel.ad || 'Görsel'} sil`} onClick={() => arkaEkranGorseliniSil(gorsel.id)}>×</button>
+            </article>)}
+            {!arkaEkranGorselleri.length && <div className="market-customer-display-empty">Henüz görsel eklenmedi. Ekran boştayken işletme adı gösterilecek.</div>}
+          </div>
+          <small className="market-customer-display-note">Görseller bu kasa bilgisayarında saklanır. Açılan pencereyi Windows ekran ayarlarından arka ekrana taşıyıp tam ekran yapın.</small>
+          <footer><button className="market-primary" type="button" onClick={arkaEkraniAc}>🖥 Arka Ekranı Aç</button></footer>
         </div>
       </div>}
 
