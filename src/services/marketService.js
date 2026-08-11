@@ -368,6 +368,7 @@ export async function marketUrunuKaydet(restaurantId, urun) {
     son_kullanma_tarihi: urun.sonKullanmaTarihi || null,
     lot_no: String(urun.lotNo || '').trim() || null,
     resim_url: String(urun.resimUrl || '').trim() || null,
+    satis_ekraninda_goster: urun.satisEkranindaGoster !== false,
     aktif: true,
   };
   let sorgu;
@@ -393,6 +394,19 @@ export async function marketUrunuKaydet(restaurantId, urun) {
     }
     throw marketHatasi(error);
   }
+  return data;
+}
+
+export async function marketUrunSatisGorunurlugunuGuncelle(restaurantId, urunId, goster) {
+  await marketOturumunuDogrula();
+  const { data, error } = await supabase
+    .from('market_urunleri')
+    .update({ satis_ekraninda_goster: Boolean(goster), updated_at: new Date().toISOString() })
+    .eq('restaurant_id', restaurantId)
+    .eq('id', urunId)
+    .select()
+    .single();
+  if (error) throw marketHatasi(error);
   return data;
 }
 

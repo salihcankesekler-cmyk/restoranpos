@@ -21,6 +21,7 @@ import {
   marketSatisSirasiniKaydet,
   marketSatisiKaydet,
   marketUrunStokFiyatGuncelle,
+  marketUrunSatisGorunurlugunuGuncelle,
   marketUrunleriniTopluKaydet,
   marketUrunuKaydet,
   marketUrunuSil,
@@ -39,7 +40,7 @@ import './market.css';
 const bosUrun = {
   barkod: '', urunAdi: '', stokKodu: '', grupId: '', kategori: '', marka: '',
   birim: 'Adet', kdvOrani: 20, alisFiyati: '', satisFiyati: '',
-  stokMiktari: '', minimumStok: '', rafKonumu: '', sonKullanmaTarihi: '', lotNo: '', resimUrl: '',
+  stokMiktari: '', minimumStok: '', rafKonumu: '', sonKullanmaTarihi: '', lotNo: '', resimUrl: '', satisEkranindaGoster: true,
 };
 
 const bosGrup = {
@@ -817,7 +818,11 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     return urunler.filter(urun => {
       // Arama yapılırken kasiyer grupları tek tek gezmek zorunda kalmasın.
       if (!metin && String(urun.grup_id) !== String(aktifSatisGrubu)) return false;
-      if (!metin) return true;
+      if (!metin) return urun.satis_ekraninda_goster !== false;
+      const barkodlaTamEslesme = [urun.barkod, urun.stok_kodu]
+        .some(value => String(value || '').trim().toLocaleLowerCase('tr-TR') === metin);
+      if (barkodlaTamEslesme) return true;
+      if (urun.satis_ekraninda_goster === false) return false;
       return [urun.urun_adi, urun.barkod, urun.stok_kodu, urun.marka]
         .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin));
     });
@@ -1506,6 +1511,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       sonKullanmaTarihi: urun.son_kullanma_tarihi || '',
       lotNo: urun.lot_no || '',
       resimUrl: marketUrunGorseli(urun),
+      satisEkranindaGoster: urun.satis_ekraninda_goster !== false,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1519,6 +1525,24 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       setUrunFormu(prev => ({ ...prev, resimUrl }));
     } catch (error) {
       bildir(error.message, 'warning');
+    }
+  };
+
+  const urunSatisGorunurlugunuDegistir = async urun => {
+    if (!yetkiyiDogrula('urun_yonet', 'Ürünün satış ekranı görünürlüğünü değiştirmek için ürün yönetme yetkisi gerekir.')) return;
+    const yeniDurum = urun.satis_ekraninda_goster === false;
+    try {
+      const guncellenen = await marketUrunSatisGorunurlugunuGuncelle(restaurantId, urun.id, yeniDurum);
+      const guncelle = liste => liste.map(item => String(item.id) === String(urun.id)
+        ? { ...item, ...guncellenen, satis_ekraninda_goster: yeniDurum }
+        : item);
+      setUrunler(guncelle);
+      setTumUrunler(guncelle);
+      bildir(yeniDurum
+        ? `${urun.urun_adi} satış ekranında gösterilecek.`
+        : `${urun.urun_adi} kutulardan gizlendi; barkodla satılabilir.`, 'success');
+    } catch (error) {
+      bildir(error.message, 'error');
     }
   };
 
@@ -1864,7 +1888,8 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     if (!aranan) return barkodAlaniniHazirla();
     const kucukAranan = aranan.toLocaleLowerCase('tr-TR');
     const dogrudanUrun = urunler.find(item => String(item.barkod || '').trim() === aranan)
-      || urunler.find(item => String(item.urun_adi || '').trim().toLocaleLowerCase('tr-TR') === kucukAranan);
+      || urunler.find(item => item.satis_ekraninda_goster !== false
+        && String(item.urun_adi || '').trim().toLocaleLowerCase('tr-TR') === kucukAranan);
     const teraziSonucu = dogrudanUrun ? null : teraziBarkodunuCoz(aranan);
     if (teraziSonucu?.hata) {
       bildir(teraziSonucu.hata, 'warning');
@@ -3396,6 +3421,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           <div className="market-row"><label>Stok<input type="number" step="0.001" value={urunFormu.stokMiktari} onChange={event => setUrunFormu({ ...urunFormu, stokMiktari: event.target.value })} /></label><label>Minimum stok<input type="number" step="0.001" value={urunFormu.minimumStok} onChange={event => setUrunFormu({ ...urunFormu, minimumStok: event.target.value })} /></label></div>
           <div className="market-row"><label>KDV<select value={urunFormu.kdvOrani} onChange={event => setUrunFormu({ ...urunFormu, kdvOrani: event.target.value })}><option value="0">%0</option><option value="1">%1</option><option value="10">%10</option><option value="20">%20</option></select></label><label>Raf konumu<input value={urunFormu.rafKonumu} onChange={event => setUrunFormu({ ...urunFormu, rafKonumu: event.target.value })} placeholder="A-03" /></label></div>
           <div className="market-row"><label>Son kullanma tarihi<input type="date" value={urunFormu.sonKullanmaTarihi} onChange={event => setUrunFormu({ ...urunFormu, sonKullanmaTarihi: event.target.value })} /></label><label>Parti / Lot No<input value={urunFormu.lotNo} onChange={event => setUrunFormu({ ...urunFormu, lotNo: event.target.value })} /></label></div>
+          <label className="market-check market-product-visibility-check"><input type="checkbox" checked={urunFormu.satisEkranindaGoster !== false} onChange={event => setUrunFormu({ ...urunFormu, satisEkranindaGoster: event.target.checked })} /> Barkodlu satış ekranında ürün kutusu olarak göster <small>Kapalı ürün kutularda görünmez; barkodu okutulunca satışa eklenir.</small></label>
           <div className="market-product-image-editor">
             <div className="market-product-image-preview">
               {urunFormu.resimUrl
@@ -3447,7 +3473,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               const acik = String(hizliDuzenleme?.id) === String(urun.id);
               const urunSiraBilgisi = urunSiraBilgileri.get(String(urun.id)) || { index: 0, toplam: 1 };
               return <Fragment key={urun.id}>
-                <tr><td><strong>{urun.urun_adi}</strong><small>{urun.barkod}{urun.son_kullanma_tarihi ? ` · SKT ${tarihYaz(urun.son_kullanma_tarihi)}` : ''}{urun.lot_no ? ` · Lot ${urun.lot_no}` : ''}</small></td><td>{urun.kategori}</td><td className={kritikUrunMu(urun) ? 'red' : ''}>{urun.stok_miktari} {urun.birim}</td><td>{para(urun.alis_fiyati)}</td><td><strong>{para(urun.satis_fiyati)}</strong></td><td className={kar < 0 ? 'red' : 'green'}>{para(kar)}</td><td><div className="market-inline-actions"><button type="button" title="Ürünü satış ekranında sola taşı" aria-label={`${urun.urun_adi} ürününü sola taşı`} disabled={urunSiraBilgisi.index <= 0 || Boolean(siralamaKaydediliyor)} onClick={() => satisSirasiniDegistir('urun', urun, -1)}>←</button><button type="button" title="Ürünü satış ekranında sağa taşı" aria-label={`${urun.urun_adi} ürününü sağa taşı`} disabled={urunSiraBilgisi.index === urunSiraBilgisi.toplam - 1 || Boolean(siralamaKaydediliyor)} onClick={() => satisSirasiniDegistir('urun', urun, 1)}>→</button><button type="button" title="Stok ve fiyatı düzenle" aria-label={`${urun.urun_adi} stok ve fiyatını düzenle`} onClick={() => acik ? setHizliDuzenleme(null) : hizliDuzenlemeyiAc(urun)}>✎</button><button type="button" onClick={() => urunuDuzenle(urun)}>Detay</button>{yetkiVar('silme_yap') && <button className="market-product-delete" type="button" disabled={String(silinenUrunId) === String(urun.id)} onClick={() => urunuSil(urun)}>{String(silinenUrunId) === String(urun.id) ? 'Siliniyor…' : 'Sil'}</button>}</div></td></tr>
+                <tr className={urun.satis_ekraninda_goster === false ? 'market-product-hidden-row' : ''}><td><strong>{urun.urun_adi}</strong><small>{urun.barkod}{urun.son_kullanma_tarihi ? ` · SKT ${tarihYaz(urun.son_kullanma_tarihi)}` : ''}{urun.lot_no ? ` · Lot ${urun.lot_no}` : ''}</small></td><td>{urun.kategori}</td><td className={kritikUrunMu(urun) ? 'red' : ''}>{urun.stok_miktari} {urun.birim}</td><td>{para(urun.alis_fiyati)}</td><td><strong>{para(urun.satis_fiyati)}</strong></td><td className={kar < 0 ? 'red' : 'green'}>{para(kar)}</td><td><div className="market-inline-actions"><button type="button" title="Ürünü satış ekranında sola taşı" aria-label={`${urun.urun_adi} ürününü sola taşı`} disabled={urunSiraBilgisi.index <= 0 || Boolean(siralamaKaydediliyor)} onClick={() => satisSirasiniDegistir('urun', urun, -1)}>←</button><button type="button" title="Ürünü satış ekranında sağa taşı" aria-label={`${urun.urun_adi} ürününü sağa taşı`} disabled={urunSiraBilgisi.index === urunSiraBilgisi.toplam - 1 || Boolean(siralamaKaydediliyor)} onClick={() => satisSirasiniDegistir('urun', urun, 1)}>→</button><button type="button" className={urun.satis_ekraninda_goster === false ? 'market-product-visibility-button hidden' : 'market-product-visibility-button active'} onClick={() => urunSatisGorunurlugunuDegistir(urun)}>{urun.satis_ekraninda_goster === false ? '⊘ Gizli' : '👁 Ekranda'}</button><button type="button" title="Stok ve fiyatı düzenle" aria-label={`${urun.urun_adi} stok ve fiyatını düzenle`} onClick={() => acik ? setHizliDuzenleme(null) : hizliDuzenlemeyiAc(urun)}>✎</button><button type="button" onClick={() => urunuDuzenle(urun)}>Detay</button>{yetkiVar('silme_yap') && <button className="market-product-delete" type="button" disabled={String(silinenUrunId) === String(urun.id)} onClick={() => urunuSil(urun)}>{String(silinenUrunId) === String(urun.id) ? 'Siliniyor…' : 'Sil'}</button>}</div></td></tr>
                 {acik && <tr className="market-inline-edit-row"><td colSpan="7"><div className="market-inline-edit">
                   <label>Stok<input type="number" step="0.001" value={hizliDuzenleme.stokMiktari} onChange={event => setHizliDuzenleme({ ...hizliDuzenleme, stokMiktari: event.target.value })} /></label>
                   <label>Alış fiyatı<input type="number" min="0" step="0.01" value={hizliDuzenleme.alisFiyati} onChange={event => setHizliDuzenleme({ ...hizliDuzenleme, alisFiyati: event.target.value })} /></label>

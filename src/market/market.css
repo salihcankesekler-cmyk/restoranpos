@@ -2844,6 +2844,12 @@
 .market-barcode-assignment button.scale{border-color:#a7f3d0;background:#ecfdf5;color:#047857}
 .market-barcode-assignment button.scale.count{border-color:#fde68a;background:#fffbeb;color:#a16207}
 .market-product-form label>small{color:#64748b;font-size:9px;font-weight:700}
+.market-product-visibility-check{display:flex!important;align-items:flex-start!important;flex-direction:row!important;flex-wrap:wrap;gap:6px!important;padding:9px 10px!important;border:1px solid #bae6fd!important;border-radius:8px;background:#f0f9ff;color:#0c4a6e!important}
+.market-product-visibility-check>small{width:100%;padding-left:22px;color:#64748b!important}
+.market-product-hidden-row{opacity:.62;background:#f8fafc}
+.market-inline-actions .market-product-visibility-button{min-width:66px}
+.market-inline-actions .market-product-visibility-button.active{border-color:#86efac;background:#f0fdf4;color:#166534}
+.market-inline-actions .market-product-visibility-button.hidden{border-color:#cbd5e1;background:#f8fafc;color:#64748b}
 
 .market-cari-form label{display:flex;min-width:0;flex-direction:column;gap:4px;color:#475569;font-size:10px;font-weight:850}
 .market-cari-form select,.market-cari-form textarea{min-width:0;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:8px 9px;background:#fff;font:inherit}
