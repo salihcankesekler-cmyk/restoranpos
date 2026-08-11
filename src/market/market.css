@@ -890,7 +890,150 @@
 }
 
 .market-price-modal .market-total-adjust-modal{
-  width:min(100%,460px);
+  width:min(100%,480px);
+  max-height:96vh;
+  overflow:auto;
+}
+.market-touch-discount-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+.market-touch-discount-head>span:first-child{
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:3px;
+}
+.market-touch-discount-head small{
+  margin:0;
+  color:#f97316;
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+.market-touch-discount-head strong{
+  color:#0f172a;
+  font-size:20px;
+}
+.market-touch-discount-head-actions{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.market-touch-discount-head-actions button{
+  min-height:36px;
+  border:0;
+  border-radius:9px;
+  font-weight:900;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.market-touch-discount-head-actions .reset{
+  padding:0 11px;
+  background:#fff1f2;
+  color:#be123c;
+  font-size:11px;
+}
+.market-touch-discount-head-actions .close{
+  width:38px;
+  background:#e2e8f0;
+  color:#334155;
+  font-size:24px;
+  line-height:1;
+}
+.market-touch-discount-value{
+  position:relative;
+}
+.market-price-modal .market-touch-discount-value input{
+  height:58px;
+  padding:8px 14px;
+  border-color:#93c5fd;
+  background:#eff6ff;
+  color:#0f172a;
+  font-size:27px;
+  text-align:right;
+}
+.market-touch-discount-modal .market-standard-percentages{
+  margin-top:8px!important;
+}
+.market-touch-discount-modal .market-standard-percentages button{
+  min-height:42px;
+}
+.market-touch-discount-modal .market-discount-keypad{
+  margin-top:7px!important;
+}
+.market-touch-discount-summary{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+  margin-top:9px;
+}
+.market-touch-discount-summary span{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  padding:8px 10px;
+  border:1px solid #e2e8f0;
+  border-radius:9px;
+  background:#f8fafc;
+  color:#64748b;
+  font-size:10px;
+  font-weight:850;
+}
+.market-touch-discount-summary strong{
+  color:#0f172a;
+  font-size:15px;
+}
+.market-price-modal .market-discount-type-actions{
+  display:grid!important;
+  grid-template-columns:1fr 1fr;
+  gap:7px!important;
+  justify-content:stretch!important;
+  margin-top:9px!important;
+}
+.market-discount-type-actions button{
+  display:flex;
+  min-width:0;
+  min-height:78px;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  border:0;
+  border-radius:11px;
+  color:#fff;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.market-discount-type-actions button.percent{
+  background:linear-gradient(135deg,#e11d48,#be123c);
+}
+.market-discount-type-actions button.amount{
+  background:linear-gradient(135deg,#2563eb,#1d4ed8);
+}
+.market-discount-type-actions button span{
+  font-size:13px;
+  font-weight:950;
+  letter-spacing:.04em;
+}
+.market-discount-type-actions button strong{
+  font-size:20px;
+  line-height:1.1;
+}
+.market-discount-type-actions button small{
+  margin:1px 0 0;
+  color:#fff;
+  font-size:10px;
+}
+.market-discount-type-actions button:disabled{
+  opacity:.42;
+  cursor:not-allowed;
+}
+.market-discount-type-actions button:not(:disabled):active{
+  transform:scale(.98);
 }
 .market-adjust-direction button.active.decrease{
   border-color:#ef4444;

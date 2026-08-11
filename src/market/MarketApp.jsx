@@ -459,6 +459,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [odemeParcalari, setOdemeParcalari] = useState([]);
   const [onFisYazdiriliyor, setOnFisYazdiriliyor] = useState(false);
   const [genelIndirim, setGenelIndirim] = useState({ yon: 'azalt', tur: 'yuzde', deger: '' });
+  const [genelIndirimTaslagi, setGenelIndirimTaslagi] = useState({ yon: 'azalt', deger: '' });
   const [genelIndirimPenceresi, setGenelIndirimPenceresi] = useState(false);
   const [bekleyenSepetPenceresi, setBekleyenSepetPenceresi] = useState('');
   const [bekleyenSepetAdi, setBekleyenSepetAdi] = useState('');
@@ -881,6 +882,17 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const verilenTutarSayisi = Math.max(Number(verilenTutar || 0), 0);
   const paraUstuTutari = paraYuvarla(Math.max(verilenTutarSayisi - kalanOdemeTutari, 0));
   const eksikTutar = paraYuvarla(Math.max(kalanOdemeTutari - verilenTutarSayisi, 0));
+  const genelIndirimTaslakDegeri = Math.max(Number(genelIndirimTaslagi.deger || 0), 0);
+  const genelIndirimTaslakYuzdeTutari = paraYuvarla(
+    sepetToplamlari.araToplam * Math.min(genelIndirimTaslakDegeri, 100) / 100
+  );
+  const genelIndirimTaslakTlTutari = paraYuvarla(genelIndirimTaslagi.yon === 'arttir'
+    ? genelIndirimTaslakDegeri
+    : Math.min(genelIndirimTaslakDegeri, sepetToplamlari.araToplam));
+  const genelIndirimTaslakSonucu = tutar => paraYuvarla(Math.max(
+    sepetToplamlari.araToplam + (genelIndirimTaslagi.yon === 'arttir' ? tutar : -tutar),
+    0
+  ));
 
   const etiketUrunHaritasi = useMemo(
     () => new Map(urunler.map(urun => [String(urun.id), urun])),
@@ -1835,7 +1847,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       event.preventDefault();
       if (!sepet.length) return bildir('Fiyat ayarı uygulanacak sepet boş.', 'warning');
       if (!odemeSurerkenSepetDegisebilirMi()) return;
-      if (yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) setGenelIndirimPenceresi(true);
+      if (yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) genelIndirimPenceresiniAc();
       else bildir('Bu personelin indirim veya fiyat değiştirme yetkisi yok.', 'warning');
       return;
     }
@@ -2146,6 +2158,50 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       const yeniDeger = mevcut === '0' ? eklenecek.replace(/^0+/, '') || '0' : `${mevcut}${eklenecek}`;
       return yeniDeger.slice(0, 8);
     });
+  };
+
+  const genelIndirimPenceresiniAc = () => {
+    const kayitliAyarVar = Number(genelIndirim.deger || 0) > 0;
+    setGenelIndirimTaslagi({
+      yon: kayitliAyarVar ? genelIndirim.yon : yetkiVar('indirim_yap') ? 'azalt' : 'arttir',
+      deger: kayitliAyarVar ? String(genelIndirim.deger) : '',
+    });
+    setGenelIndirimPenceresi(true);
+  };
+
+  const genelIndirimTusunaBas = tus => {
+    setGenelIndirimTaslagi(onceki => {
+      const mevcut = String(onceki.deger || '').replace(',', '.').replace(/[^\d.]/g, '');
+      if (tus === 'C') return { ...onceki, deger: '' };
+      if (tus === 'sil') return { ...onceki, deger: mevcut.slice(0, -1) };
+      if (tus === '.') return { ...onceki, deger: mevcut.includes('.') ? mevcut : `${mevcut || '0'}.` };
+
+      const eklenecek = String(tus).replace(/\D/g, '');
+      if (!eklenecek) return onceki;
+      if (mevcut.includes('.')) {
+        const ondalikUzunlugu = mevcut.split('.')[1]?.length || 0;
+        return { ...onceki, deger: `${mevcut}${eklenecek.slice(0, Math.max(2 - ondalikUzunlugu, 0))}` };
+      }
+      const yeniDeger = mevcut === '0' ? eklenecek.replace(/^0+/, '') || '0' : `${mevcut}${eklenecek}`;
+      return { ...onceki, deger: yeniDeger.slice(0, 8) };
+    });
+  };
+
+  const genelIndirimiUygula = tur => {
+    if (!odemeSurerkenSepetDegisebilirMi()) return;
+    const deger = Number(genelIndirimTaslagi.deger);
+    if (!Number.isFinite(deger) || deger <= 0) return bildir('Sıfırdan büyük bir indirim veya artış değeri girin.', 'warning');
+    if (tur === 'yuzde' && deger > 100) return bildir('Yüzde değeri 100’den büyük olamaz.', 'warning');
+    const yetkili = genelIndirimTaslagi.yon === 'arttir'
+      ? yetkiyiDogrula('fiyat_degistir', 'Toplam tutarı artırmak için fiyat değiştirme yetkisi gerekir.')
+      : yetkiyiDogrula('indirim_yap', 'Toplam tutarı azaltmak için indirim yetkisi gerekir.');
+    if (!yetkili) return;
+    const uygulanacakDeger = tur === 'tutar' && genelIndirimTaslagi.yon !== 'arttir'
+      ? Math.min(deger, sepetToplamlari.araToplam)
+      : deger;
+    setGenelIndirim({ yon: genelIndirimTaslagi.yon, tur, deger: String(uygulanacakDeger) });
+    setGenelIndirimPenceresi(false);
+    window.setTimeout(() => barkodRef.current?.focus(), 80);
   };
 
   const anlikSatisFiyatiniUygula = event => {
@@ -3198,7 +3254,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             {yetkiVar('rapor_gor') && <button type="button" onClick={() => { setSekme('raporlar'); setRaporSekmesi('fisler'); }}><span>🧾</span><b>Fiş Listesi</b></button>}
             {yetkiVar('fis_yazdir') && <button type="button" disabled={!sepet.length || onFisYazdiriliyor} onClick={onFisiYazdir}><span>🖨</span><b>Ön Fiş Yazdır</b><small>{onFisYazdiriliyor ? 'Gönderiliyor…' : 'Satış öncesi'}</small></button>}
             {(yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) && <button type="button" disabled={!sepet.length || odemeBasladi} onClick={() => {
-              if (yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) setGenelIndirimPenceresi(true);
+              if (yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) genelIndirimPenceresiniAc();
               else bildir('Bu personelin indirim veya fiyat değiştirme yetkisi yok.', 'warning');
             }}><span>±</span><b>Fiyat / İndirim</b><small>F4</small></button>}
             {yetkiVar('adisyon_duzenle') && <button type="button" disabled={!sepet.length || bekleyenSepetIsleniyor || odemeBasladi} onClick={() => setBekleyenSepetPenceresi('kaydet')}><span>⏸</span><b>Beklet</b><small>F5</small></button>}
@@ -3314,25 +3370,44 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           </form>
         </div>}
         {genelIndirimPenceresi && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Sepet toplam fiyat ayarı">
-          <form className="market-total-adjust-modal" onSubmit={event => {
-            event.preventDefault();
-            const yetkili = genelIndirim.yon === 'arttir'
-              ? yetkiyiDogrula('fiyat_degistir', 'Toplam tutarı artırmak için fiyat değiştirme yetkisi gerekir.')
-              : yetkiyiDogrula('indirim_yap', 'Toplam tutarı azaltmak için indirim yetkisi gerekir.');
-            if (yetkili) setGenelIndirimPenceresi(false);
-          }}>
-            <span>TOPLAM FİYAT AYARI</span>
-            <h2>Tutarı azalt veya artır</h2>
+          <form className="market-total-adjust-modal market-touch-discount-modal" onSubmit={event => event.preventDefault()}>
+            <header className="market-touch-discount-head">
+              <span><small>TOPLAM FİYAT AYARI</small><strong>İndirim / artış gir</strong></span>
+              <span className="market-touch-discount-head-actions">
+                {Number(genelIndirim.deger || 0) > 0 && <button type="button" className="reset" onClick={() => { setGenelIndirim({ yon: 'azalt', tur: 'yuzde', deger: '' }); setGenelIndirimPenceresi(false); }}>Ayarı kaldır</button>}
+                <button type="button" className="close" aria-label="Fiyat ayarını kapat" title="Kapat" onClick={() => setGenelIndirimPenceresi(false)}>×</button>
+              </span>
+            </header>
             <div className="market-adjust-direction">
-              <button type="button" className={genelIndirim.yon !== 'arttir' ? 'active decrease' : ''} onClick={() => setGenelIndirim({ ...genelIndirim, yon: 'azalt' })}>− Azalt</button>
-              <button type="button" className={genelIndirim.yon === 'arttir' ? 'active increase' : ''} onClick={() => setGenelIndirim({ ...genelIndirim, yon: 'arttir' })}>＋ Artır</button>
+              <button type="button" className={genelIndirimTaslagi.yon !== 'arttir' ? 'active decrease' : ''} onClick={() => setGenelIndirimTaslagi({ ...genelIndirimTaslagi, yon: 'azalt' })}>− Azalt</button>
+              <button type="button" className={genelIndirimTaslagi.yon === 'arttir' ? 'active increase' : ''} onClick={() => setGenelIndirimTaslagi({ ...genelIndirimTaslagi, yon: 'arttir' })}>＋ Artır</button>
             </div>
-            <div className="market-standard-percentages">
-              {[5, 10, 15, 20].map(yuzde => <button type="button" key={yuzde} className={genelIndirim.tur === 'yuzde' && Number(genelIndirim.deger) === yuzde ? 'active' : ''} onClick={() => setGenelIndirim({ ...genelIndirim, tur: 'yuzde', deger: String(yuzde) })}>%{yuzde}</button>)}
+            <label className="market-touch-discount-value">TUŞLANAN DEĞER<input type="number" min="0" step="0.01" inputMode="decimal" value={genelIndirimTaslagi.deger} onChange={event => setGenelIndirimTaslagi({ ...genelIndirimTaslagi, deger: event.target.value })} placeholder="0,00" autoFocus /></label>
+            <div className="market-standard-percentages" aria-label="Hazır indirim yüzdeleri">
+              {[5, 10, 15, 20].map(yuzde => <button type="button" key={yuzde} className={Number(genelIndirimTaslagi.deger) === yuzde ? 'active' : ''} onClick={() => setGenelIndirimTaslagi({ ...genelIndirimTaslagi, deger: String(yuzde) })}>%{yuzde}</button>)}
             </div>
-            <div className="market-modal-discount-fields"><label>Tür<select value={genelIndirim.tur} onChange={event => setGenelIndirim({ ...genelIndirim, tur: event.target.value })}><option value="yuzde">Yüzde (%)</option><option value="tutar">Toplam TL</option></select></label><label>Değer<input type="number" min="0" max={genelIndirim.tur === 'yuzde' ? 100 : genelIndirim.yon === 'arttir' ? undefined : sepetToplamlari.araToplam} step="0.01" value={genelIndirim.deger} onChange={event => setGenelIndirim({ ...genelIndirim, deger: event.target.value })} autoFocus /></label></div>
-            <div className={genelIndirim.yon === 'arttir' ? 'market-adjust-preview increase' : 'market-adjust-preview decrease'}><span>{genelIndirim.yon === 'arttir' ? 'Artış' : 'İndirim'}<strong>{genelIndirim.yon === 'arttir' ? '+' : '−'}{para(sepetToplamlari.genelFiyatAyarTutari)}</strong></span><span>Ödenecek<strong>{para(sepetToplamlari.netToplam)}</strong></span></div>
-            <div><button className="market-remove" type="button" onClick={() => { setGenelIndirim({ yon: 'azalt', tur: 'yuzde', deger: '' }); setGenelIndirimPenceresi(false); }}>Ayarı Kaldır</button><button className="market-primary" type="submit">Uygula</button></div>
+            <div className="market-scale-keypad market-misc-price-keypad market-discount-keypad" aria-label="Dokunmatik indirim tuş takımı">
+              {[7, 8, 9].map(rakam => <button type="button" key={rakam} onClick={() => genelIndirimTusunaBas(rakam)}>{rakam}</button>)}<button type="button" className="control" onClick={() => genelIndirimTusunaBas('sil')}>⌫</button>
+              {[4, 5, 6].map(rakam => <button type="button" key={rakam} onClick={() => genelIndirimTusunaBas(rakam)}>{rakam}</button>)}<button type="button" className="control" onClick={() => genelIndirimTusunaBas('C')}>C</button>
+              {[1, 2, 3, 0].map(rakam => <button type="button" key={rakam} onClick={() => genelIndirimTusunaBas(rakam)}>{rakam}</button>)}
+              <button type="button" className="wide" onClick={() => genelIndirimTusunaBas('00')}>00</button><button type="button" className="wide" onClick={() => genelIndirimTusunaBas('.')}>Virgül</button>
+            </div>
+            <section className="market-touch-discount-summary">
+              <span>Sepet toplamı<strong>{para(sepetToplamlari.araToplam)}</strong></span>
+              <span>İşlem<strong>{genelIndirimTaslagi.yon === 'arttir' ? 'Artırılacak' : 'Azaltılacak'}</strong></span>
+            </section>
+            <div className="market-discount-type-actions">
+              <button type="button" className="percent" disabled={!genelIndirimTaslakDegeri} onClick={() => genelIndirimiUygula('yuzde')}>
+                <span>% UYGULA</span>
+                <strong>{genelIndirimTaslagi.yon === 'arttir' ? '+' : '−'}{para(genelIndirimTaslakYuzdeTutari)}</strong>
+                <small>Yeni toplam {para(genelIndirimTaslakSonucu(genelIndirimTaslakYuzdeTutari))}</small>
+              </button>
+              <button type="button" className="amount" disabled={!genelIndirimTaslakDegeri} onClick={() => genelIndirimiUygula('tutar')}>
+                <span>TL UYGULA</span>
+                <strong>{genelIndirimTaslagi.yon === 'arttir' ? '+' : '−'}{para(genelIndirimTaslakTlTutari)}</strong>
+                <small>Yeni toplam {para(genelIndirimTaslakSonucu(genelIndirimTaslakTlTutari))}</small>
+              </button>
+            </div>
           </form>
         </div>}
         {bekleyenSepetPenceresi === 'kaydet' && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Sepeti beklemeye al">
