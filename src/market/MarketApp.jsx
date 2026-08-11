@@ -837,15 +837,20 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     });
   }, [aktifSatisGrubu, satisArama, urunler]);
 
+  const aktifPersonelSiparisGrubu = gorunenGruplar.some(grup => String(grup.id) === String(personelSiparisGrubu))
+    ? personelSiparisGrubu
+    : 'tumu';
   const personelSiparisUrunleri = useMemo(() => {
     const metin = personelSiparisArama.trim().toLocaleLowerCase('tr-TR');
+    const gorunenGrupIdleri = new Set(gorunenGruplar.map(grup => String(grup.id)));
     return urunler.filter(urun => {
-      if (personelSiparisGrubu !== 'tumu' && String(urun.grup_id) !== String(personelSiparisGrubu)) return false;
+      if (!gorunenGrupIdleri.has(String(urun.grup_id))) return false;
+      if (aktifPersonelSiparisGrubu !== 'tumu' && String(urun.grup_id) !== String(aktifPersonelSiparisGrubu)) return false;
       if (!metin) return true;
       return [urun.urun_adi, urun.barkod, urun.stok_kodu, urun.marka]
         .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin));
     });
-  }, [personelSiparisArama, personelSiparisGrubu, urunler]);
+  }, [aktifPersonelSiparisGrubu, gorunenGruplar, personelSiparisArama, urunler]);
 
   const personelSiparisToplami = useMemo(() => personelSiparisSepeti.reduce((toplam, kalem) =>
     toplam + Number(kalem.adet || 0) * Number(kalem.satis_fiyati || 0), 0), [personelSiparisSepeti]);
@@ -3330,8 +3335,8 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           <div className="market-heading"><div><span>PERSONEL SİPARİŞİ</span><h2>Ürünleri seçip kasaya gönderin</h2><small>Gönderilen sipariş barkodlu satış ekranındaki Bekleyenler listesine düşer.</small></div></div>
           <form className="market-staff-order-scan" onSubmit={personelSiparisBarkodunuEkle}><input ref={personelSiparisBarkodRef} className="market-staff-order-search" value={personelSiparisArama} onChange={event => setPersonelSiparisArama(event.target.value)} onBlur={event => personelSiparisBarkodAlaniniHazirla({ target: event.relatedTarget })} placeholder="Barkod okutun veya ürün adı yazın" autoFocus /><button type="submit">＋ Ekle</button></form>
           <div className="market-staff-order-groups">
-            <button type="button" className={personelSiparisGrubu === 'tumu' ? 'active' : ''} onClick={() => setPersonelSiparisGrubu('tumu')}>Tüm Ürünler</button>
-            {gruplar.map(grup => <button type="button" key={grup.id} className={String(personelSiparisGrubu) === String(grup.id) ? 'active' : ''} onClick={() => setPersonelSiparisGrubu(grup.id)}>{grup.grup_adi}</button>)}
+            <button type="button" className={aktifPersonelSiparisGrubu === 'tumu' ? 'active' : ''} onClick={() => setPersonelSiparisGrubu('tumu')}>Tüm Ürünler</button>
+            {gorunenGruplar.map(grup => <button type="button" key={grup.id} className={String(aktifPersonelSiparisGrubu) === String(grup.id) ? 'active' : ''} onClick={() => setPersonelSiparisGrubu(grup.id)}>{grup.grup_adi}</button>)}
           </div>
           <div className="market-staff-order-products">
             {personelSiparisUrunleri.map(urun => {
