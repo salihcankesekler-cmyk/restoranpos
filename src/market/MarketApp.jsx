@@ -67,6 +67,65 @@ const para = value => new Intl.NumberFormat('tr-TR', {
   style: 'currency', currency: 'TRY', maximumFractionDigits: 2,
 }).format(Number(value || 0));
 
+const htmlKacir = value => String(value ?? '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;');
+
+const arkaEkranGorseliniHazirla = file => new Promise((resolve, reject) => {
+  if (!String(file?.type || '').startsWith('image/')) {
+    reject(new Error('Yalnızca görsel dosyaları eklenebilir.'));
+    return;
+  }
+  const okuyucu = new FileReader();
+  okuyucu.onerror = () => reject(new Error('Görsel okunamadı.'));
+  okuyucu.onload = () => {
+    const gorsel = new Image();
+    gorsel.onerror = () => reject(new Error(`${file.name} açılamadı.`));
+    gorsel.onload = () => {
+      const oran = Math.min(1600 / gorsel.naturalWidth, 900 / gorsel.naturalHeight, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(Math.round(gorsel.naturalWidth * oran), 1);
+      canvas.height = Math.max(Math.round(gorsel.naturalHeight * oran), 1);
+      const cizim = canvas.getContext('2d');
+      cizim.fillStyle = '#0f172a';
+      cizim.fillRect(0, 0, canvas.width, canvas.height);
+      cizim.drawImage(gorsel, 0, 0, canvas.width, canvas.height);
+      resolve({
+        id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+        ad: file.name,
+        veri: canvas.toDataURL('image/jpeg', .82),
+      });
+    };
+    gorsel.src = okuyucu.result;
+  };
+  okuyucu.readAsDataURL(file);
+});
+
+const arkaEkranBelgesiniYaz = (pencere, { isletmeAdi, cariAdi, kalemler, toplam, brutToplam, indirim, gorseller }) => {
+  if (!pencere || pencere.closed) return false;
+  const guvenliGorseller = Array.isArray(gorseller) ? gorseller.filter(item => item?.veri) : [];
+  const gorselSayisi = Math.max(guvenliGorseller.length, 1);
+  const sure = gorselSayisi * 6;
+  const dilim = 100 / gorselSayisi;
+  const gorunurBitis = Math.max(dilim - 3, dilim * .82);
+  const slaytlar = guvenliGorseller.map((gorsel, index) => `<img class="arka-ekran-slayt" src="${htmlKacir(gorsel.veri)}" alt="" style="${guvenliGorseller.length === 1 ? 'opacity:1;animation:none' : `animation-duration:${sure}s;animation-delay:${index * 6}s`}" />`).join('');
+  const urunler = kalemler.slice(-8).map(kalem => `<li><span><strong>${htmlKacir(kalem.urun_adi)}</strong><small>${htmlKacir(miktarYaz(kalem.adet))} × ${htmlKacir(para(kalem.satis_fiyati))}</small></span><b>${htmlKacir(para(Number(kalem.adet) * Number(kalem.satis_fiyati)))}</b></li>`).join('');
+  const satisVar = kalemler.length > 0;
+  try {
+    pencere.document.open();
+    pencere.document.write(`<!doctype html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Müşteri Ekranı · ${htmlKacir(isletmeAdi)}</title><style>
+      *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#08111f;color:#fff;font-family:Inter,"Segoe UI",sans-serif}body{display:grid}.ekran{position:relative;width:100%;height:100%}.ust{height:74px;padding:0 34px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;background:#0f172ae8}.marka{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:950}.marka i{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#f97316;font-style:normal}.ust small{color:#cbd5e1;font-size:14px}.bekleme{position:absolute;inset:0;display:grid;background:#08111f}.slaytlar{position:absolute;inset:0}.arka-ekran-slayt{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;animation:arkaEkranSlayt linear infinite}.slaytlar:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#07101fcf 0,#07101f42 48%,#07101f1f)}.bos{position:relative;z-index:2;align-self:end;max-width:760px;padding:60px}.bos h1{margin:0 0 12px;font-size:clamp(42px,7vw,86px);line-height:1}.bos p{margin:0;color:#dbe5f2;font-size:clamp(18px,2.2vw,28px)}.satis{height:100%;display:grid;grid-template-rows:74px 1fr;background:linear-gradient(135deg,#f8fafc,#fff7ed);color:#0f172a}.satis-icerik{min-height:0;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,.55fr);gap:0}.urunler{min-height:0;padding:30px 34px;overflow:hidden}.urunler h1{margin:0 0 22px;font-size:28px}.urunler ul{list-style:none;margin:0;padding:0;border-top:1px solid #dbe2ea}.urunler li{min-height:62px;display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid #dbe2ea}.urunler li span{display:flex;min-width:0;flex-direction:column}.urunler li strong{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.urunler li small{margin-top:4px;color:#64748b;font-size:13px}.urunler li b{font-size:19px;white-space:nowrap}.ozet{padding:38px 32px;display:flex;flex-direction:column;justify-content:flex-end;background:#0f172a;color:#fff}.ozet>span{color:#94a3b8;font-size:14px;font-weight:800}.ozet>strong{margin:8px 0 26px;color:#fb923c;font-size:clamp(50px,6vw,84px);line-height:1}.ozet dl{margin:0 0 28px}.ozet dl div{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid #ffffff16}.ozet dt{color:#94a3b8}.ozet dd{margin:0;font-weight:850}.tesekkur{padding-top:22px;border-top:1px solid #ffffff24;font-size:21px;font-weight:900}.cari{margin-top:8px;color:#cbd5e1;font-size:13px}@keyframes arkaEkranSlayt{0%,${gorunurBitis}%{opacity:1}${dilim}%,100%{opacity:0}}
+    </style></head><body>${satisVar ? `<main class="ekran satis"><header class="ust"><span class="marka"><i>i</i>${htmlKacir(isletmeAdi || 'Integra POS')}</span><small>Müşteri Ekranı</small></header><div class="satis-icerik"><section class="urunler"><h1>Alışverişiniz</h1><ul>${urunler}</ul></section><aside class="ozet"><span>ÖDENECEK TUTAR</span><strong>${htmlKacir(para(toplam))}</strong><dl><div><dt>Brüt toplam</dt><dd>${htmlKacir(para(brutToplam))}</dd></div>${indirim > 0 ? `<div><dt>Toplam indirim</dt><dd>-${htmlKacir(para(indirim))}</dd></div>` : ''}</dl><div class="tesekkur">Bizi tercih ettiğiniz için teşekkür ederiz.</div>${cariAdi ? `<div class="cari">Müşteri: ${htmlKacir(cariAdi)}</div>` : ''}</aside></div></main>` : `<main class="ekran bekleme"><div class="slaytlar">${slaytlar}</div><div class="bos"><h1>${htmlKacir(isletmeAdi || 'Hoş geldiniz')}</h1><p>${guvenliGorseller.length ? 'Kampanyalarımızı ve fırsatlarımızı inceleyin.' : 'Satış başladığında ürünleriniz ve toplam tutar burada görünür.'}</p></div></main>`}</body></html>`);
+    pencere.document.close();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const ODEME_TIPLERI = ['Nakit', 'Kredi Kartı', 'Cari / Veresiye'];
 const MARKET_OFFLINE_QUEUE_TYPE = 'market-sale';
 const paraYuvarla = value => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
@@ -423,6 +482,15 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [satisCariId, setSatisCariId] = useState('');
   const [satisCariPenceresi, setSatisCariPenceresi] = useState(false);
   const [satisCariArama, setSatisCariArama] = useState('');
+  const [arkaEkranAyarlariAcik, setArkaEkranAyarlariAcik] = useState(false);
+  const [arkaEkranGorselleri, setArkaEkranGorselleri] = useState(() => {
+    try {
+      const kayitli = JSON.parse(localStorage.getItem(`integra-market-arka-ekran-${restaurantId}`) || '[]');
+      return Array.isArray(kayitli) ? kayitli : [];
+    } catch {
+      return [];
+    }
+  });
   const [fisDavranisi, setFisDavranisi] = useState(() => {
     const kayitli = localStorage.getItem(`integra-market-fis-${restaurantId}`);
     return ['yazdir', 'yazdirma', 'sor'].includes(kayitli) ? kayitli : 'sor';
@@ -494,6 +562,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const sayimIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
   const faturaIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
   const finansIslemAnahtariRef = useRef({ anahtar: '', imza: '' });
+  const arkaEkranPenceresiRef = useRef(null);
 
   const bildir = (mesaj, tip = 'info') => {
     if (typeof notify === 'function') notify(mesaj, tip);
@@ -1080,6 +1149,70 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const tedarikciCarileri = cariler.filter(cari => ['tedarikci', 'karma'].includes(cariTuru(cari)));
   const seciliSatisCarisi = cariler.find(cari => String(cari.id) === String(satisCariId));
   const seciliPersonelSiparisCarisi = cariler.find(cari => String(cari.id) === String(personelSiparisCariId));
+  const arkaEkranVerisi = useMemo(() => ({
+    isletmeAdi: restaurantName || 'Integra POS',
+    cariAdi: seciliSatisCarisi?.ad || '',
+    kalemler: sepet,
+    toplam: sepetToplamlari.netToplam,
+    brutToplam: sepetToplamlari.brutToplam,
+    indirim: sepetToplamlari.urunIndirimTutari + sepetToplamlari.genelIndirimTutari,
+    gorseller: arkaEkranGorselleri,
+  }), [arkaEkranGorselleri, restaurantName, seciliSatisCarisi?.ad, sepet, sepetToplamlari]);
+
+  useEffect(() => {
+    arkaEkranBelgesiniYaz(arkaEkranPenceresiRef.current, arkaEkranVerisi);
+  }, [arkaEkranVerisi]);
+
+  useEffect(() => () => {
+    if (arkaEkranPenceresiRef.current && !arkaEkranPenceresiRef.current.closed) arkaEkranPenceresiRef.current.close();
+  }, []);
+
+  const arkaEkranGorselleriniKaydet = yeniGorseller => {
+    try {
+      localStorage.setItem(`integra-market-arka-ekran-${restaurantId}`, JSON.stringify(yeniGorseller));
+      setArkaEkranGorselleri(yeniGorseller);
+      return true;
+    } catch {
+      bildir('Görseller bu bilgisayara kaydedilemedi. Daha az veya daha küçük görsel deneyin.', 'warning');
+      return false;
+    }
+  };
+
+  const arkaEkranGorseliEkle = async event => {
+    const dosyalar = [...(event.target.files || [])].slice(0, Math.max(6 - arkaEkranGorselleri.length, 0));
+    event.target.value = '';
+    if (!dosyalar.length) {
+      if (arkaEkranGorselleri.length >= 6) bildir('Arka ekrana en fazla 6 görsel eklenebilir.', 'warning');
+      return;
+    }
+    try {
+      const yeniGorseller = await Promise.all(dosyalar.map(arkaEkranGorseliniHazirla));
+      if (arkaEkranGorselleriniKaydet([...arkaEkranGorselleri, ...yeniGorseller].slice(0, 6))) {
+        bildir(`${yeniGorseller.length} arka ekran görseli kaydedildi.`, 'success');
+      }
+    } catch (error) {
+      bildir(error.message, 'warning');
+    }
+  };
+
+  const arkaEkranGorseliniSil = gorselId => {
+    arkaEkranGorselleriniKaydet(arkaEkranGorselleri.filter(gorsel => gorsel.id !== gorselId));
+  };
+
+  const arkaEkraniAc = () => {
+    const oncekiPencere = arkaEkranPenceresiRef.current;
+    const pencere = oncekiPencere && !oncekiPencere.closed
+      ? oncekiPencere
+      : window.open('', 'integra-market-musteri-ekrani', 'popup=yes,width=1280,height=720');
+    if (!pencere) {
+      bildir('Arka ekran penceresi tarayıcı tarafından engellendi. Açılır pencereye izin verin.', 'warning');
+      return;
+    }
+    arkaEkranPenceresiRef.current = pencere;
+    arkaEkranBelgesiniYaz(pencere, arkaEkranVerisi);
+    pencere.focus();
+  };
+
   const satisCariAramaMetni = satisCariArama.trim().toLocaleLowerCase('tr-TR');
   const filtreliSatisCarileri = satisCarileri.filter(cari => {
     if (!satisCariAramaMetni) return true;
@@ -2978,6 +3111,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           </div>
           <aside className="market-pos-action-rail" aria-label="Hızlı satış işlemleri">
             <button type="button" className={satisCariId ? 'active' : ''} onClick={() => { setSatisCariArama(''); setSatisCariPenceresi(true); }}><span>👤</span><b>Cari</b><small>{seciliSatisCarisi?.ad || 'Seçilmedi'}</small></button>
+            <button type="button" className={arkaEkranGorselleri.length ? 'active' : ''} onClick={() => setArkaEkranAyarlariAcik(true)}><span>🖥</span><b>Arka Ekran</b><small>{arkaEkranGorselleri.length ? `${arkaEkranGorselleri.length} görsel` : 'Görsel ekle'}</small></button>
             {yetkiVar('rapor_gor') && <button type="button" onClick={() => { setSekme('raporlar'); setRaporSekmesi('fisler'); }}><span>🧾</span><b>Fiş Listesi</b></button>}
             {yetkiVar('fis_yazdir') && <button type="button" disabled={!sepet.length || onFisYazdiriliyor} onClick={onFisiYazdir}><span>🖨</span><b>Ön Fiş Yazdır</b><small>{onFisYazdiriliyor ? 'Gönderiliyor…' : 'Satış öncesi'}</small></button>}
             {(yetkiVar('indirim_yap') || yetkiVar('fiyat_degistir')) && <button type="button" disabled={!sepet.length || odemeBasladi} onClick={() => {
@@ -3025,6 +3159,28 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
           <div className="market-payment-buttons"><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Nakit')}><kbd>F1</kbd>💵<span>{satisKaydediliyor ? 'Kaydediliyor…' : 'Nakit'}</span></button><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Kredi Kartı')}><kbd>F2</kbd>💳<span>{satisKaydediliyor ? 'Bekleyin' : 'Kart'}</span></button><button type="button" disabled={!sepet.length || satisKaydediliyor} onClick={() => satisiTamamla('Cari / Veresiye')}><kbd>F3</kbd>👤<span>{satisKaydediliyor ? 'Bekleyin' : 'Cari'}</span></button></div>
           <p className="market-note">Tutar yazıp ödeme türüne basın. Hesap tamamen ödenene kadar fiş açık kalır; boş bırakırsanız kalan tutarın tamamı seçilen yöntemle alınır.</p>
         </div>
+        {arkaEkranAyarlariAcik && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Arka ekran görselleri">
+          <div className="market-customer-display-modal">
+            <span>MÜŞTERİ EKRANI</span>
+            <h2>Arka ekran görselleri</h2>
+            <p>Satış yokken bu görseller sırayla gösterilir. Satış başladığında ekran otomatik olarak ürünlere ve toplam tutara geçer.</p>
+            <label className="market-customer-display-upload">
+              <span>＋ Görsel Ekle</span>
+              <small>Yatay kampanya görselleri daha iyi görünür · En fazla 6 adet</small>
+              <input type="file" accept="image/*" multiple onChange={arkaEkranGorseliEkle} />
+            </label>
+            <div className="market-customer-display-images">
+              {arkaEkranGorselleri.map(gorsel => <article key={gorsel.id}>
+                <img src={gorsel.veri} alt={gorsel.ad || 'Arka ekran görseli'} />
+                <span>{gorsel.ad || 'Kampanya görseli'}</span>
+                <button type="button" aria-label={`${gorsel.ad || 'Görsel'} sil`} onClick={() => arkaEkranGorseliniSil(gorsel.id)}>×</button>
+              </article>)}
+              {!arkaEkranGorselleri.length && <div className="market-customer-display-empty">Henüz görsel eklenmedi. Ekran boştayken işletme adı gösterilecek.</div>}
+            </div>
+            <small className="market-customer-display-note">Görseller bu kasa bilgisayarında saklanır. Açılan pencereyi Windows ekran ayarlarından arka ekrana taşıyıp tam ekran yapın.</small>
+            <footer><button className="market-remove" type="button" onClick={() => setArkaEkranAyarlariAcik(false)}>Kapat</button><button className="market-primary" type="button" onClick={arkaEkraniAc}>🖥 Arka Ekranı Aç</button></footer>
+          </div>
+        </div>}
         {satisCariPenceresi && <div className="market-price-modal" role="dialog" aria-modal="true" aria-label="Satış carisi seç">
           <div className="market-customer-modal">
             <span>CARİ SEÇİMİ</span>
