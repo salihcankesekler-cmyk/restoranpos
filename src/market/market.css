@@ -2941,3 +2941,9 @@
   .market-pos-entrybar{grid-template-columns:104px minmax(0,1fr)}
   .market-sale-order-toggle{height:37px;padding:0 5px;overflow:hidden;font-size:7px;white-space:normal;line-height:1.05}
 }
+
+/* Büyük ürün kataloglarında tabloyu hafif tutan sayfalama */
+.market-product-pagination{display:flex;align-items:center;justify-content:flex-end;gap:7px;padding-top:12px;flex-wrap:wrap}
+.market-product-pagination button{border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;padding:7px 10px;font-size:11px;font-weight:850;cursor:pointer}
+.market-product-pagination button:disabled{opacity:.4;cursor:not-allowed}
+.market-product-pagination strong{min-width:64px;text-align:center;color:#475569;font-size:12px}

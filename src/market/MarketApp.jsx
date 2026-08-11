@@ -37,6 +37,8 @@ import {
 } from '../lib/offlineStore';
 import './market.css';
 
+const URUN_LISTE_SAYFA_BOYUTU = 100;
+
 const bosUrun = {
   barkod: '', urunAdi: '', stokKodu: '', grupId: '', kategori: '', marka: '',
   birim: 'Adet', kdvOrani: 20, alisFiyati: '', satisFiyati: '',
@@ -460,6 +462,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hata, setHata] = useState('');
   const [arama, setArama] = useState('');
+  const [urunListeSayfasi, setUrunListeSayfasi] = useState(1);
   const [urunFormu, setUrunFormu] = useState(bosUrun);
   const [grupFormu, setGrupFormu] = useState(bosGrup);
   const [hizliDuzenleme, setHizliDuzenleme] = useState(null);
@@ -812,6 +815,12 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
         .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin));
     });
   }, [arama, urunler, yalnizKritik]);
+  const urunListeSayfaSayisi = Math.max(1, Math.ceil(filtreliUrunler.length / URUN_LISTE_SAYFA_BOYUTU));
+  const aktifUrunListeSayfasi = Math.min(urunListeSayfasi, urunListeSayfaSayisi);
+  const sayfadakiUrunler = useMemo(() => {
+    const baslangic = (aktifUrunListeSayfasi - 1) * URUN_LISTE_SAYFA_BOYUTU;
+    return filtreliUrunler.slice(baslangic, baslangic + URUN_LISTE_SAYFA_BOYUTU);
+  }, [aktifUrunListeSayfasi, filtreliUrunler]);
 
   const satisUrunleri = useMemo(() => {
     const metin = satisArama.trim().toLocaleLowerCase('tr-TR');
@@ -3466,9 +3475,9 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               </div>}
             </div>
           </details>
-          <div className="market-toolbar"><div><span>ÜRÜN LİSTESİ</span><h2>{filtreliUrunler.length} ürün</h2><small>{kritikUrunler.length} kritik / SKT yakın</small></div><label className="market-compact-check"><input type="checkbox" checked={yalnizKritik} onChange={event => setYalnizKritik(event.target.checked)} /> Yalnızca kritikler</label><input value={arama} onChange={event => setArama(event.target.value)} placeholder="Barkod, ürün veya grup ara" /></div>
+          <div className="market-toolbar"><div><span>ÜRÜN LİSTESİ</span><h2>{filtreliUrunler.length} ürün</h2><small>{kritikUrunler.length} kritik / SKT yakın</small></div><label className="market-compact-check"><input type="checkbox" checked={yalnizKritik} onChange={event => { setYalnizKritik(event.target.checked); setUrunListeSayfasi(1); }} /> Yalnızca kritikler</label><input value={arama} onChange={event => { setArama(event.target.value); setUrunListeSayfasi(1); }} placeholder="Barkod, ürün veya grup ara" /></div>
           <div className="market-table"><table><thead><tr><th>Barkod / Ürün</th><th>Grup</th><th>Stok</th><th>Alış</th><th>Satış</th><th>Kâr</th><th></th></tr></thead><tbody>
-            {filtreliUrunler.map(urun => {
+            {sayfadakiUrunler.map(urun => {
               const kar = Number(urun.satis_fiyati) - Number(urun.alis_fiyati);
               const acik = String(hizliDuzenleme?.id) === String(urun.id);
               const urunSiraBilgisi = urunSiraBilgileri.get(String(urun.id)) || { index: 0, toplam: 1 };
@@ -3484,6 +3493,13 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               </Fragment>;
             })}
           </tbody></table></div>
+          {filtreliUrunler.length > URUN_LISTE_SAYFA_BOYUTU && <div className="market-product-pagination">
+            <button type="button" disabled={aktifUrunListeSayfasi <= 1} onClick={() => setUrunListeSayfasi(1)}>İlk</button>
+            <button type="button" disabled={aktifUrunListeSayfasi <= 1} onClick={() => setUrunListeSayfasi(sayfa => Math.max(1, sayfa - 1))}>← Önceki</button>
+            <strong>{aktifUrunListeSayfasi} / {urunListeSayfaSayisi}</strong>
+            <button type="button" disabled={aktifUrunListeSayfasi >= urunListeSayfaSayisi} onClick={() => setUrunListeSayfasi(sayfa => Math.min(urunListeSayfaSayisi, sayfa + 1))}>Sonraki →</button>
+            <button type="button" disabled={aktifUrunListeSayfasi >= urunListeSayfaSayisi} onClick={() => setUrunListeSayfasi(urunListeSayfaSayisi)}>Son</button>
+          </div>}
         </div>
       </div>}
 

@@ -28,6 +28,28 @@ async function marketOturumunuDogrula() {
   return data.session.user;
 }
 
+async function tumMarketUrunleriniGetir(restaurantId) {
+  const sayfaBoyutu = 1000;
+  const tumUrunler = [];
+
+  for (let baslangic = 0; ; baslangic += sayfaBoyutu) {
+    const { data, error } = await supabase
+      .from('market_urunleri')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .order('sira')
+      .order('urun_adi')
+      .order('id')
+      .range(baslangic, baslangic + sayfaBoyutu - 1);
+
+    if (error) return { data: null, error };
+
+    const sayfa = Array.isArray(data) ? data : [];
+    tumUrunler.push(...sayfa);
+    if (sayfa.length < sayfaBoyutu) return { data: tumUrunler, error: null };
+  }
+}
+
 async function cariHareketiniEsitle(restaurantId, cariId, hareket) {
   if (!cariId) return;
   const { data: cari, error } = await supabase
@@ -89,7 +111,7 @@ async function cariHareketiniKaldir(restaurantId, cariId, kaynak, kaynakId) {
 
 export async function marketVerileriniGetir(restaurantId) {
   const [urunler, gruplar, faturalar, sayimlar, cariler, cariGruplari, satislar, stokHareketleri, fiyatGecmisi, vardiyalar, kasaHareketleri, iadeler, bekleyenSepetler, etiketKuyrugu] = await Promise.all([
-    supabase.from('market_urunleri').select('*').eq('restaurant_id', restaurantId).order('sira').order('urun_adi'),
+    tumMarketUrunleriniGetir(restaurantId),
     supabase.from('market_gruplari').select('*').eq('restaurant_id', restaurantId).order('sira').order('grup_adi'),
     supabase.from('market_alis_faturalari').select('*, market_alis_fatura_kalemleri(*)').eq('restaurant_id', restaurantId).order('fatura_tarihi', { ascending: false }).limit(1000),
     supabase.from('market_sayimlari').select('*, market_sayim_kalemleri(*)').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }).limit(20),
