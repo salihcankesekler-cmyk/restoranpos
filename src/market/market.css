@@ -2941,6 +2941,43 @@
   .market-pos-touch-console{min-height:190px;grid-template-columns:minmax(0,1fr)}
 }
 
+/* Dokunmatik kasada fiş satırlarını ve adet kontrollerini daha okunaklı tutar. */
+.market-pos-practical .market-cart-table td{
+  padding:9px 7px;
+  font-size:12px;
+}
+.market-pos-practical .market-cart-table td:first-child>strong{
+  display:block;
+  font-size:13px;
+  line-height:1.25;
+}
+.market-pos-practical .market-cart-table td:first-child>small{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  margin-top:4px;
+  font-size:10px;
+}
+.market-pos-practical .market-cart-price{
+  min-height:28px;
+  padding:5px 8px;
+  font-size:11px;
+}
+.market-pos-practical .market-quantity-control{
+  grid-template-columns:40px 56px 40px;
+  gap:6px;
+}
+.market-pos-practical .market-quantity-control button{
+  width:40px;
+  height:40px;
+  font-size:22px;
+}
+.market-pos-practical .market-quantity-control input{
+  width:56px;
+  height:40px;
+  font-size:13px;
+}
+
 /* Fotoğrafsız ürünler renkli hızlı satış tuşu, fotoğraflılar görsel kart olarak çalışır. */
 .market-pos-practical .market-sale-products>button.no-image{
   display:flex;

@@ -1031,8 +1031,7 @@ Toplam Ciro: {toplam}
   const mevcutRestaurantId = user?.role === 'waiter' ? user?.parentRestaurantId : user?.restaurantId;
 
   const marketArkaEkranHesabiMi = Array.isArray(user?.aktifSekmeler)
-    && user.aktifSekmeler.includes('market')
-    && !user.aktifSekmeler.includes('masalar');
+    && user.aktifSekmeler.includes('market');
   const restoranArkaEkranAnahtari = `${marketArkaEkranHesabiMi ? 'integra-market' : 'integra-restoran'}-arka-ekran-${mevcutRestaurantId || 'genel'}`;
   const restoranArkaEkranMesajAnahtari = `integra-musteri-ekrani-mesaji-${mevcutRestaurantId || 'genel'}`;
   const restoranArkaEkranOtomatikAnahtari = `integra-musteri-ekrani-otomatik-${mevcutRestaurantId || 'genel'}`;
@@ -15474,7 +15473,8 @@ Toplam Ciro: {toplam}
         : yetkiListesiniHazirla(profil.tab_yetkileri, profil.personel_gorev || 'Garson').filter(sekme => aktifIsletmeSekmeleri.includes(sekme));
       const kayitliPanel = localStorage.getItem('integra_activeTab');
       const kayitliPanelGecerli = kullaniciIzinliSekmeleri.includes(kayitliPanel)
-        || (kayitliPanel === 'arka_ekran' && kullaniciIzinliSekmeleri.includes('masalar'));
+        || (kayitliPanel === 'arka_ekran'
+          && (kullaniciIzinliSekmeleri.includes('arka_ekran') || kullaniciIzinliSekmeleri.includes('masalar')));
       const geriYuklenecekPanel = kayitliPanelGecerli
         ? kayitliPanel
         : ilkGirisSekmesi(profil.rol, profil.tab_yetkileri, profil.personel_gorev || 'Garson', aktifIsletmeSekmeleri);
