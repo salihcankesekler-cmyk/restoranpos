@@ -36,6 +36,10 @@ import {
   cevrimdisiSnapshotGetir,
   cevrimdisiSnapshotKaydet,
 } from '../lib/offlineStore';
+import {
+  ikinciEkranPenceresiniAc,
+  MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI,
+} from '../lib/customerDisplay';
 import './market.css';
 
 const URUN_LISTE_SAYFA_BOYUTU = 100;
@@ -109,7 +113,7 @@ const arkaEkranGorseliniHazirla = file => new Promise((resolve, reject) => {
   okuyucu.readAsDataURL(file);
 });
 
-const arkaEkranBelgesiniYaz = (pencere, { isletmeAdi, cariAdi, kalemler, toplam, brutToplam, indirim, gorseller }) => {
+const arkaEkranBelgesiniYaz = (pencere, { isletmeAdi, cariAdi, kalemler, toplam, brutToplam, indirim, gorseller, bosMesaj }) => {
   if (!pencere || pencere.closed) return false;
   const guvenliGorseller = Array.isArray(gorseller) ? gorseller.filter(item => item?.veri) : [];
   const gorselSayisi = Math.max(guvenliGorseller.length, 1);
@@ -119,11 +123,12 @@ const arkaEkranBelgesiniYaz = (pencere, { isletmeAdi, cariAdi, kalemler, toplam,
   const slaytlar = guvenliGorseller.map((gorsel, index) => `<img class="arka-ekran-slayt" src="${htmlKacir(gorsel.veri)}" alt="" style="${guvenliGorseller.length === 1 ? 'opacity:1;animation:none' : `animation-duration:${sure}s;animation-delay:${index * 6}s`}" />`).join('');
   const urunler = kalemler.slice(-8).map(kalem => `<li><span><strong>${htmlKacir(kalem.urun_adi)}</strong><small>${htmlKacir(miktarYaz(kalem.adet))} × ${htmlKacir(para(kalem.satis_fiyati))}</small></span><b>${htmlKacir(para(Number(kalem.adet) * Number(kalem.satis_fiyati)))}</b></li>`).join('');
   const satisVar = kalemler.length > 0;
+  const guvenliBosMesaj = htmlKacir(String(bosMesaj || '').trim() || 'Afiyet olsun, yine bekleriz.');
   try {
     pencere.document.open();
     pencere.document.write(`<!doctype html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Müşteri Ekranı · ${htmlKacir(isletmeAdi)}</title><style>
       *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#08111f;color:#fff;font-family:Inter,"Segoe UI",sans-serif}body{display:grid}.ekran{position:relative;width:100%;height:100%}.ust{height:74px;padding:0 34px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;background:#0f172ae8}.marka{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:950}.marka i{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#f97316;font-style:normal}.ust small{color:#cbd5e1;font-size:14px}.bekleme{position:absolute;inset:0;display:grid;background:#08111f}.slaytlar{position:absolute;inset:0}.arka-ekran-slayt{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;animation:arkaEkranSlayt linear infinite}.slaytlar:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#07101fcf 0,#07101f42 48%,#07101f1f)}.bos{position:relative;z-index:2;align-self:end;max-width:760px;padding:60px}.bos h1{margin:0 0 12px;font-size:clamp(42px,7vw,86px);line-height:1}.bos p{margin:0;color:#dbe5f2;font-size:clamp(18px,2.2vw,28px)}.satis{height:100%;display:grid;grid-template-rows:74px 1fr;background:linear-gradient(135deg,#f8fafc,#fff7ed);color:#0f172a}.satis-icerik{min-height:0;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,.55fr);gap:0}.urunler{min-height:0;padding:30px 34px;overflow:hidden}.urunler h1{margin:0 0 22px;font-size:28px}.urunler ul{list-style:none;margin:0;padding:0;border-top:1px solid #dbe2ea}.urunler li{min-height:62px;display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid #dbe2ea}.urunler li span{display:flex;min-width:0;flex-direction:column}.urunler li strong{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.urunler li small{margin-top:4px;color:#64748b;font-size:13px}.urunler li b{font-size:19px;white-space:nowrap}.ozet{padding:38px 32px;display:flex;flex-direction:column;justify-content:flex-end;background:#0f172a;color:#fff}.ozet>span{color:#94a3b8;font-size:14px;font-weight:800}.ozet>strong{margin:8px 0 26px;color:#fb923c;font-size:clamp(50px,6vw,84px);line-height:1}.ozet dl{margin:0 0 28px}.ozet dl div{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid #ffffff16}.ozet dt{color:#94a3b8}.ozet dd{margin:0;font-weight:850}.tesekkur{padding-top:22px;border-top:1px solid #ffffff24;font-size:21px;font-weight:900}.cari{margin-top:8px;color:#cbd5e1;font-size:13px}@keyframes arkaEkranSlayt{0%,${gorunurBitis}%{opacity:1}${dilim}%,100%{opacity:0}}
-    </style></head><body>${satisVar ? `<main class="ekran satis"><header class="ust"><span class="marka"><i>i</i>${htmlKacir(isletmeAdi || 'Integra POS')}</span><small>Müşteri Ekranı</small></header><div class="satis-icerik"><section class="urunler"><h1>Alışverişiniz</h1><ul>${urunler}</ul></section><aside class="ozet"><span>ÖDENECEK TUTAR</span><strong>${htmlKacir(para(toplam))}</strong><dl><div><dt>Brüt toplam</dt><dd>${htmlKacir(para(brutToplam))}</dd></div>${indirim > 0 ? `<div><dt>Toplam indirim</dt><dd>-${htmlKacir(para(indirim))}</dd></div>` : ''}</dl><div class="tesekkur">Bizi tercih ettiğiniz için teşekkür ederiz.</div>${cariAdi ? `<div class="cari">Müşteri: ${htmlKacir(cariAdi)}</div>` : ''}</aside></div></main>` : `<main class="ekran bekleme"><div class="slaytlar">${slaytlar}</div><div class="bos"><h1>${htmlKacir(isletmeAdi || 'Hoş geldiniz')}</h1><p>${guvenliGorseller.length ? 'Kampanyalarımızı ve fırsatlarımızı inceleyin.' : 'Satış başladığında ürünleriniz ve toplam tutar burada görünür.'}</p></div></main>`}</body></html>`);
+    </style></head><body>${satisVar ? `<main class="ekran satis"><header class="ust"><span class="marka"><i>i</i>${htmlKacir(isletmeAdi || 'Integra POS')}</span><small>Müşteri Ekranı</small></header><div class="satis-icerik"><section class="urunler"><h1>Alışverişiniz</h1><ul>${urunler}</ul></section><aside class="ozet"><span>ÖDENECEK TUTAR</span><strong>${htmlKacir(para(toplam))}</strong><dl><div><dt>Brüt toplam</dt><dd>${htmlKacir(para(brutToplam))}</dd></div>${indirim > 0 ? `<div><dt>Toplam indirim</dt><dd>-${htmlKacir(para(indirim))}</dd></div>` : ''}</dl><div class="tesekkur">${guvenliBosMesaj}</div>${cariAdi ? `<div class="cari">Müşteri: ${htmlKacir(cariAdi)}</div>` : ''}</aside></div></main>` : `<main class="ekran bekleme"><div class="slaytlar">${slaytlar}</div><div class="bos"><h1>${htmlKacir(isletmeAdi || 'Hoş geldiniz')}</h1><p>${guvenliBosMesaj}</p></div></main>`}</body></html>`);
     pencere.document.close();
     return true;
   } catch {
@@ -483,6 +488,8 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       return [];
     }
   });
+  const [arkaEkranMesaji, setArkaEkranMesaji] = useState(() =>
+    localStorage.getItem(`integra-musteri-ekrani-mesaji-${restaurantId}`) || 'Afiyet olsun, yine bekleriz.');
   const [fisDavranisi, setFisDavranisi] = useState(() => {
     const kayitli = localStorage.getItem(`integra-market-fis-${restaurantId}`);
     return ['yazdir', 'yazdirma', 'sor'].includes(kayitli) ? kayitli : 'sor';
@@ -1217,15 +1224,15 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     brutToplam: sepetToplamlari.brutToplam,
     indirim: sepetToplamlari.urunIndirimTutari + sepetToplamlari.genelIndirimTutari,
     gorseller: arkaEkranGorselleri,
-  }), [arkaEkranGorselleri, restaurantName, seciliSatisCarisi?.ad, sepet, sepetToplamlari]);
+    bosMesaj: arkaEkranMesaji,
+  }), [arkaEkranGorselleri, arkaEkranMesaji, restaurantName, seciliSatisCarisi?.ad, sepet, sepetToplamlari]);
 
   useEffect(() => {
     arkaEkranBelgesiniYaz(arkaEkranPenceresiRef.current, arkaEkranVerisi);
-  }, [arkaEkranVerisi]);
-
-  useEffect(() => () => {
-    if (arkaEkranPenceresiRef.current && !arkaEkranPenceresiRef.current.closed) arkaEkranPenceresiRef.current.close();
-  }, []);
+    window.dispatchEvent(new CustomEvent(MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI, {
+      detail: { restaurantId, ...arkaEkranVerisi },
+    }));
+  }, [arkaEkranVerisi, restaurantId]);
 
   const arkaEkranGorselleriniKaydet = yeniGorseller => {
     try {
@@ -1259,18 +1266,40 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     arkaEkranGorselleriniKaydet(arkaEkranGorselleri.filter(gorsel => gorsel.id !== gorselId));
   };
 
-  const arkaEkraniAc = () => {
+  const arkaEkranMesajiniDegistir = mesaj => {
+    const yeniMesaj = String(mesaj || '').slice(0, 160);
+    setArkaEkranMesaji(yeniMesaj);
+    try {
+      localStorage.setItem(`integra-musteri-ekrani-mesaji-${restaurantId}`, yeniMesaj);
+    } catch {
+      bildir('Arka ekran mesajı bu bilgisayara kaydedilemedi.', 'warning');
+    }
+  };
+
+  const arkaEkraniAc = async () => {
     const oncekiPencere = arkaEkranPenceresiRef.current;
-    const pencere = oncekiPencere && !oncekiPencere.closed
-      ? oncekiPencere
-      : window.open('', 'integra-market-musteri-ekrani', 'popup=yes,width=1280,height=720');
+    if (oncekiPencere && !oncekiPencere.closed) {
+      arkaEkranBelgesiniYaz(oncekiPencere, arkaEkranVerisi);
+      oncekiPencere.focus();
+      return;
+    }
+    const sonuc = await ikinciEkranPenceresiniAc('integra-musteri-ekrani');
+    const pencere = sonuc.pencere;
     if (!pencere) {
       bildir('Arka ekran penceresi tarayıcı tarafından engellendi. Açılır pencereye izin verin.', 'warning');
       return;
     }
     arkaEkranPenceresiRef.current = pencere;
     arkaEkranBelgesiniYaz(pencere, arkaEkranVerisi);
+    try {
+      localStorage.setItem(`integra-musteri-ekrani-otomatik-${restaurantId}`, 'true');
+    } catch {
+      // Tercih kaydedilemese de açık müşteri ekranı çalışmaya devam eder.
+    }
     pencere.focus();
+    bildir(sonuc.ikincilEkranBulundu
+      ? 'Arka ekran Windows ikinci ekranına yansıtıldı; sonraki açılışlar otomatik yapılacak.'
+      : 'Arka ekran açıldı. İkinci ekran otomatik seçilemedi; pencereyi ikinci ekrana taşıyın.', sonuc.ikincilEkranBulundu ? 'success' : 'warning');
   };
 
   const satisCariAramaMetni = satisCariArama.trim().toLocaleLowerCase('tr-TR');
@@ -3516,8 +3545,9 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             </article>)}
             {!arkaEkranGorselleri.length && <div className="market-customer-display-empty">Henüz görsel eklenmedi. Ekran boştayken işletme adı gösterilecek.</div>}
           </div>
-          <small className="market-customer-display-note">Görseller bu kasa bilgisayarında saklanır. Açılan pencereyi Windows ekran ayarlarından arka ekrana taşıyıp tam ekran yapın.</small>
-          <footer><button className="market-primary" type="button" onClick={arkaEkraniAc}>🖥 Arka Ekranı Aç</button></footer>
+          <label className="market-customer-display-message">Boş ekranda gösterilecek mesaj<textarea rows="2" maxLength="160" value={arkaEkranMesaji} onChange={event => arkaEkranMesajiniDegistir(event.target.value)} placeholder="Örn. Afiyet olsun, yine bekleriz." /><small>Mesaj yazdıkça açık müşteri ekranına anında yansır.</small></label>
+          <small className="market-customer-display-note">Görseller ve mesaj bu kasa bilgisayarında saklanır. İzin verildiğinde Windows'taki ikinci ekran otomatik seçilir.</small>
+          <footer><button className="market-primary" type="button" onClick={arkaEkraniAc}>🖥 İkinci Ekrana Yansıt</button><small>İlk başarılı açılıştan sonra bu kasada otomatik çalışır.</small></footer>
         </div>
       </div>}
 

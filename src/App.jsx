@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 import AppErrorBoundary from './system/AppErrorBoundary';
 import {
@@ -39,6 +39,7 @@ import {
 import LandingPage from './landing/LandingPage';
 import {
   ikinciEkranPenceresiniAc,
+  MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI,
   musteriEkranGorseliniHazirla,
   musteriEkraniBelgesiniYaz,
 } from './lib/customerDisplay';
@@ -351,6 +352,9 @@ function IntegraApp() {
     }
   });
   const [restoranArkaEkranGorselleri, setRestoranArkaEkranGorselleri] = useState([]);
+  const [restoranArkaEkranMesaji, setRestoranArkaEkranMesaji] = useState('Afiyet olsun, yine bekleriz.');
+  const [restoranArkaEkranOtomatik, setRestoranArkaEkranOtomatik] = useState(false);
+  const [marketArkaEkranVerisi, setMarketArkaEkranVerisi] = useState(null);
   const [restoranArkaEkranDurumu, setRestoranArkaEkranDurumu] = useState('Kapalı');
   const [restoranArkaEkranYukleniyor, setRestoranArkaEkranYukleniyor] = useState(false);
   const restoranArkaEkranPenceresiRef = useRef(null);
@@ -1026,7 +1030,12 @@ Toplam Ciro: {toplam}
 
   const mevcutRestaurantId = user?.role === 'waiter' ? user?.parentRestaurantId : user?.restaurantId;
 
-  const restoranArkaEkranAnahtari = `integra-restoran-arka-ekran-${mevcutRestaurantId || 'genel'}`;
+  const marketArkaEkranHesabiMi = Array.isArray(user?.aktifSekmeler)
+    && user.aktifSekmeler.includes('market')
+    && !user.aktifSekmeler.includes('masalar');
+  const restoranArkaEkranAnahtari = `${marketArkaEkranHesabiMi ? 'integra-market' : 'integra-restoran'}-arka-ekran-${mevcutRestaurantId || 'genel'}`;
+  const restoranArkaEkranMesajAnahtari = `integra-musteri-ekrani-mesaji-${mevcutRestaurantId || 'genel'}`;
+  const restoranArkaEkranOtomatikAnahtari = `integra-musteri-ekrani-otomatik-${mevcutRestaurantId || 'genel'}`;
 
   useEffect(() => {
     const yuklemeZamanlayicisi = window.setTimeout(() => {
@@ -1037,19 +1046,47 @@ Toplam Ciro: {toplam}
       try {
         const kayitli = JSON.parse(localStorage.getItem(restoranArkaEkranAnahtari) || '[]');
         setRestoranArkaEkranGorselleri(Array.isArray(kayitli) ? kayitli : []);
+        setRestoranArkaEkranMesaji(localStorage.getItem(restoranArkaEkranMesajAnahtari) || 'Afiyet olsun, yine bekleriz.');
+        setRestoranArkaEkranOtomatik(localStorage.getItem(restoranArkaEkranOtomatikAnahtari) === 'true');
       } catch {
         setRestoranArkaEkranGorselleri([]);
+        setRestoranArkaEkranMesaji('Afiyet olsun, yine bekleriz.');
+        setRestoranArkaEkranOtomatik(false);
       }
     }, 0);
     return () => window.clearTimeout(yuklemeZamanlayicisi);
-  }, [mevcutRestaurantId, restoranArkaEkranAnahtari]);
+  }, [mevcutRestaurantId, restoranArkaEkranAnahtari, restoranArkaEkranMesajAnahtari, restoranArkaEkranOtomatikAnahtari]);
 
   useEffect(() => {
-    musteriEkraniBelgesiniYaz(restoranArkaEkranPenceresiRef.current, {
+    const marketArkaEkranVerisiniAl = event => {
+      const veri = event?.detail;
+      if (!veri || String(veri.restaurantId) !== String(mevcutRestaurantId)) return;
+      setMarketArkaEkranVerisi({
+        ...veri,
+        kalemler: Array.isArray(veri.kalemler) ? veri.kalemler : [],
+        gorseller: Array.isArray(veri.gorseller) ? veri.gorseller : [],
+      });
+    };
+    setMarketArkaEkranVerisi(null);
+    window.addEventListener(MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI, marketArkaEkranVerisiniAl);
+    return () => window.removeEventListener(MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI, marketArkaEkranVerisiniAl);
+  }, [mevcutRestaurantId]);
+
+  const aktifArkaEkranVerisi = useMemo(() => marketArkaEkranHesabiMi && marketArkaEkranVerisi
+    ? {
+      ...marketArkaEkranVerisi,
+      isletmeAdi: marketArkaEkranVerisi.isletmeAdi || fisAyarlari.firmaAdi || user?.restaurant || 'Integra POS',
+      bosMesaj: marketArkaEkranVerisi.bosMesaj || restoranArkaEkranMesaji,
+    }
+    : {
       isletmeAdi: fisAyarlari.firmaAdi || user?.restaurant || 'Integra POS',
       gorseller: restoranArkaEkranGorselleri,
-    });
-  }, [fisAyarlari.firmaAdi, restoranArkaEkranGorselleri, user?.restaurant]);
+      bosMesaj: restoranArkaEkranMesaji,
+    }, [fisAyarlari.firmaAdi, marketArkaEkranHesabiMi, marketArkaEkranVerisi, restoranArkaEkranGorselleri, restoranArkaEkranMesaji, user?.restaurant]);
+
+  useEffect(() => {
+    musteriEkraniBelgesiniYaz(restoranArkaEkranPenceresiRef.current, aktifArkaEkranVerisi);
+  }, [aktifArkaEkranVerisi]);
 
   useEffect(() => () => {
     if (restoranArkaEkranPenceresiRef.current && !restoranArkaEkranPenceresiRef.current.closed) {
@@ -1093,26 +1130,43 @@ Toplam Ciro: {toplam}
     restoranArkaEkranGorselleriniKaydet(restoranArkaEkranGorselleri.filter(gorsel => gorsel.id !== gorselId));
   };
 
-  const restoranArkaEkraniAc = async () => {
+  const restoranArkaEkranMesajiniDegistir = mesaj => {
+    const yeniMesaj = String(mesaj || '').slice(0, 160);
+    setRestoranArkaEkranMesaji(yeniMesaj);
+    try {
+      localStorage.setItem(restoranArkaEkranMesajAnahtari, yeniMesaj);
+    } catch {
+      bildirimGoster('Arka ekran mesajı bu bilgisayara kaydedilemedi.', 'warning');
+    }
+  };
+
+  const restoranArkaEkraniAc = async (otomatikAciliyor = false) => {
+    if (restoranArkaEkranPenceresiRef.current && !restoranArkaEkranPenceresiRef.current.closed) {
+      musteriEkraniBelgesiniYaz(restoranArkaEkranPenceresiRef.current, aktifArkaEkranVerisi);
+      return;
+    }
     setRestoranArkaEkranDurumu('Açılıyor…');
-    const sonuc = await ikinciEkranPenceresiniAc();
+    const sonuc = await ikinciEkranPenceresiniAc('integra-musteri-ekrani');
     if (!sonuc.pencere) {
-      setRestoranArkaEkranDurumu('Açılamadı');
-      bildirimGoster('Arka ekran penceresi engellendi. Tarayıcıda açılır pencerelere izin verin.', 'warning');
+      setRestoranArkaEkranDurumu(otomatikAciliyor ? 'Otomatik açılış engellendi' : 'Açılamadı');
+      if (!otomatikAciliyor) bildirimGoster('Arka ekran penceresi engellendi. Tarayıcıda açılır pencerelere izin verin.', 'warning');
       return;
     }
     restoranArkaEkranPenceresiRef.current = sonuc.pencere;
-    musteriEkraniBelgesiniYaz(sonuc.pencere, {
-      isletmeAdi: fisAyarlari.firmaAdi || user?.restaurant || 'Integra POS',
-      gorseller: restoranArkaEkranGorselleri,
-    });
+    musteriEkraniBelgesiniYaz(sonuc.pencere, aktifArkaEkranVerisi);
+    try {
+      localStorage.setItem(restoranArkaEkranOtomatikAnahtari, 'true');
+      setRestoranArkaEkranOtomatik(true);
+    } catch {
+      // Otomatik açılış tercihi kaydedilemese de mevcut pencere çalışmaya devam eder.
+    }
     sonuc.pencere.focus();
     if (sonuc.ikincilEkranBulundu) {
       setRestoranArkaEkranDurumu('İkinci ekranda açık');
-      bildirimGoster('Arka ekran Windows ikinci ekranına yansıtıldı.', 'success');
+      if (!otomatikAciliyor) bildirimGoster('Arka ekran Windows ikinci ekranına yansıtıldı ve otomatik açılış etkinleştirildi.', 'success');
     } else {
       setRestoranArkaEkranDurumu('Pencere açık');
-      bildirimGoster('İkinci ekran otomatik seçilemedi. Açılan pencereyi ikinci ekrana taşıyın.', 'warning');
+      if (!otomatikAciliyor) bildirimGoster('İkinci ekran otomatik seçilemedi. Açılan pencereyi ikinci ekrana taşıyın.', 'warning');
     }
   };
 
@@ -1121,8 +1175,22 @@ Toplam Ciro: {toplam}
       restoranArkaEkranPenceresiRef.current.close();
     }
     restoranArkaEkranPenceresiRef.current = null;
+    try {
+      localStorage.removeItem(restoranArkaEkranOtomatikAnahtari);
+    } catch {
+      // Kapatma işlemi depolama erişiminden bağımsız tamamlanır.
+    }
+    setRestoranArkaEkranOtomatik(false);
     setRestoranArkaEkranDurumu('Kapalı');
   };
+
+  useEffect(() => {
+    if (!restoranArkaEkranOtomatik || !mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return undefined;
+    const otomatikAcmaZamanlayicisi = window.setTimeout(() => { void restoranArkaEkraniAc(true); }, 700);
+    return () => window.clearTimeout(otomatikAcmaZamanlayicisi);
+  // Otomatik açılış yalnızca işletme veya kayıtlı tercih değiştiğinde denenmelidir.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mevcutRestaurantId, restoranArkaEkranOtomatik]);
 
   useEffect(() => {
     if (!mevcutRestaurantId || String(mevcutRestaurantId) === 'super_admin') return undefined;
@@ -4375,7 +4443,8 @@ Toplam Ciro: {toplam}
 
   // sekmenin kullanıcı için görünür olup olmadığını kontrol eden kod
   const tabGorunur = (tabKey) => {
-    if (tabKey === 'arka_ekran') return Boolean(user) && kullaniciSekmeleri.includes('masalar');
+    if (tabKey === 'arka_ekran') return Boolean(user)
+      && (kullaniciSekmeleri.includes('arka_ekran') || kullaniciSekmeleri.includes('masalar'));
     if (['sistem_durumu', 'ayarlar', 'guclendirme', 'islem_gecmisi', 'yedekleme', 'fis_onizleme'].includes(tabKey)) return Boolean(user);
     return kullaniciSekmeleri.includes(tabKey);
   };
@@ -17793,7 +17862,7 @@ Toplam Ciro: {toplam}
               <div style={{ ...styles.panelCard, maxWidth: '1180px', margin: '0 auto' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' }}>
                   <div>
-                    <div style={{ color: '#f97316', fontSize: '10px', fontWeight: '950', letterSpacing: '.14em' }}>RESTORAN MÜŞTERİ EKRANI</div>
+                    <div style={{ color: '#f97316', fontSize: '10px', fontWeight: '950', letterSpacing: '.14em' }}>MÜŞTERİ EKRANI</div>
                     <h2 style={{ ...styles.pageTitle, margin: '5px 0 7px' }}>🖥️ Arka Ekran Görselleri</h2>
                     <p style={{ maxWidth: '720px', margin: 0, color: '#64748b', fontSize: '13px', lineHeight: 1.6 }}>
                       Kampanya, menü ve duyuru görsellerini ekleyin. Ekrana yansıttığınızda görseller Windows'taki ikinci ekranda sırayla gösterilir.
@@ -17814,9 +17883,17 @@ Toplam Ciro: {toplam}
                       <small style={{ color: '#64748b', fontWeight: '750' }}>JPG, PNG veya WEBP</small>
                       <input type="file" accept="image/*" multiple disabled={restoranArkaEkranYukleniyor || restoranArkaEkranGorselleri.length >= 6} onChange={restoranArkaEkranGorseliEkle} style={{ display: 'none' }} />
                     </label>
+                    <label style={{ display: 'grid', gap: '6px', marginTop: '12px', color: '#475569', fontSize: '11px', fontWeight: '900' }}>
+                      Boş ekranda gösterilecek mesaj
+                      <textarea value={restoranArkaEkranMesaji} maxLength="160" rows="3" onChange={event => restoranArkaEkranMesajiniDegistir(event.target.value)} placeholder="Örn. Afiyet olsun, yine bekleriz." style={{ width: '100%', resize: 'vertical', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '10px', backgroundColor: '#fff', color: '#0f172a', font: 'inherit', fontWeight: '750', lineHeight: 1.45 }} />
+                      <small style={{ color: '#64748b', fontWeight: '700' }}>Yazdığınız metin anında arka ekrana yansır.</small>
+                    </label>
                     <div style={{ display: 'grid', gap: '8px', marginTop: '14px' }}>
-                      <button type="button" onClick={restoranArkaEkraniAc} style={{ ...styles.btnOrange, width: '100%', minHeight: '46px' }}>🖥️ İkinci Ekrana Yansıt</button>
+                      <button type="button" onClick={() => restoranArkaEkraniAc(false)} style={{ ...styles.btnOrange, width: '100%', minHeight: '46px' }}>🖥️ İkinci Ekrana Yansıt</button>
                       <button type="button" onClick={restoranArkaEkraniKapat} style={{ width: '100%', minHeight: '42px', border: '1px solid #fecaca', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b91c1c', fontWeight: '900', cursor: 'pointer' }}>× Arka Ekranı Kapat</button>
+                    </div>
+                    <div style={{ marginTop: '9px', padding: '9px 11px', borderRadius: '9px', backgroundColor: restoranArkaEkranOtomatik ? '#ecfdf5' : '#f8fafc', color: restoranArkaEkranOtomatik ? '#047857' : '#64748b', fontSize: '10px', fontWeight: '850' }}>
+                      {restoranArkaEkranOtomatik ? '✓ Bu kasada otomatik açılış etkin' : 'İkinci ekrana yansıttığınızda otomatik açılış etkinleşir.'}
                     </div>
                     <div style={{ marginTop: '14px', padding: '11px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#1e3a8a', fontSize: '10px', lineHeight: 1.55 }}>
                       İlk kullanımda tarayıcı ekran yerleştirme izni isteyebilir. İzin verdiğinizde Windows'taki birinci olmayan ekran otomatik seçilir.
