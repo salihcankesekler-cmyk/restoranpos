@@ -39,6 +39,8 @@ import {
 import {
   ikinciEkranPenceresiniAc,
   MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI,
+  musteriEkranGorseliniHazirla as arkaEkranGorseliniHazirla,
+  musteriEkraniBelgesiniYaz as arkaEkranBelgesiniYaz,
   musteriEkraniKonumunuKaydet,
 } from '../lib/customerDisplay';
 import './market.css';
@@ -76,66 +78,6 @@ const bosFatura = () => ({
 const para = value => new Intl.NumberFormat('tr-TR', {
   style: 'currency', currency: 'TRY', maximumFractionDigits: 2,
 }).format(Number(value || 0));
-
-const htmlKacir = value => String(value ?? '')
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
-  .replaceAll("'", '&#039;');
-
-const arkaEkranGorseliniHazirla = file => new Promise((resolve, reject) => {
-  if (!String(file?.type || '').startsWith('image/')) {
-    reject(new Error('Yalnızca görsel dosyaları eklenebilir.'));
-    return;
-  }
-  const okuyucu = new FileReader();
-  okuyucu.onerror = () => reject(new Error('Görsel okunamadı.'));
-  okuyucu.onload = () => {
-    const gorsel = new Image();
-    gorsel.onerror = () => reject(new Error(`${file.name} açılamadı.`));
-    gorsel.onload = () => {
-      const oran = Math.min(1600 / gorsel.naturalWidth, 900 / gorsel.naturalHeight, 1);
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(Math.round(gorsel.naturalWidth * oran), 1);
-      canvas.height = Math.max(Math.round(gorsel.naturalHeight * oran), 1);
-      const cizim = canvas.getContext('2d');
-      cizim.fillStyle = '#0f172a';
-      cizim.fillRect(0, 0, canvas.width, canvas.height);
-      cizim.drawImage(gorsel, 0, 0, canvas.width, canvas.height);
-      resolve({
-        id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
-        ad: file.name,
-        veri: canvas.toDataURL('image/jpeg', .82),
-      });
-    };
-    gorsel.src = okuyucu.result;
-  };
-  okuyucu.readAsDataURL(file);
-});
-
-const arkaEkranBelgesiniYaz = (pencere, { isletmeAdi, cariAdi, kalemler, toplam, brutToplam, indirim, gorseller, bosMesaj }) => {
-  if (!pencere || pencere.closed) return false;
-  const guvenliGorseller = Array.isArray(gorseller) ? gorseller.filter(item => item?.veri) : [];
-  const gorselSayisi = Math.max(guvenliGorseller.length, 1);
-  const sure = gorselSayisi * 6;
-  const dilim = 100 / gorselSayisi;
-  const gorunurBitis = Math.max(dilim - 3, dilim * .82);
-  const slaytlar = guvenliGorseller.map((gorsel, index) => `<img class="arka-ekran-slayt" src="${htmlKacir(gorsel.veri)}" alt="" style="${guvenliGorseller.length === 1 ? 'opacity:1;animation:none' : `animation-duration:${sure}s;animation-delay:${index * 6}s`}" />`).join('');
-  const urunler = kalemler.slice(-8).map(kalem => `<li><span><strong>${htmlKacir(kalem.urun_adi)}</strong><small>${htmlKacir(miktarYaz(kalem.adet))} × ${htmlKacir(para(kalem.satis_fiyati))}</small></span><b>${htmlKacir(para(Number(kalem.adet) * Number(kalem.satis_fiyati)))}</b></li>`).join('');
-  const satisVar = kalemler.length > 0;
-  const guvenliBosMesaj = htmlKacir(String(bosMesaj || '').trim() || 'Afiyet olsun, yine bekleriz.');
-  try {
-    pencere.document.open();
-    pencere.document.write(`<!doctype html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Müşteri Ekranı · ${htmlKacir(isletmeAdi)}</title><style>
-      *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#08111f;color:#fff;font-family:Inter,"Segoe UI",sans-serif}body{display:grid}.ekran{position:relative;width:100%;height:100%}.ust{height:74px;padding:0 34px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20;background:#0f172ae8}.marka{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:950}.marka i{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#f97316;font-style:normal}.ust small{color:#cbd5e1;font-size:14px}.bekleme{position:absolute;inset:0;display:grid;background:#08111f}.slaytlar{position:absolute;inset:0}.arka-ekran-slayt{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;animation:arkaEkranSlayt linear infinite}.slaytlar:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#07101fcf 0,#07101f42 48%,#07101f1f)}.bos{position:relative;z-index:2;align-self:end;max-width:760px;padding:60px}.bos h1{margin:0 0 12px;font-size:clamp(42px,7vw,86px);line-height:1}.bos p{margin:0;color:#dbe5f2;font-size:clamp(18px,2.2vw,28px)}.satis{height:100%;display:grid;grid-template-rows:74px 1fr;background:linear-gradient(135deg,#f8fafc,#fff7ed);color:#0f172a}.satis-icerik{min-height:0;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,.55fr);gap:0}.urunler{min-height:0;padding:30px 34px;overflow:hidden}.urunler h1{margin:0 0 22px;font-size:28px}.urunler ul{list-style:none;margin:0;padding:0;border-top:1px solid #dbe2ea}.urunler li{min-height:62px;display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid #dbe2ea}.urunler li span{display:flex;min-width:0;flex-direction:column}.urunler li strong{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.urunler li small{margin-top:4px;color:#64748b;font-size:13px}.urunler li b{font-size:19px;white-space:nowrap}.ozet{padding:38px 32px;display:flex;flex-direction:column;justify-content:flex-end;background:#0f172a;color:#fff}.ozet>span{color:#94a3b8;font-size:14px;font-weight:800}.ozet>strong{margin:8px 0 26px;color:#fb923c;font-size:clamp(50px,6vw,84px);line-height:1}.ozet dl{margin:0 0 28px}.ozet dl div{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid #ffffff16}.ozet dt{color:#94a3b8}.ozet dd{margin:0;font-weight:850}.tesekkur{padding-top:22px;border-top:1px solid #ffffff24;font-size:21px;font-weight:900}.cari{margin-top:8px;color:#cbd5e1;font-size:13px}@keyframes arkaEkranSlayt{0%,${gorunurBitis}%{opacity:1}${dilim}%,100%{opacity:0}}
-    </style></head><body>${satisVar ? `<main class="ekran satis"><header class="ust"><span class="marka"><i>i</i>${htmlKacir(isletmeAdi || 'Integra POS')}</span><small>Müşteri Ekranı</small></header><div class="satis-icerik"><section class="urunler"><h1>Alışverişiniz</h1><ul>${urunler}</ul></section><aside class="ozet"><span>ÖDENECEK TUTAR</span><strong>${htmlKacir(para(toplam))}</strong><dl><div><dt>Brüt toplam</dt><dd>${htmlKacir(para(brutToplam))}</dd></div>${indirim > 0 ? `<div><dt>Toplam indirim</dt><dd>-${htmlKacir(para(indirim))}</dd></div>` : ''}</dl><div class="tesekkur">${guvenliBosMesaj}</div>${cariAdi ? `<div class="cari">Müşteri: ${htmlKacir(cariAdi)}</div>` : ''}</aside></div></main>` : `<main class="ekran bekleme"><div class="slaytlar">${slaytlar}</div><div class="bos"><h1>${htmlKacir(isletmeAdi || 'Hoş geldiniz')}</h1><p>${guvenliBosMesaj}</p></div></main>`}</body></html>`);
-    pencere.document.close();
-    return true;
-  } catch {
-    return false;
-  }
-};
 
 const ODEME_TIPLERI = ['Nakit', 'Kredi Kartı', 'Cari / Veresiye'];
 const MARKET_OFFLINE_QUEUE_TYPE = 'market-sale';
@@ -799,6 +741,26 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     () => new Map(gruplar.map(grup => [String(grup.id), grup])),
     [gruplar]
   );
+  const satisBarkodHaritasi = useMemo(() => {
+    const harita = new Map();
+    urunler.forEach(urun => {
+      [urun.barkod, urun.stok_kodu].forEach(value => {
+        const anahtar = String(value || '').trim().toLocaleLowerCase('tr-TR');
+        if (anahtar && !harita.has(anahtar)) harita.set(anahtar, urun);
+      });
+    });
+    return harita;
+  }, [urunler]);
+  const satisUrunAdiHaritasi = useMemo(() => {
+    const harita = new Map();
+    urunler.forEach(urun => {
+      if (urun.satis_ekraninda_goster === false) return;
+      const anahtar = String(urun.urun_adi || '').trim().toLocaleLowerCase('tr-TR');
+      if (!anahtar) return;
+      harita.set(anahtar, harita.has(anahtar) ? null : urun);
+    });
+    return harita;
+  }, [urunler]);
   const urunSiraBilgileri = useMemo(() => {
     const grupListeleri = new Map();
     urunler.forEach(urun => {
@@ -829,20 +791,31 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     return filtreliUrunler.slice(baslangic, baslangic + URUN_LISTE_SAYFA_BOYUTU);
   }, [aktifUrunListeSayfasi, filtreliUrunler]);
 
+  const gecikmeliSatisArama = useDeferredValue(satisArama);
   const satisUrunleri = useMemo(() => {
-    const metin = satisArama.trim().toLocaleLowerCase('tr-TR');
-    return urunler.filter(urun => {
+    const metin = gecikmeliSatisArama.trim().toLocaleLowerCase('tr-TR');
+    const dogrudanUrun = metin ? satisBarkodHaritasi.get(metin) : null;
+    if (dogrudanUrun) return [dogrudanUrun];
+    const sonuclar = [];
+    for (const urun of urunler) {
       // Arama yapılırken kasiyer grupları tek tek gezmek zorunda kalmasın.
-      if (!metin && String(urun.grup_id) !== String(aktifSatisGrubu)) return false;
-      if (!metin) return urun.satis_ekraninda_goster !== false;
+      if (!metin && String(urun.grup_id) !== String(aktifSatisGrubu)) continue;
+      if (!metin) {
+        if (urun.satis_ekraninda_goster !== false) sonuclar.push(urun);
+        continue;
+      }
       const barkodlaTamEslesme = [urun.barkod, urun.stok_kodu]
         .some(value => String(value || '').trim().toLocaleLowerCase('tr-TR') === metin);
-      if (barkodlaTamEslesme) return true;
-      if (urun.satis_ekraninda_goster === false) return false;
-      return [urun.urun_adi, urun.barkod, urun.stok_kodu, urun.marka]
-        .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin));
-    });
-  }, [aktifSatisGrubu, satisArama, urunler]);
+      if (barkodlaTamEslesme || (urun.satis_ekraninda_goster !== false
+        && [urun.urun_adi, urun.barkod, urun.stok_kodu, urun.marka]
+          .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(metin)))) {
+        sonuclar.push(urun);
+        // Barkod yazılırken binlerce eşleşen kartı DOM'a basıp kasayı yavaşlatma.
+        if (sonuclar.length >= 120) break;
+      }
+    }
+    return sonuclar;
+  }, [aktifSatisGrubu, gecikmeliSatisArama, satisBarkodHaritasi, urunler]);
 
   const aktifPersonelSiparisGrubu = gorunenGruplar.some(grup => String(grup.id) === String(personelSiparisGrubu))
     ? personelSiparisGrubu
@@ -1979,18 +1952,31 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     const aranan = satisArama.trim();
     if (!aranan) return barkodAlaniniHazirla();
     const kucukAranan = aranan.toLocaleLowerCase('tr-TR');
-    const dogrudanUrun = urunler.find(item => String(item.barkod || '').trim() === aranan)
-      || urunler.find(item => item.satis_ekraninda_goster !== false
-        && String(item.urun_adi || '').trim().toLocaleLowerCase('tr-TR') === kucukAranan);
+    const dogrudanUrun = satisBarkodHaritasi.get(kucukAranan) || satisUrunAdiHaritasi.get(kucukAranan);
     const teraziSonucu = dogrudanUrun ? null : teraziBarkodunuCoz(aranan);
     if (teraziSonucu?.hata) {
       bildir(teraziSonucu.hata, 'warning');
       barkodAlaniniHazirla();
       return;
     }
-    const urun = dogrudanUrun || (!teraziSonucu && satisUrunleri.length === 1 ? satisUrunleri[0] : null);
+    let urun = dogrudanUrun || null;
+    let eslesmeSayisi = urun ? 1 : 0;
     if (!urun && !teraziSonucu) {
-      bildir(satisUrunleri.length > 1
+      for (const aday of urunler) {
+        if (aday.satis_ekraninda_goster === false) continue;
+        const eslesti = [aday.urun_adi, aday.barkod, aday.stok_kodu, aday.marka]
+          .some(value => String(value || '').toLocaleLowerCase('tr-TR').includes(kucukAranan));
+        if (!eslesti) continue;
+        eslesmeSayisi += 1;
+        if (eslesmeSayisi === 1) urun = aday;
+        if (eslesmeSayisi > 1) {
+          urun = null;
+          break;
+        }
+      }
+    }
+    if (!urun && !teraziSonucu) {
+      bildir(eslesmeSayisi > 1
         ? 'Birden fazla ürün bulundu. Listeden istediğiniz ürünü seçin.'
         : 'Barkod veya ürün adıyla eşleşen ürün bulunamadı.', 'warning');
       barkodAlaniniHazirla();
