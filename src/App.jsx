@@ -1365,7 +1365,7 @@ Toplam Ciro: {toplam}
       borderRadius: '999px',
       cursor: disabled ? 'not-allowed' : 'pointer',
       fontWeight: '900',
-      fontSize: '12px',
+      fontSize: '14px',
       opacity: disabled ? 0.55 : 1,
       whiteSpace: 'nowrap',
     };
@@ -2836,10 +2836,10 @@ Toplam Ciro: {toplam}
           <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 28px; text-align: center; color: #0f172a; }
             .card { border: 1px solid #e2e8f0; border-radius: 22px; padding: 26px; max-width: 360px; margin: 0 auto; }
-            h1 { font-size: 24px; margin: 0 0 8px; }
+            h1 { font-size: 27px; margin: 0 0 8px; }
             p { color: #64748b; margin: 0 0 18px; line-height: 1.5; }
             img { width: 300px; height: 300px; }
-            .link { margin-top: 16px; font-size: 11px; color: #475569; word-break: break-all; }
+            .link { margin-top: 16px; font-size: 13px; color: #475569; word-break: break-all; }
           </style>
         </head>
         <body>
@@ -7747,19 +7747,19 @@ Toplam Ciro: {toplam}
           <style>
             @page { size: 80mm auto; margin: 4mm; }
             body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
-            .receipt { width: 72mm; font-size: 13px; }
+            .receipt { width: 72mm; font-size: 15px; }
             .center { text-align: center; }
-            .title { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
-            .subtitle { font-size: 11px; margin-bottom: 4px; }
+            .title { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+            .subtitle { font-size: 13px; margin-bottom: 4px; }
             .line { border-top: 1px dashed #000; margin: 9px 0; }
             .row { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0; }
             .kitchen-item { display: grid; grid-template-columns: 34px 1fr; gap: 8px; border-bottom: 1px dashed #999; padding: 8px 0; }
-            .qty { font-size: 20px; font-weight: 900; }
-            .kitchen-detail strong { font-size: 17px; }
-            .note { font-size: 13px; font-weight: 900; margin-top: 4px; }
-            .muted { font-size: 10px; color: #333; margin-top: 3px; }
-            .footer { text-align: center; font-size: 10px; margin-top: 10px; }
-            .printer-warning { border: 2px solid #000; padding: 6px; margin: 7px 0; text-align: center; font-size: 12px; font-weight: 900; }
+            .qty { font-size: 22px; font-weight: 900; }
+            .kitchen-detail strong { font-size: 19px; }
+            .note { font-size: 15px; font-weight: 900; margin-top: 4px; }
+            .muted { font-size: 12px; color: #333; margin-top: 3px; }
+            .footer { text-align: center; font-size: 12px; margin-top: 10px; }
+            .printer-warning { border: 2px solid #000; padding: 6px; margin: 7px 0; text-align: center; font-size: 14px; font-weight: 900; }
           </style>
         </head>
         <body>
@@ -8153,16 +8153,16 @@ Toplam Ciro: {toplam}
         <style>
           @page { size: 80mm auto; margin: 4mm; }
           body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
-          .receipt { width: 72mm; font-size: 12px; }
+          .receipt { width: 72mm; font-size: 14px; }
           .center { text-align: center; }
-          .title { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
-          .subtitle { font-size: 11px; margin-bottom: 8px; }
+          .title { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+          .subtitle { font-size: 13px; margin-bottom: 8px; }
           .line { border-top: 1px dashed #000; margin: 8px 0; }
           .row, .item { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0; }
           .item { align-items: flex-start; }
-          .muted { font-size: 10px; color: #333; margin-top: 2px; }
-          .total { font-size: 16px; font-weight: 900; }
-          .thanks { margin-top: 12px; font-size: 11px; text-align: center; }
+          .muted { font-size: 12px; color: #333; margin-top: 2px; }
+          .total { font-size: 18px; font-weight: 900; }
+          .thanks { margin-top: 12px; font-size: 13px; text-align: center; }
         </style>
       </head>
       <body>
@@ -8236,16 +8236,16 @@ Toplam Ciro: {toplam}
           <style>
             @page { size: 80mm auto; margin: 4mm; }
             body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
-            .receipt { width: 72mm; font-size: 12px; }
+            .receipt { width: 72mm; font-size: 14px; }
             .center { text-align: center; }
-            .title { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
-            .subtitle { font-size: 11px; margin-bottom: 8px; }
+            .title { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+            .subtitle { font-size: 13px; margin-bottom: 8px; }
             .line { border-top: 1px dashed #000; margin: 8px 0; }
             .row, .item { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0; }
             .item { align-items: flex-start; }
-            .muted { font-size: 10px; color: #333; margin-top: 2px; }
-            .total { font-size: 16px; font-weight: 900; }
-            .note { text-align: center; font-size: 10px; margin-top: 10px; }
+            .muted { font-size: 12px; color: #333; margin-top: 2px; }
+            .total { font-size: 18px; font-weight: 900; }
+            .note { text-align: center; font-size: 12px; margin-top: 10px; }
           </style>
         </head>
         <body>
@@ -8320,14 +8320,14 @@ Toplam Ciro: {toplam}
           <style>
             @page { size: 80mm auto; margin: 4mm; }
             body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
-            .receipt { width: 72mm; font-size: 11px; }
+            .receipt { width: 72mm; font-size: 13px; }
             .center { text-align: center; }
-            .title { font-size: 16px; font-weight: 900; margin-bottom: 4px; }
-            .subtitle { font-size: 11px; margin-bottom: 8px; }
+            .title { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
+            .subtitle { font-size: 13px; margin-bottom: 8px; }
             .line { border-top: 1px dashed #000; margin: 8px 0; }
             .row { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0; }
             table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-            th, td { border-bottom: 1px dashed #999; padding: 4px 2px; text-align: left; font-size: 10px; }
+            th, td { border-bottom: 1px dashed #999; padding: 4px 2px; text-align: left; font-size: 12px; }
             th:last-child, td:last-child { text-align: right; }
           </style>
         </head>
@@ -8412,17 +8412,17 @@ Toplam Ciro: {toplam}
           <style>
             @page { size: 80mm auto; margin: 4mm; }
             body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
-            .receipt { width: 72mm; font-size: 12px; }
+            .receipt { width: 72mm; font-size: 14px; }
             .center { text-align: center; }
-            .title { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
-            .subtitle { font-size: 11px; margin-bottom: 8px; }
+            .title { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+            .subtitle { font-size: 13px; margin-bottom: 8px; }
             .line { border-top: 1px dashed #000; margin: 8px 0; }
             .row, .item { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0; }
             .item { align-items: flex-start; }
-            .muted { font-size: 10px; color: #333; margin-top: 2px; }
-            .total { font-size: 16px; font-weight: 900; }
-            .note { margin-top: 6px; font-size: 11px; }
-            .thanks { margin-top: 12px; font-size: 11px; text-align: center; }
+            .muted { font-size: 12px; color: #333; margin-top: 2px; }
+            .total { font-size: 18px; font-weight: 900; }
+            .note { margin-top: 6px; font-size: 13px; }
+            .thanks { margin-top: 12px; font-size: 13px; text-align: center; }
           </style>
         </head>
 
@@ -11749,7 +11749,7 @@ Toplam Ciro: {toplam}
     const html = `
       <!doctype html>
       <html><head><meta charset="utf-8" /><title>Z Raporu</title>
-      <style>@page{size:80mm auto;margin:4mm}body{font-family:Arial,sans-serif;font-size:12px}.row{display:flex;justify-content:space-between;margin:5px 0}.line{border-top:1px dashed #000;margin:8px 0}.title{text-align:center;font-weight:900;font-size:16px}</style>
+      <style>@page{size:80mm auto;margin:4mm}body{font-family:Arial,sans-serif;font-size:14px}.row{display:flex;justify-content:space-between;margin:5px 0}.line{border-top:1px dashed #000;margin:8px 0}.title{text-align:center;font-weight:900;font-size:18px}</style>
       </head><body>
         <div class="title">${user?.restaurant || 'Integra POS'}<br/>Gün Sonu Z Raporu</div>
         <div class="line"></div>
@@ -12495,7 +12495,7 @@ Toplam Ciro: {toplam}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
           <div>
             <h4 style={{ margin: '0 0 4px', color: '#1e293b' }}>🧩 İşletme Modül Yetkileri</h4>
-            <div style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5 }}>
+            <div style={{ color: '#64748b', fontSize: '14px', lineHeight: 1.5 }}>
               Aktif paket: <strong>{aktifPaket?.label || restoran.modulPaketi || 'Premium'}</strong> / Açık sekme: <strong>{aktifSekmeler.length}</strong> / {personelSekmeSecenekleri.length}
             </div>
           </div>
@@ -12530,7 +12530,7 @@ Toplam Ciro: {toplam}
                   color: '#334155',
                   padding: '9px 10px',
                   borderRadius: '12px',
-                  fontSize: '12px',
+                  fontSize: '14px',
                   fontWeight: '900',
                   cursor: 'pointer',
                 }}
@@ -12547,7 +12547,7 @@ Toplam Ciro: {toplam}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '10px', alignItems: 'end', marginTop: '12px' }}>
-          <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+          <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
             Modül / Satış Notu
             <input
               defaultValue={restoran.modulNotu || ''}
@@ -12557,7 +12557,7 @@ Toplam Ciro: {toplam}
             />
           </label>
 
-          <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px', color: '#64748b', fontSize: '12px', minWidth: isMobile ? '100%' : '230px' }}>
+          <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px', color: '#64748b', fontSize: '14px', minWidth: isMobile ? '100%' : '230px' }}>
             <div><strong>Kapalı sekme:</strong> {Math.max(personelSekmeSecenekleri.length - aktifSekmeler.length, 0)}</div>
             <div><strong>Personel etkisi:</strong> Kapalı sekmeler personelde de gizlenir.</div>
           </div>
@@ -15639,13 +15639,13 @@ Toplam Ciro: {toplam}
           <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', borderRadius: '28px', padding: isMobile ? '24px 18px' : '34px', color: '#fff', boxShadow: '0 30px 80px -45px rgba(15,23,42,0.5)', marginBottom: '18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: '900', marginBottom: '14px' }}>📱 QR Menü</div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '999px', padding: '8px 12px', fontSize: '14px', fontWeight: '900', marginBottom: '14px' }}>📱 QR Menü</div>
                 <h1 style={{ margin: '0 0 8px', fontSize: isMobile ? '30px' : '42px', lineHeight: 1.08, letterSpacing: '-0.03em' }}>{publicRestoranAdi}</h1>
                 <p style={{ margin: 0, color: '#cbd5e1', lineHeight: 1.7, maxWidth: '680px', fontWeight: '600' }}>{publicAyarlari.aciklama}</p>
               </div>
               <div style={{ backgroundColor: '#fff', color: '#0f172a', borderRadius: '18px', padding: '12px 15px', minWidth: '130px', textAlign: 'center', boxShadow: '0 18px 40px -28px rgba(0,0,0,0.5)' }}>
-                <div style={{ fontSize: '24px', fontWeight: '900' }}>{publicGruplar.reduce((t, g) => t + g.urunler.length, 0)}</div>
-                <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>ürün</div>
+                <div style={{ fontSize: '27px', fontWeight: '900' }}>{publicGruplar.reduce((t, g) => t + g.urunler.length, 0)}</div>
+                <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>ürün</div>
               </div>
             </div>
           </div>
@@ -15675,14 +15675,14 @@ Toplam Ciro: {toplam}
                 <input type="text" placeholder="Adınız (opsiyonel)" value={qrSiparisMusteriAdi} onChange={e => setQrSiparisMusteriAdi(e.target.value)} style={{ ...styles.input, flex: '2 1 180px', minWidth: '160px' }} />
                 <input type="text" placeholder="Not: acısız, az pişmiş..." value={qrSiparisNotu} onChange={e => setQrSiparisNotu(e.target.value)} style={{ ...styles.input, flex: '3 1 240px', minWidth: '180px' }} />
               </div>
-              {qrServisMesaji ? <div style={{ marginTop: '8px', color: '#047857', fontWeight: '900', fontSize: '12px' }}>{qrServisMesaji}</div> : null}
+              {qrServisMesaji ? <div style={{ marginTop: '8px', color: '#047857', fontWeight: '900', fontSize: '14px' }}>{qrServisMesaji}</div> : null}
             </div>
             <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '14px', boxShadow: '0 16px 45px -38px rgba(15,23,42,0.35)' }}>
               <div style={{ fontWeight: '900', color: '#1e293b', marginBottom: '10px' }}>Hızlı servis</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {publicAyarlari.garsonCagirmaAktif !== false ? <button type="button" onClick={() => qrServisTalebiGonder('Garson Çağır')} style={{ ...styles.btnOrange, padding: '10px 12px', fontSize: '12px' }}>🔔 Garson Çağır</button> : null}
-                {publicAyarlari.hesapIstemeAktif !== false ? <button type="button" onClick={() => qrServisTalebiGonder('Hesap İste')} style={{ ...styles.btnOrange, background: '#1e293b', padding: '10px 12px', fontSize: '12px' }}>🧾 Hesap İste</button> : null}
-                <button type="button" onClick={() => qrServisTalebiGonder('Su İste')} style={{ ...styles.btnOrange, background: '#2563eb', padding: '10px 12px', fontSize: '12px' }}>💧 Su İste</button>
+                {publicAyarlari.garsonCagirmaAktif !== false ? <button type="button" onClick={() => qrServisTalebiGonder('Garson Çağır')} style={{ ...styles.btnOrange, padding: '10px 12px', fontSize: '14px' }}>🔔 Garson Çağır</button> : null}
+                {publicAyarlari.hesapIstemeAktif !== false ? <button type="button" onClick={() => qrServisTalebiGonder('Hesap İste')} style={{ ...styles.btnOrange, background: '#1e293b', padding: '10px 12px', fontSize: '14px' }}>🧾 Hesap İste</button> : null}
+                <button type="button" onClick={() => qrServisTalebiGonder('Su İste')} style={{ ...styles.btnOrange, background: '#2563eb', padding: '10px 12px', fontSize: '14px' }}>💧 Su İste</button>
               </div>
             </div>
           </div>
@@ -15697,26 +15697,26 @@ Toplam Ciro: {toplam}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {publicFiltreliGruplar.map(grup => (
                 <section key={grup.ad} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: isMobile ? '16px' : '22px', boxShadow: '0 24px 55px -40px rgba(15,23,42,0.35)' }}>
-                  <h2 style={{ margin: '0 0 14px', fontSize: '22px', color: '#0f172a' }}>{grup.ad}</h2>
+                  <h2 style={{ margin: '0 0 14px', fontSize: '25px', color: '#0f172a' }}>{grup.ad}</h2>
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
                     {grup.urunler.map(urun => {
                       const resim = urunGosterimResmi(urun);
                       return (
                         <div key={urun.id} style={{ display: 'flex', gap: '12px', border: '1px solid #eef2f7', borderRadius: '18px', padding: '12px', backgroundColor: '#fbfdff' }}>
-                          {resim ? <img src={resim} alt={urun.ad} style={{ width: '78px', height: '78px', objectFit: 'cover', borderRadius: '14px', flex: '0 0 78px', border: '1px solid #e2e8f0' }} /> : <div style={{ width: '78px', height: '78px', borderRadius: '14px', flex: '0 0 78px', background: '#fff7ed', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', border: '1px solid #fed7aa' }}>🍽️</div>}
+                          {resim ? <img src={resim} alt={urun.ad} style={{ width: '78px', height: '78px', objectFit: 'cover', borderRadius: '14px', flex: '0 0 78px', border: '1px solid #e2e8f0' }} /> : <div style={{ width: '78px', height: '78px', borderRadius: '14px', flex: '0 0 78px', background: '#fff7ed', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '31px', border: '1px solid #fed7aa' }}>🍽️</div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
-                              <strong style={{ color: '#1e293b', fontSize: '15px' }}>{urun.ad}</strong>
+                              <strong style={{ color: '#1e293b', fontSize: '17px' }}>{urun.ad}</strong>
                               <span style={{ color: publicAyarlari.temaRengi, fontWeight: '900', whiteSpace: 'nowrap' }}>{Number(urun.fiyat || 0).toLocaleString('tr-TR')} TL</span>
                             </div>
-                            {urun.aciklama ? <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '12px', lineHeight: 1.5 }}>{urun.aciklama}</p> : null}
+                            {urun.aciklama ? <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '14px', lineHeight: 1.5 }}>{urun.aciklama}</p> : null}
                             {Array.isArray(urun.menuNotlari) && urun.menuNotlari.length > 0 ? (
                               <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '8px' }}>
-                                {urun.menuNotlari.slice(0, 4).map(not => <span key={not.id || not.ad} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '4px 7px', color: '#475569', fontSize: '11px', fontWeight: '800' }}>{not.ad}{Number(not.fiyat || 0) > 0 ? ` +${Number(not.fiyat || 0)} TL` : ''}</span>)}
+                                {urun.menuNotlari.slice(0, 4).map(not => <span key={not.id || not.ad} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '4px 7px', color: '#475569', fontSize: '13px', fontWeight: '800' }}>{not.ad}{Number(not.fiyat || 0) > 0 ? ` +${Number(not.fiyat || 0)} TL` : ''}</span>)}
                               </div>
                             ) : null}
                             {publicAyarlari.qrSiparisAktif !== false ? (
-                              <button type="button" onClick={() => qrSepeteUrunEkle(urun)} style={{ marginTop: '10px', border: 'none', backgroundColor: publicAyarlari.temaRengi, color: '#fff', padding: '8px 10px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>Sepete Ekle</button>
+                              <button type="button" onClick={() => qrSepeteUrunEkle(urun)} style={{ marginTop: '10px', border: 'none', backgroundColor: publicAyarlari.temaRengi, color: '#fff', padding: '8px 10px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '14px' }}>Sepete Ekle</button>
                             ) : null}
                           </div>
                         </div>
@@ -15731,15 +15731,15 @@ Toplam Ciro: {toplam}
             <div style={{ position: 'sticky', bottom: '12px', marginTop: '18px', backgroundColor: '#0f172a', color: '#fff', borderRadius: '22px', padding: '14px', boxShadow: '0 24px 80px -38px rgba(15,23,42,0.75)', border: '1px solid rgba(255,255,255,0.12)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
-                  <div style={{ fontWeight: '900', fontSize: '15px' }}>Sepet — {qrSepet.reduce((t, u) => t + Number(u.adet || 1), 0)} ürün</div>
-                  <div style={{ color: '#cbd5e1', fontSize: '12px', marginTop: '3px' }}>{qrSepet.length === 0 ? 'Ürün seçip garson onayına gönderebilirsiniz.' : qrSepet.map(u => `${u.adet}x ${u.ad}`).join(' / ')}</div>
-                  {qrSiparisMesaji ? <div style={{ color: '#86efac', fontSize: '12px', fontWeight: '900', marginTop: '6px' }}>{qrSiparisMesaji}</div> : null}
+                  <div style={{ fontWeight: '900', fontSize: '17px' }}>Sepet — {qrSepet.reduce((t, u) => t + Number(u.adet || 1), 0)} ürün</div>
+                  <div style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '3px' }}>{qrSepet.length === 0 ? 'Ürün seçip garson onayına gönderebilirsiniz.' : qrSepet.map(u => `${u.adet}x ${u.ad}`).join(' / ')}</div>
+                  {qrSiparisMesaji ? <div style={{ color: '#86efac', fontSize: '14px', fontWeight: '900', marginTop: '6px' }}>{qrSiparisMesaji}</div> : null}
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                   {qrSepet.map(u => (
                     <div key={u.urunId} style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '999px', padding: '5px 7px' }}>
                       <button type="button" onClick={() => qrSepetAdetGuncelle(u.urunId, -1)} style={{ border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontWeight: '900' }}>-</button>
-                      <span style={{ fontSize: '12px', fontWeight: '900' }}>{u.adet}</span>
+                      <span style={{ fontSize: '14px', fontWeight: '900' }}>{u.adet}</span>
                       <button type="button" onClick={() => qrSepetAdetGuncelle(u.urunId, 1)} style={{ border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontWeight: '900' }}>+</button>
                     </div>
                   ))}
@@ -15749,7 +15749,7 @@ Toplam Ciro: {toplam}
               </div>
             </div>
           ) : null}
-          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', fontWeight: '800', marginTop: '24px' }}>integra POS QR Menü</div>
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '14px', fontWeight: '800', marginTop: '24px' }}>integra POS QR Menü</div>
         </div>
       </div>
     );
@@ -15761,21 +15761,21 @@ Toplam Ciro: {toplam}
                 <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', marginBottom: '16px', ...kapsayiciStili }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                     <div>
-                      <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Gelişmiş Ürün Reçetesi</h3>
-                      <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
+                      <h3 style={{ fontSize: '19px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Gelişmiş Ürün Reçetesi</h3>
+                      <p style={{ color: '#64748b', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
                         Her ürünün kaç gram/kg/adet hammadde kullandığını tanımlayın. Sistem üretim moduna göre çalışır: manuel üretimde önce ürünü üretip stoğa alırsın, satışta satıldıkça üret modunda hammaddeler satış anında düşer.
                       </p>
                     </div>
                     <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '14px', padding: '10px 12px', minWidth: '220px' }}>
-                      <div style={{ fontSize: '11px', color: '#9a3412', fontWeight: '900' }}>Reçete Durumu</div>
-                      <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '900' }}>{aktifMenu.filter(u => receteSatirlariBul(u.id).length > 0).length} ürün reçeteli / {aktifMenu.length} ürün</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Reçetesiz ürünler maliyet raporunda eksik kâr gösterebilir.</div>
+                      <div style={{ fontSize: '13px', color: '#9a3412', fontWeight: '900' }}>Reçete Durumu</div>
+                      <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: '900' }}>{aktifMenu.filter(u => receteSatirlariBul(u.id).length > 0).length} ürün reçeteli / {aktifMenu.length} ürün</div>
+                      <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Reçetesiz ürünler maliyet raporunda eksik kâr gösterebilir.</div>
                     </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr', gap: '12px', marginTop: '14px' }}>
                     <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>1) Ürün seç ve reçete satırı ekle</div>
+                      <div style={{ fontSize: '14px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>1) Ürün seç ve reçete satırı ekle</div>
                       <div style={styles.inlineForm}>
                         <select value={receteAyarlananUrunId} onChange={e => { setReceteAyarlananUrunId(e.target.value); setReceteTaslakKalemleri([]); setUretimMesaji(''); }} style={styles.input}>
                           <option value="">Reçete ürünü seç</option>
@@ -15790,7 +15790,7 @@ Toplam Ciro: {toplam}
                         <input type="text" placeholder="Hazırlık notu: doğranmış, pişmiş, soslu..." value={receteHazirlikNotu} onChange={e => setReceteHazirlikNotu(e.target.value)} style={{ ...styles.input, flex: '1 1 220px' }} />
                         <button type="button" onClick={receteTaslakKalemiEkle} style={styles.btnOrange}>Reçete Listesine Ekle</button>
                       </div>
-                      <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '8px' }}>
+                      <div style={{ color: '#64748b', fontSize: '13px', lineHeight: 1.5, marginTop: '8px' }}>
                         Mantık: Ürün birden fazla hammaddeden oluşur. Örnek: Kek = 0.20 kg un + 2 adet yumurta + 0.10 kg şeker. Manuel üretimde bu hammaddeler üretim yapınca düşer; satışta satıldıkça üret modunda satış anında düşer.
                       </div>
 
@@ -15808,7 +15808,7 @@ Toplam Ciro: {toplam}
                               const fireli = paraYuvarla(Number(k.miktar || 0) * (1 + Number(k.fireYuzde || 0) / 100));
                               const maliyet = paraYuvarla(fireli * Number(k.birimMaliyetSnapshot || 0));
                               return (
-                                <div key={k.taslakId} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '10px', padding: '8px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.75fr 0.75fr 0.75fr auto', gap: '8px', alignItems: 'center', fontSize: '12px' }}>
+                                <div key={k.taslakId} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '10px', padding: '8px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.75fr 0.75fr 0.75fr auto', gap: '8px', alignItems: 'center', fontSize: '14px' }}>
                                   <strong style={{ color: '#1e293b' }}>{k.malzemeAdi}</strong>
                                   <span>Net: <strong>{k.miktar}</strong> {k.birim}</span>
                                   <span>Fireli: <strong>{fireli}</strong> {k.birim}</span>
@@ -15824,7 +15824,7 @@ Toplam Ciro: {toplam}
                     </div>
 
                     <div style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>2) Başka üründen reçete kopyala</div>
+                      <div style={{ fontSize: '14px', fontWeight: '900', color: '#9a3412', marginBottom: '8px' }}>2) Başka üründen reçete kopyala</div>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <select value={receteKopyalanacakUrunId} onChange={e => setReceteKopyalanacakUrunId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px' }}>
                           <option value="">Kaynak ürün seç</option>
@@ -15832,7 +15832,7 @@ Toplam Ciro: {toplam}
                         </select>
                         <button type="button" onClick={urunRecetesiniKopyala} style={{ ...styles.btnOrange, backgroundColor: '#1e293b' }}>Kopyala</button>
                       </div>
-                      <div style={{ color: '#64748b', fontSize: '11px', marginTop: '8px', lineHeight: 1.5 }}>
+                      <div style={{ color: '#64748b', fontSize: '13px', marginTop: '8px', lineHeight: 1.5 }}>
                         Benzer ürünlerde hızlı kurulum için kullanılır. Örn: Kaşarlı Kumpir reçetesini Karışık Kumpir'e kopyalayıp sadece ekstra malzemeleri ekleyin.
                       </div>
                     </div>
@@ -15847,45 +15847,45 @@ Toplam Ciro: {toplam}
                       <div style={{ marginTop: '14px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '16px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                           <div>
-                            <h3 style={{ margin: '0 0 6px', color: '#065f46', fontSize: '16px' }}>🏭 Üretim Modu ve Ürün Stoğu</h3>
-                            <p style={{ margin: 0, color: '#047857', fontSize: '12px', lineHeight: 1.5 }}>
+                            <h3 style={{ margin: '0 0 6px', color: '#065f46', fontSize: '18px' }}>🏭 Üretim Modu ve Ürün Stoğu</h3>
+                            <p style={{ margin: 0, color: '#047857', fontSize: '14px', lineHeight: 1.5 }}>
                               Manuel üretimde hammaddeler üretim yaptığında düşer ve ürün stoğu artar. Satışta satıldıkça üret modunda ürün stoğu beklemez; satış anında reçetedeki hammaddeler düşer.
                             </p>
                           </div>
                           <div style={{ backgroundColor: '#fff', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', minWidth: '170px' }}>
-                            <div style={{ color: '#047857', fontSize: '11px', fontWeight: '900' }}>Ürün Stoğu</div>
-                            <div style={{ color: '#0f172a', fontSize: '22px', fontWeight: '900' }}>{Number(seciliUrun?.stokAdedi || 0)}</div>
-                            <div style={{ color: '#64748b', fontSize: '11px' }}>{urunUretimModuEtiketi(seciliUrun)}</div>
+                            <div style={{ color: '#047857', fontSize: '13px', fontWeight: '900' }}>Ürün Stoğu</div>
+                            <div style={{ color: '#0f172a', fontSize: '25px', fontWeight: '900' }}>{Number(seciliUrun?.stokAdedi || 0)}</div>
+                            <div style={{ color: '#64748b', fontSize: '13px' }}>{urunUretimModuEtiketi(seciliUrun)}</div>
                           </div>
                         </div>
 
-                        {uretimMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#d1fae5', border: '1px solid #86efac', color: '#047857', borderRadius: '12px', padding: '9px 11px', fontSize: '12px', fontWeight: '800' }}>{uretimMesaji}</div> : null}
+                        {uretimMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#d1fae5', border: '1px solid #86efac', color: '#047857', borderRadius: '12px', padding: '9px 11px', fontSize: '14px', fontWeight: '800' }}>{uretimMesaji}</div> : null}
 
                         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginTop: '12px' }}>
                           <div style={{ backgroundColor: '#fff', border: '1px solid #a7f3d0', borderRadius: '14px', padding: '10px' }}>
-                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#047857', marginBottom: '8px' }}>Üretim şekli</div>
+                            <div style={{ fontSize: '14px', fontWeight: '900', color: '#047857', marginBottom: '8px' }}>Üretim şekli</div>
                             <select value={urunUretimModuBul(seciliUrun)} onChange={e => receteliUrunUretimModunuGuncelle(receteAyarlananUrunId, e.target.value)} style={{ ...styles.input, backgroundColor: '#fff' }}>
                               <option value="manuel">Manuel üret / ürün stoğuna al</option>
                               <option value="satisla_uretim">Satışta satıldıkça üret</option>
                             </select>
                             <input type="text" placeholder="Üretim notu / hazırlık bilgisi" value={uretimNotu} onChange={e => setUretimNotu(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff', marginTop: '8px' }} />
-                            <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '8px' }}>
+                            <div style={{ color: '#64748b', fontSize: '13px', lineHeight: 1.5, marginTop: '8px' }}>
                               Tavsiye: Kek, hamur, çorba gibi önceden hazırlanan ürünlerde manuel üretim; anlık hazırlanan kumpir/tost gibi ürünlerde satışta satıldıkça üret kullanılabilir.
                             </div>
                           </div>
 
                           <div style={{ backgroundColor: '#fff', border: '1px solid #a7f3d0', borderRadius: '14px', padding: '10px' }}>
-                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#047857', marginBottom: '8px' }}>Manuel üretim yap</div>
+                            <div style={{ fontSize: '14px', fontWeight: '900', color: '#047857', marginBottom: '8px' }}>Manuel üretim yap</div>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                               <input type="number" step="0.001" placeholder="Üretilecek adet" value={uretimMiktari} onChange={e => setUretimMiktari(e.target.value)} style={{ ...styles.input, maxWidth: '160px', backgroundColor: '#fff' }} />
                               <button type="button" onClick={receteliUrunuManuelUret} disabled={gerekliler.length === 0 || eksikVar} style={{ ...styles.btnOrange, backgroundColor: eksikVar ? '#94a3b8' : '#10b981', cursor: eksikVar ? 'not-allowed' : 'pointer' }}>Üret ve Ürün Stoğuna Al</button>
                             </div>
                             {gerekliler.length === 0 ? (
-                              <div style={{ color: '#b45309', fontSize: '12px', marginTop: '8px', fontWeight: '800' }}>Önce bu ürün için reçete kaydedin.</div>
+                              <div style={{ color: '#b45309', fontSize: '14px', marginTop: '8px', fontWeight: '800' }}>Önce bu ürün için reçete kaydedin.</div>
                             ) : (
                               <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 {gerekliler.map(g => (
-                                  <div key={g.satir.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', backgroundColor: g.yeterli ? '#f0fdf4' : '#fef2f2', border: g.yeterli ? '1px solid #bbf7d0' : '1px solid #fecaca', borderRadius: '10px', padding: '7px 9px', fontSize: '12px', color: '#334155' }}>
+                                  <div key={g.satir.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', backgroundColor: g.yeterli ? '#f0fdf4' : '#fef2f2', border: g.yeterli ? '1px solid #bbf7d0' : '1px solid #fecaca', borderRadius: '10px', padding: '7px 9px', fontSize: '14px', color: '#334155' }}>
                                     <span><strong>{g.malzeme?.ad || 'Hammadde'}</strong> gerekli: {g.gerekliMiktar} {g.malzeme?.birim || ''}</span>
                                     <span>Stok: {g.mevcutStok} {g.malzeme?.birim || ''}{g.yeterli ? '' : ` / Eksik ${g.eksikMiktar}`}</span>
                                   </div>
@@ -15928,12 +15928,12 @@ Toplam Ciro: {toplam}
 
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', margin: '12px 0' }}>
                           <input type="number" min="1" step="1" placeholder="Kaç porsiyon?" value={recetePorsiyonCarpani} onChange={e => setRecetePorsiyonCarpani(e.target.value)} style={{ ...styles.input, maxWidth: '150px' }} />
-                          <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>{porsiyonCarpani} porsiyon üretimde toplam reçete maliyeti: {paraYuvarla(analiz.maliyet * porsiyonCarpani)} TL</span>
+                          <span style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>{porsiyonCarpani} porsiyon üretimde toplam reçete maliyeti: {paraYuvarla(analiz.maliyet * porsiyonCarpani)} TL</span>
                           <button type="button" onClick={() => receteMaliyetiniUrunKartinaYaz(receteAyarlananUrunId)} style={{ ...styles.btnOrange, backgroundColor: '#10b981' }}>Maliyeti Ürün Kartına Yaz</button>
                         </div>
 
                         {analiz.eksikMaliyetliKalemler.length > 0 ? (
-                          <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', borderRadius: '12px', padding: '10px 12px', fontSize: '12px', fontWeight: '800', marginBottom: '10px' }}>
+                          <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', borderRadius: '12px', padding: '10px 12px', fontSize: '14px', fontWeight: '800', marginBottom: '10px' }}>
                             Bu reçetede maliyeti 0 olan veya eksik hammadde var. Hammadde kartına birim maliyet girersen kâr raporu düzelir.
                           </div>
                         ) : null}
@@ -15962,12 +15962,12 @@ Toplam Ciro: {toplam}
                                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 0.9fr 0.9fr 0.8fr 0.8fr auto', gap: '8px', alignItems: 'center' }}>
                                       <div>
                                         <strong style={{ color: '#1e293b' }}>{malzeme?.ad || 'Hammadde bulunamadı'}</strong>
-                                        <div style={{ color: '#64748b', fontSize: '11px' }}>{r.hazirlikNotu || 'Hazırlık notu yok'}</div>
+                                        <div style={{ color: '#64748b', fontSize: '13px' }}>{r.hazirlikNotu || 'Hazırlık notu yok'}</div>
                                       </div>
-                                      <div style={{ fontSize: '12px', color: '#334155' }}>Net: <strong>{r.miktar}</strong> {malzeme?.birim || ''}</div>
-                                      <div style={{ fontSize: '12px', color: '#334155' }}>Fireli: <strong>{fireliMiktar}</strong> {malzeme?.birim || ''}</div>
-                                      <div style={{ fontSize: '12px', color: '#334155' }}>Fire: <strong>%{receteSatiriFireOrani(r)}</strong></div>
-                                      <div style={{ fontSize: '12px', color: '#334155' }}>Maliyet: <strong>{satirMaliyeti} TL</strong></div>
+                                      <div style={{ fontSize: '14px', color: '#334155' }}>Net: <strong>{r.miktar}</strong> {malzeme?.birim || ''}</div>
+                                      <div style={{ fontSize: '14px', color: '#334155' }}>Fireli: <strong>{fireliMiktar}</strong> {malzeme?.birim || ''}</div>
+                                      <div style={{ fontSize: '14px', color: '#334155' }}>Fire: <strong>%{receteSatiriFireOrani(r)}</strong></div>
+                                      <div style={{ fontSize: '14px', color: '#334155' }}>Maliyet: <strong>{satirMaliyeti} TL</strong></div>
                                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
                                         <button type="button" onClick={() => urunReceteSatiriDuzenlemeyeAl(r)} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Düzenle</button>
                                         <button type="button" onClick={() => urunReceteSatiriSil(r.id)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Sil</button>
@@ -15990,7 +15990,7 @@ Toplam Ciro: {toplam}
                       <summary style={{ cursor: 'pointer', color: '#9a3412', fontWeight: '900' }}>Reçetesiz ürünler ({aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).length})</summary>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
                         {aktifMenu.filter(u => receteSatirlariBul(u.id).length === 0).slice(0, 40).map(u => (
-                          <button key={u.id} type="button" onClick={() => setReceteAyarlananUrunId(String(u.id))} style={{ border: '1px solid #fed7aa', backgroundColor: '#fff7ed', color: '#9a3412', borderRadius: '999px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '800' }}>{u.ad}</button>
+                          <button key={u.id} type="button" onClick={() => setReceteAyarlananUrunId(String(u.id))} style={{ border: '1px solid #fed7aa', backgroundColor: '#fff7ed', color: '#9a3412', borderRadius: '999px', padding: '6px 10px', cursor: 'pointer', fontSize: '14px', fontWeight: '800' }}>{u.ad}</button>
                         ))}
                       </div>
                     </details>
@@ -16300,7 +16300,7 @@ Toplam Ciro: {toplam}
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '18px',
+                    fontSize: '20px',
                     flex: '0 0 auto',
                   }}
                 >
@@ -16308,10 +16308,10 @@ Toplam Ciro: {toplam}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: '#0f172a', fontWeight: '950', fontSize: '13px', marginBottom: '3px' }}>
+                  <div style={{ color: '#0f172a', fontWeight: '950', fontSize: '15px', marginBottom: '3px' }}>
                     {tema.baslik}
                   </div>
-                  <div style={{ color: '#475569', fontWeight: '650', fontSize: '12px', lineHeight: 1.45, wordBreak: 'break-word' }}>
+                  <div style={{ color: '#475569', fontWeight: '650', fontSize: '14px', lineHeight: 1.45, wordBreak: 'break-word' }}>
                     {bildirim.mesaj}
                   </div>
                 </div>
@@ -16376,7 +16376,7 @@ Toplam Ciro: {toplam}
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '26px',
+                fontSize: '29px',
                 margin: '0 auto 14px',
               }}
             >
@@ -16387,7 +16387,7 @@ Toplam Ciro: {toplam}
               style={{
                 margin: '0 0 8px',
                 color: '#1e293b',
-                fontSize: '20px',
+                fontSize: '22px',
                 fontWeight: '900',
               }}
             >
@@ -16398,7 +16398,7 @@ Toplam Ciro: {toplam}
               style={{
                 margin: '0 0 18px',
                 color: '#64748b',
-                fontSize: '14px',
+                fontSize: '16px',
                 lineHeight: '1.6',
               }}
             >
@@ -16413,7 +16413,7 @@ Toplam Ciro: {toplam}
                 padding: '12px',
                 marginBottom: '18px',
                 textAlign: 'left',
-                fontSize: '13px',
+                fontSize: '15px',
                 color: '#334155',
               }}
             >
@@ -16445,7 +16445,7 @@ Toplam Ciro: {toplam}
                   borderRadius: '12px',
                   cursor: 'pointer',
                   fontWeight: '800',
-                  fontSize: '14px',
+                  fontSize: '16px',
                 }}
               >
                 Yazdırma
@@ -16466,7 +16466,7 @@ Toplam Ciro: {toplam}
                   borderRadius: '12px',
                   cursor: 'pointer',
                   fontWeight: '800',
-                  fontSize: '14px',
+                  fontSize: '16px',
                 }}
               >
                 Fişi Yazdır
@@ -16512,18 +16512,18 @@ Toplam Ciro: {toplam}
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '26px',
+                fontSize: '29px',
                 margin: '0 auto 14px',
               }}
             >
               👨‍🍳
             </div>
 
-            <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '20px', fontWeight: '900' }}>
+            <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '22px', fontWeight: '900' }}>
               Mutfak fişi yazdırılsın mı?
             </h3>
 
-            <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: '14px', lineHeight: '1.6' }}>
+            <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: '16px', lineHeight: '1.6' }}>
               Bu sipariş mutfak ekranına düştü. Yazıcı hedefi: <strong>{mutfakFisYaziciOzeti(mutfakFisSorModal.fisler || [])}</strong>.
             </p>
 
@@ -16535,7 +16535,7 @@ Toplam Ciro: {toplam}
                 padding: '12px',
                 marginBottom: '18px',
                 textAlign: 'left',
-                fontSize: '13px',
+                fontSize: '15px',
                 color: '#334155',
               }}
             >
@@ -16566,7 +16566,7 @@ Toplam Ciro: {toplam}
                   borderRadius: '12px',
                   cursor: 'pointer',
                   fontWeight: '800',
-                  fontSize: '14px',
+                  fontSize: '16px',
                 }}
               >
                 Sadece Ekranda Kalsın
@@ -16587,7 +16587,7 @@ Toplam Ciro: {toplam}
                   borderRadius: '12px',
                   cursor: 'pointer',
                   fontWeight: '800',
-                  fontSize: '14px',
+                  fontSize: '16px',
                 }}
               >
                 Mutfak Fişi Yazdır
@@ -16638,7 +16638,7 @@ Toplam Ciro: {toplam}
             <div style={{ ...styles.logoContainer, cursor: 'pointer' }} onClick={() => setScreen('landing')}>
               <span style={styles.orangeDot}>●</span>
               <strong style={{ color: '#1e293b' }}>integra</strong>
-              <span style={{ color: '#ff6b35', fontSize: '14px', fontWeight: '900', marginLeft: '2px' }}>POS</span>
+              <span style={{ color: '#ff6b35', fontSize: '16px', fontWeight: '900', marginLeft: '2px' }}>POS</span>
             </div>
 
             <nav style={styles.landingNavLinks}>
@@ -16687,7 +16687,7 @@ Toplam Ciro: {toplam}
                       color: '#334155',
                       padding: '8px 11px',
                       borderRadius: '999px',
-                      fontSize: '12px',
+                      fontSize: '14px',
                       fontWeight: '800',
                     }}
                   >
@@ -16742,7 +16742,7 @@ Toplam Ciro: {toplam}
                         <div style={{ color: '#ff6b35', fontWeight: '900', marginTop: '6px' }}>
                           {kart.tutar}
                         </div>
-                        <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>{kart.durum}</div>
+                        <div style={{ color: '#64748b', fontSize: '13px', marginTop: '4px' }}>{kart.durum}</div>
                       </div>
                     ))}
                   </div>
@@ -16799,8 +16799,8 @@ Toplam Ciro: {toplam}
                 {LANDING_OPERATION_FLOW.map(([no, title, text]) => (
                   <div key={title} style={{ background: 'linear-gradient(180deg, #fff 0%, #fff7ed 100%)', border: '1px solid #fed7aa', borderRadius: '20px', padding: '22px', boxShadow: '0 18px 40px -28px rgba(15,23,42,0.22)' }}>
                     <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#ff6b35', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', marginBottom: '14px' }}>{no}</div>
-                    <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '17px' }}>{title}</h3>
-                    <p style={{ margin: 0, color: '#64748b', lineHeight: 1.65, fontSize: '13px' }}>{text}</p>
+                    <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '19px' }}>{title}</h3>
+                    <p style={{ margin: 0, color: '#64748b', lineHeight: 1.65, fontSize: '15px' }}>{text}</p>
                   </div>
                 ))}
               </div>
@@ -16820,9 +16820,9 @@ Toplam Ciro: {toplam}
             <div style={{ ...styles.featuresGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
               {LANDING_BUSINESS_TYPES.map(([icon, title, text]) => (
                 <div key={title} style={{ ...styles.featureItem, padding: '22px' }}>
-                  <div style={{ fontSize: '30px', marginBottom: '10px' }}>{icon}</div>
-                  <h4 style={{ ...styles.featureTitle, fontSize: '16px' }}>{title}</h4>
-                  <p style={{ ...styles.featureText, fontSize: '13px' }}>{text}</p>
+                  <div style={{ fontSize: '33px', marginBottom: '10px' }}>{icon}</div>
+                  <h4 style={{ ...styles.featureTitle, fontSize: '18px' }}>{title}</h4>
+                  <p style={{ ...styles.featureText, fontSize: '15px' }}>{text}</p>
                 </div>
               ))}
             </div>
@@ -16884,8 +16884,8 @@ Toplam Ciro: {toplam}
                   >
                     {no}
                   </div>
-                  <h4 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '16px' }}>{title}</h4>
-                  <p style={{ margin: 0, color: '#64748b', lineHeight: '1.6', fontSize: '13px' }}>{text}</p>
+                  <h4 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '18px' }}>{title}</h4>
+                  <p style={{ margin: 0, color: '#64748b', lineHeight: '1.6', fontSize: '15px' }}>{text}</p>
                 </div>
               ))}
             </div>
@@ -16911,14 +16911,14 @@ Toplam Ciro: {toplam}
                     boxShadow: '0 24px 55px -34px rgba(15,23,42,0.24)',
                   }}
                 >
-                  <div style={{ backgroundColor: '#1e293b', color: '#fff', padding: '12px 14px', fontWeight: '900', fontSize: '13px' }}>
+                  <div style={{ backgroundColor: '#1e293b', color: '#fff', padding: '12px 14px', fontWeight: '900', fontSize: '15px' }}>
                     {title}
                   </div>
                   <div style={{ padding: '18px', background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)' }}>
                     <div style={{ height: '110px', border: '1px dashed #cbd5e1', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontWeight: '900', marginBottom: '14px' }}>
                       Panel Önizleme
                     </div>
-                    <p style={{ margin: 0, color: '#64748b', fontSize: '13px', lineHeight: '1.7' }}>{text}</p>
+                    <p style={{ margin: 0, color: '#64748b', fontSize: '15px', lineHeight: '1.7' }}>{text}</p>
                   </div>
                 </div>
               ))}
@@ -16935,7 +16935,7 @@ Toplam Ciro: {toplam}
                 <h2 style={{ fontSize: 'clamp(28px, 4vw, 42px)', lineHeight: '1.15', margin: '12px 0', fontWeight: '900' }}>
                   İşletmede hatayı azaltır, kontrolü artırır.
                 </h2>
-                <p style={{ color: '#cbd5e1', lineHeight: '1.8', fontSize: '15px' }}>
+                <p style={{ color: '#cbd5e1', lineHeight: '1.8', fontSize: '17px' }}>
                   Satış, randevu, stok, depo, cari, ödeme ve personel kayıtları dağınık kalmaz.
                   İşletme sahibi yetkili olduğu tüm operasyonu tek sistemden ve uzaktan izleyebilir.
                 </p>
@@ -16944,8 +16944,8 @@ Toplam Ciro: {toplam}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
                 {LANDING_ADVANTAGES.map(([big, small]) => (
                   <div key={big} style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '18px', padding: '22px' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '900', color: '#ff6b35' }}>{big}</div>
-                    <div style={{ fontSize: '13px', color: '#cbd5e1', marginTop: '6px', fontWeight: '700' }}>{small}</div>
+                    <div style={{ fontSize: '27px', fontWeight: '900', color: '#ff6b35' }}>{big}</div>
+                    <div style={{ fontSize: '15px', color: '#cbd5e1', marginTop: '6px', fontWeight: '700' }}>{small}</div>
                   </div>
                 ))}
               </div>
@@ -17080,7 +17080,7 @@ Toplam Ciro: {toplam}
                   borderRadius: '14px',
                   cursor: 'pointer',
                   fontWeight: '900',
-                  fontSize: '14px',
+                  fontSize: '16px',
                 }}
               >
                 Demo Başvurusu Yap
@@ -17089,8 +17089,8 @@ Toplam Ciro: {toplam}
           </section>
 
           <div style={styles.landingFloatingCta}>
-            <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>Integra POS</div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>Teklif ve demo için ulaşın</div>
+            <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>Integra POS</div>
+            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>Teklif ve demo için ulaşın</div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <a href="#destek" style={{ ...styles.floatingCtaPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>İletişim</a>
               <a href="tel:05325014277" style={styles.floatingCtaSecondary}>Ara</a>
@@ -17165,7 +17165,7 @@ Toplam Ciro: {toplam}
                     setSifremiUnuttumEmail(email);
                     setScreen('forgot_password');
                   }}
-                  style={{ ...styles.authLink, fontSize: '13px' }}
+                  style={{ ...styles.authLink, fontSize: '15px' }}
                 >
                   Şifremi Unuttum
                 </span>
@@ -17203,7 +17203,7 @@ Toplam Ciro: {toplam}
 
             <h3 style={styles.authTitle}>Şifremi Unuttum</h3>
 
-            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '13px', lineHeight: '1.6', margin: '0 0 16px' }}>
+            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '15px', lineHeight: '1.6', margin: '0 0 16px' }}>
               İşletme yetkilileri için güvenli yardım talebi oluşturulur. Personeller yeni şifreyi kendi işletme sahibinden alır.
             </p>
 
@@ -17379,8 +17379,8 @@ Toplam Ciro: {toplam}
             </div>
 
             <div style={styles.restaurantBadge}>
-              <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{user?.restaurant}</div>
-              <div style={{ fontSize: '11px', color: '#a4b5c6' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{user?.restaurant}</div>
+              <div style={{ fontSize: '13px', color: '#a4b5c6' }}>
                 {user?.role === 'super_admin'
                   ? 'Global Admin'
                   : user?.role === 'owner'
@@ -17725,7 +17725,7 @@ Toplam Ciro: {toplam}
             </nav>
             <div style={styles.sidebarHelpBox}>
               <div style={{ fontWeight: '900', color: '#fff', marginBottom: '4px' }}>Destek ve kurulum</div>
-              <div style={{ color: '#cbd5e1', fontSize: '11px', lineHeight: 1.45 }}>Canlı destek: 0532 501 42 77</div>
+              <div style={{ color: '#cbd5e1', fontSize: '13px', lineHeight: 1.45 }}>Canlı destek: 0532 501 42 77</div>
             </div>
             <button
               onClick={async () => {
@@ -17766,7 +17766,7 @@ Toplam Ciro: {toplam}
                 boxShadow: '0 18px 40px -32px rgba(15,23,42,0.35)',
               }}
             >
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', color: '#64748b', fontSize: '12px', fontWeight: '850' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', color: '#64748b', fontSize: '14px', fontWeight: '850' }}>
                 <span style={{ color: canliSenkronDurumu === 'Aktif' ? '#16a34a' : canliSenkronDurumu === 'Kopuk' ? '#dc2626' : '#f97316' }}>●</span>
                 <span>Canlı senkron: {canliSenkronDurumu}</span>
                 <span>•</span>
@@ -17789,7 +17789,7 @@ Toplam Ciro: {toplam}
                   borderRadius: '12px',
                   cursor: manuelYenilemeYapiliyor ? 'not-allowed' : 'pointer',
                   fontWeight: '950',
-                  fontSize: '12px',
+                  fontSize: '14px',
                 }}
               >
                 {manuelYenilemeYapiliyor ? '⏳ Yenileniyor' : '🔄 Verileri Yenile'}
@@ -17803,7 +17803,7 @@ Toplam Ciro: {toplam}
               <div style={{ backgroundColor: aktifKullaniciLisansRozeti.zemin, color: aktifKullaniciLisansRozeti.renk, border: `1px solid ${aktifKullaniciLisansRozeti.renk}22`, borderRadius: '16px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <strong>💳 Lisans uyarısı: {aktifKullaniciLisansRozeti.etiket}</strong>
-                  <div style={{ fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>
+                  <div style={{ fontSize: '14px', marginTop: '4px', fontWeight: '700' }}>
                     {aktifKullaniciLisansRozeti.kalanGun !== null ? `Kalan gün: ${aktifKullaniciLisansRozeti.kalanGun}` : 'Ödeme durumunuzu destek ekibiyle kontrol edin.'}
                   </div>
                 </div>
@@ -17873,28 +17873,28 @@ Toplam Ciro: {toplam}
               <div style={{ ...styles.panelCard, maxWidth: '1180px', margin: '0 auto' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' }}>
                   <div>
-                    <div style={{ color: '#f97316', fontSize: '10px', fontWeight: '950', letterSpacing: '.14em' }}>MÜŞTERİ EKRANI</div>
+                    <div style={{ color: '#f97316', fontSize: '12px', fontWeight: '950', letterSpacing: '.14em' }}>MÜŞTERİ EKRANI</div>
                     <h2 style={{ ...styles.pageTitle, margin: '5px 0 7px' }}>🖥️ Arka Ekran Görselleri</h2>
-                    <p style={{ maxWidth: '720px', margin: 0, color: '#64748b', fontSize: '13px', lineHeight: 1.6 }}>
+                    <p style={{ maxWidth: '720px', margin: 0, color: '#64748b', fontSize: '15px', lineHeight: 1.6 }}>
                       Kampanya, menü ve duyuru görsellerini ekleyin. Ekrana yansıttığınızda görseller Windows'taki ikinci ekranda sırayla gösterilir.
                     </p>
                   </div>
                   <div style={{ minWidth: '190px', padding: '11px 14px', border: `1px solid ${restoranArkaEkranDurumu.includes('açık') || restoranArkaEkranDurumu.includes('Açık') ? '#86efac' : '#cbd5e1'}`, borderRadius: '12px', backgroundColor: restoranArkaEkranDurumu.includes('açık') || restoranArkaEkranDurumu.includes('Açık') ? '#f0fdf4' : '#f8fafc' }}>
-                    <div style={{ color: '#64748b', fontSize: '10px', fontWeight: '850' }}>EKRAN DURUMU</div>
-                    <strong style={{ display: 'block', marginTop: '4px', color: '#0f172a', fontSize: '14px' }}>{restoranArkaEkranDurumu}</strong>
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '850' }}>EKRAN DURUMU</div>
+                    <strong style={{ display: 'block', marginTop: '4px', color: '#0f172a', fontSize: '16px' }}>{restoranArkaEkranDurumu}</strong>
                   </div>
                 </div>
 
                 <div className="restaurant-customer-display-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(260px,.72fr) minmax(0,1.28fr)', gap: '14px', alignItems: 'start' }}>
                   <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '14px', backgroundColor: '#f8fafc' }}>
-                    <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '16px' }}>Görsel ekleyin</h3>
-                    <p style={{ margin: '0 0 13px', color: '#64748b', fontSize: '11px', lineHeight: 1.55 }}>Yatay 16:9 görseller arka ekranı daha iyi doldurur. En fazla 6 görsel eklenebilir.</p>
+                    <h3 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '18px' }}>Görsel ekleyin</h3>
+                    <p style={{ margin: '0 0 13px', color: '#64748b', fontSize: '13px', lineHeight: 1.55 }}>Yatay 16:9 görseller arka ekranı daha iyi doldurur. En fazla 6 görsel eklenebilir.</p>
                     <label style={{ minHeight: '92px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '5px', border: '2px dashed #fb923c', borderRadius: '12px', backgroundColor: '#fff7ed', color: '#c2410c', fontWeight: '950', cursor: restoranArkaEkranYukleniyor ? 'wait' : 'pointer' }}>
                       <span>{restoranArkaEkranYukleniyor ? '⏳ Görsel hazırlanıyor…' : '＋ Bilgisayardan Görsel Seç'}</span>
                       <small style={{ color: '#64748b', fontWeight: '750' }}>JPG, PNG veya WEBP</small>
                       <input type="file" accept="image/*" multiple disabled={restoranArkaEkranYukleniyor || restoranArkaEkranGorselleri.length >= 6} onChange={restoranArkaEkranGorseliEkle} style={{ display: 'none' }} />
                     </label>
-                    <label style={{ display: 'grid', gap: '6px', marginTop: '12px', color: '#475569', fontSize: '11px', fontWeight: '900' }}>
+                    <label style={{ display: 'grid', gap: '6px', marginTop: '12px', color: '#475569', fontSize: '13px', fontWeight: '900' }}>
                       Boş ekranda gösterilecek mesaj
                       <textarea value={restoranArkaEkranMesaji} maxLength="160" rows="3" onChange={event => restoranArkaEkranMesajiniDegistir(event.target.value)} placeholder="Örn. Afiyet olsun, yine bekleriz." style={{ width: '100%', resize: 'vertical', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '10px', backgroundColor: '#fff', color: '#0f172a', font: 'inherit', fontWeight: '750', lineHeight: 1.45 }} />
                       <small style={{ color: '#64748b', fontWeight: '700' }}>Yazdığınız metin anında arka ekrana yansır.</small>
@@ -17904,32 +17904,32 @@ Toplam Ciro: {toplam}
                       <button type="button" onClick={restoranArkaEkranKonumunuKaydet} style={{ width: '100%', minHeight: '42px', border: '1px solid #bfdbfe', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#1d4ed8', fontWeight: '900', cursor: 'pointer' }}>📌 Bu Konumu Kaydet</button>
                       <button type="button" onClick={restoranArkaEkraniKapat} style={{ width: '100%', minHeight: '42px', border: '1px solid #fecaca', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b91c1c', fontWeight: '900', cursor: 'pointer' }}>× Arka Ekranı Kapat</button>
                     </div>
-                    <div style={{ marginTop: '9px', padding: '9px 11px', borderRadius: '9px', backgroundColor: restoranArkaEkranOtomatik ? '#ecfdf5' : '#f8fafc', color: restoranArkaEkranOtomatik ? '#047857' : '#64748b', fontSize: '10px', fontWeight: '850' }}>
+                    <div style={{ marginTop: '9px', padding: '9px 11px', borderRadius: '9px', backgroundColor: restoranArkaEkranOtomatik ? '#ecfdf5' : '#f8fafc', color: restoranArkaEkranOtomatik ? '#047857' : '#64748b', fontSize: '12px', fontWeight: '850' }}>
                       {restoranArkaEkranOtomatik ? '✓ Bu kasada otomatik açılış etkin' : 'İkinci ekrana yansıttığınızda otomatik açılış etkinleşir.'}
                     </div>
-                    <div style={{ marginTop: '14px', padding: '11px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#1e3a8a', fontSize: '10px', lineHeight: 1.55 }}>
+                    <div style={{ marginTop: '14px', padding: '11px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#1e3a8a', fontSize: '12px', lineHeight: 1.55 }}>
                       Ana ekranda açılırsa pencereyi ikinci ekrana taşıyıp büyütün ve “Bu Konumu Kaydet”e bir kez basın. Sonraki açılışlarda kayıtlı ekran ve boyut kullanılır.
                     </div>
                   </div>
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '9px' }}>
-                      <h3 style={{ margin: 0, color: '#1e293b', fontSize: '16px' }}>Yayın sırası</h3>
-                      <span style={{ color: '#64748b', fontSize: '11px', fontWeight: '850' }}>{restoranArkaEkranGorselleri.length} / 6 görsel</span>
+                      <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px' }}>Yayın sırası</h3>
+                      <span style={{ color: '#64748b', fontSize: '13px', fontWeight: '850' }}>{restoranArkaEkranGorselleri.length} / 6 görsel</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px' }}>
                       {restoranArkaEkranGorselleri.map((gorsel, index) => (
                         <article key={gorsel.id} style={{ position: 'relative', overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '13px', backgroundColor: '#fff' }}>
                           <img src={gorsel.veri} alt={gorsel.ad || 'Arka ekran görseli'} style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} />
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 10px' }}>
-                            <span style={{ minWidth: 0, overflow: 'hidden', color: '#475569', fontSize: '10px', fontWeight: '850', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{index + 1}. {gorsel.ad || 'Kampanya görseli'}</span>
-                            <button type="button" aria-label={`${gorsel.ad || 'Görsel'} sil`} onClick={() => restoranArkaEkranGorseliniSil(gorsel.id)} style={{ flex: '0 0 auto', width: '28px', height: '28px', border: 0, borderRadius: '50%', backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '18px', fontWeight: '950', cursor: 'pointer' }}>×</button>
+                            <span style={{ minWidth: 0, overflow: 'hidden', color: '#475569', fontSize: '12px', fontWeight: '850', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{index + 1}. {gorsel.ad || 'Kampanya görseli'}</span>
+                            <button type="button" aria-label={`${gorsel.ad || 'Görsel'} sil`} onClick={() => restoranArkaEkranGorseliniSil(gorsel.id)} style={{ flex: '0 0 auto', width: '28px', height: '28px', border: 0, borderRadius: '50%', backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '20px', fontWeight: '950', cursor: 'pointer' }}>×</button>
                           </div>
                         </article>
                       ))}
                       {!restoranArkaEkranGorselleri.length && (
                         <div style={{ gridColumn: '1 / -1', minHeight: '240px', display: 'grid', placeItems: 'center', padding: '28px', border: '1px dashed #cbd5e1', borderRadius: '14px', backgroundColor: '#f8fafc', color: '#64748b', textAlign: 'center' }}>
-                          <div><div style={{ fontSize: '42px', marginBottom: '9px' }}>🖼️</div><strong style={{ display: 'block', color: '#334155' }}>Henüz arka ekran görseli yok</strong><small style={{ display: 'block', marginTop: '5px' }}>Soldaki alandan kampanya veya menü görsellerini ekleyin.</small></div>
+                          <div><div style={{ fontSize: '47px', marginBottom: '9px' }}>🖼️</div><strong style={{ display: 'block', color: '#334155' }}>Henüz arka ekran görseli yok</strong><small style={{ display: 'block', marginTop: '5px' }}>Soldaki alandan kampanya veya menü görsellerini ekleyin.</small></div>
                         </div>
                       )}
                     </div>
@@ -18037,7 +18037,7 @@ Toplam Ciro: {toplam}
                           borderRadius: '999px',
                           cursor: 'pointer',
                           fontWeight: '900',
-                          fontSize: '12px',
+                          fontSize: '14px',
                           flex: '0 0 auto',
                         }}
                       >
@@ -18054,7 +18054,7 @@ Toplam Ciro: {toplam}
                         border: (masaAktarmaModu || masaBirlestirmeModu) ? '1px solid #c7d2fe' : '1px solid #bbf7d0',
                         padding: '10px 12px',
                         borderRadius: '12px',
-                        fontSize: '13px',
+                        fontSize: '15px',
                         fontWeight: '800',
                         marginBottom: '14px',
                       }}
@@ -18141,7 +18141,7 @@ Toplam Ciro: {toplam}
                                 marginBottom: '8px',
                               }}
                             >
-                              <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>
+                              <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '17px' }}>
                                 {m.ad}
                               </div>
 
@@ -18151,7 +18151,7 @@ Toplam Ciro: {toplam}
                                   color: m.dolu ? '#c2410c' : aktifRezervasyon ? '#1d4ed8' : '#15803d',
                                   padding: '4px 8px',
                                   borderRadius: '999px',
-                                  fontSize: '11px',
+                                  fontSize: '13px',
                                   fontWeight: '900',
                                   whiteSpace: 'nowrap',
                                 }}
@@ -18162,7 +18162,7 @@ Toplam Ciro: {toplam}
 
                             <div
                               style={{
-                                fontSize: '18px',
+                                fontSize: '20px',
                                 fontWeight: '900',
                                 color: m.dolu ? '#ff6b35' : '#10b981',
                                 marginBottom: '8px',
@@ -18177,7 +18177,7 @@ Toplam Ciro: {toplam}
                                   display: 'flex',
                                   flexDirection: 'column',
                                   gap: '5px',
-                                  fontSize: '11px',
+                                  fontSize: '13px',
                                   color: '#64748b',
                                   fontWeight: '700',
                                   borderTop: '1px solid #fed7aa',
@@ -18200,7 +18200,7 @@ Toplam Ciro: {toplam}
                                   display: 'flex',
                                   flexDirection: 'column',
                                   gap: '5px',
-                                  fontSize: '11px',
+                                  fontSize: '13px',
                                   color: '#1d4ed8',
                                   fontWeight: '800',
                                   borderTop: '1px solid #bfdbfe',
@@ -18274,7 +18274,7 @@ Toplam Ciro: {toplam}
                             <button
                               type="button"
                               onClick={masaAktarmaBaslat}
-                              style={{ ...styles.checkoutBtn, backgroundColor: '#6366f1', padding: '10px 12px', fontSize: '12px' }}
+                              style={{ ...styles.checkoutBtn, backgroundColor: '#6366f1', padding: '10px 12px', fontSize: '14px' }}
                             >
                               🔁 Masa Aktar
                             </button>
@@ -18282,7 +18282,7 @@ Toplam Ciro: {toplam}
                             <button
                               type="button"
                               onClick={masaAktarmaIptalEt}
-                              style={{ ...styles.checkoutBtn, backgroundColor: '#ef4444', padding: '10px 12px', fontSize: '12px' }}
+                              style={{ ...styles.checkoutBtn, backgroundColor: '#ef4444', padding: '10px 12px', fontSize: '14px' }}
                             >
                               Aktarmadan Vazgeç
                             </button>
@@ -18292,7 +18292,7 @@ Toplam Ciro: {toplam}
                             <button
                               type="button"
                               onClick={masaBirlestirmeBaslat}
-                              style={{ ...styles.checkoutBtn, backgroundColor: '#f59e0b', padding: '10px 12px', fontSize: '12px' }}
+                              style={{ ...styles.checkoutBtn, backgroundColor: '#f59e0b', padding: '10px 12px', fontSize: '14px' }}
                             >
                               🔗 Masa Birleştir
                             </button>
@@ -18300,7 +18300,7 @@ Toplam Ciro: {toplam}
                             <button
                               type="button"
                               onClick={masaBirlestirmeIptalEt}
-                              style={{ ...styles.checkoutBtn, backgroundColor: '#ef4444', padding: '10px 12px', fontSize: '12px' }}
+                              style={{ ...styles.checkoutBtn, backgroundColor: '#ef4444', padding: '10px 12px', fontSize: '14px' }}
                             >
                               Birleştirmeden Vazgeç
                             </button>
@@ -18316,7 +18316,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '10px',
                             padding: '8px',
                             marginBottom: '10px',
-                            fontSize: '12px',
+                            fontSize: '14px',
                             color: '#475569',
                             fontWeight: '700',
                           }}
@@ -18340,7 +18340,7 @@ Toplam Ciro: {toplam}
                           }}
                         >
                           <details style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px' }}>
-                            <summary style={{ fontSize: '12px', color: '#475569', fontWeight: '900', cursor: 'pointer' }}>
+                            <summary style={{ fontSize: '14px', color: '#475569', fontWeight: '900', cursor: 'pointer' }}>
                               📒 Cari / Veresiye {cariAdisyonMusteriId ? '— Seçili' : ''}
                             </summary>
 
@@ -18354,11 +18354,11 @@ Toplam Ciro: {toplam}
                                     setCariAdisyonArama(e.target.value);
                                     setCariAdisyonMusteriId('');
                                   }}
-                                  style={{ ...styles.panelSelect, padding: '8px', fontSize: '12px', width: '100%', boxSizing: 'border-box' }}
+                                  style={{ ...styles.panelSelect, padding: '8px', fontSize: '14px', width: '100%', boxSizing: 'border-box' }}
                                 />
 
                                 {cariAdisyonMusteriId && (
-                                  <div style={{ color: '#7c3aed', fontSize: '11px', padding: '6px 2px', fontWeight: '900' }}>
+                                  <div style={{ color: '#7c3aed', fontSize: '13px', padding: '6px 2px', fontWeight: '900' }}>
                                     Seçili cari: {cariAdisyonArama}
                                   </div>
                                 )}
@@ -18366,7 +18366,7 @@ Toplam Ciro: {toplam}
                                 {cariAdisyonArama && !cariAdisyonMusteriId && (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px', maxHeight: '120px', overflowY: 'auto' }}>
                                     {filtreliCariAdisyonMusterileri.length === 0 ? (
-                                      <div style={{ color: '#94a3b8', fontSize: '11px', padding: '6px' }}>Eşleşen cari yok.</div>
+                                      <div style={{ color: '#94a3b8', fontSize: '13px', padding: '6px' }}>Eşleşen cari yok.</div>
                                     ) : (
                                       filtreliCariAdisyonMusterileri.map(c => (
                                         <button
@@ -18382,7 +18382,7 @@ Toplam Ciro: {toplam}
                                             cursor: 'pointer',
                                             textAlign: 'left',
                                             fontWeight: '800',
-                                            fontSize: '11px',
+                                            fontSize: '13px',
                                           }}
                                         >
                                           {c.ad} {c.telefon ? ` / ${c.telefon}` : ''} — {Number(c.bakiye || 0)} TL
@@ -18393,7 +18393,7 @@ Toplam Ciro: {toplam}
                                 )}
                               </div>
 
-                              <button type="button" onClick={aktifAdisyonuCariyeYaz} style={{ ...styles.checkoutBtn, backgroundColor: '#7c3aed', padding: '9px', fontSize: '12px', width: 'auto' }}>Cari'ye Yaz</button>
+                              <button type="button" onClick={aktifAdisyonuCariyeYaz} style={{ ...styles.checkoutBtn, backgroundColor: '#7c3aed', padding: '9px', fontSize: '14px', width: 'auto' }}>Cari'ye Yaz</button>
                             </div>
                           </details>
 
@@ -18403,7 +18403,7 @@ Toplam Ciro: {toplam}
                               placeholder="Müşteri adı"
                               value={musteriAdiInput}
                               onChange={e => setMusteriAdiInput(e.target.value)}
-                              style={{ ...styles.panelSelect, flex: 1, padding: '8px', fontSize: '12px' }}
+                              style={{ ...styles.panelSelect, flex: 1, padding: '8px', fontSize: '14px' }}
                             />
 
                             <button
@@ -18417,7 +18417,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontWeight: '900',
-                                fontSize: '12px',
+                                fontSize: '14px',
                               }}
                             >
                               Kaydet
@@ -18436,7 +18436,7 @@ Toplam Ciro: {toplam}
                               borderRadius: '8px',
                               cursor: 'pointer',
                               fontWeight: '900',
-                              fontSize: '12px',
+                              fontSize: '14px',
                             }}
                           >
                             🧾 Hesap Öncesi Adisyon Yazdır
@@ -18473,7 +18473,7 @@ Toplam Ciro: {toplam}
                               flexWrap: 'wrap',
                             }}
                           >
-                            <strong style={{ fontSize: '13px', color: '#1e293b' }}>
+                            <strong style={{ fontSize: '15px', color: '#1e293b' }}>
                               Ürün Seçimi
                             </strong>
 
@@ -18487,7 +18487,7 @@ Toplam Ciro: {toplam}
                                 flex: isMobile ? '1 1 100%' : '1 1 150px',
                                 width: isMobile ? '100%' : undefined,
                                 padding: '8px 10px',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 backgroundColor: '#fff',
                               }}
                             />
@@ -18507,7 +18507,7 @@ Toplam Ciro: {toplam}
                               }}
                           >
                             {aktifMenuGruplari.length === 0 ? (
-                              <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
+                              <span style={{ color: '#94a3b8', fontSize: '14px', fontWeight: '700' }}>
                                 Grup yok
                               </span>
                             ) : (
@@ -18527,7 +18527,7 @@ Toplam Ciro: {toplam}
                                     borderRadius: '999px',
                                     cursor: 'pointer',
                                     fontWeight: '900',
-                                    fontSize: '12px',
+                                    fontSize: '14px',
                                     whiteSpace: 'nowrap',
                                     flex: '0 0 auto',
                                   }}
@@ -18542,7 +18542,7 @@ Toplam Ciro: {toplam}
                             <div
                               style={{
                                 color: '#94a3b8',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 fontWeight: '700',
                                 backgroundColor: '#fff',
                                 border: '1px dashed #cbd5e1',
@@ -18592,15 +18592,15 @@ Toplam Ciro: {toplam}
                                       />
                                     )}
 
-                                    <div style={{ fontWeight: '900', fontSize: '13px', marginBottom: '5px' }}>
+                                    <div style={{ fontWeight: '900', fontSize: '15px', marginBottom: '5px' }}>
                                       {u.favori ? '⭐ ' : ''}{u.ad}
                                     </div>
 
-                                    <div style={{ color: '#ff6b35', fontWeight: '900', fontSize: '13px' }}>
+                                    <div style={{ color: '#ff6b35', fontWeight: '900', fontSize: '15px' }}>
                                       {u.fiyat} TL
                                     </div>
 
-                                    <div style={{ color: '#64748b', fontWeight: '700', fontSize: '10px', marginTop: '4px' }}>
+                                    <div style={{ color: '#64748b', fontWeight: '700', fontSize: '12px', marginTop: '4px' }}>
                                       {u.departman || aktifAdisyonGrup.departman || 'Mutfak'}
                                     </div>
                                   </button>
@@ -18617,7 +18617,7 @@ Toplam Ciro: {toplam}
                                 color: seciliMenuUrunuHazirNotVarMi ? '#1d4ed8' : '#c2410c',
                                 borderRadius: '10px',
                                 padding: '8px 10px',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 fontWeight: '900',
                               }}
                             >
@@ -18751,7 +18751,7 @@ Toplam Ciro: {toplam}
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    fontSize: '13px',
+                                    fontSize: '15px',
                                     fontWeight: '900',
                                     flex: '0 0 22px',
                                   }}
@@ -18766,31 +18766,31 @@ Toplam Ciro: {toplam}
                                 </div>
 
                                 {s.not && (
-                                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                                  <div style={{ fontSize: '13px', color: '#64748b', marginTop: '3px' }}>
                                     Not: {s.not}
                                   </div>
                                 )}
 
                                 {Number(s.ekstraUcret || 0) > 0 && (
-                                  <div style={{ fontSize: '11px', color: '#ff6b35', marginTop: '3px', fontWeight: '800' }}>
+                                  <div style={{ fontSize: '13px', color: '#ff6b35', marginTop: '3px', fontWeight: '800' }}>
                                     Ekstra: +{s.ekstraUcret} TL / adet
                                   </div>
                                 )}
 
                                 {s.fiyatDegistirildi && (
-                                  <div style={{ fontSize: '11px', color: '#6366f1', marginTop: '3px', fontWeight: '800' }}>
+                                  <div style={{ fontSize: '13px', color: '#6366f1', marginTop: '3px', fontWeight: '800' }}>
                                     Satış fiyatı değişti: {s.satisFiyati} TL
                                   </div>
                                 )}
 
                                 {Number(s.indirimTutari || 0) > 0 && (
-                                  <div style={{ fontSize: '11px', color: '#10b981', marginTop: '3px', fontWeight: '800' }}>
+                                  <div style={{ fontSize: '13px', color: '#10b981', marginTop: '3px', fontWeight: '800' }}>
                                     İndirim: -{s.indirimTutari} TL / adet {Number(s.indirimYuzde || 0) > 0 ? `(%${s.indirimYuzde})` : ''}
                                   </div>
                                 )}
 
                                 {s.ikram && (
-                                  <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: '3px', fontWeight: '900' }}>
+                                  <div style={{ fontSize: '13px', color: '#f59e0b', marginTop: '3px', fontWeight: '900' }}>
                                     🎁 İkram ürün
                                   </div>
                                 )}
@@ -18811,7 +18811,7 @@ Toplam Ciro: {toplam}
                                     padding: '6px 8px',
                                     cursor: 'pointer',
                                     fontWeight: '900',
-                                    fontSize: '11px',
+                                    fontSize: '13px',
                                   }}
                                   title="Bu satırın satış fiyatını değiştir"
                                 >
@@ -18834,7 +18834,7 @@ Toplam Ciro: {toplam}
                                     padding: '6px 8px',
                                     cursor: 'pointer',
                                     fontWeight: '900',
-                                    fontSize: '11px',
+                                    fontSize: '13px',
                                   }}
                                   title="Bu satırdan 1 ürünü ikram et"
                                 >
@@ -18863,26 +18863,26 @@ Toplam Ciro: {toplam}
                       <div style={styles.receiptFooter}>
                         <div style={styles.totalRow}>
                           <span>Toplam:</span>
-                          <span style={{ fontSize: '22px', color: '#ff6b35', fontWeight: '800' }}>
+                          <span style={{ fontSize: '25px', color: '#ff6b35', fontWeight: '800' }}>
                             {activeMasa.tutar} TL
                           </span>
                         </div>
 
                         {activeMasa.dolu && (Number(activeMasa.adisyonIndirimYuzde || 0) > 0 || Number(activeMasa.adisyonIndirimTutari || 0) > 0) && (
-                          <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: '10px', padding: '8px 10px', fontSize: '12px', fontWeight: '900', marginBottom: '10px' }}>
+                          <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: '10px', padding: '8px 10px', fontSize: '14px', fontWeight: '900', marginBottom: '10px' }}>
                             Ara Toplam: {aktifMasaIndirimOzeti.brutToplam} TL / Toplam İndirim: -{aktifMasaIndirimOzeti.toplamIndirim} TL
                           </div>
                         )}
 
                         {activeMasa.dolu && activeMasa.siparisler && activeMasa.siparisler.length > 0 && (
-                          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '10px', padding: '8px 10px', fontSize: '12px', fontWeight: '900', marginBottom: '10px' }}>
+                          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '10px', padding: '8px 10px', fontSize: '14px', fontWeight: '900', marginBottom: '10px' }}>
                             KDV Matrahı: {aktifMasaKdvOzeti.matrahToplam} TL / KDV Tutarı: {aktifMasaKdvOzeti.kdvToplam} TL
                           </div>
                         )}
 
                         {activeMasa.dolu && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
+                            <div style={{ fontSize: '15px', color: '#475569', lineHeight: '1.6' }}>
                               <div>Ödenen: <strong>{odemeToplami(activeMasa)} TL</strong></div>
                               <div>Kalan: <strong>{kalanTutar(activeMasa)} TL</strong></div>
                               <div>KDV: <strong>{aktifMasaKdvOzeti.kdvToplam} TL</strong></div>
@@ -18901,7 +18901,7 @@ Toplam Ciro: {toplam}
                             >
                               <span
                                 style={{
-                                  fontSize: '12px',
+                                  fontSize: '14px',
                                   fontWeight: '800',
                                   color: '#475569',
                                   whiteSpace: 'nowrap',
@@ -18921,7 +18921,7 @@ Toplam Ciro: {toplam}
                                   border: 'none',
                                   outline: 'none',
                                   backgroundColor: 'transparent',
-                                  fontSize: '15px',
+                                  fontSize: '17px',
                                   fontWeight: '800',
                                   color: '#1e293b',
                                 }}
@@ -18937,7 +18937,7 @@ Toplam Ciro: {toplam}
                                   borderRadius: '8px',
                                   padding: '7px 9px',
                                   cursor: 'pointer',
-                                  fontSize: '11px',
+                                  fontSize: '13px',
                                   fontWeight: '800',
                                 }}
                               >
@@ -18953,7 +18953,7 @@ Toplam Ciro: {toplam}
                                   color: '#15803d',
                                   borderRadius: '10px',
                                   padding: '9px 10px',
-                                  fontSize: '13px',
+                                  fontSize: '15px',
                                   fontWeight: '900',
                                 }}
                               >
@@ -18963,7 +18963,7 @@ Toplam Ciro: {toplam}
 
                             {activeMasa.dolu && (
                           <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px', marginBottom: '10px' }}>
-                            <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900', marginBottom: '8px' }}>Adisyon Toplam İndirimi</div>
+                            <div style={{ fontSize: '14px', color: '#475569', fontWeight: '900', marginBottom: '8px' }}>Adisyon Toplam İndirimi</div>
                             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
                               <input
                                 type="number"
@@ -18972,7 +18972,7 @@ Toplam Ciro: {toplam}
                                 placeholder="% indirim"
                                 value={adisyonToplamIndirimYuzde}
                                 onChange={e => setAdisyonToplamIndirimYuzde(e.target.value)}
-                                style={{ ...styles.panelSelect, padding: '8px', fontSize: '12px', width: '100%', boxSizing: 'border-box' }}
+                                style={{ ...styles.panelSelect, padding: '8px', fontSize: '14px', width: '100%', boxSizing: 'border-box' }}
                               />
                               <input
                                 type="number"
@@ -18980,17 +18980,17 @@ Toplam Ciro: {toplam}
                                 placeholder="TL indirim"
                                 value={adisyonToplamIndirimTutari}
                                 onChange={e => setAdisyonToplamIndirimTutari(e.target.value)}
-                                style={{ ...styles.panelSelect, padding: '8px', fontSize: '12px', width: '100%', boxSizing: 'border-box' }}
+                                style={{ ...styles.panelSelect, padding: '8px', fontSize: '14px', width: '100%', boxSizing: 'border-box' }}
                               />
                               <button
                                 type="button"
                                 onClick={adisyonToplamIndirimiKaydet}
-                                style={{ ...styles.checkoutBtn, backgroundColor: '#0f766e', padding: '9px', fontSize: '12px', width: isMobile ? '100%' : 'auto' }}
+                                style={{ ...styles.checkoutBtn, backgroundColor: '#0f766e', padding: '9px', fontSize: '14px', width: isMobile ? '100%' : 'auto' }}
                               >
                                 Uygula
                               </button>
                             </div>
-                            <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b', fontWeight: '800', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <div style={{ marginTop: '8px', fontSize: '14px', color: '#64748b', fontWeight: '800', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                               <span>Ara toplam: {adisyonIndirimOnizleme.brutToplam} TL</span>
                               <span>İndirim: -{adisyonIndirimOnizleme.toplamIndirim} TL</span>
                               <span>İndirimli toplam: {adisyonIndirimOnizleme.netToplam} TL</span>
@@ -19063,7 +19063,7 @@ Toplam Ciro: {toplam}
                 >
                   <div>
                     <h2 style={styles.pageTitle}>👨‍🍳 Mutfak Siparişleri</h2>
-                    <p style={{ color: '#64748b', fontSize: '13px', marginTop: '6px' }}>
+                    <p style={{ color: '#64748b', fontSize: '15px', marginTop: '6px' }}>
                       Masalardan gelen siparişler burada görünür.
                     </p>
                   </div>
@@ -19081,7 +19081,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '10px',
                         cursor: (!Array.isArray(mutfakFisleri) || mutfakFisleri.length === 0) ? 'not-allowed' : 'pointer',
                         fontWeight: '800',
-                        fontSize: '12px',
+                        fontSize: '14px',
                       }}
                     >
                       Mutfak Fişi Yazdır
@@ -19098,7 +19098,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '10px',
                         cursor: 'pointer',
                         fontWeight: '800',
-                        fontSize: '12px',
+                        fontSize: '14px',
                       }}
                     >
                       Yenile
@@ -19117,7 +19117,7 @@ Toplam Ciro: {toplam}
                   <div
                     style={{
                       color: '#94a3b8',
-                      fontSize: '14px',
+                      fontSize: '16px',
                       textAlign: 'center',
                       padding: '35px',
                     }}
@@ -19156,7 +19156,7 @@ Toplam Ciro: {toplam}
                                 color: '#fff',
                                 padding: '5px 9px',
                                 borderRadius: '999px',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 fontWeight: '900',
                               }}
                             >
@@ -19169,7 +19169,7 @@ Toplam Ciro: {toplam}
                                 color: fis.durum === 'İptal' ? '#b91c1c' : fis.durum === 'Hazırlandı' ? '#15803d' : '#c2410c',
                                 padding: '5px 9px',
                                 borderRadius: '999px',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 fontWeight: '900',
                               }}
                             >
@@ -19177,7 +19177,7 @@ Toplam Ciro: {toplam}
                             </span>
                           </div>
 
-                          <div style={{ fontSize: '18px', fontWeight: '900', color: fis.durum === 'İptal' ? '#b91c1c' : '#1e293b' }}>
+                          <div style={{ fontSize: '20px', fontWeight: '900', color: fis.durum === 'İptal' ? '#b91c1c' : '#1e293b' }}>
                             {fis.durum === 'İptal' ? '❌ İPTAL - ' : ''}{fis.adet}x {fis.urunAdi}
                           </div>
 
@@ -19185,7 +19185,7 @@ Toplam Ciro: {toplam}
                             <div
                               style={{
                                 marginTop: '6px',
-                                fontSize: '13px',
+                                fontSize: '15px',
                                 color: '#ff6b35',
                                 fontWeight: '800',
                               }}
@@ -19200,7 +19200,7 @@ Toplam Ciro: {toplam}
                               display: 'flex',
                               gap: '12px',
                               flexWrap: 'wrap',
-                              fontSize: '12px',
+                              fontSize: '14px',
                               color: '#64748b',
                               fontWeight: '700',
                             }}
@@ -19222,7 +19222,7 @@ Toplam Ciro: {toplam}
                               borderRadius: '10px',
                               cursor: 'pointer',
                               fontWeight: '900',
-                              fontSize: '12px',
+                              fontSize: '14px',
                             }}
                           >
                             Fiş Yazdır
@@ -19240,7 +19240,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '10px',
                                 cursor: 'pointer',
                                 fontWeight: '900',
-                                fontSize: '12px',
+                                fontSize: '14px',
                               }}
                             >
                               {fis.durum === 'İptal' ? 'İptali Kaldır' : 'Hazırlandı'}
@@ -19261,15 +19261,15 @@ Toplam Ciro: {toplam}
             {activeTab === 'paket' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🛵 Paket Servis</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Gel-al ve paket siparişleri buradan takip edebilirsiniz.
                 </p>
 
                 <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
                     <div>
-                      <h3 style={{ fontSize: '16px', margin: 0, color: '#1e293b' }}>🌐 Online Siparişler</h3>
-                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
+                      <h3 style={{ fontSize: '18px', margin: 0, color: '#1e293b' }}>🌐 Online Siparişler</h3>
+                      <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>
                         Trendyol, Getir ve Migros siparişleri burada toplanır; onayladığınız sipariş paket servise ve mutfağa aktarılır.
                       </div>
                     </div>
@@ -19290,7 +19290,7 @@ Toplam Ciro: {toplam}
                     {entegrasyonPlatformSecenekleri.map(platform => {
                       const bagli = aktifRestoranPlatformBaglantilari.some(b => b.platform === platform && b.aktif !== false);
                       return (
-                        <button key={platform} type="button" onClick={() => setAktifEntegrasyonPlatformu(platform)} style={{ border: aktifEntegrasyonPlatformu === platform ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifEntegrasyonPlatformu === platform ? '#fff7ed' : '#fff', color: aktifEntegrasyonPlatformu === platform ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
+                        <button key={platform} type="button" onClick={() => setAktifEntegrasyonPlatformu(platform)} style={{ border: aktifEntegrasyonPlatformu === platform ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifEntegrasyonPlatformu === platform ? '#fff7ed' : '#fff', color: aktifEntegrasyonPlatformu === platform ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '14px' }}>
                           {platform} {bagli ? '✅' : '⚙️'}
                         </button>
                       );
@@ -19299,8 +19299,8 @@ Toplam Ciro: {toplam}
 
                   <div style={{ backgroundColor: entegrasyonTestModu ? '#eff6ff' : '#f8fafc', border: entegrasyonTestModu ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '14px', padding: '10px', marginBottom: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                      <strong style={{ color: '#1e293b', fontSize: '13px' }}>🧪 Entegrasyon test modu: {entegrasyonTestModu ? 'Açık' : 'Kapalı'}</strong>
-                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '3px' }}>API bilgisi yokken seçili senaryo ile gerçek sipariş gibi deneme kaydı oluşturur.</div>
+                      <strong style={{ color: '#1e293b', fontSize: '15px' }}>🧪 Entegrasyon test modu: {entegrasyonTestModu ? 'Açık' : 'Kapalı'}</strong>
+                      <div style={{ color: '#64748b', fontSize: '14px', marginTop: '3px' }}>API bilgisi yokken seçili senaryo ile gerçek sipariş gibi deneme kaydı oluşturur.</div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                       <select value={entegrasyonTestSenaryosu} onChange={e => setEntegrasyonTestSenaryosu(e.target.value)} style={{ ...styles.input, minWidth: '170px' }}>
@@ -19319,14 +19319,14 @@ Toplam Ciro: {toplam}
                       { key: 'tum', label: `Tümü (${aktifRestoranOnlineSiparisleri.length})` },
                       { key: 'iptal', label: 'İptal / Yok Sayıldı' },
                     ].map(sekme => (
-                      <button key={sekme.key} type="button" onClick={() => setPaketOnlineSekmesi(sekme.key)} style={{ border: paketOnlineSekmesi === sekme.key ? '1px solid #0f172a' : '1px solid #e2e8f0', backgroundColor: paketOnlineSekmesi === sekme.key ? '#0f172a' : '#fff', color: paketOnlineSekmesi === sekme.key ? '#fff' : '#334155', padding: '8px 10px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
+                      <button key={sekme.key} type="button" onClick={() => setPaketOnlineSekmesi(sekme.key)} style={{ border: paketOnlineSekmesi === sekme.key ? '1px solid #0f172a' : '1px solid #e2e8f0', backgroundColor: paketOnlineSekmesi === sekme.key ? '#0f172a' : '#fff', color: paketOnlineSekmesi === sekme.key ? '#fff' : '#334155', padding: '8px 10px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '14px' }}>
                         {sekme.label}
                       </button>
                     ))}
                   </div>
 
                   {onlineSiparisMesaji && (
-                    <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', padding: '9px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '800', marginBottom: '10px' }}>
+                    <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', padding: '9px 10px', borderRadius: '10px', fontSize: '14px', fontWeight: '800', marginBottom: '10px' }}>
                       {onlineSiparisMesaji}
                     </div>
                   )}
@@ -19341,13 +19341,13 @@ Toplam Ciro: {toplam}
                         <div key={siparis.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start', marginBottom: '8px' }}>
                             <div>
-                              <span style={{ ...platformRenkleri(siparis.platform), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '4px 8px', fontSize: '11px', fontWeight: '900', marginBottom: '6px' }}>{siparis.platform || 'Online'}</span>
+                              <span style={{ ...platformRenkleri(siparis.platform), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '4px 8px', fontSize: '13px', fontWeight: '900', marginBottom: '6px' }}>{siparis.platform || 'Online'}</span>
                               <div style={{ fontWeight: '900', color: '#1e293b' }}>#{siparis.platformOrderId || siparis.id}</div>
-                              <div style={{ color: '#64748b', fontSize: '12px' }}>{new Date(siparis.createdAt || Date.now()).toLocaleString('tr-TR')}</div>
+                              <div style={{ color: '#64748b', fontSize: '14px' }}>{new Date(siparis.createdAt || Date.now()).toLocaleString('tr-TR')}</div>
                             </div>
-                            <span style={{ ...onlineSiparisDurumRengi(siparis.durum), border: '1px solid', borderRadius: '999px', padding: '5px 8px', fontSize: '11px', fontWeight: '900', whiteSpace: 'nowrap' }}>{siparis.durum || 'Yeni'}</span>
+                            <span style={{ ...onlineSiparisDurumRengi(siparis.durum), border: '1px solid', borderRadius: '999px', padding: '5px 8px', fontSize: '13px', fontWeight: '900', whiteSpace: 'nowrap' }}>{siparis.durum || 'Yeni'}</span>
                           </div>
-                          <div style={{ color: '#334155', fontSize: '13px', lineHeight: 1.5 }}>
+                          <div style={{ color: '#334155', fontSize: '15px', lineHeight: 1.5 }}>
                             <strong>{siparis.musteriAdi || 'Online Müşteri'}</strong><br />
                             {siparis.telefon ? <>☎️ {siparis.telefon}<br /></> : null}
                             {siparis.adres ? <>📍 {siparis.adres}<br /></> : null}
@@ -19355,22 +19355,22 @@ Toplam Ciro: {toplam}
                           </div>
                           <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                             {(siparis.urunler || []).map((u, idx) => (
-                              <span key={idx} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '6px 9px', fontSize: '12px', fontWeight: '800' }}>{u.adet}x {u.ad} / {u.fiyat} TL</span>
+                              <span key={idx} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '6px 9px', fontSize: '14px', fontWeight: '800' }}>{u.adet}x {u.ad} / {u.fiyat} TL</span>
                             ))}
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                             <div>
-                              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>{siparis.odemeTipi || 'Ödeme bilgisi yok'}</div>
-                              <div style={{ fontSize: '18px', color: '#0f172a', fontWeight: '950' }}>{Number(siparis.toplam || 0)} TL</div>
+                              <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '800' }}>{siparis.odemeTipi || 'Ödeme bilgisi yok'}</div>
+                              <div style={{ fontSize: '20px', color: '#0f172a', fontWeight: '950' }}>{Number(siparis.toplam || 0)} TL</div>
                             </div>
                             {String(siparis.durum || 'Yeni') === 'Yeni' ? (
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => onlineSiparisKabulEt(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#2563eb', padding: '8px 10px', fontSize: '12px' }}>Kabul Et</button>
-                                <button type="button" onClick={() => onlineSiparisiPaketServiseAktar(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#10b981', padding: '8px 10px', fontSize: '12px' }}>Paket Servise Aktar</button>
-                                <button type="button" onClick={() => onlineSiparisReddet(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444', padding: '8px 10px', fontSize: '12px' }}>Reddet</button>
+                                <button type="button" onClick={() => onlineSiparisKabulEt(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#2563eb', padding: '8px 10px', fontSize: '14px' }}>Kabul Et</button>
+                                <button type="button" onClick={() => onlineSiparisiPaketServiseAktar(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#10b981', padding: '8px 10px', fontSize: '14px' }}>Paket Servise Aktar</button>
+                                <button type="button" onClick={() => onlineSiparisReddet(siparis)} style={{ ...styles.btnOrange, backgroundColor: '#ef4444', padding: '8px 10px', fontSize: '14px' }}>Reddet</button>
                               </div>
                             ) : (
-                              <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '900' }}>{siparis.paketSiparisId ? `Paket ID: ${siparis.paketSiparisId}` : 'İşlem tamamlandı'}</div>
+                              <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '900' }}>{siparis.paketSiparisId ? `Paket ID: ${siparis.paketSiparisId}` : 'İşlem tamamlandı'}</div>
                             )}
                           </div>
                         </div>
@@ -19424,7 +19424,7 @@ Toplam Ciro: {toplam}
                           }}
                         >
                           {filtreliPaketMusterileri.length === 0 ? (
-                            <div style={{ color: '#94a3b8', fontSize: '12px', padding: '6px' }}>Kayıtlı müşteri bulunamadı.</div>
+                            <div style={{ color: '#94a3b8', fontSize: '14px', padding: '6px' }}>Kayıtlı müşteri bulunamadı.</div>
                           ) : (
                             filtreliPaketMusterileri.map(m => (
                               <button
@@ -19440,7 +19440,7 @@ Toplam Ciro: {toplam}
                                   cursor: 'pointer',
                                   textAlign: 'left',
                                   fontWeight: '800',
-                                  fontSize: '12px',
+                                  fontSize: '14px',
                                 }}
                               >
                                 {m.ad} {m.telefon ? `— ${m.telefon}` : ''}
@@ -19457,7 +19457,7 @@ Toplam Ciro: {toplam}
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
-                        fontSize: '12px',
+                        fontSize: '14px',
                         color: '#475569',
                         fontWeight: '900',
                         whiteSpace: 'nowrap',
@@ -19482,7 +19482,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '10px',
                         cursor: 'pointer',
                         fontWeight: '900',
-                        fontSize: '12px',
+                        fontSize: '14px',
                       }}
                     >
                       Yeni Müşteri
@@ -19531,7 +19531,7 @@ Toplam Ciro: {toplam}
                     Ödeme, sipariş kapanırken nakit veya kart olarak alınır.
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '220px' }}>
-                    <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                    <label style={{ fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                       Kurye / Personel
                     </label>
                     <select
@@ -19570,7 +19570,7 @@ Toplam Ciro: {toplam}
                         flexWrap: 'wrap',
                       }}
                     >
-                      <strong style={{ fontSize: '13px', color: '#1e293b' }}>
+                      <strong style={{ fontSize: '15px', color: '#1e293b' }}>
                         Paket Ürün Seçimi
                       </strong>
 
@@ -19602,7 +19602,7 @@ Toplam Ciro: {toplam}
                         }}
                     >
                       {aktifMenuGruplari.length === 0 ? (
-                        <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
+                        <span style={{ color: '#94a3b8', fontSize: '14px', fontWeight: '700' }}>
                           Grup yok
                         </span>
                       ) : (
@@ -19625,7 +19625,7 @@ Toplam Ciro: {toplam}
                               borderRadius: '999px',
                               cursor: 'pointer',
                               fontWeight: '900',
-                              fontSize: '12px',
+                              fontSize: '14px',
                               whiteSpace: 'nowrap',
                               flex: '0 0 auto',
                             }}
@@ -19640,7 +19640,7 @@ Toplam Ciro: {toplam}
                       <div
                         style={{
                           color: '#94a3b8',
-                          fontSize: '12px',
+                          fontSize: '14px',
                           fontWeight: '700',
                           backgroundColor: '#fff',
                           border: '1px dashed #cbd5e1',
@@ -19690,15 +19690,15 @@ Toplam Ciro: {toplam}
                                 />
                               )}
 
-                              <div style={{ fontWeight: '900', fontSize: '13px', marginBottom: '5px' }}>
+                              <div style={{ fontWeight: '900', fontSize: '15px', marginBottom: '5px' }}>
                                 {u.favori ? '⭐ ' : ''}{u.ad}
                               </div>
 
-                              <div style={{ color: '#ff6b35', fontWeight: '900', fontSize: '13px' }}>
+                              <div style={{ color: '#ff6b35', fontWeight: '900', fontSize: '15px' }}>
                                 {u.fiyat} TL
                               </div>
 
-                              <div style={{ color: '#64748b', fontWeight: '700', fontSize: '10px', marginTop: '4px' }}>
+                              <div style={{ color: '#64748b', fontWeight: '700', fontSize: '12px', marginTop: '4px' }}>
                                 {u.departman || aktifPaketGrup.departman || 'Mutfak'}
                               </div>
                             </button>
@@ -19715,7 +19715,7 @@ Toplam Ciro: {toplam}
                           color: '#c2410c',
                           borderRadius: '10px',
                           padding: '8px 10px',
-                          fontSize: '12px',
+                          fontSize: '14px',
                           fontWeight: '900',
                         }}
                       >
@@ -19777,7 +19777,7 @@ Toplam Ciro: {toplam}
                         </div>
                       ))}
                       <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
-                        <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900', marginBottom: '8px' }}>Paket Toplam İndirimi</div>
+                        <div style={{ fontSize: '14px', color: '#475569', fontWeight: '900', marginBottom: '8px' }}>Paket Toplam İndirimi</div>
                         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
                           <input
                             type="number"
@@ -19798,7 +19798,7 @@ Toplam Ciro: {toplam}
                           />
                         </div>
 
-                        <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b', fontWeight: '800', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div style={{ marginTop: '8px', fontSize: '14px', color: '#64748b', fontWeight: '800', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <span>Ara toplam: {paketIndirimOzeti.brutToplam} TL</span>
                           <span>İndirim: -{paketIndirimOzeti.toplamIndirim} TL</span>
                         </div>
@@ -19818,19 +19818,19 @@ Toplam Ciro: {toplam}
 
 
                 <div style={{ ...styles.panelCard, marginTop: '18px', backgroundColor: '#f8fafc' }}>
-                  <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>👥 Paket Müşteri Geçmişi</h3>
+                  <h3 style={{ fontSize: '18px', color: '#1e293b', marginTop: 0 }}>👥 Paket Müşteri Geçmişi</h3>
                   {paketMusteriGecmisiOzetleri.length === 0 ? (
-                    <div style={{ color: '#94a3b8', fontSize: '13px' }}>Kayıtlı paket müşterisi yok.</div>
+                    <div style={{ color: '#94a3b8', fontSize: '15px' }}>Kayıtlı paket müşterisi yok.</div>
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
                       {paketMusteriGecmisiOzetleri.slice(0, 6).map(m => (
                         <div key={m.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px' }}>
                           <div style={{ fontWeight: '900', color: '#1e293b' }}>{m.ad}</div>
-                          <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>{m.telefon}</div>
-                          <div style={{ color: '#ff6b35', fontSize: '12px', fontWeight: '900', marginTop: '6px' }}>
+                          <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>{m.telefon}</div>
+                          <div style={{ color: '#ff6b35', fontSize: '14px', fontWeight: '900', marginTop: '6px' }}>
                             {m.siparisSayisi} sipariş / {m.toplamHarcama} TL
                           </div>
-                          <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>
+                          <div style={{ color: '#64748b', fontSize: '13px', marginTop: '4px' }}>
                             Son: {tarihSaatYaz(m.sonSiparis)}
                           </div>
                         </div>
@@ -19839,7 +19839,7 @@ Toplam Ciro: {toplam}
                   )}
                 </div>
 
-                <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: '22px' }}>Paket Sipariş Listesi</h3>
+                <h3 style={{ fontSize: '18px', color: '#1e293b', marginTop: '22px' }}>Paket Sipariş Listesi</h3>
                 {aktifPaketSiparisleri.length === 0 ? (
                   <div style={{ color: '#94a3b8', padding: '20px' }}>Henüz paket sipariş yok.</div>
                 ) : (
@@ -19849,27 +19849,27 @@ Toplam Ciro: {toplam}
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                           <div>
                             <strong>{p.musteriAdi}</strong> — {p.telefon}
-                            <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>{p.adres}</div>
+                            <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>{p.adres}</div>
                             {(p.kaynakPlatform || String(p.notMetni || '').includes('Sipariş No:')) && (
                               <div style={{ marginTop: '5px' }}>
-                                <span style={{ ...platformRenkleri(p.kaynakPlatform || 'Online'), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '4px 8px', fontSize: '11px', fontWeight: '900' }}>
+                                <span style={{ ...platformRenkleri(p.kaynakPlatform || 'Online'), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '4px 8px', fontSize: '13px', fontWeight: '900' }}>
                                   🌐 {p.kaynakPlatform || 'Online Sipariş'} {p.platformOrderId ? `#${p.platformOrderId}` : ''}
                                 </span>
                               </div>
                             )}
-                            {p.notMetni && <div style={{ color: '#ff6b35', fontSize: '12px', marginTop: '4px' }}>Not: {p.notMetni}</div>}
-                            {p.kuryeAdi && <div style={{ color: '#2563eb', fontSize: '12px', marginTop: '4px', fontWeight: '800' }}>Kurye: {p.kuryeAdi}</div>}
+                            {p.notMetni && <div style={{ color: '#ff6b35', fontSize: '14px', marginTop: '4px' }}>Not: {p.notMetni}</div>}
+                            {p.kuryeAdi && <div style={{ color: '#2563eb', fontSize: '14px', marginTop: '4px', fontWeight: '800' }}>Kurye: {p.kuryeAdi}</div>}
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ color: '#ff6b35', fontWeight: '900' }}>{p.tutar} TL</div>
-                            <div style={{ color: '#7c3aed', fontSize: '11px', fontWeight: '900', marginTop: '3px' }}>KDV: {siparislerKdvOzetiHesapla(p.urunler || [], p.tutar || 0).kdvToplam} TL</div>
+                            <div style={{ color: '#7c3aed', fontSize: '13px', fontWeight: '900', marginTop: '3px' }}>KDV: {siparislerKdvOzetiHesapla(p.urunler || [], p.tutar || 0).kdvToplam} TL</div>
                             {Number(p.indirimTutari || 0) > 0 || Number(p.indirimYuzde || 0) > 0 ? (
-                              <div style={{ color: '#10b981', fontSize: '11px', fontWeight: '900', marginTop: '3px' }}>
+                              <div style={{ color: '#10b981', fontSize: '13px', fontWeight: '900', marginTop: '3px' }}>
                                 İndirim: {Number(p.indirimYuzde || 0) > 0 ? `%${p.indirimYuzde}` : ''} {Number(p.indirimTutari || 0) > 0 ? `+ ${p.indirimTutari} TL` : ''}
                               </div>
                             ) : null}
                             {p.brutTutar && Number(p.brutTutar || 0) > Number(p.tutar || 0) ? (
-                              <div style={{ color: '#64748b', fontSize: '11px', fontWeight: '800' }}>Ara toplam: {p.brutTutar} TL</div>
+                              <div style={{ color: '#64748b', fontSize: '13px', fontWeight: '800' }}>Ara toplam: {p.brutTutar} TL</div>
                             ) : null}
                             {p.odendi ? (
                               <div
@@ -19933,7 +19933,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontWeight: '900',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 marginTop: '6px',
                               }}
                             >
@@ -19951,7 +19951,7 @@ Toplam Ciro: {toplam}
                                   textAlign: 'left',
                                 }}
                               >
-                                <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900', marginBottom: '6px' }}>
+                                <div style={{ fontSize: '14px', color: '#475569', fontWeight: '900', marginBottom: '6px' }}>
                                   Ödeme Kapat
                                 </div>
 
@@ -19977,7 +19977,7 @@ Toplam Ciro: {toplam}
                                 />
 
                                 {Math.max(sayiyaCevir(paketOdemeTutarInputs[p.id] || p.tutar) - Number(p.tutar || 0), 0) > 0 && (
-                                  <div style={{ color: '#10b981', fontSize: '12px', fontWeight: '900', marginBottom: '6px' }}>
+                                  <div style={{ color: '#10b981', fontSize: '14px', fontWeight: '900', marginBottom: '6px' }}>
                                     Para üstü: {Math.max(sayiyaCevir(paketOdemeTutarInputs[p.id] || p.tutar) - Number(p.tutar || 0), 0)} TL
                                   </div>
                                 )}
@@ -19995,7 +19995,7 @@ Toplam Ciro: {toplam}
                                       borderRadius: '8px',
                                       cursor: 'pointer',
                                       fontWeight: '900',
-                                      fontSize: '12px',
+                                      fontSize: '14px',
                                     }}
                                   >
                                     Nakit Kapat
@@ -20013,7 +20013,7 @@ Toplam Ciro: {toplam}
                                       borderRadius: '8px',
                                       cursor: 'pointer',
                                       fontWeight: '900',
-                                      fontSize: '12px',
+                                      fontSize: '14px',
                                     }}
                                   >
                                     Kart Kapat
@@ -20023,7 +20023,7 @@ Toplam Ciro: {toplam}
                             )}
 
                             {p.odendi && (
-                              <div style={{ color: '#10b981', fontSize: '12px', fontWeight: '900', marginTop: '6px' }}>
+                              <div style={{ color: '#10b981', fontSize: '14px', fontWeight: '900', marginTop: '6px' }}>
                                 Ödendi: {p.odemeTipi} / Alınan: {p.alinanTutar || p.tutar} TL
                                 {Number(p.paraUstu || 0) > 0 ? ` / Para üstü: ${p.paraUstu} TL` : ''}
                               </div>
@@ -20032,7 +20032,7 @@ Toplam Ciro: {toplam}
                         </div>
                         <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           {(p.urunler || []).map((u, idx) => (
-                            <span key={idx} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '6px 9px', fontSize: '12px', fontWeight: '800' }}>
+                            <span key={idx} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '6px 9px', fontSize: '14px', fontWeight: '800' }}>
                               {u.adet}x {u.ad}{u.not ? ` / Not: ${u.not}` : ''}
                             </span>
                           ))}
@@ -20048,33 +20048,33 @@ Toplam Ciro: {toplam}
             {activeTab === 'entegrasyonlar' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🔌 Entegrasyonlar</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Trendyol, Getir ve Migros gibi platformların API bilgilerini burada yönetin. Siparişler Paket Servis ekranındaki Online Siparişler havuzuna düşer.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
                   {platformOzetleri.map(o => (
                     <div key={o.platform} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}>
-                      <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>{o.platform}</div>
-                      <div style={{ fontSize: '22px', fontWeight: '900', color: '#0f172a' }}>{o.adet}</div>
-                      <div style={{ color: '#94a3b8', fontSize: '12px' }}>Yeni: {o.yeni} / Ciro: {o.toplam.toLocaleString('tr-TR')} TL</div>
+                      <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>{o.platform}</div>
+                      <div style={{ fontSize: '25px', fontWeight: '900', color: '#0f172a' }}>{o.adet}</div>
+                      <div style={{ color: '#94a3b8', fontSize: '14px' }}>Yeni: {o.yeni} / Ciro: {o.toplam.toLocaleString('tr-TR')} TL</div>
                     </div>
                   ))}
                   <div style={{ backgroundColor: gecikenOnlineSiparisSayisi > 0 ? '#fef2f2' : '#ecfdf5', border: gecikenOnlineSiparisSayisi > 0 ? '1px solid #fecaca' : '1px solid #a7f3d0', borderRadius: '16px', padding: '12px' }}>
-                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Geciken Sipariş</div>
-                    <div style={{ fontSize: '22px', fontWeight: '900', color: gecikenOnlineSiparisSayisi > 0 ? '#b91c1c' : '#047857' }}>{gecikenOnlineSiparisSayisi}</div>
-                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>15 dk üstü açık sipariş</div>
+                    <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>Geciken Sipariş</div>
+                    <div style={{ fontSize: '25px', fontWeight: '900', color: gecikenOnlineSiparisSayisi > 0 ? '#b91c1c' : '#047857' }}>{gecikenOnlineSiparisSayisi}</div>
+                    <div style={{ color: '#94a3b8', fontSize: '14px' }}>15 dk üstü açık sipariş</div>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: '16px', alignItems: 'flex-start' }}>
                   <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', margin: 0, border: '1px solid #e2e8f0' }}>
-                    <h3 style={{ marginTop: 0, color: '#1e293b', fontSize: '16px' }}>Platformlar</h3>
+                    <h3 style={{ marginTop: 0, color: '#1e293b', fontSize: '18px' }}>Platformlar</h3>
                     <div style={{ display: 'grid', gap: '8px' }}>
                       {entegrasyonPlatformSecenekleri.map(platform => {
                         const kayit = aktifRestoranPlatformBaglantilari.find(b => b.platform === platform);
                         return (
                           <button key={platform} type="button" onClick={() => entegrasyonPlatformuSec(platform)} style={{ textAlign: 'left', border: aktifEntegrasyonPlatformu === platform ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifEntegrasyonPlatformu === platform ? '#fff7ed' : '#fff', color: '#0f172a', borderRadius: '12px', padding: '12px', cursor: 'pointer', fontWeight: '900' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}><span>{platform}</span><span>{kayit?.aktif !== false && kayit ? '✅' : '⚙️'}</span></div>
-                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontWeight: '800' }}>{kayit ? `Satıcı ID: ${kayit.saticiId || '-'}` : 'Bağlantı yok'}</div>
+                            <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px', fontWeight: '800' }}>{kayit ? `Satıcı ID: ${kayit.saticiId || '-'}` : 'Bağlantı yok'}</div>
                           </button>
                         );
                       })}
@@ -20083,16 +20083,16 @@ Toplam Ciro: {toplam}
                   <div style={{ ...styles.panelCard, backgroundColor: '#fff', margin: 0, border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
                       <div>
-                        <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px' }}>{aktifEntegrasyonPlatformu} Bağlantısı</h3>
-                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>API Key / Secret bilgileri App.jsx içine gömülmez; kullanıcı panelden girer. Canlı çekim için backend fonksiyonu kullanılır.</div>
+                        <h3 style={{ margin: 0, color: '#1e293b', fontSize: '20px' }}>{aktifEntegrasyonPlatformu} Bağlantısı</h3>
+                        <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>API Key / Secret bilgileri App.jsx içine gömülmez; kullanıcı panelden girer. Canlı çekim için backend fonksiyonu kullanılır.</div>
                       </div>
-                      <span style={{ ...platformRenkleri(aktifEntegrasyonPlatformu), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '6px 10px', fontSize: '12px', fontWeight: '900' }}>{aktifPlatformBaglantisi?.aktif !== false && aktifPlatformBaglantisi ? 'Aktif Bağlantı' : 'Kurulum Bekliyor'}</span>
+                      <span style={{ ...platformRenkleri(aktifEntegrasyonPlatformu), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '6px 10px', fontSize: '14px', fontWeight: '900' }}>{aktifPlatformBaglantisi?.aktif !== false && aktifPlatformBaglantisi ? 'Aktif Bağlantı' : 'Kurulum Bekliyor'}</span>
                     </div>
                     <div style={{ backgroundColor: entegrasyonTestModu ? '#eff6ff' : '#fff7ed', border: entegrasyonTestModu ? '1px solid #bfdbfe' : '1px solid #fed7aa', borderRadius: '14px', padding: '12px', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <div>
                           <strong style={{ color: '#1e293b' }}>🧪 Test Modu {entegrasyonTestModu ? 'Açık' : 'Kapalı'}</strong>
-                          <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', lineHeight: 1.5 }}>{platformApiUyarisiMetni(aktifEntegrasyonPlatformu, aktifPlatformBaglantisi)}</div>
+                          <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px', lineHeight: 1.5 }}>{platformApiUyarisiMetni(aktifEntegrasyonPlatformu, aktifPlatformBaglantisi)}</div>
                         </div>
                         <button type="button" onClick={() => setEntegrasyonTestModu(prev => !prev)} style={{ ...styles.btnOrange, backgroundColor: entegrasyonTestModu ? '#2563eb' : '#64748b' }}>
                           {entegrasyonTestModu ? 'Test Modu Açık' : 'Test Modu Kapalı'}
@@ -20107,19 +20107,19 @@ Toplam Ciro: {toplam}
                     </div>
                     <form onSubmit={platformBaglantisiKaydet} style={{ display: 'grid', gap: '10px' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
-                        <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Platform
+                        <label style={{ fontSize: '14px', color: '#475569', fontWeight: '900' }}>Platform
                           <select value={entegrasyonFormu.platform} onChange={e => entegrasyonPlatformuSec(e.target.value)} style={{ ...styles.input, width: '100%', marginTop: '5px' }}>
                             {entegrasyonPlatformSecenekleri.map(platform => (<option key={platform} value={platform}>{platform}</option>))}
                           </select>
                         </label>
-                        <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Satıcı ID / Cari ID
+                        <label style={{ fontSize: '14px', color: '#475569', fontWeight: '900' }}>Satıcı ID / Cari ID
                           <input type="text" value={entegrasyonFormu.saticiId} onChange={e => entegrasyonFormuGuncelle('saticiId', e.target.value)} placeholder="Trendyol Satıcı ID / Cari ID" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
                         </label>
                       </div>
-                      <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Entegrasyon Referans Kodu
+                      <label style={{ fontSize: '14px', color: '#475569', fontWeight: '900' }}>Entegrasyon Referans Kodu
                         <input type="text" value={entegrasyonFormu.entegrasyonReferansKodu} onChange={e => entegrasyonFormuGuncelle('entegrasyonReferansKodu', e.target.value)} placeholder="Panelde görünen entegrasyon referans kodu" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
                       </label>
-                      <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Hesap Türü
+                      <label style={{ fontSize: '14px', color: '#475569', fontWeight: '900' }}>Hesap Türü
                         <select value={entegrasyonFormu.hesapTuru || 'Yemek'} onChange={e => entegrasyonFormuGuncelle('hesapTuru', e.target.value)} style={{ ...styles.input, width: '100%', marginTop: '5px' }}>
                           <option value="Yemek">Yemek / restoran sipariş hesabı</option>
                           <option value="Pazaryeri">Pazaryeri / satış mağazası</option>
@@ -20128,27 +20128,27 @@ Toplam Ciro: {toplam}
                         </select>
                       </label>
                       {entegrasyonFormu.hesapTuru === 'Pazaryeri' && (
-                        <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900', lineHeight: 1.5 }}>
+                        <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', padding: '10px', borderRadius: '12px', fontSize: '14px', fontWeight: '900', lineHeight: 1.5 }}>
                           Bu hesap satış mağazası / pazaryeri hesabı olarak işaretlendi. Trendyol Yemek gibi restoran siparişleri bu API'den dönmeyebilir; yine de test modu ile POS akışını deneyebilirsiniz.
                         </div>
                       )}
                       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
-                        <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>API Key
+                        <label style={{ fontSize: '14px', color: '#475569', fontWeight: '900' }}>API Key
                           <input type="password" value={entegrasyonFormu.apiKey} onChange={e => entegrasyonFormuGuncelle('apiKey', e.target.value)} placeholder="API Key" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
                         </label>
-                        <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>API Secret
+                        <label style={{ fontSize: '14px', color: '#475569', fontWeight: '900' }}>API Secret
                           <input type="password" value={entegrasyonFormu.apiSecret} onChange={e => entegrasyonFormuGuncelle('apiSecret', e.target.value)} placeholder="API Secret" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
                         </label>
                       </div>
-                      <label style={{ fontSize: '12px', color: '#475569', fontWeight: '900' }}>Token
+                      <label style={{ fontSize: '14px', color: '#475569', fontWeight: '900' }}>Token
                         <input type="password" value={entegrasyonFormu.token} onChange={e => entegrasyonFormuGuncelle('token', e.target.value)} placeholder="Token varsa girin" style={{ ...styles.input, width: '100%', marginTop: '5px' }} />
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', fontWeight: '900' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#334155', fontWeight: '900' }}>
                         <input type="checkbox" checked={entegrasyonFormu.aktif !== false} onChange={e => entegrasyonFormuGuncelle('aktif', e.target.checked)} />
                         Bu platformdan sipariş çekme aktif olsun
                       </label>
-                      <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '800', lineHeight: 1.5 }}>Güvenlik notu: Gerçek canlı kullanımda API anahtarları Supabase Edge Function / Vercel API tarafında saklanmalı ve React tarafında doğrudan platform API çağrısı yapılmamalı. Bu ekran POS içi bağlantı yönetimi ve backend adaptörüne hazırlık için eklendi.</div>
-                      {entegrasyonMesaji && (<div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900' }}>{entegrasyonMesaji}</div>)}
+                      <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '10px', borderRadius: '12px', fontSize: '14px', fontWeight: '800', lineHeight: 1.5 }}>Güvenlik notu: Gerçek canlı kullanımda API anahtarları Supabase Edge Function / Vercel API tarafında saklanmalı ve React tarafında doğrudan platform API çağrısı yapılmamalı. Bu ekran POS içi bağlantı yönetimi ve backend adaptörüne hazırlık için eklendi.</div>
+                      {entegrasyonMesaji && (<div style={{ backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', padding: '10px', borderRadius: '12px', fontSize: '14px', fontWeight: '900' }}>{entegrasyonMesaji}</div>)}
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button type="submit" style={styles.btnOrange}>Bağlantıyı Kaydet</button>
                         <button type="button" onClick={() => onlineSiparisleriBackenddenCek(aktifEntegrasyonPlatformu)} disabled={onlineSiparisYukleniyor} style={{ ...styles.btnOrange, backgroundColor: onlineSiparisYukleniyor ? '#94a3b8' : '#2563eb' }}>{onlineSiparisYukleniyor ? 'Test Ediliyor...' : 'Sipariş Çekmeyi Test Et'}</button>
@@ -20164,8 +20164,8 @@ Toplam Ciro: {toplam}
                         <div style={{ display: 'grid', gap: '8px' }}>
                           {aktifRestoranPlatformBaglantilari.map(baglanti => (
                             <div key={baglanti.id || baglanti.platform} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                              <span style={{ ...platformRenkleri(baglanti.platform), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '5px 9px', fontSize: '12px', fontWeight: '900' }}>{baglanti.platform}</span>
-                              <div style={{ flex: 1 }}><strong>{baglanti.saticiId || '-'}</strong><div style={{ color: '#64748b', fontSize: '12px' }}>Hesap: {baglanti.hesapTuru || 'Yemek'} / API Key: {baglanti.apiKey ? '••••••••' : 'Yok'} / Token: {baglanti.token ? '••••••••' : 'Yok'}</div></div>
+                              <span style={{ ...platformRenkleri(baglanti.platform), display: 'inline-block', border: '1px solid', borderRadius: '999px', padding: '5px 9px', fontSize: '14px', fontWeight: '900' }}>{baglanti.platform}</span>
+                              <div style={{ flex: 1 }}><strong>{baglanti.saticiId || '-'}</strong><div style={{ color: '#64748b', fontSize: '14px' }}>Hesap: {baglanti.hesapTuru || 'Yemek'} / API Key: {baglanti.apiKey ? '••••••••' : 'Yok'} / Token: {baglanti.token ? '••••••••' : 'Yok'}</div></div>
                               <span style={baglanti.aktif !== false ? styles.badgeActive : styles.badgePending}>{baglanti.aktif !== false ? 'Aktif' : 'Pasif'}</span>
                             </div>
                           ))}
@@ -20181,7 +20181,7 @@ Toplam Ciro: {toplam}
             {activeTab === 'cari' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>📒 Cari / Veresiye Hesapları</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Müşteri borçlarını takip edin, tahsilat alın ve masadaki hesabı cariye yazın.
                 </p>
 
@@ -20209,7 +20209,7 @@ Toplam Ciro: {toplam}
                     <div key={cari.id} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <div>
                         <strong>{cari.ad}</strong>
-                        <div style={{ color: '#64748b', fontSize: '12px' }}>{cari.telefon}</div>
+                        <div style={{ color: '#64748b', fontSize: '14px' }}>{cari.telefon}</div>
                       </div>
                       <div style={{ fontWeight: '900', color: Number(cari.bakiye || 0) > 0 ? '#ef4444' : '#10b981' }}>
                         Bakiye: {cari.bakiye} TL
@@ -20240,14 +20240,14 @@ Toplam Ciro: {toplam}
                         {Array.isArray(cari.hareketler) && cari.hareketler.length > 0 ? (
                           <div style={{ display: 'grid', gap: '6px', marginTop: '10px' }}>
                             {cari.hareketler.slice(0, 20).map(h => (
-                              <div key={h.id || `${h.tarih}-${h.tutar}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', fontSize: '12px' }}>
+                              <div key={h.id || `${h.tarih}-${h.tutar}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', fontSize: '14px' }}>
                                 <span>{String(h.tarih || '').slice(0, 16).replace('T', ' ')} — {h.tip}{h.odeme_tipi ? ` (${h.odeme_tipi})` : ''} — {h.aciklama}</span>
                                 <strong style={{ color: h.tip === 'Borç' ? '#ef4444' : '#10b981' }}>{h.tutar} TL</strong>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div style={{ color: '#94a3b8', marginTop: '8px', fontSize: '12px' }}>Bu caride henüz hareket yok.</div>
+                          <div style={{ color: '#94a3b8', marginTop: '8px', fontSize: '14px' }}>Bu caride henüz hareket yok.</div>
                         )}
                       </details>
                     </div>
@@ -20260,14 +20260,14 @@ Toplam Ciro: {toplam}
             {activeTab === 'stok' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>📦 Stok Takibi</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Stok takibi açık ürünlerde satış ve paket sipariş sonrası stok otomatik düşer. Reçete tanımlarsanız satışta hammaddeler de düşer ve maliyet/kâr raporu daha doğru hesaplanır.
                 </p>
                 <button type="button" onClick={stokCsvIndir} style={{ ...styles.btnOrange, backgroundColor: '#1e293b', marginBottom: '14px' }}>⬇️ Stok Listesini CSV İndir</button>
 
                 <div style={{ ...styles.panelCard, backgroundColor: '#fff7ed', border: '1px solid #fed7aa', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '17px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Reçete / Hammadde / Alış işlemleri taşındı</h3>
-                  <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
+                  <h3 style={{ fontSize: '19px', color: '#1e293b', margin: '0 0 6px' }}>🧾 Reçete / Hammadde / Alış işlemleri taşındı</h3>
+                  <p style={{ color: '#64748b', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
                     Hammadde ekleme, alış fişi, depo sayımı ve eksik malzeme siparişi artık sol menüdeki <strong>Reçeteler</strong> sekmesinden yönetilir. Bu ekranda sadece satış ürünlerinin stok takibi kalır.
                   </p>
                   <button type="button" onClick={() => setActiveTab('receteler')} style={{ ...styles.btnOrange, marginTop: '10px' }}>Reçeteler Sekmesini Aç</button>
@@ -20281,7 +20281,7 @@ Toplam Ciro: {toplam}
                     <div key={urun.id} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <div style={{ flex: 1 }}>
                         <strong>{urun.ad}</strong>
-                        <div style={{ color: '#64748b', fontSize: '12px' }}>
+                        <div style={{ color: '#64748b', fontSize: '14px' }}>
                           {urun.menuGrubu} / {urun.departman}
                         </div>
                       </div>
@@ -20320,7 +20320,7 @@ Toplam Ciro: {toplam}
             {activeTab === 'kasa' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>💰 Kasa Açılış / Kapanış</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Günlük kasa açılış tutarı, nakit giriş/çıkış ve beklenen kasa takibi.
                 </p>
 
@@ -20359,8 +20359,8 @@ Toplam Ciro: {toplam}
 
 
                 <div style={{ ...styles.panelCard, marginTop: '18px', backgroundColor: '#f8fafc' }}>
-                  <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>📌 Gün Sonu / Z Raporu</h3>
-                  <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px', marginBottom: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', fontSize: '12px', color: '#475569' }}>
+                  <h3 style={{ fontSize: '18px', color: '#1e293b', marginTop: 0 }}>📌 Gün Sonu / Z Raporu</h3>
+                  <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px', marginBottom: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', fontSize: '14px', color: '#475569' }}>
                     <div>🪑 Masa satışları: <strong>{bugunkuMasaSatis} TL</strong></div>
                     <div>🛵 Paket servis: <strong>{bugunkuPaketSatis} TL</strong></div>
                     <div>⚡ Hızlı satış: <strong>{bugunkuHizliSatis} TL</strong></div>
@@ -20410,7 +20410,7 @@ Toplam Ciro: {toplam}
                   <button type="button" onClick={() => kasaHareketiEkle('Çıkış', kasaHareketTutari, kasaHareketAciklama || 'Nakit çıkış')} style={{ ...styles.btnOrange, backgroundColor: '#ef4444' }}>Çıkış</button>
                 </div>
 
-                <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: '20px' }}>Bugünkü Kasa Hareketleri</h3>
+                <h3 style={{ fontSize: '18px', color: '#1e293b', marginTop: '20px' }}>Bugünkü Kasa Hareketleri</h3>
                 {kasaHareketleri.length === 0 ? (
                   <div style={{ color: '#94a3b8', padding: '20px' }}>Bugün kasa hareketi yok.</div>
                 ) : (
@@ -20422,7 +20422,7 @@ Toplam Ciro: {toplam}
                   ))
                 )}
 
-                <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: '24px' }}>📚 Kapanmış Gün Sonu Z Raporları</h3>
+                <h3 style={{ fontSize: '18px', color: '#1e293b', marginTop: '24px' }}>📚 Kapanmış Gün Sonu Z Raporları</h3>
                 {zRaporlari.length === 0 ? (
                   <div style={{ color: '#94a3b8', padding: '20px' }}>Henüz kasaya aktarılmış gün sonu raporu yok.</div>
                 ) : (
@@ -20431,7 +20431,7 @@ Toplam Ciro: {toplam}
                       <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#1e293b' }}>
                         {z.tarih} — Ciro: {z.toplamCiro} TL / Kâr: {z.tahminiKar} TL / Kasa farkı: {z.kasaFarki} TL
                       </summary>
-                      <div style={{ marginTop: '10px', display: 'grid', gap: '6px', fontSize: '13px', color: '#475569' }}>
+                      <div style={{ marginTop: '10px', display: 'grid', gap: '6px', fontSize: '15px', color: '#475569' }}>
                         <div>Nakit: <strong>{z.nakitSatis} TL</strong> / Kart: <strong>{z.kartSatis} TL</strong></div>
                         <div>Gider + İade/İkram/Zayi: <strong>{z.giderToplam} TL</strong></div>
                         <div>Maliyet: <strong>{z.maliyetToplam} TL</strong></div>
@@ -20477,7 +20477,7 @@ Toplam Ciro: {toplam}
             {activeTab === 'isletme_profili' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🏢 İşletme Profili</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '16px' }}>
                   Firma adı, telefon, adres, fiş başlığı, QR menü iletişim bilgileri ve destek görünümü bu alandan yönetilir.
                 </p>
 
@@ -20511,7 +20511,7 @@ Toplam Ciro: {toplam}
             {activeTab === 'kurulum' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🚀 Kurulum Sihirbazı</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '16px' }}>
                   Yeni işletme boş ekranda kalmasın diye temel kurulumu adım adım buradan tamamlayabilirsiniz.
                 </p>
 
@@ -20527,14 +20527,14 @@ Toplam Ciro: {toplam}
                     <div key={adim.baslik} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', padding: '14px', border: '1px solid #e2e8f0', borderRadius: '14px', backgroundColor: adim.tamam ? '#f0fdf4' : '#fff7ed' }}>
                       <div>
                         <strong style={{ color: '#1e293b' }}>{adim.tamam ? '✅' : '⏳'} {idx + 1}. {adim.baslik}</strong>
-                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>{adim.aciklama}</div>
+                        <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>{adim.aciklama}</div>
                       </div>
                       <button type="button" onClick={() => setActiveTab(adim.tab)} style={{ ...styles.btnOrange, backgroundColor: adim.tamam ? '#10b981' : '#ff6b35' }}>{adim.tamam ? 'Kontrol Et' : 'Başla'}</button>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ marginTop: '16px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
+                <div style={{ marginTop: '16px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', color: '#475569', fontSize: '15px', lineHeight: 1.6 }}>
                   Satışa çıkmadan önce önerilen test: 1 masa aç, 1 ürün ekle, QR menüden sipariş talebi gönder, garson onayıyla masaya aktar, adisyonu kapat ve raporda maliyet/kârı kontrol et.
                 </div>
               </div>
@@ -20633,7 +20633,7 @@ Toplam Ciro: {toplam}
                                   width: '100%',
                                   boxSizing: 'border-box',
                                   padding: '7px 8px',
-                                  fontSize: '12px',
+                                  fontSize: '14px',
                                   marginTop: '5px',
                                 }}
                               >
@@ -20657,19 +20657,19 @@ Toplam Ciro: {toplam}
                                 width: '100%',
                                 boxSizing: 'border-box',
                                 padding: '7px 8px',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 marginTop: '5px',
                               }}
                             />
 
                             {Number(u.ekstraUcret || 0) > 0 && (
-                              <div style={{ fontSize: '11px', color: '#ff6b35', fontWeight: '900', marginTop: '4px' }}>
+                              <div style={{ fontSize: '13px', color: '#ff6b35', fontWeight: '900', marginTop: '4px' }}>
                                 Hazır not ekstra: +{u.ekstraUcret} TL / adet
                               </div>
                             )}
 
                             {u.fiyatDegistirildi && (
-                              <div style={{ fontSize: '11px', color: '#0f766e', fontWeight: '900', marginTop: '4px' }}>
+                              <div style={{ fontSize: '13px', color: '#0f766e', fontWeight: '900', marginTop: '4px' }}>
                                 Satış fiyatı değiştirildi: {u.fiyat} TL / adet
                               </div>
                             )}
@@ -20746,7 +20746,7 @@ Toplam Ciro: {toplam}
                       {hizliSatisCariArama && !hizliSatisCariMusteriId && (
                         <div style={{ marginTop: '6px', display: 'grid', gap: '6px', maxHeight: '170px', overflowY: 'auto' }}>
                           {filtreliHizliSatisCariMusterileri.length === 0 ? (
-                            <div style={{ color: '#94a3b8', fontSize: '12px' }}>Cari müşteri bulunamadı.</div>
+                            <div style={{ color: '#94a3b8', fontSize: '14px' }}>Cari müşteri bulunamadı.</div>
                           ) : (
                             filtreliHizliSatisCariMusterileri.map(cari => (
                               <button
@@ -20798,7 +20798,7 @@ Toplam Ciro: {toplam}
             {activeTab === 'giderler' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🧾 Gider Takibi</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Günlük işletme giderlerini girin; kâr raporunda otomatik hesaplansın.
                 </p>
 
@@ -20827,7 +20827,7 @@ Toplam Ciro: {toplam}
                   </div>
                 </div>
 
-                <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: '20px' }}>Bugünkü Giderler</h3>
+                <h3 style={{ fontSize: '18px', color: '#1e293b', marginTop: '20px' }}>Bugünkü Giderler</h3>
                 {giderler.length === 0 ? (
                   <div style={{ color: '#94a3b8', padding: '20px' }}>Bugün gider yok.</div>
                 ) : (
@@ -20845,7 +20845,7 @@ Toplam Ciro: {toplam}
             {activeTab === 'iadeler' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>↩️ İade / İptal / İkram / Zayi</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Satış dışı ürün hareketlerini sebebiyle birlikte kaydedin.
                 </p>
 
@@ -20871,7 +20871,7 @@ Toplam Ciro: {toplam}
                   </select>
                   <input type="number" min="1" placeholder="Adet" value={iadeAdet} onChange={e => setIadeAdet(e.target.value)} style={{ ...styles.input, width: '90px', minWidth: '90px' }} />
                   <input type="number" placeholder="Tutar" value={iadeTutar} onChange={e => setIadeTutar(e.target.value)} style={styles.input} />
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', minHeight: '42px', padding: '0 10px', fontSize: '13px', fontWeight: '800', color: '#334155', opacity: iadeTipi === 'İade' ? 1 : 0.55 }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', minHeight: '42px', padding: '0 10px', fontSize: '15px', fontWeight: '800', color: '#334155', opacity: iadeTipi === 'İade' ? 1 : 0.55 }}>
                     <input
                       type="checkbox"
                       checked={iadeTipi === 'İade' && iadeStogaAl}
@@ -20900,7 +20900,7 @@ Toplam Ciro: {toplam}
             {activeTab === 'rezervasyonlar' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>📅 Rezervasyonlar</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Masa rezervasyonlarını takip edin.
                 </p>
 
@@ -20913,7 +20913,7 @@ Toplam Ciro: {toplam}
                     marginBottom: '14px',
                   }}
                 >
-                  <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '900', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: '900', marginBottom: '8px' }}>
                     Kayıtlı cari müşteriden seç
                   </div>
                   <input
@@ -20930,7 +20930,7 @@ Toplam Ciro: {toplam}
                   {rezervasyonCariArama && (
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
                       {filtreliRezervasyonCariMusterileri.length === 0 ? (
-                        <div style={{ color: '#94a3b8', fontSize: '12px' }}>Eşleşen cari yok. Rezervasyon ekleyince yeni cari olarak kaydedilir.</div>
+                        <div style={{ color: '#94a3b8', fontSize: '14px' }}>Eşleşen cari yok. Rezervasyon ekleyince yeni cari olarak kaydedilir.</div>
                       ) : (
                         filtreliRezervasyonCariMusterileri.slice(0, 8).map(c => (
                           <button
@@ -20945,7 +20945,7 @@ Toplam Ciro: {toplam}
                               borderRadius: '999px',
                               cursor: 'pointer',
                               fontWeight: '800',
-                              fontSize: '12px',
+                              fontSize: '14px',
                             }}
                           >
                             {c.ad} {c.telefon ? `- ${c.telefon}` : ''}
@@ -20973,8 +20973,8 @@ Toplam Ciro: {toplam}
                 </form>
 
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '10px', margin: '14px 0' }}>
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Bugünkü Rezervasyon</div><strong style={{ fontSize: '22px' }}>{bugunkuRezervasyonlar.length}</strong></div>
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Bekleyen</div><strong style={{ fontSize: '22px' }}>{rezervasyonlar.filter(r => r.durum === 'Bekliyor').length}</strong></div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>Bugünkü Rezervasyon</div><strong style={{ fontSize: '25px' }}>{bugunkuRezervasyonlar.length}</strong></div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>Bekleyen</div><strong style={{ fontSize: '25px' }}>{rezervasyonlar.filter(r => r.durum === 'Bekliyor').length}</strong></div>
                   <button type="button" onClick={() => setRezervasyonTakvimGorunumu(rezervasyonTakvimGorunumu === 'liste' ? 'takvim' : 'liste')} style={{ ...styles.btnOrange, background: '#1e293b' }}>{rezervasyonTakvimGorunumu === 'liste' ? 'Takvim Görünümü' : 'Liste Görünümü'}</button>
                   <button type="button" onClick={() => whatsappMesajiAc(rezervasyonTelefon, `${restaurantName || user?.restaurant || 'Integra POS'} rezervasyon hatırlatma: ${rezervasyonTarihSaat || 'Rezervasyon saatiniz'} için sizi bekliyoruz.`)} style={{ ...styles.btnOrange, background: '#22c55e' }}>WhatsApp Hatırlat</button>
                 </div>
@@ -21004,7 +21004,7 @@ Toplam Ciro: {toplam}
             {activeTab === 'ayarlar' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>⚙️ Ayarlar</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px', lineHeight: 1.55 }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px', lineHeight: 1.55 }}>
                   Fiş yazıcıları, Printer Agent kurulumu, fiş şablonları ve işletme yazdırma kuralları artık bu ekrandan yönetilir.
                 </p>
 
@@ -21029,10 +21029,10 @@ Toplam Ciro: {toplam}
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>
+                      <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '17px' }}>
                         🖨️ Fiş Dizaynı ve Yazıcı Ayarları
                       </div>
-                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700', lineHeight: 1.5 }}>
+                      <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px', fontWeight: '700', lineHeight: 1.5 }}>
                         Firma adı fişin üstünde görünür. Adisyon, mutfak ve bar/içecek için ayrı yazıcı adı veya numarası tanımlayabilirsiniz.
                       </div>
                     </div>
@@ -21049,7 +21049,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '10px',
                         cursor: fisAyarlariKaydediliyor ? 'not-allowed' : 'pointer',
                         fontWeight: '900',
-                        fontSize: '12px',
+                        fontSize: '14px',
                       }}
                     >
                       {fisAyarlariKaydediliyor ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
@@ -21182,7 +21182,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '10px',
                         cursor: 'pointer',
                         fontWeight: '900',
-                        fontSize: '12px',
+                        fontSize: '14px',
                       }}
                     >
                       Test Adisyon Fişi
@@ -21202,7 +21202,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '10px',
                         cursor: 'pointer',
                         fontWeight: '900',
-                        fontSize: '12px',
+                        fontSize: '14px',
                       }}
                     >
                       Test Mutfak Fişi
@@ -21230,13 +21230,13 @@ Toplam Ciro: {toplam}
                         ['paketFisiAktif', 'Paket fişi'],
                         ['zRaporuAktif', 'Z raporu'],
                       ].map(([alan, etiket]) => (
-                        <label key={alan} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', color: '#334155', fontSize: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
+                        <label key={alan} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', color: '#334155', fontSize: '14px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
                           <input type="checkbox" checked={yaziciAyarlari[alan] !== false} onChange={e => yaziciAyariGuncelle(alan, e.target.checked)} />
                           {etiket} aktif
                         </label>
                       ))}
 
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', color: '#334155', fontSize: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', color: '#334155', fontSize: '14px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
                         <input type="checkbox" checked={yaziciAyarlari.barYoksaMutfagaGonder !== false} onChange={e => yaziciAyariGuncelle('barYoksaMutfagaGonder', e.target.checked)} />
                         Bar yoksa mutfağa gönder
                       </label>
@@ -21268,7 +21268,7 @@ Toplam Ciro: {toplam}
                               borderRadius: '999px',
                               cursor: 'pointer',
                               fontWeight: '900',
-                              fontSize: '12px',
+                              fontSize: '14px',
                             }}
                           >
                             {fisTipiEtiketi(sablon.fisTipi)}
@@ -21288,16 +21288,16 @@ Toplam Ciro: {toplam}
                     <textarea
                       value={fisSablonuBul(aktifFisSablonTipi).sablonText || ''}
                       onChange={e => fisSablonuGuncelle(aktifFisSablonTipi, 'sablonText', e.target.value)}
-                      style={{ ...styles.input, width: '100%', minHeight: '170px', resize: 'vertical', fontFamily: 'Consolas, monospace', fontSize: '12px', lineHeight: 1.5 }}
+                      style={{ ...styles.input, width: '100%', minHeight: '170px', resize: 'vertical', fontFamily: 'Consolas, monospace', fontSize: '14px', lineHeight: 1.5 }}
                     />
 
-                    <div style={{ color: '#64748b', fontSize: '11px', marginTop: '8px', lineHeight: 1.6, fontWeight: '700' }}>
+                    <div style={{ color: '#64748b', fontSize: '13px', marginTop: '8px', lineHeight: 1.6, fontWeight: '700' }}>
                       Kullanılabilir alanlar: {'{firma_adi}'}, {'{fis_baslik}'}, {'{masa_adi}'}, {'{garson_adi}'}, {'{tarih}'}, {'{urunler}'}, {'{toplam}'}, {'{kdv}'}, {'{indirim}'}, {'{alt_not}'}, {'{not}'}, {'{iptal_sebebi}'}.
                     </div>
                   </div>
                   </div>
 
-                  <div style={{ color: '#64748b', fontSize: '11px', marginTop: '10px', lineHeight: 1.5, fontWeight: '700' }}>
+                  <div style={{ color: '#64748b', fontSize: '13px', marginTop: '10px', lineHeight: 1.5, fontWeight: '700' }}>
                     Not: Windows tarafında yazıcı adları standart olarak adisyon, mutfak ve bar kalır. Bu ekrandaki kurallar ve şablonlar Supabase'de kalıcı saklanır; Printer Agent bekleyen kuyruğu basar.
                   </div>
                 </div>
@@ -21323,10 +21323,10 @@ Toplam Ciro: {toplam}
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>
+                      <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '17px' }}>
                         🧩 Printer Agent Kurulumu
                       </div>
-                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700', lineHeight: 1.5 }}>
+                      <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px', fontWeight: '700', lineHeight: 1.5 }}>
                         Müşteri bilgisayarına kurulacak Printer Agent v3.5 için kurulum kodu üretin. Fiş ve barkod/etiket yazıcıları kurulumda ayrı seçilir.
                       </div>
                     </div>
@@ -21341,7 +21341,7 @@ Toplam Ciro: {toplam}
                         padding: '10px 13px',
                         borderRadius: '10px',
                         fontWeight: '900',
-                        fontSize: '12px',
+                        fontSize: '14px',
                       }}
                     >
                       ⬇️ Agent İndir
@@ -21357,7 +21357,7 @@ Toplam Ciro: {toplam}
                         padding: '12px',
                       }}
                     >
-                      <div style={{ color: '#64748b', fontSize: '11px', fontWeight: '900', marginBottom: '6px' }}>
+                      <div style={{ color: '#64748b', fontSize: '13px', fontWeight: '900', marginBottom: '6px' }}>
                         Kurulum Kodu
                       </div>
                       <div
@@ -21389,7 +21389,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '10px',
                             cursor: printerAgentKurulumYukleniyor ? 'not-allowed' : 'pointer',
                             fontWeight: '900',
-                            fontSize: '12px',
+                            fontSize: '14px',
                           }}
                         >
                           {printerAgentKurulumYukleniyor ? 'Hazırlanıyor...' : 'Kodu Hazırla'}
@@ -21407,7 +21407,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '10px',
                             cursor: printerAgentKurulumu?.kurulum_kodu ? 'pointer' : 'not-allowed',
                             fontWeight: '900',
-                            fontSize: '12px',
+                            fontSize: '14px',
                           }}
                         >
                           Kopyala
@@ -21429,7 +21429,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '10px',
                             cursor: printerAgentKurulumYukleniyor ? 'not-allowed' : 'pointer',
                             fontWeight: '900',
-                            fontSize: '12px',
+                            fontSize: '14px',
                           }}
                         >
                           Yeni Kod Üret
@@ -21437,7 +21437,7 @@ Toplam Ciro: {toplam}
                       </div>
 
                       {printerAgentKurulumMesaji && (
-                        <div style={{ color: '#059669', fontSize: '12px', fontWeight: '900', marginTop: '10px' }}>
+                        <div style={{ color: '#059669', fontSize: '14px', fontWeight: '900', marginTop: '10px' }}>
                           {printerAgentKurulumMesaji}
                         </div>
                       )}
@@ -21450,7 +21450,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '12px',
                         padding: '12px',
                         color: '#334155',
-                        fontSize: '12px',
+                        fontSize: '14px',
                         lineHeight: 1.6,
                         fontWeight: '700',
                       }}
@@ -21476,7 +21476,7 @@ Toplam Ciro: {toplam}
                 <div style={styles.contentHeader}>
                   <div>
                     <h2 style={styles.pageTitle}>🧰 Güçlendirme Paketi</h2>
-                    <div style={{ color: '#64748b', fontSize: '13px', marginTop: '6px', fontWeight: '700' }}>
+                    <div style={{ color: '#64748b', fontSize: '15px', marginTop: '6px', fontWeight: '700' }}>
                       İşlem geçmişi, personel yetkileri, gün sonu kilidi, fiş önizleme, yedekleme ve kurulum araçları.
                     </div>
                   </div>
@@ -21506,7 +21506,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '999px',
                         cursor: 'pointer',
                         fontWeight: '950',
-                        fontSize: '12px',
+                        fontSize: '14px',
                       }}
                     >
                       {label}
@@ -21526,13 +21526,13 @@ Toplam Ciro: {toplam}
                         .slice(0, 40)
                         .map(log => (
                           <div key={log.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}>
-                            <div style={{ color: '#0f172a', fontWeight: '950', fontSize: '13px' }}>{log.tip || 'İşlem'} · {log.kullanici || '-'}</div>
-                            <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>{log.aciklama || '-'}</div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '6px', fontWeight: '800' }}>{log.createdAt ? new Date(log.createdAt).toLocaleString('tr-TR') : '-'}</div>
+                            <div style={{ color: '#0f172a', fontWeight: '950', fontSize: '15px' }}>{log.tip || 'İşlem'} · {log.kullanici || '-'}</div>
+                            <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px', fontWeight: '700' }}>{log.aciklama || '-'}</div>
+                            <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '6px', fontWeight: '800' }}>{log.createdAt ? new Date(log.createdAt).toLocaleString('tr-TR') : '-'}</div>
                           </div>
                         ))}
                       {(Array.isArray(islemLoglari) ? islemLoglari : []).filter(l => String(l.restaurantId || '') === String(mevcutRestaurantId || '')).length === 0 && (
-                        <div style={{ color: '#64748b', fontWeight: '800', fontSize: '13px' }}>Henüz işlem kaydı yok.</div>
+                        <div style={{ color: '#64748b', fontWeight: '800', fontSize: '15px' }}>Henüz işlem kaydı yok.</div>
                       )}
                     </div>
                   </div>
@@ -21541,7 +21541,7 @@ Toplam Ciro: {toplam}
                 {guclendirmeSekmesi === 'yetki' && (
                   <div style={styles.panelCard}>
                     <h3 style={{ margin: '0 0 10px', color: '#1e293b' }}>🔐 Personel Detay Yetkileri</h3>
-                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '750', marginBottom: '14px' }}>
+                    <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '750', marginBottom: '14px' }}>
                       İşletme sahibi ve süper admin tüm işlemleri yapabilir. Personel için kritik işlemleri buradan açıp kapatabilirsiniz.
                     </div>
                     <div style={{ display: 'grid', gap: '12px' }}>
@@ -21552,7 +21552,7 @@ Toplam Ciro: {toplam}
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
                               <div>
                                 <div style={{ color: '#0f172a', fontWeight: '950' }}>{p.ad || p.email || 'Personel'}</div>
-                                <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '750' }}>{p.gorev || 'Garson'} · {p.email || '-'}</div>
+                                <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '750' }}>{p.gorev || 'Garson'} · {p.email || '-'}</div>
                               </div>
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                 <button type="button" onClick={() => personelDetayYetkileriniKaydet(p, goreveGoreVarsayilanDetayYetkileri(p.gorev))} style={{ ...styles.addBtnMini, backgroundColor: '#475569' }}>Göreve Göre</button>
@@ -21562,7 +21562,7 @@ Toplam Ciro: {toplam}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '9px' }}>
                               {personelDetayYetkiGruplari.map(grupAdi => <div key={`${p.id}-${grupAdi}`} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', backgroundColor: '#f8fafc' }}>
-                                <strong style={{ display: 'block', color: '#334155', fontSize: '12px', marginBottom: '7px' }}>{grupAdi}</strong>
+                                <strong style={{ display: 'block', color: '#334155', fontSize: '14px', marginBottom: '7px' }}>{grupAdi}</strong>
                                 <div style={{ display: 'grid', gap: '6px' }}>
                                   {personelDetayYetkiSecenekleri.filter(secenek => secenek.grup === grupAdi).map(secenek => {
                                     const aktif = detayYetkiler.includes(secenek.key);
@@ -21578,7 +21578,7 @@ Toplam Ciro: {toplam}
                           </div>
                         );
                       })}
-                      {aktifPersoneller.length === 0 && <div style={{ color: '#64748b', fontWeight: '800', fontSize: '13px' }}>Kayıtlı personel bulunamadı.</div>}
+                      {aktifPersoneller.length === 0 && <div style={{ color: '#64748b', fontWeight: '800', fontSize: '15px' }}>Kayıtlı personel bulunamadı.</div>}
                     </div>
                   </div>
                 )}
@@ -21589,11 +21589,11 @@ Toplam Ciro: {toplam}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
                       <div style={styles.statsCard}>
                         <div style={styles.statsTitle}>Seçili rapor tarihi</div>
-                        <div style={{ ...styles.statsValue, fontSize: '22px' }}>{raporTarihi}</div>
+                        <div style={{ ...styles.statsValue, fontSize: '25px' }}>{raporTarihi}</div>
                       </div>
                       <div style={styles.statsCard}>
                         <div style={styles.statsTitle}>Kilit durumu</div>
-                        <div style={{ ...styles.statsValue, color: gunSonuKilidiAktifMi(raporTarihi) ? '#dc2626' : '#16a34a', fontSize: '22px' }}>
+                        <div style={{ ...styles.statsValue, color: gunSonuKilidiAktifMi(raporTarihi) ? '#dc2626' : '#16a34a', fontSize: '25px' }}>
                           {gunSonuKilidiAktifMi(raporTarihi) ? 'Kilitli' : 'Açık'}
                         </div>
                       </div>
@@ -21602,7 +21602,7 @@ Toplam Ciro: {toplam}
                       <button type="button" onClick={() => gunSonuKilidiniDegistir(raporTarihi, true)} style={styles.btnOrange}>Tarihi Kilitle</button>
                       <button type="button" onClick={() => gunSonuKilidiniDegistir(raporTarihi, false)} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Kilidi Kaldır</button>
                     </div>
-                    <div style={{ marginTop: '12px', color: '#64748b', fontWeight: '750', fontSize: '12px', lineHeight: 1.6 }}>
+                    <div style={{ marginTop: '12px', color: '#64748b', fontWeight: '750', fontSize: '14px', lineHeight: 1.6 }}>
                       Gün sonu alındığında seçili gün otomatik kilitlenir. Kilitliyken yeni ödeme, paket kapatma ve hızlı satış kapanışı engellenir.
                     </div>
                   </div>
@@ -21660,7 +21660,7 @@ Toplam Ciro: {toplam}
                     </div>
                     <div style={{ marginTop: '14px', display: 'grid', gap: '8px' }}>
                       {demoTalepKayitlari.slice(0, 5).map(talep => (
-                        <div key={talep.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', fontSize: '12px', color: '#334155', fontWeight: '800' }}>
+                        <div key={talep.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', fontSize: '14px', color: '#334155', fontWeight: '800' }}>
                           {talep.createdAt ? new Date(talep.createdAt).toLocaleString('tr-TR') : '-'} · {talep.adSoyad} · {talep.telefon} · {talep.isletmeAdi || '-'}
                         </div>
                       ))}
@@ -21686,12 +21686,12 @@ Toplam Ciro: {toplam}
                   <div style={styles.panelCard}>
                     <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>💳 Lisans / Ödeme Takip Özeti</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                      <div style={styles.statsCard}><div style={styles.statsTitle}>Paket</div><div style={{ ...styles.statsValue, fontSize: '21px' }}>{user?.modulPaketi || user?.paketAdi || 'Profesyonel'}</div></div>
-                      <div style={styles.statsCard}><div style={styles.statsTitle}>Lisans</div><div style={{ ...styles.statsValue, fontSize: '21px' }}>{aktifKullaniciLisansRozeti?.etiket || 'Aktif'}</div></div>
-                      <div style={styles.statsCard}><div style={styles.statsTitle}>Son ödeme</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{user?.sonOdemeTarihi || '-'}</div></div>
-                      <div style={styles.statsCard}><div style={styles.statsTitle}>Lisans bitiş</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{user?.lisansBitisTarihi || user?.lisansBitis || '-'}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Paket</div><div style={{ ...styles.statsValue, fontSize: '24px' }}>{user?.modulPaketi || user?.paketAdi || 'Profesyonel'}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Lisans</div><div style={{ ...styles.statsValue, fontSize: '24px' }}>{aktifKullaniciLisansRozeti?.etiket || 'Aktif'}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Son ödeme</div><div style={{ ...styles.statsValue, fontSize: '20px' }}>{user?.sonOdemeTarihi || '-'}</div></div>
+                      <div style={styles.statsCard}><div style={styles.statsTitle}>Lisans bitiş</div><div style={{ ...styles.statsValue, fontSize: '20px' }}>{user?.lisansBitisTarihi || user?.lisansBitis || '-'}</div></div>
                     </div>
-                    <div style={{ marginTop: '12px', color: '#64748b', fontSize: '12px', fontWeight: '750', lineHeight: 1.6 }}>
+                    <div style={{ marginTop: '12px', color: '#64748b', fontSize: '14px', fontWeight: '750', lineHeight: 1.6 }}>
                       Detaylı lisans yönetimi süper admin tarafındaki Lisans & Ödeme ekranından yapılır. Bu bölüm işletmeye hızlı özet verir.
                     </div>
                   </div>
@@ -21704,15 +21704,15 @@ Toplam Ciro: {toplam}
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>Restoran Menü Yönetimi — Gruplu Sistem</h2>
 
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Ürünleri Ana Yemekler, İçecekler, Tatlılar gibi gruplara ayırabilirsiniz. Ürünler departman, KDV ve mutfak ayarını bağlı olduğu gruptan alır.
                 </p>
 
                 <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '10px' }}>
                     <div>
-                      <h3 style={{ margin: '0 0 5px', color: '#0f172a', fontSize: '16px' }}>📱 QR Menü / Satış Durumu</h3>
-                      <p style={{ color: '#475569', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
+                      <h3 style={{ margin: '0 0 5px', color: '#0f172a', fontSize: '18px' }}>📱 QR Menü / Satış Durumu</h3>
+                      <p style={{ color: '#475569', fontSize: '14px', margin: 0, lineHeight: 1.5 }}>
                         Ürünü satıştan kaldırırsan QR menüden de otomatik gizlenir. Sadece QR'da gizlemek istersen “QR Kapalı” yap.
                       </p>
                     </div>
@@ -21720,18 +21720,18 @@ Toplam Ciro: {toplam}
                   </div>
 
                   {aktifMenu.length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Ürün ekledikten sonra QR/satış durumları burada görünür.</div>
+                    <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>Ürün ekledikten sonra QR/satış durumları burada görünür.</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
                       {aktifMenu.map(u => (
                         <div key={`qr-durum-${u.id}`} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr auto auto auto', gap: '8px', alignItems: 'center' }}>
                           <div>
                             <strong style={{ color: '#0f172a' }}>{u.ad}</strong>
-                            <div style={{ color: '#64748b', fontSize: '11px' }}>{u.menuGrubu || u.kategori || 'Genel'} / {u.fiyat} TL</div>
+                            <div style={{ color: '#64748b', fontSize: '13px' }}>{u.menuGrubu || u.kategori || 'Genel'} / {u.fiyat} TL</div>
                           </div>
-                          <span style={{ backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: '900', textAlign: 'center' }}>{urunSatistaAktifMi(u) ? 'Satışta' : 'Satıştan kalktı'}</span>
-                          <button type="button" onClick={() => urunSatisDurumunuAyarla(u, !urunSatistaAktifMi(u))} style={{ border: 'none', backgroundColor: urunSatistaAktifMi(u) ? '#fee2e2' : '#dcfce7', color: urunSatistaAktifMi(u) ? '#991b1b' : '#15803d', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>{urunSatistaAktifMi(u) ? 'Satıştan Kaldır' : 'Satışa Al'}</button>
-                          <button type="button" disabled={!urunSatistaAktifMi(u)} onClick={() => urunQrMenuDurumunuAyarla(u, !urunQrMenudeGorunurMu(u))} style={{ border: 'none', backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', borderRadius: '8px', padding: '8px 10px', cursor: urunSatistaAktifMi(u) ? 'pointer' : 'not-allowed', fontWeight: '900', fontSize: '12px', opacity: urunSatistaAktifMi(u) ? 1 : 0.6 }}>{urunQrMenudeGorunurMu(u) ? 'QR Kapalı Yap' : 'QR Aç'}</button>
+                          <span style={{ backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '999px', fontSize: '13px', fontWeight: '900', textAlign: 'center' }}>{urunSatistaAktifMi(u) ? 'Satışta' : 'Satıştan kalktı'}</span>
+                          <button type="button" onClick={() => urunSatisDurumunuAyarla(u, !urunSatistaAktifMi(u))} style={{ border: 'none', backgroundColor: urunSatistaAktifMi(u) ? '#fee2e2' : '#dcfce7', color: urunSatistaAktifMi(u) ? '#991b1b' : '#15803d', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '14px' }}>{urunSatistaAktifMi(u) ? 'Satıştan Kaldır' : 'Satışa Al'}</button>
+                          <button type="button" disabled={!urunSatistaAktifMi(u)} onClick={() => urunQrMenuDurumunuAyarla(u, !urunQrMenudeGorunurMu(u))} style={{ border: 'none', backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', borderRadius: '8px', padding: '8px 10px', cursor: urunSatistaAktifMi(u) ? 'pointer' : 'not-allowed', fontWeight: '900', fontSize: '14px', opacity: urunSatistaAktifMi(u) ? 1 : 0.6 }}>{urunQrMenudeGorunurMu(u) ? 'QR Kapalı Yap' : 'QR Aç'}</button>
                         </div>
                       ))}
                     </div>
@@ -21740,8 +21740,8 @@ Toplam Ciro: {toplam}
 
                 <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                   <div>
-                    <h3 style={{ margin: '0 0 5px', color: '#1e293b', fontSize: '16px' }}>⚙️ Yazıcı ve fiş ayarları Ayarlar sekmesine taşındı</h3>
-                    <p style={{ color: '#64748b', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>Menü ekranını sade tutmak için Printer Agent kurulumu, fiş dizaynı ve yazıcı ayarlarını sol menüdeki Ayarlar bölümünden yönetebilirsin.</p>
+                    <h3 style={{ margin: '0 0 5px', color: '#1e293b', fontSize: '18px' }}>⚙️ Yazıcı ve fiş ayarları Ayarlar sekmesine taşındı</h3>
+                    <p style={{ color: '#64748b', fontSize: '14px', margin: 0, lineHeight: 1.5 }}>Menü ekranını sade tutmak için Printer Agent kurulumu, fiş dizaynı ve yazıcı ayarlarını sol menüdeki Ayarlar bölümünden yönetebilirsin.</p>
                   </div>
                   <button type="button" onClick={() => setActiveTab('ayarlar')} style={{ ...styles.btnOrange, backgroundColor: '#0f172a' }}>Ayarlar'a Git</button>
                 </div>
@@ -21811,7 +21811,7 @@ Toplam Ciro: {toplam}
                         borderRadius: '999px',
                         cursor: 'pointer',
                         fontWeight: '900',
-                        fontSize: '12px',
+                        fontSize: '14px',
                         flex: '0 0 auto',
                       }}
                     >
@@ -21876,7 +21876,7 @@ Toplam Ciro: {toplam}
                           borderRadius: '8px',
                           cursor: 'pointer',
                           fontWeight: '900',
-                          fontSize: '12px',
+                          fontSize: '14px',
                         }}
                       >
                         Grubu Kaydet
@@ -21893,7 +21893,7 @@ Toplam Ciro: {toplam}
                           borderRadius: '8px',
                           cursor: 'pointer',
                           fontWeight: '900',
-                          fontSize: '12px',
+                          fontSize: '14px',
                         }}
                       >
                         Vazgeç
@@ -21909,7 +21909,7 @@ Toplam Ciro: {toplam}
                         flexWrap: 'wrap',
                       }}
                     >
-                      <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.7' }}>
+                      <div style={{ fontSize: '15px', color: '#334155', lineHeight: '1.7' }}>
                         <strong style={{ color: '#1e293b' }}>{aktifGrup.ad}</strong>
                         <span> / Departman: <strong>{aktifGrup.departman || 'Mutfak'}</strong></span>
                         <span> / KDV: <strong>%{aktifGrup.kdvOrani || 10}</strong></span><span> / Durum: <strong>{mutfakYaziciDurumEtiketi(aktifGrup)}</strong></span><span> / Hedef: <strong>{yaziciHedefEtiketi(yaziciHedefiBul(aktifGrup.departman || 'Mutfak', 'mutfak'))}</strong></span>
@@ -21927,7 +21927,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontWeight: '800',
-                            fontSize: '12px',
+                            fontSize: '14px',
                             outline: 'none',
                           }}
                         >
@@ -21946,7 +21946,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontWeight: '800',
-                            fontSize: '12px',
+                            fontSize: '14px',
                             outline: 'none',
                           }}
                         >
@@ -21965,7 +21965,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontWeight: '900',
-                            fontSize: '12px',
+                            fontSize: '14px',
                             outline: 'none',
                           }}
                         >
@@ -21985,7 +21985,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontWeight: '900',
-                            fontSize: '12px',
+                            fontSize: '14px',
                           }}
                         >
                           Grubu Düzenle
@@ -22002,7 +22002,7 @@ Toplam Ciro: {toplam}
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontWeight: '900',
-                            fontSize: '12px',
+                            fontSize: '14px',
                           }}
                         >
                           Grubu Sil
@@ -22049,7 +22049,7 @@ Toplam Ciro: {toplam}
                     {yeniUrunResimUrl && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <img src={yeniUrunResimUrl} alt="Ürün ön izleme" style={{ width: '42px', height: '42px', objectFit: 'cover', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
-                        <button type="button" onClick={() => setYeniUrunResimUrl('')} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
+                        <button type="button" onClick={() => setYeniUrunResimUrl('')} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '14px' }}>
                           Resmi Kaldır
                         </button>
                       </div>
@@ -22081,12 +22081,12 @@ Toplam Ciro: {toplam}
                   </button>
                 </form>
 
-                <h3 style={{ fontSize: '15px', color: '#1e293b', marginTop: '20px' }}>
+                <h3 style={{ fontSize: '17px', color: '#1e293b', marginTop: '20px' }}>
                   {aktifGrup.ad || 'Genel'} Ürünleri
                 </h3>
 
                 {aktifMenuGrubuUrunleri.length === 0 ? (
-                  <p style={{ color: '#94a3b8', fontSize: '13px' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '15px' }}>
                     Bu grupta henüz ürün yok.
                   </p>
                 ) : (
@@ -22135,7 +22135,7 @@ Toplam Ciro: {toplam}
                             {duzenlenenUrunResimUrl && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <img src={duzenlenenUrunResimUrl} alt="Ürün ön izleme" style={{ width: '42px', height: '42px', objectFit: 'cover', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
-                                <button type="button" onClick={() => setDuzenlenenUrunResimUrl('')} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>
+                                <button type="button" onClick={() => setDuzenlenenUrunResimUrl('')} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: '900', fontSize: '14px' }}>
                                   Resmi Kaldır
                                 </button>
                               </div>
@@ -22173,7 +22173,7 @@ Toplam Ciro: {toplam}
                               borderRadius: '8px',
                               cursor: 'pointer',
                               fontWeight: '800',
-                              fontSize: '12px',
+                              fontSize: '14px',
                             }}
                           >
                             Kaydet
@@ -22190,7 +22190,7 @@ Toplam Ciro: {toplam}
                               borderRadius: '8px',
                               cursor: 'pointer',
                               fontWeight: '800',
-                              fontSize: '12px',
+                              fontSize: '14px',
                             }}
                           >
                             Vazgeç
@@ -22198,7 +22198,7 @@ Toplam Ciro: {toplam}
                         </>
                       ) : (
                         <>
-                          <div style={{ width: '62px', height: '62px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 62px', color: '#94a3b8', fontSize: '22px' }}>
+                          <div style={{ width: '62px', height: '62px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 62px', color: '#94a3b8', fontSize: '25px' }}>
                             {urunGosterimResmi(u) ? (
                               <img src={urunGosterimResmi(u)} alt={u.ad} onError={e => { e.currentTarget.style.display = 'none'; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : '🍽️'}
@@ -22206,19 +22206,19 @@ Toplam Ciro: {toplam}
 
                           <div style={{ flex: 1, minWidth: '220px' }}>
                             <div style={{ fontWeight: '900', color: '#1e293b' }}>{u.favori ? '⭐ ' : ''}{u.ad}</div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                            <div style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
                               Grup: <strong>{u.menuGrubu || u.kategori || 'Genel'}</strong> / Departman: <strong>{u.departman || 'Mutfak'}</strong> / KDV: <strong>%{u.kdvOrani || 10}</strong> / Durum: <strong>{mutfakYaziciDurumEtiketi(u)}</strong> / Hedef: <strong>{fisYaziciAktifMi(u) ? yaziciHedefEtiketi(yaziciHedefiBul(u.departman || 'Mutfak', 'mutfak')) : 'Yazdırma yok'}</strong>
                             </div>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={styles.priceTag}>{u.fiyat} TL</span><span style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Maliyet: {u.maliyet || 0} TL</span>
+                            <span style={styles.priceTag}>{u.fiyat} TL</span><span style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>Maliyet: {u.maliyet || 0} TL</span>
 
-                            <span style={{ backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: '900' }}>
+                            <span style={{ backgroundColor: urunSatistaAktifMi(u) ? '#dcfce7' : '#fee2e2', color: urunSatistaAktifMi(u) ? '#15803d' : '#991b1b', padding: '7px 9px', borderRadius: '999px', fontSize: '13px', fontWeight: '900' }}>
                               {urunSatistaAktifMi(u) ? '✅ Satışta' : '🚫 Satıştan kalktı'}
                             </span>
 
-                            <span style={{ backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', padding: '7px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: '900' }}>
+                            <span style={{ backgroundColor: urunQrMenudeGorunurMu(u) ? '#dbeafe' : '#f1f5f9', color: urunQrMenudeGorunurMu(u) ? '#1d4ed8' : '#475569', padding: '7px 9px', borderRadius: '999px', fontSize: '13px', fontWeight: '900' }}>
                               {urunQrMenudeGorunurMu(u) ? '📱 QR açık' : '📵 QR kapalı'}
                             </span>
 
@@ -22236,7 +22236,7 @@ Toplam Ciro: {toplam}
                                 color: mutfakEkraniAktifMi(u) ? '#15803d' : '#475569',
                                 padding: '7px 9px',
                                 borderRadius: '999px',
-                                fontSize: '11px',
+                                fontSize: '13px',
                                 fontWeight: '900',
                               }}
                             >
@@ -22263,7 +22263,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontWeight: '900',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 outline: 'none',
                               }}
                             >
@@ -22284,7 +22284,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontWeight: '800',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 outline: 'none',
                               }}
                             >
@@ -22306,7 +22306,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontWeight: '800',
-                                fontSize: '12px',
+                                fontSize: '14px',
                               }}
                             >
                               Düzenle
@@ -22323,7 +22323,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontWeight: '800',
-                                fontSize: '12px',
+                                fontSize: '14px',
                               }}
                             >
                               Sil
@@ -22340,7 +22340,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontWeight: '800',
-                                fontSize: '12px',
+                                fontSize: '14px',
                               }}
                             >
                               {u.favori ? '⭐ Favori' : '☆ Favori'}
@@ -22361,7 +22361,7 @@ Toplam Ciro: {toplam}
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontWeight: '800',
-                                fontSize: '12px',
+                                fontSize: '14px',
                               }}
                             >
                               Notlar
@@ -22413,7 +22413,7 @@ Toplam Ciro: {toplam}
                                     borderRadius: '8px',
                                     cursor: 'pointer',
                                     fontWeight: '800',
-                                    fontSize: '12px',
+                                    fontSize: '14px',
                                   }}
                                 >
                                   Not Ekle
@@ -22434,7 +22434,7 @@ Toplam Ciro: {toplam}
                                     borderRadius: '8px',
                                     cursor: 'pointer',
                                     fontWeight: '800',
-                                    fontSize: '12px',
+                                    fontSize: '14px',
                                   }}
                                 >
                                   Kapat
@@ -22442,7 +22442,7 @@ Toplam Ciro: {toplam}
                               </div>
 
                               {(!u.menuNotlari || u.menuNotlari.length === 0) ? (
-                                <div style={{ color: '#94a3b8', fontSize: '12px' }}>
+                                <div style={{ color: '#94a3b8', fontSize: '14px' }}>
                                   Bu ürüne tanımlı hazır not yok.
                                 </div>
                               ) : (
@@ -22458,7 +22458,7 @@ Toplam Ciro: {toplam}
                                         border: '1px solid #e2e8f0',
                                         borderRadius: '999px',
                                         padding: '6px 9px',
-                                        fontSize: '12px',
+                                        fontSize: '14px',
                                         color: '#334155',
                                         fontWeight: '700',
                                       }}
@@ -22496,20 +22496,20 @@ Toplam Ciro: {toplam}
             {activeTab === 'receteler' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🧾 Ürün Reçeteleri</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px', lineHeight: 1.55 }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px', lineHeight: 1.55 }}>
                   Satılan ürünlerin hangi hammaddelerden oluştuğunu buradan tanımlayın. Reçete maliyeti, fireli stok düşümü, porsiyon hesabı ve kâr oranı bu sekmede yönetilir.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr', gap: '16px', marginBottom: '16px' }}>
                   <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '16px', padding: '14px' }}>
                     <h3 style={{ margin: '0 0 6px', color: '#1e293b' }}>📦 Reçete Operasyon Merkezi</h3>
-                    <p style={{ color: '#475569', fontSize: '12px', lineHeight: 1.55, margin: 0 }}>
+                    <p style={{ color: '#475569', fontSize: '14px', lineHeight: 1.55, margin: 0 }}>
                       Hammadde kartları, alış fişi, depo sayımı ve eksik malzeme siparişi artık burada. Alış fişinde hem <strong>hammadde</strong> hem de <strong>satış ürünü</strong> seçebilirsin; ürün seçersen stok doğrudan ürün kartına işlenir.
                     </p>
                   </div>
                 </div>
 
                 <div style={{ ...styles.panelCard, backgroundColor: '#f8fafc', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '16px', color: '#1e293b', marginTop: 0 }}>🥦 Hammadde Stokları</h3>
+                  <h3 style={{ fontSize: '18px', color: '#1e293b', marginTop: 0 }}>🥦 Hammadde Stokları</h3>
                   <form onSubmit={stokMalzemeEkle} style={styles.inlineForm}>
                     <input type="text" placeholder="Hammadde adı" value={yeniStokMalzemeAdi} onChange={e => setYeniStokMalzemeAdi(e.target.value)} style={styles.input} />
                     <input type="text" placeholder="Birim kg / lt / adet" value={yeniStokMalzemeBirim} onChange={e => setYeniStokMalzemeBirim(e.target.value)} style={{ ...styles.input, maxWidth: '140px' }} />
@@ -22525,7 +22525,7 @@ Toplam Ciro: {toplam}
                     <div key={m.id} style={{ ...styles.dataRow, alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <div style={{ flex: 1 }}>
                         <strong>{m.ad}</strong>
-                        <div style={{ color: '#64748b', fontSize: '12px' }}>Birim: {m.birim} / Maliyet: {m.birimMaliyet} TL</div>
+                        <div style={{ color: '#64748b', fontSize: '14px' }}>Birim: {m.birim} / Maliyet: {m.birimMaliyet} TL</div>
                       </div>
                       <span style={Number(m.stokMiktari || 0) <= Number(m.kritikMiktar || 0) ? styles.badgePending : styles.badgeActive}>
                         Stok: {m.stokMiktari} {m.birim}
@@ -22538,18 +22538,18 @@ Toplam Ciro: {toplam}
                 <div style={{ ...styles.panelCard, backgroundColor: '#ecfeff', border: '1px solid #bae6fd', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                     <div>
-                      <h3 style={{ fontSize: '17px', color: '#0f172a', margin: '0 0 6px' }}>🧾 Alış Fişi / Ürün Girişi</h3>
-                      <p style={{ color: '#475569', fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
+                      <h3 style={{ fontSize: '19px', color: '#0f172a', margin: '0 0 6px' }}>🧾 Alış Fişi / Ürün Girişi</h3>
+                      <p style={{ color: '#475569', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
                         Stok ekleme artık buradan yapılır. Tedarikçiden alınan hammaddeyi veya satış ürününü fişe ekle; kaydettiğinde seçtiğin kalemin stoğu artar ve istersen gider kaydı da oluşur.
                       </p>
                     </div>
                     <div style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '10px 12px', minWidth: '160px' }}>
-                      <div style={{ fontSize: '11px', color: '#0369a1', fontWeight: '900' }}>Fiş Toplamı</div>
-                      <div style={{ fontSize: '20px', color: '#0f172a', fontWeight: '900' }}>{paraYuvarla(alisFisToplami)} TL</div>
+                      <div style={{ fontSize: '13px', color: '#0369a1', fontWeight: '900' }}>Fiş Toplamı</div>
+                      <div style={{ fontSize: '22px', color: '#0f172a', fontWeight: '900' }}>{paraYuvarla(alisFisToplami)} TL</div>
                     </div>
                   </div>
 
-                  {alisFisMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#dbeafe', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '12px', padding: '9px 11px', fontSize: '12px', fontWeight: '800' }}>{alisFisMesaji}</div> : null}
+                  {alisFisMesaji ? <div style={{ marginTop: '10px', backgroundColor: '#dbeafe', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '12px', padding: '9px 11px', fontSize: '14px', fontWeight: '800' }}>{alisFisMesaji}</div> : null}
 
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(5, minmax(150px, 1fr))', gap: '8px', marginTop: '12px' }}>
                     <select value={alisFisCariMusteriId} onChange={e => {
@@ -22598,16 +22598,16 @@ Toplam Ciro: {toplam}
                   </div>
 
                   <input type="text" placeholder="Alış notu / açıklama" value={alisFisNotu} onChange={e => setAlisFisNotu(e.target.value)} style={{ ...styles.input, backgroundColor: '#fff', marginTop: '8px' }} />
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '12px', fontWeight: '900', marginTop: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '14px', fontWeight: '900', marginTop: '8px' }}>
                     <input type="checkbox" checked={alisFisGiderOlarakIsle} onChange={e => setAlisFisGiderOlarakIsle(e.target.checked)} />
                     Bu alış fişini giderlere de işle
                   </label>
-                  <div style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5, marginTop: '6px' }}>
+                  <div style={{ color: '#64748b', fontSize: '13px', lineHeight: 1.5, marginTop: '6px' }}>
                     Kayıtlı cari seçip ödeme tipini <strong>Cari / Vadeli</strong> yaparsan fiş tutarı cari ekstresine tedarikçi borcu olarak işlenir. Peşin alışlarda sadece tedarikçi adı olarak kullanılır.
                   </div>
 
                   {alisFisKalemleri.length === 0 ? (
-                    <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px dashed #bae6fd', color: '#64748b', borderRadius: '12px', padding: '12px', fontSize: '12px' }}>
+                    <div style={{ marginTop: '10px', backgroundColor: '#fff', border: '1px dashed #bae6fd', color: '#64748b', borderRadius: '12px', padding: '12px', fontSize: '14px' }}>
                       Henüz fiş kalemi yok. Hammadde veya satış ürünü seçip miktar girerek alış fişine ekleyin. Ürün seçersen stok ürün kartına, hammadde seçersen hammadde kartına işlenir.
                     </div>
                   ) : (
@@ -22615,9 +22615,9 @@ Toplam Ciro: {toplam}
                       {alisFisKalemleri.map(k => (
                         <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.55fr 0.55fr 0.55fr auto', gap: '8px', alignItems: 'center' }}>
                           <strong style={{ color: '#0f172a' }}>{k.kalemTipi === 'urun' ? '🍔 Ürün: ' : '🥦 Hammadde: '}{k.malzemeAdi}</strong>
-                          <span style={{ color: '#334155', fontSize: '12px', fontWeight: '800' }}>{k.miktar} {k.birim}</span>
-                          <span style={{ color: '#334155', fontSize: '12px', fontWeight: '800' }}>{k.birimFiyat} TL</span>
-                          <span style={{ color: '#0f172a', fontSize: '12px', fontWeight: '900' }}>{k.toplam} TL</span>
+                          <span style={{ color: '#334155', fontSize: '14px', fontWeight: '800' }}>{k.miktar} {k.birim}</span>
+                          <span style={{ color: '#334155', fontSize: '14px', fontWeight: '800' }}>{k.birimFiyat} TL</span>
+                          <span style={{ color: '#0f172a', fontSize: '14px', fontWeight: '900' }}>{k.toplam} TL</span>
                           <button type="button" onClick={() => alisFisKalemiSil(k.id)} style={{ border: 'none', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontWeight: '900' }}>Sil</button>
                         </div>
                       ))}
@@ -22634,7 +22634,7 @@ Toplam Ciro: {toplam}
                       <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#0369a1' }}>Son alış fişleri</summary>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                         {alisFisleri.filter(f => String(f.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(f => (
-                          <div key={f.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155' }}>
+                          <div key={f.id} style={{ backgroundColor: '#fff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '9px', fontSize: '14px', color: '#334155' }}>
                             <strong>{f.tedarikci}</strong>{f.cariMusteriAdi ? ` / Cari: ${f.cariMusteriAdi}` : ''} — {f.belgeNo || 'Belge no yok'} — {tarihSaatYaz(f.tarih)} — <strong>{f.toplam} TL</strong>
                             <div style={{ color: '#64748b', marginTop: '4px' }}>{Array.isArray(f.kalemler) ? f.kalemler.map(k => `${k.malzemeAdi}: ${k.miktar} ${k.birim}`).join(' / ') : ''}</div>
                           </div>
@@ -22647,18 +22647,18 @@ Toplam Ciro: {toplam}
 
               <div style={{ ...styles.panelCard, marginTop: '16px' }}>
                 <h3 style={{ margin: '0 0 8px', color: '#1e293b' }}>📋 Depo Sayımı & Eksik Malzeme Siparişi</h3>
-                <p style={{ color: '#64748b', fontSize: '13px', lineHeight: 1.55, marginTop: 0 }}>
+                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: 1.55, marginTop: 0 }}>
                   Depo sayımı artık sadece mevcut miktarı göstermez. Önce sayımı başlat, elindeki gerçek miktarı gir, sistem farkı ve maliyet etkisini hesaplasın. İstersen stokları gerçek sayıma göre güncelleyebilir veya kritik eksiklerden satın alma talebi oluşturabilirsin.
                 </p>
 
-                {satinAlmaMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{satinAlmaMesaji}</div> : null}
+                {satinAlmaMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '15px', fontWeight: '800', marginBottom: '12px' }}>{satinAlmaMesaji}</div> : null}
 
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.35fr 0.9fr', gap: '14px' }}>
                   <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
                       <div>
                         <h4 style={{ margin: 0, color: '#1e293b' }}>Depo sayımı</h4>
-                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>1) Başlat 2) Gerçek sayılan miktarı gir 3) Farkları kontrol et 4) Stoka işle</div>
+                        <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>1) Başlat 2) Gerçek sayılan miktarı gir 3) Farkları kontrol et 4) Stoka işle</div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <input type="text" value={stokSayimBaslik} onChange={e => setStokSayimBaslik(e.target.value)} placeholder="Sayım adı" style={{ ...styles.input, minWidth: '170px', backgroundColor: '#fff' }} />
@@ -22667,21 +22667,21 @@ Toplam Ciro: {toplam}
                     </div>
 
                     {aktifStokMalzemeleri.length === 0 ? (
-                      <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '12px', fontSize: '13px', fontWeight: '800' }}>
+                      <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '12px', fontSize: '15px', fontWeight: '800' }}>
                         Sayım yapılacak hammadde yok. Önce yukarıdaki Hammadde Stokları bölümünden Patates, Kaşar, Sosis gibi malzemeleri ekle.
                       </div>
                     ) : !aktifStokSayimKaydi ? (
-                      <div style={{ backgroundColor: '#fff', border: '1px dashed #cbd5e1', color: '#64748b', borderRadius: '12px', padding: '16px', fontSize: '13px' }}>
+                      <div style={{ backgroundColor: '#fff', border: '1px dashed #cbd5e1', color: '#64748b', borderRadius: '12px', padding: '16px', fontSize: '15px' }}>
                         Aktif depo sayımı yok. “Yeni Depo Sayımı Başlat” butonuna basınca mevcut hammadde listesi sayım tablosuna dönüşür.
                       </div>
                     ) : (
                       <>
                         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Sayım</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{aktifStokSayimOzeti.sayilan}/{aktifStokSayimOzeti.toplam}</div></div>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Eksik Kalem</div><div style={{ ...styles.statsValue, fontSize: '18px', color: '#ef4444' }}>{aktifStokSayimOzeti.eksikKalem}</div></div>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fazla Kalem</div><div style={{ ...styles.statsValue, fontSize: '18px', color: '#10b981' }}>{aktifStokSayimOzeti.fazlaKalem}</div></div>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fark Tutarı</div><div style={{ ...styles.statsValue, fontSize: '18px' }}>{aktifStokSayimOzeti.toplamFarkTutari} TL</div></div>
-                          <div style={styles.statsCard}><div style={styles.statsTitle}>Durum</div><div style={{ ...styles.statsValue, fontSize: '15px' }}>{aktifStokSayimKaydi.durum}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Sayım</div><div style={{ ...styles.statsValue, fontSize: '20px' }}>{aktifStokSayimOzeti.sayilan}/{aktifStokSayimOzeti.toplam}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Eksik Kalem</div><div style={{ ...styles.statsValue, fontSize: '20px', color: '#ef4444' }}>{aktifStokSayimOzeti.eksikKalem}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fazla Kalem</div><div style={{ ...styles.statsValue, fontSize: '20px', color: '#10b981' }}>{aktifStokSayimOzeti.fazlaKalem}</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Fark Tutarı</div><div style={{ ...styles.statsValue, fontSize: '20px' }}>{aktifStokSayimOzeti.toplamFarkTutari} TL</div></div>
+                          <div style={styles.statsCard}><div style={styles.statsTitle}>Durum</div><div style={{ ...styles.statsValue, fontSize: '17px' }}>{aktifStokSayimKaydi.durum}</div></div>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '430px', overflowY: 'auto', paddingRight: '4px' }}>
@@ -22689,14 +22689,14 @@ Toplam Ciro: {toplam}
                             <div key={kalem.malzemeId} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.75fr 0.85fr 0.8fr 0.75fr', gap: '8px', alignItems: 'center' }}>
                               <div>
                                 <strong style={{ color: '#1e293b' }}>{kalem.malzemeAdi}</strong>
-                                <div style={{ color: '#64748b', fontSize: '12px' }}>Kritik: {kalem.kritikMiktar} {kalem.birim} / Birim maliyet: {kalem.birimMaliyet} TL</div>
+                                <div style={{ color: '#64748b', fontSize: '14px' }}>Kritik: {kalem.kritikMiktar} {kalem.birim} / Birim maliyet: {kalem.birimMaliyet} TL</div>
                               </div>
-                              <div style={{ color: '#334155', fontSize: '12px', fontWeight: '900' }}>Sistem: {kalem.sistemMiktari} {kalem.birim}</div>
+                              <div style={{ color: '#334155', fontSize: '14px', fontWeight: '900' }}>Sistem: {kalem.sistemMiktari} {kalem.birim}</div>
                               <input type="number" step="0.001" value={kalem.sayilanMiktarRaw ?? ''} onChange={e => stokSayimKaleminiGuncelle(aktifStokSayimKaydi.id, kalem.malzemeId, e.target.value)} placeholder="Sayılan gerçek" style={{ ...styles.input, backgroundColor: '#fff' }} />
-                              <div style={{ fontSize: '12px', fontWeight: '900', color: !kalem.sayildi ? '#94a3b8' : Number(kalem.farkMiktar || 0) < 0 ? '#ef4444' : Number(kalem.farkMiktar || 0) > 0 ? '#10b981' : '#334155' }}>
+                              <div style={{ fontSize: '14px', fontWeight: '900', color: !kalem.sayildi ? '#94a3b8' : Number(kalem.farkMiktar || 0) < 0 ? '#ef4444' : Number(kalem.farkMiktar || 0) > 0 ? '#10b981' : '#334155' }}>
                                 {!kalem.sayildi ? 'Henüz sayılmadı' : `Fark: ${kalem.farkMiktar} ${kalem.birim}`}
                               </div>
-                              <div style={{ fontSize: '12px', fontWeight: '900', color: Number(kalem.farkTutar || 0) < 0 ? '#ef4444' : '#334155' }}>{kalem.sayildi ? `${kalem.farkTutar} TL` : '-'}</div>
+                              <div style={{ fontSize: '14px', fontWeight: '900', color: Number(kalem.farkTutar || 0) < 0 ? '#ef4444' : '#334155' }}>{kalem.sayildi ? `${kalem.farkTutar} TL` : '-'}</div>
                             </div>
                           ))}
                         </div>
@@ -22713,10 +22713,10 @@ Toplam Ciro: {toplam}
                       <summary style={{ cursor: 'pointer', fontWeight: '900', color: '#334155' }}>Geçmiş depo sayımları</summary>
                       <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {stokSayimKayitlari.filter(k => String(k.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(k => (
-                          <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', fontSize: '12px', color: '#334155', display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                          <div key={k.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', fontSize: '14px', color: '#334155', display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                             <span><strong>{k.baslik || 'Depo Sayımı'}</strong> — {tarihSaatYaz(k.tarih)} — {k.sayilanKalemSayisi || 0}/{k.malzemeSayisi || 0} kalem</span>
                             <span>{k.durum} / Fark: {k.toplamFarkTutari || 0} TL</span>
-                            <button type="button" onClick={() => setAktifStokSayimId(k.id)} style={{ border: 'none', backgroundColor: '#e2e8f0', color: '#334155', borderRadius: '8px', padding: '6px 9px', cursor: 'pointer', fontWeight: '900', fontSize: '11px' }}>Aç</button>
+                            <button type="button" onClick={() => setAktifStokSayimId(k.id)} style={{ border: 'none', backgroundColor: '#e2e8f0', color: '#334155', borderRadius: '8px', padding: '6px 9px', cursor: 'pointer', fontWeight: '900', fontSize: '13px' }}>Aç</button>
                           </div>
                         ))}
                       </div>
@@ -22725,7 +22725,7 @@ Toplam Ciro: {toplam}
 
                   <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px' }}>
                     <h4 style={{ margin: '0 0 6px', color: '#1e293b' }}>Eksik malzeme siparişi</h4>
-                    <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5, marginTop: 0 }}>Bu liste Hammadde Stokları bölümüne eklediğin malzemelerden gelir. Liste boşsa önce hammadde ekle.</p>
+                    <p style={{ color: '#64748b', fontSize: '14px', lineHeight: 1.5, marginTop: 0 }}>Bu liste Hammadde Stokları bölümüne eklediğin malzemelerden gelir. Liste boşsa önce hammadde ekle.</p>
                     <form onSubmit={satinAlmaTalebiOlustur} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <select value={satinAlmaMalzemeId} onChange={e => setSatinAlmaMalzemeId(e.target.value)} style={{ ...styles.input, flex: '1 1 180px', backgroundColor: '#fff' }}>
                         <option value="">Malzeme seç</option>
@@ -22737,11 +22737,11 @@ Toplam Ciro: {toplam}
                     </form>
 
                     {aktifStokMalzemeleri.length === 0 ? (
-                      <div style={{ marginTop: '10px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '10px', fontSize: '12px', fontWeight: '800' }}>Malzeme seçimi için önce Hammadde Stokları bölümünden malzeme ekleyin.</div>
+                      <div style={{ marginTop: '10px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: '12px', padding: '10px', fontSize: '14px', fontWeight: '800' }}>Malzeme seçimi için önce Hammadde Stokları bölümünden malzeme ekleyin.</div>
                     ) : null}
 
                     <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {satinAlmaTalepleri.filter(t => String(t.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(t => <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: '12px', color: '#334155' }}><strong>{t.malzemeAdi}</strong> — {t.miktar} {t.birim} / {t.tedarikci}<br /><span style={{ color: '#94a3b8' }}>Mevcut: {t.mevcutStok ?? '-'} / Kritik: {t.kritikMiktar ?? '-'} / Kaynak: {t.kaynak || 'Manuel'}</span></span><select value={t.durum} onChange={e => satinAlmaDurumGuncelle(t.id, e.target.value)} style={{ ...styles.input, minWidth: '140px', backgroundColor: '#fff' }}><option>Talep Açıldı</option><option>Sipariş Verildi</option><option>Teslim Alındı</option><option>İptal</option></select></div>)}
+                      {satinAlmaTalepleri.filter(t => String(t.restaurantId) === String(mevcutRestaurantId)).slice(0, 8).map(t => <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '9px', display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: '14px', color: '#334155' }}><strong>{t.malzemeAdi}</strong> — {t.miktar} {t.birim} / {t.tedarikci}<br /><span style={{ color: '#94a3b8' }}>Mevcut: {t.mevcutStok ?? '-'} / Kritik: {t.kritikMiktar ?? '-'} / Kaynak: {t.kaynak || 'Manuel'}</span></span><select value={t.durum} onChange={e => satinAlmaDurumGuncelle(t.id, e.target.value)} style={{ ...styles.input, minWidth: '140px', backgroundColor: '#fff' }}><option>Talep Açıldı</option><option>Sipariş Verildi</option><option>Teslim Alındı</option><option>İptal</option></select></div>)}
                     </div>
                   </div>
                 </div>
@@ -22759,7 +22759,7 @@ Toplam Ciro: {toplam}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
                     <div>
                       <h2 style={styles.pageTitle}>📱 QR Menü</h2>
-                      <p style={{ color: '#64748b', fontSize: '13px', margin: '8px 0 0', lineHeight: 1.6, maxWidth: '760px' }}>
+                      <p style={{ color: '#64748b', fontSize: '15px', margin: '8px 0 0', lineHeight: 1.6, maxWidth: '760px' }}>
                         Menü yönetimindeki tüm ürünler ve gruplar otomatik olarak QR menüye aktarılır. Ürün adı, fiyatı, görseli, hazır notları ve grup bilgisi müşterinin telefonunda görünür.
                       </p>
                     </div>
@@ -22770,7 +22770,7 @@ Toplam Ciro: {toplam}
                     </div>
                   </div>
 
-                  {qrMenuMesaji && <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '14px' }}>{qrMenuMesaji}</div>}
+                  {qrMenuMesaji && <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '15px', fontWeight: '800', marginBottom: '14px' }}>{qrMenuMesaji}</div>}
 
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px 1fr', gap: '18px', alignItems: 'start' }}>
                     <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '16px', textAlign: 'center' }}>
@@ -22778,24 +22778,24 @@ Toplam Ciro: {toplam}
                         <img src={qrMenuPanelKodUrl} alt="QR Menü Kodu" style={{ width: '230px', height: '230px', display: 'block' }} />
                       </div>
                       <div style={{ marginTop: '12px', color: '#1e293b', fontWeight: '900' }}>{user?.restaurant || 'Restoran'}</div>
-                      <div style={{ marginTop: '6px', color: '#64748b', fontSize: '11px', wordBreak: 'break-all', lineHeight: 1.5 }}>{qrMenuPanelLinki}</div>
+                      <div style={{ marginTop: '6px', color: '#64748b', fontSize: '13px', wordBreak: 'break-all', lineHeight: 1.5 }}>{qrMenuPanelLinki}</div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
                       <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '18px', padding: '16px' }}>
-                        <div style={{ color: '#9a3412', fontSize: '12px', fontWeight: '900' }}>QR Ürün</div>
-                        <div style={{ color: '#0f172a', fontSize: '28px', fontWeight: '900', marginTop: '8px' }}>{qrMenuPanelUrunSayisi}</div>
-                        <div style={{ color: '#9a3412', fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>menüden otomatik gelir</div>
+                        <div style={{ color: '#9a3412', fontSize: '14px', fontWeight: '900' }}>QR Ürün</div>
+                        <div style={{ color: '#0f172a', fontSize: '31px', fontWeight: '900', marginTop: '8px' }}>{qrMenuPanelUrunSayisi}</div>
+                        <div style={{ color: '#9a3412', fontSize: '14px', marginTop: '4px', fontWeight: '700' }}>menüden otomatik gelir</div>
                       </div>
                       <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '18px', padding: '16px' }}>
-                        <div style={{ color: '#1d4ed8', fontSize: '12px', fontWeight: '900' }}>QR Grup</div>
-                        <div style={{ color: '#0f172a', fontSize: '28px', fontWeight: '900', marginTop: '8px' }}>{qrMenuPanelGruplari.length}</div>
-                        <div style={{ color: '#1d4ed8', fontSize: '12px', marginTop: '4px', fontWeight: '700' }}>ürün grupları aktarılır</div>
+                        <div style={{ color: '#1d4ed8', fontSize: '14px', fontWeight: '900' }}>QR Grup</div>
+                        <div style={{ color: '#0f172a', fontSize: '31px', fontWeight: '900', marginTop: '8px' }}>{qrMenuPanelGruplari.length}</div>
+                        <div style={{ color: '#1d4ed8', fontSize: '14px', marginTop: '4px', fontWeight: '700' }}>ürün grupları aktarılır</div>
                       </div>
                       <div style={{ backgroundColor: aktifQrMenuAyari.aktif ? '#ecfdf5' : '#fef2f2', border: aktifQrMenuAyari.aktif ? '1px solid #a7f3d0' : '1px solid #fecaca', borderRadius: '18px', padding: '16px' }}>
-                        <div style={{ color: aktifQrMenuAyari.aktif ? '#047857' : '#b91c1c', fontSize: '12px', fontWeight: '900' }}>Durum</div>
-                        <div style={{ color: '#0f172a', fontSize: '22px', fontWeight: '900', marginTop: '8px' }}>{aktifQrMenuAyari.aktif ? 'Aktif' : 'Pasif'}</div>
-                        <label style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', color: '#475569', fontSize: '12px', fontWeight: '800' }}><input type="checkbox" checked={aktifQrMenuAyari.aktif !== false} onChange={e => qrMenuAyariGuncelle('aktif', e.target.checked)} />QR menü açık</label>
+                        <div style={{ color: aktifQrMenuAyari.aktif ? '#047857' : '#b91c1c', fontSize: '14px', fontWeight: '900' }}>Durum</div>
+                        <div style={{ color: '#0f172a', fontSize: '25px', fontWeight: '900', marginTop: '8px' }}>{aktifQrMenuAyari.aktif ? 'Aktif' : 'Pasif'}</div>
+                        <label style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', color: '#475569', fontSize: '14px', fontWeight: '800' }}><input type="checkbox" checked={aktifQrMenuAyari.aktif !== false} onChange={e => qrMenuAyariGuncelle('aktif', e.target.checked)} />QR menü açık</label>
                       </div>
                     </div>
                   </div>
@@ -22821,30 +22821,30 @@ Toplam Ciro: {toplam}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
                     <div>
                       <h3 style={{ margin: 0, color: '#1e293b' }}>Canlı QR Menü Önizleme</h3>
-                      <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '700', marginTop: '4px' }}>Ürünler ve gruplar Menü & Ayarlar ekranından otomatik beslenir.</div>
+                      <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '700', marginTop: '4px' }}>Ürünler ve gruplar Menü & Ayarlar ekranından otomatik beslenir.</div>
                     </div>
                     <input type="text" placeholder="QR menüde ürün ara..." value={qrMenuArama} onChange={e => setQrMenuArama(e.target.value)} style={{ ...styles.input, minWidth: isMobile ? '100%' : '260px' }} />
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                    <button type="button" onClick={() => setAktifQrMenuGrubu('Tümü')} style={{ border: aktifQrMenuGrubu === 'Tümü' ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifQrMenuGrubu === 'Tümü' ? '#fff7ed' : '#fff', color: aktifQrMenuGrubu === 'Tümü' ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>Tümü</button>
-                    {qrMenuPanelGruplari.map(grup => <button key={grup.ad} type="button" onClick={() => setAktifQrMenuGrubu(grup.ad)} style={{ border: aktifQrMenuGrubu === grup.ad ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifQrMenuGrubu === grup.ad ? '#fff7ed' : '#fff', color: aktifQrMenuGrubu === grup.ad ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '12px' }}>{grup.ad} ({grup.urunler.length})</button>)}
+                    <button type="button" onClick={() => setAktifQrMenuGrubu('Tümü')} style={{ border: aktifQrMenuGrubu === 'Tümü' ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifQrMenuGrubu === 'Tümü' ? '#fff7ed' : '#fff', color: aktifQrMenuGrubu === 'Tümü' ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '14px' }}>Tümü</button>
+                    {qrMenuPanelGruplari.map(grup => <button key={grup.ad} type="button" onClick={() => setAktifQrMenuGrubu(grup.ad)} style={{ border: aktifQrMenuGrubu === grup.ad ? '1px solid #ff6b35' : '1px solid #e2e8f0', backgroundColor: aktifQrMenuGrubu === grup.ad ? '#fff7ed' : '#fff', color: aktifQrMenuGrubu === grup.ad ? '#ea580c' : '#334155', padding: '8px 10px', borderRadius: '999px', cursor: 'pointer', fontWeight: '900', fontSize: '14px' }}>{grup.ad} ({grup.urunler.length})</button>)}
                   </div>
 
                   {qrMenuPanelFiltreliGruplari.length === 0 ? <div style={{ color: '#94a3b8', padding: '18px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '16px', textAlign: 'center', fontWeight: '800' }}>QR menüye aktarılacak ürün yok. Önce Menü & Ayarlar ekranından ürün ve grup ekleyin.</div> : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {qrMenuPanelFiltreliGruplari.map(grup => (
                         <div key={grup.ad} style={{ border: '1px solid #e2e8f0', borderRadius: '18px', padding: '14px', backgroundColor: '#fbfdff' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '12px' }}><h4 style={{ margin: 0, color: '#1e293b', fontSize: '16px' }}>{grup.ad}</h4><span style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>{grup.urunler.length} ürün</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '12px' }}><h4 style={{ margin: 0, color: '#1e293b', fontSize: '18px' }}>{grup.ad}</h4><span style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>{grup.urunler.length} ürün</span></div>
                           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
                             {grup.urunler.map(urun => {
                               const resim = urunGosterimResmi(urun);
                               return (
                                 <div key={urun.id} style={{ display: 'flex', gap: '10px', backgroundColor: '#fff', border: '1px solid #eef2f7', borderRadius: '14px', padding: '10px' }}>
-                                  {resim ? <img src={resim} alt={urun.ad} style={{ width: '58px', height: '58px', objectFit: 'cover', borderRadius: '12px', border: '1px solid #e2e8f0', flex: '0 0 58px' }} /> : <div style={{ width: '58px', height: '58px', borderRadius: '12px', backgroundColor: '#fff7ed', color: '#f97316', border: '1px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 58px', fontSize: '22px' }}>🍽️</div>}
+                                  {resim ? <img src={resim} alt={urun.ad} style={{ width: '58px', height: '58px', objectFit: 'cover', borderRadius: '12px', border: '1px solid #e2e8f0', flex: '0 0 58px' }} /> : <div style={{ width: '58px', height: '58px', borderRadius: '12px', backgroundColor: '#fff7ed', color: '#f97316', border: '1px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 58px', fontSize: '25px' }}>🍽️</div>}
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}><strong style={{ color: '#1e293b', fontSize: '13px' }}>{urun.ad}</strong>{aktifQrMenuAyari.fiyatlariGoster !== false && <span style={{ color: '#ff6b35', fontWeight: '900', fontSize: '13px', whiteSpace: 'nowrap' }}>{Number(urun.fiyat || 0).toLocaleString('tr-TR')} TL</span>}</div>
-                                    <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', fontWeight: '700' }}>{urun.departman || grup.departman || 'Menü'} {urun.kdvOrani ? `• KDV %${urun.kdvOrani}` : ''}</div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}><strong style={{ color: '#1e293b', fontSize: '15px' }}>{urun.ad}</strong>{aktifQrMenuAyari.fiyatlariGoster !== false && <span style={{ color: '#ff6b35', fontWeight: '900', fontSize: '15px', whiteSpace: 'nowrap' }}>{Number(urun.fiyat || 0).toLocaleString('tr-TR')} TL</span>}</div>
+                                    <div style={{ color: '#64748b', fontSize: '13px', marginTop: '4px', fontWeight: '700' }}>{urun.departman || grup.departman || 'Menü'} {urun.kdvOrani ? `• KDV %${urun.kdvOrani}` : ''}</div>
                                   </div>
                                 </div>
                               );
@@ -22864,9 +22864,9 @@ Toplam Ciro: {toplam}
             {activeTab === 'servis_talepleri' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🔔 Servis Talepleri</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>QR menüden gelen garson çağır, hesap iste ve servis taleplerini buradan yönetin.</p>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>QR menüden gelen garson çağır, hesap iste ve servis taleplerini buradan yönetin.</p>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
-                  <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#9a3412', fontSize: '12px', fontWeight: '800' }}>Açık Talep</div><strong style={{ fontSize: '26px', color: '#ea580c' }}>{acikServisTalebiSayisi}</strong></div>
+                  <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#9a3412', fontSize: '14px', fontWeight: '800' }}>Açık Talep</div><strong style={{ fontSize: '29px', color: '#ea580c' }}>{acikServisTalebiSayisi}</strong></div>
                   <button type="button" onClick={() => servisTalebiEkle('Garson Çağır', activeMasa?.ad || '', '', 'Panel')} style={styles.btnOrange}>Test Garson Çağır</button>
                   <button type="button" onClick={() => servisTalebiEkle('Hesap İste', activeMasa?.ad || '', '', 'Panel')} style={{ ...styles.btnOrange, background: '#1e293b' }}>Test Hesap İste</button>
                 </div>
@@ -22879,13 +22879,13 @@ Toplam Ciro: {toplam}
                         <span><strong>{t.tip}</strong> {t.masaAdi || t.masaNo ? `/ ${t.masaAdi || t.masaNo}` : ''}{t.musteriAdi ? ` / Müşteri: ${t.musteriAdi}` : ''} — {t.kaynak || 'QR'} / {tarihSaatYaz(t.createdAt)} {t.notMetni ? ` / ${t.notMetni}` : ''}</span>
                         {qrSiparisTalebiMi ? (
                           <div style={{ marginTop: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px' }}>
-                            <div style={{ color: '#334155', fontSize: '12px', fontWeight: '900', marginBottom: '6px' }}>QR sipariş ürünleri — {Number(t.toplam || 0).toLocaleString('tr-TR')} TL</div>
+                            <div style={{ color: '#334155', fontSize: '14px', fontWeight: '900', marginBottom: '6px' }}>QR sipariş ürünleri — {Number(t.toplam || 0).toLocaleString('tr-TR')} TL</div>
                             {siparisUrunleri.length === 0 ? (
-                              <div style={{ color: '#94a3b8', fontSize: '12px' }}>Ürün listesi bulunamadı.</div>
+                              <div style={{ color: '#94a3b8', fontSize: '14px' }}>Ürün listesi bulunamadı.</div>
                             ) : (
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                 {siparisUrunleri.map((urun, index) => (
-                                  <span key={`${t.id}-${index}`} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '5px 8px', color: '#1e293b', fontSize: '12px', fontWeight: '900' }}>
+                                  <span key={`${t.id}-${index}`} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '5px 8px', color: '#1e293b', fontSize: '14px', fontWeight: '900' }}>
                                     {Number(urun.adet || 1)}x {urun.ad}
                                   </span>
                                 ))}
@@ -22895,16 +22895,16 @@ Toplam Ciro: {toplam}
                         ) : null}
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
-                        <span style={{ border: '1px solid #e2e8f0', borderRadius: '999px', padding: '5px 8px', fontSize: '12px', fontWeight: '900', color: t.durum === 'Açık' ? '#ea580c' : '#047857', backgroundColor: t.durum === 'Açık' ? '#fff7ed' : '#ecfdf5' }}>{t.durum}</span>
-                        {qrSiparisTalebiMi && t.durum === 'Açık' ? <button type="button" onClick={() => qrSiparisTalebiniMasayaAktar(t)} style={{ ...styles.btnOrange, background: '#2563eb', padding: '8px 10px', fontSize: '12px' }}>Kabul Et ve Masaya Aktar</button> : null}
-                        {t.durum === 'Açık' ? <button type="button" onClick={() => servisTalebiniKapat(t.id)} style={{ ...styles.btnOrange, background: '#10b981', padding: '8px 10px', fontSize: '12px' }}>{qrSiparisTalebiMi ? 'Reddet/Kapat' : 'Kapat'}</button> : null}
+                        <span style={{ border: '1px solid #e2e8f0', borderRadius: '999px', padding: '5px 8px', fontSize: '14px', fontWeight: '900', color: t.durum === 'Açık' ? '#ea580c' : '#047857', backgroundColor: t.durum === 'Açık' ? '#fff7ed' : '#ecfdf5' }}>{t.durum}</span>
+                        {qrSiparisTalebiMi && t.durum === 'Açık' ? <button type="button" onClick={() => qrSiparisTalebiniMasayaAktar(t)} style={{ ...styles.btnOrange, background: '#2563eb', padding: '8px 10px', fontSize: '14px' }}>Kabul Et ve Masaya Aktar</button> : null}
+                        {t.durum === 'Açık' ? <button type="button" onClick={() => servisTalebiniKapat(t.id)} style={{ ...styles.btnOrange, background: '#10b981', padding: '8px 10px', fontSize: '14px' }}>{qrSiparisTalebiMi ? 'Reddet/Kapat' : 'Kapat'}</button> : null}
                       </div>
                     </div>
                   );
                 })}
                 <h3 style={{ margin: '18px 0 10px', color: '#1e293b' }}>🛡️ İşlem Logları</h3>
                 {(Array.isArray(islemLoglari) ? islemLoglari : []).filter(l => String(l.restaurantId) === String(mevcutRestaurantId)).slice(0, 12).map(l => (
-                  <div key={l.id} style={{ ...styles.dataRow, backgroundColor: '#f8fafc' }}><span>{tarihSaatYaz(l.createdAt)} — <strong>{l.tip}</strong> / {l.aciklama}</span><span style={{ color: '#64748b', fontSize: '12px' }}>{l.kullanici}</span></div>
+                  <div key={l.id} style={{ ...styles.dataRow, backgroundColor: '#f8fafc' }}><span>{tarihSaatYaz(l.createdAt)} — <strong>{l.tip}</strong> / {l.aciklama}</span><span style={{ color: '#64748b', fontSize: '14px' }}>{l.kullanici}</span></div>
                 ))}
               </div>
             )}
@@ -22913,12 +22913,12 @@ Toplam Ciro: {toplam}
             {activeTab === 'sadakat' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🎁 Müşteri Sadakat Sistemi</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>Puan, ziyaret sayısı, kampanya ve WhatsApp iletişimini tek ekrandan yönetin.</p>
-                {sadakatMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{sadakatMesaji}</div> : null}
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>Puan, ziyaret sayısı, kampanya ve WhatsApp iletişimini tek ekrandan yönetin.</p>
+                {sadakatMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '15px', fontWeight: '800', marginBottom: '12px' }}>{sadakatMesaji}</div> : null}
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Sadakat Müşterisi</div><strong style={{ fontSize: '26px' }}>{aktifSadakatMusterileri.length}</strong></div>
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Toplam Puan</div><strong style={{ fontSize: '26px' }}>{sadakatToplamPuan}</strong></div>
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '12px', fontWeight: '800' }}>Toplam Ziyaret</div><strong style={{ fontSize: '26px' }}>{sadakatToplamZiyaret}</strong></div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>Sadakat Müşterisi</div><strong style={{ fontSize: '29px' }}>{aktifSadakatMusterileri.length}</strong></div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>Toplam Puan</div><strong style={{ fontSize: '29px' }}>{sadakatToplamPuan}</strong></div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}><div style={{ color: '#64748b', fontSize: '14px', fontWeight: '800' }}>Toplam Ziyaret</div><strong style={{ fontSize: '29px' }}>{sadakatToplamZiyaret}</strong></div>
                 </div>
                 <form onSubmit={sadakatMusterisiEkle} style={styles.inlineForm}>
                   <input type="text" placeholder="Müşteri adı" value={sadakatAdi} onChange={e => setSadakatAdi(e.target.value)} style={styles.input} />
@@ -22931,11 +22931,11 @@ Toplam Ciro: {toplam}
                   {aktifSadakatMusterileri.length === 0 ? <div style={{ color: '#94a3b8', padding: '20px' }}>Sadakat müşterisi yok.</div> : aktifSadakatMusterileri.map(m => (
                     <div key={m.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}><strong>{m.ad}</strong><span style={{ color: '#ea580c', fontWeight: '900' }}>{m.puan} puan</span></div>
-                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px' }}>{m.telefon || 'Telefon yok'} / {m.ziyaret || 0} ziyaret</div>
+                      <div style={{ color: '#64748b', fontSize: '14px', marginTop: '5px' }}>{m.telefon || 'Telefon yok'} / {m.ziyaret || 0} ziyaret</div>
                       <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '10px' }}>
-                        <button type="button" onClick={() => sadakatPuanGuncelle(m.id, 10, true)} style={{ ...styles.btnOrange, padding: '8px 10px', fontSize: '12px' }}>+10 Puan</button>
-                        <button type="button" onClick={() => sadakatPuanGuncelle(m.id, -10, false)} style={{ ...styles.btnOrange, background: '#ef4444', padding: '8px 10px', fontSize: '12px' }}>-10 Kullan</button>
-                        <button type="button" onClick={() => whatsappMesajiAc(m.telefon, `${user?.restaurant || 'Integra POS'} sadakat kampanyası: ${m.puan} puanınız var. Sizi tekrar bekleriz.`)} style={{ ...styles.btnOrange, background: '#22c55e', padding: '8px 10px', fontSize: '12px' }}>WhatsApp</button>
+                        <button type="button" onClick={() => sadakatPuanGuncelle(m.id, 10, true)} style={{ ...styles.btnOrange, padding: '8px 10px', fontSize: '14px' }}>+10 Puan</button>
+                        <button type="button" onClick={() => sadakatPuanGuncelle(m.id, -10, false)} style={{ ...styles.btnOrange, background: '#ef4444', padding: '8px 10px', fontSize: '14px' }}>-10 Kullan</button>
+                        <button type="button" onClick={() => whatsappMesajiAc(m.telefon, `${user?.restaurant || 'Integra POS'} sadakat kampanyası: ${m.puan} puanınız var. Sizi tekrar bekleriz.`)} style={{ ...styles.btnOrange, background: '#22c55e', padding: '8px 10px', fontSize: '14px' }}>WhatsApp</button>
                       </div>
                     </div>
                   ))}
@@ -22947,8 +22947,8 @@ Toplam Ciro: {toplam}
             {activeTab === 'kiosk' && (
               <div style={styles.panelCard}>
                 <h2 style={styles.pageTitle}>🧍 Kiosk / Self Servis</h2>
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>Kumpirci, dönerci, kahveci ve fast food işletmeleri için self servis sipariş ekranı. Siparişler Online Siparişler havuzuna düşer.</p>
-                {kioskMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '13px', fontWeight: '800', marginBottom: '12px' }}>{kioskMesaji}</div> : null}
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>Kumpirci, dönerci, kahveci ve fast food işletmeleri için self servis sipariş ekranı. Siparişler Online Siparişler havuzuna düşer.</p>
+                {kioskMesaji ? <div style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '10px 12px', fontSize: '15px', fontWeight: '800', marginBottom: '12px' }}>{kioskMesaji}</div> : null}
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '14px' }}>
                   <div>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '10px' }}>
@@ -22959,7 +22959,7 @@ Toplam Ciro: {toplam}
                     <h3 style={{ margin: '0 0 10px', color: '#1e293b' }}>Sepet</h3>
                     <input type="text" placeholder="Müşteri adı / sıra no" value={kioskMusteriAdi} onChange={e => setKioskMusteriAdi(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', marginBottom: '8px' }} />
                     <input type="text" placeholder="Sipariş notu" value={kioskSiparisNotu} onChange={e => setKioskSiparisNotu(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box', marginBottom: '8px' }} />
-                    {kioskSepet.length === 0 ? <div style={{ color: '#94a3b8', fontSize: '13px' }}>Sepet boş.</div> : kioskSepet.map(u => <div key={u.urunId} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', marginBottom: '8px' }}><span style={{ fontSize: '13px', color: '#334155' }}>{u.ad}</span><div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><button type="button" onClick={() => kioskSepetAdetGuncelle(u.urunId, -1)}>-</button><strong>{u.adet}</strong><button type="button" onClick={() => kioskSepetAdetGuncelle(u.urunId, 1)}>+</button></div></div>)}
+                    {kioskSepet.length === 0 ? <div style={{ color: '#94a3b8', fontSize: '15px' }}>Sepet boş.</div> : kioskSepet.map(u => <div key={u.urunId} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', marginBottom: '8px' }}><span style={{ fontSize: '15px', color: '#334155' }}>{u.ad}</span><div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><button type="button" onClick={() => kioskSepetAdetGuncelle(u.urunId, -1)}>-</button><strong>{u.adet}</strong><button type="button" onClick={() => kioskSepetAdetGuncelle(u.urunId, 1)}>+</button></div></div>)}
                     <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}><strong>Toplam</strong><strong>{kioskToplam.toLocaleString('tr-TR')} TL</strong></div>
                     <button type="button" onClick={kioskSiparisiniKasayaGonder} style={{ ...styles.btnOrange, width: '100%', marginTop: '12px' }}>Kasaya Gönder</button>
                   </div>
@@ -22973,12 +22973,12 @@ Toplam Ciro: {toplam}
                 <div style={{ backgroundColor: elTerminaliModu ? '#ecfdf5' : '#f8fafc', border: elTerminaliModu ? '1px solid #a7f3d0' : '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <div>
                     <strong style={{ color: '#1e293b' }}>📱 Android Garson El Terminali Modu</strong>
-                    <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>Garson APK tarafında masa, ürün ekleme ve mutfak fişi akışını sadeleştirir. Yetkiler personel bazlı çalışır.</div>
+                    <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>Garson APK tarafında masa, ürün ekleme ve mutfak fişi akışını sadeleştirir. Yetkiler personel bazlı çalışır.</div>
                   </div>
                   <label style={{ display: 'flex', gap: '8px', alignItems: 'center', color: '#475569', fontWeight: '900' }}><input type="checkbox" checked={elTerminaliModu} onChange={e => setElTerminaliModu(e.target.checked)} />El terminali modu açık</label>
                 </div>
 
-                <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '15px' }}>
                   Garson, kurye, müdür, mutfak ve kasiyer personellerinizi buradan ekleyebilirsiniz. E-posta ve şifre girilen personel sisteme giriş yapabilir; göreceği ekranları işletme sahibi belirler.
                 </p>
 
@@ -22990,7 +22990,7 @@ Toplam Ciro: {toplam}
                     padding: '12px',
                     marginBottom: '14px',
                     color: '#334155',
-                    fontSize: '13px',
+                    fontSize: '15px',
                     fontWeight: '800',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -23063,7 +23063,7 @@ Toplam Ciro: {toplam}
                       boxSizing: 'border-box',
                     }}
                   >
-                    <div style={{ fontSize: '12px', color: '#475569', fontWeight: '900', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '14px', color: '#475569', fontWeight: '900', marginBottom: '8px' }}>
                       Bu personelin göreceği ekranlar
                     </div>
 
@@ -23080,7 +23080,7 @@ Toplam Ciro: {toplam}
                             color: yeniPersonelYetkileri.includes(secenek.key) ? '#3730a3' : '#475569',
                             padding: '7px 9px',
                             borderRadius: '999px',
-                            fontSize: '12px',
+                            fontSize: '14px',
                             fontWeight: '800',
                             cursor: 'pointer',
                           }}
@@ -23101,17 +23101,17 @@ Toplam Ciro: {toplam}
                   </button>
                 </form>
                 ) : (
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '12px', padding: '10px 12px', fontSize: '12px', fontWeight: '800' }}>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '12px', padding: '10px 12px', fontSize: '14px', fontWeight: '800' }}>
                     Personel ekleme, giriş bilgisi ve yetki değişikliklerini yalnızca işletme sahibi yapabilir.
                   </div>
                 )}
 
-                <h3 style={{ fontSize: '15px', color: '#1e293b', marginTop: '20px' }}>
+                <h3 style={{ fontSize: '17px', color: '#1e293b', marginTop: '20px' }}>
                   Kayıtlı Personeller
                 </h3>
 
                 {personeller.length === 0 ? (
-                  <p style={{ color: '#94a3b8', fontSize: '13px' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '15px' }}>
                     Henüz personel oluşturulmamış.
                   </p>
                 ) : (
@@ -23127,32 +23127,32 @@ Toplam Ciro: {toplam}
                     >
                       <div style={{ minWidth: '220px', flex: 1 }}>
                         <div style={{ fontWeight: '900', color: '#1e293b' }}>👤 {p.ad}</div>
-                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '3px' }}>
+                        <div style={{ color: '#64748b', fontSize: '14px', marginTop: '3px' }}>
                           {p.telefon || '-'} {p.email ? ` / ${p.email}` : ''}
                         </div>
-                        <div style={{ color: '#475569', fontSize: '12px', marginTop: '6px', fontWeight: '800' }}>
+                        <div style={{ color: '#475569', fontSize: '14px', marginTop: '6px', fontWeight: '800' }}>
                           Yetkiler: {yetkiEtiketleriYaz(p.tabYetkileri)}
                         </div>
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '9px' }}>
-                          <span style={{ backgroundColor: p.authBagli ? '#dcfce7' : '#fef3c7', color: p.authBagli ? '#166534' : '#92400e', padding: '5px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '900' }}>
+                          <span style={{ backgroundColor: p.authBagli ? '#dcfce7' : '#fef3c7', color: p.authBagli ? '#166534' : '#92400e', padding: '5px 8px', borderRadius: '999px', fontSize: '13px', fontWeight: '900' }}>
                             {p.authBagli ? '🔐 Supabase Auth bağlı' : '⚠️ Giriş hesabı bağlı değil'}
                           </span>
-                          <span style={{ backgroundColor: p.durum === 'Aktif' ? '#e0f2fe' : '#fee2e2', color: p.durum === 'Aktif' ? '#0369a1' : '#991b1b', padding: '5px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '900' }}>
+                          <span style={{ backgroundColor: p.durum === 'Aktif' ? '#e0f2fe' : '#fee2e2', color: p.durum === 'Aktif' ? '#0369a1' : '#991b1b', padding: '5px 8px', borderRadius: '999px', fontSize: '13px', fontWeight: '900' }}>
                             {p.durum || 'Aktif'}
                           </span>
                         </div>
                         {user?.role === 'owner' && (
                         <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '9px' }}>
-                          <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelGirisFormunuAc(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: '#1e293b' }}>
+                          <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelGirisFormunuAc(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '13px', backgroundColor: '#1e293b' }}>
                             🔑 Giriş Bilgileri
                           </button>
-                          <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelDurumDegistir(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: p.durum === 'Aktif' ? '#dc2626' : '#16a34a' }}>
+                          <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelDurumDegistir(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '13px', backgroundColor: p.durum === 'Aktif' ? '#dc2626' : '#16a34a' }}>
                             {p.durum === 'Aktif' ? 'Pasifleştir' : 'Aktifleştir'}
                           </button>
                           <button
                             type="button"
                             onClick={() => setPersonelDetayPaneliId(prev => String(prev) === String(p.id) ? null : p.id)}
-                            style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: String(personelDetayPaneliId) === String(p.id) ? '#7c3aed' : '#475569' }}
+                            style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '13px', backgroundColor: String(personelDetayPaneliId) === String(p.id) ? '#7c3aed' : '#475569' }}
                           >
                             🔐 {String(personelDetayPaneliId) === String(p.id) ? 'Detay Yetkileri Kapat' : 'Detay Yetkiler'}
                           </button>
@@ -23161,13 +23161,13 @@ Toplam Ciro: {toplam}
 
                         {user?.role === 'owner' && String(personelGirisDuzenlenenId) === String(p.id) && (
                           <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'grid', gap: '7px' }}>
-                            <strong style={{ fontSize: '12px', color: '#334155' }}>Güvenli personel girişi</strong>
+                            <strong style={{ fontSize: '14px', color: '#334155' }}>Güvenli personel girişi</strong>
                             <input type="email" placeholder="Personel e-postası" value={personelGirisFormu.email} onChange={e => setPersonelGirisFormu(prev => ({ ...prev, email: e.target.value }))} style={styles.input} />
                             <input type="password" placeholder={p.authBagli ? 'Yeni şifre (değişmeyecekse boş)' : 'Yeni şifre'} value={personelGirisFormu.password} onChange={e => setPersonelGirisFormu(prev => ({ ...prev, password: e.target.value }))} style={styles.input} />
                             <input type="password" placeholder="Yeni şifre tekrar" value={personelGirisFormu.passwordTekrar} onChange={e => setPersonelGirisFormu(prev => ({ ...prev, passwordTekrar: e.target.value }))} style={styles.input} />
                             <div style={{ display: 'flex', gap: '7px' }}>
-                              <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelGirisBilgileriniKaydet(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px' }}>Kaydet</button>
-                              <button type="button" onClick={personelGirisFormunuKapat} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '11px', backgroundColor: '#64748b' }}>Vazgeç</button>
+                              <button type="button" disabled={personelIslemiYukleniyor} onClick={() => personelGirisBilgileriniKaydet(p)} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '13px' }}>Kaydet</button>
+                              <button type="button" onClick={personelGirisFormunuKapat} style={{ ...styles.btnOrange, padding: '7px 9px', fontSize: '13px', backgroundColor: '#64748b' }}>Vazgeç</button>
                             </div>
                             <small style={{ color: '#64748b' }}>Mevcut şifre hiçbir zaman gösterilmez; yeni şifre doğrudan Supabase Auth'a kaydedilir.</small>
                           </div>
@@ -23181,7 +23181,7 @@ Toplam Ciro: {toplam}
                             color: '#0369a1',
                             padding: '5px 10px',
                             borderRadius: '999px',
-                            fontSize: '12px',
+                            fontSize: '14px',
                             fontWeight: '900',
                           }}
                         >
@@ -23201,7 +23201,7 @@ Toplam Ciro: {toplam}
                                 color: yetkiListesiniHazirla(p.tabYetkileri, p.gorev).includes(secenek.key) ? '#3730a3' : '#64748b',
                                 padding: '6px 8px',
                                 borderRadius: '999px',
-                                fontSize: '11px',
+                                fontSize: '13px',
                                 fontWeight: '800',
                                 cursor: 'pointer',
                               }}
@@ -23224,7 +23224,7 @@ Toplam Ciro: {toplam}
                           <div style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '16px', padding: '14px', boxSizing: 'border-box' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
                               <div>
-                                <strong style={{ display: 'block', color: '#0f172a', fontSize: '14px' }}>🔐 {p.ad} — İşlem Yetkileri</strong>
+                                <strong style={{ display: 'block', color: '#0f172a', fontSize: '16px' }}>🔐 {p.ad} — İşlem Yetkileri</strong>
                                 <small style={{ display: 'block', color: '#64748b', marginTop: '4px', fontWeight: '700' }}>Ekran yetkisi bölümü gösterir; aşağıdaki yetkiler o ekranda hangi işlemleri yapabileceğini belirler.</small>
                               </div>
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -23237,7 +23237,7 @@ Toplam Ciro: {toplam}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
                               {personelDetayYetkiGruplari.map(grupAdi => (
                                 <div key={`${p.id}-${grupAdi}`} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '13px', padding: '11px' }}>
-                                  <strong style={{ display: 'block', color: '#334155', fontSize: '12px', marginBottom: '8px' }}>{grupAdi}</strong>
+                                  <strong style={{ display: 'block', color: '#334155', fontSize: '14px', marginBottom: '8px' }}>{grupAdi}</strong>
                                   <div style={{ display: 'grid', gap: '6px' }}>
                                     {personelDetayYetkiSecenekleri.filter(secenek => secenek.grup === grupAdi).map(secenek => {
                                       const aktif = detayYetkiler.includes(secenek.key);
@@ -23272,7 +23272,7 @@ Toplam Ciro: {toplam}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
                   <div>
                     <h2 style={styles.pageTitle}>📊 İşletme Performans Raporları</h2>
-                    <div style={{ color: '#64748b', fontSize: '13px', marginTop: '6px', fontWeight: '700' }}>
+                    <div style={{ color: '#64748b', fontSize: '15px', marginTop: '6px', fontWeight: '700' }}>
                       {raporBasligi()}
                     </div>
                   </div>
@@ -23312,7 +23312,7 @@ Toplam Ciro: {toplam}
 
                     {(reportType === 'gunluk' || reportType === 'aylik') && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                        <label style={{ fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                           {reportType === 'gunluk' ? 'Rapor Tarihi' : 'Ay seçimi'}
                         </label>
                         <input
@@ -23327,7 +23327,7 @@ Toplam Ciro: {toplam}
                     {reportType === 'aralik' && (
                       <>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>Başlangıç</label>
+                          <label style={{ fontSize: '14px', color: '#64748b', fontWeight: '800' }}>Başlangıç</label>
                           <input
                             type="date"
                             value={raporBaslangicTarihi}
@@ -23337,7 +23337,7 @@ Toplam Ciro: {toplam}
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>Bitiş</label>
+                          <label style={{ fontSize: '14px', color: '#64748b', fontWeight: '800' }}>Bitiş</label>
                           <input
                             type="date"
                             value={raporBitisTarihi}
@@ -23381,19 +23381,19 @@ Toplam Ciro: {toplam}
                   <div style={styles.statsCard}>
                     <div style={styles.statsTitle}>Cari Satış (Dönem)</div>
                     <div style={{ ...styles.statsValue, color: '#ea580c' }}>{raporData.cariSatisToplam || 0} TL</div>
-                    <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>Satış anında veresiye yazılan</div>
+                    <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '4px' }}>Satış anında veresiye yazılan</div>
                   </div>
 
                   <div style={styles.statsCard}>
                     <div style={styles.statsTitle}>Cari Tahsilat (Dönem)</div>
                     <div style={{ ...styles.statsValue, color: '#059669' }}>{raporData.cariTahsilatToplam || 0} TL</div>
-                    <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>Sonradan müşteriden alınan</div>
+                    <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '4px' }}>Sonradan müşteriden alınan</div>
                   </div>
 
                   <div style={styles.statsCard}>
                     <div style={styles.statsTitle}>Açık Cari Bakiye</div>
                     <div style={{ ...styles.statsValue, color: '#be123c' }}>{raporData.acikCariBakiye || 0} TL</div>
-                    <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>Şu an tahsil edilmemiş toplam</div>
+                    <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '4px' }}>Şu an tahsil edilmemiş toplam</div>
                   </div>
 
                   <div style={styles.statsCard}>
@@ -23507,10 +23507,10 @@ Toplam Ciro: {toplam}
 
                 {raporSekmesi === 'satis' && (
                   <div style={{ ...styles.panelCard, marginTop: '25px' }}>
-                    <h3 style={{ fontSize: '16px', margin: '0 0 15px 0', color: '#1e293b' }}>📦 Ürün Satış Analizleri</h3>
+                    <h3 style={{ fontSize: '18px', margin: '0 0 15px 0', color: '#1e293b' }}>📦 Ürün Satış Analizleri</h3>
 
                     {raporData.liste.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: '14px', textAlign: 'center', padding: '30px' }}>
+                      <div style={{ color: '#94a3b8', fontSize: '16px', textAlign: 'center', padding: '30px' }}>
                         Bu periyotta henüz kapatılmış bir adisyon satışı bulunmuyor.
                       </div>
                     ) : (
@@ -23539,7 +23539,7 @@ Toplam Ciro: {toplam}
                                 <td style={styles.td}>{item.fiyat} TL</td>
                                 <td style={{ ...styles.td, color: '#ff6b35', fontWeight: 'bold' }}>{item.adet} Adet</td>
                                 <td style={{ ...styles.td, fontWeight: 'bold' }}>{paraYuvarla(item.ciro)} TL</td>
-                                <td style={{ ...styles.td, color: '#ef4444', fontWeight: 'bold' }}>{paraYuvarla(item.maliyet || 0)} TL <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '800' }}>Birim: {paraYuvarla(item.birimMaliyet || 0)} TL</div></td>
+                                <td style={{ ...styles.td, color: '#ef4444', fontWeight: 'bold' }}>{paraYuvarla(item.maliyet || 0)} TL <div style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>Birim: {paraYuvarla(item.birimMaliyet || 0)} TL</div></td>
                                 <td style={{ ...styles.td, color: Number(item.kar || 0) >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{paraYuvarla(item.kar || 0)} TL</td>
                                 <td style={{ ...styles.td, color: '#7c3aed', fontWeight: 'bold' }}>{paraYuvarla(item.kdvTutari || 0)} TL</td>
                                 <td style={{ ...styles.td, color: '#ef4444', fontWeight: 'bold' }}>{paraYuvarla(item.indirimTutari || 0)} TL</td>
@@ -23554,7 +23554,7 @@ Toplam Ciro: {toplam}
 
                 {raporSekmesi === 'gruplar' && (
                   <div style={{ ...styles.panelCard, marginTop: '25px' }}>
-                    <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>🗂️ Grup Bazlı Satış ve Kârlılık</h3>
+                    <h3 style={{ fontSize: '18px', margin: '0 0 15px', color: '#1e293b' }}>🗂️ Grup Bazlı Satış ve Kârlılık</h3>
                     {(raporData.grupOzetleri || []).length === 0 ? (
                       <div style={{ color: '#94a3b8', textAlign: 'center', padding: '30px' }}>Bu dönemde grup satışı bulunmuyor.</div>
                     ) : (
@@ -23584,7 +23584,7 @@ Toplam Ciro: {toplam}
                 {raporSekmesi === 'odeme' && (
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '16px', marginTop: '25px' }}>
                     <div style={styles.panelCard}>
-                      <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>💳 Ödeme Tipi Dağılımı</h3>
+                      <h3 style={{ fontSize: '18px', margin: '0 0 15px', color: '#1e293b' }}>💳 Ödeme Tipi Dağılımı</h3>
                       {(raporData.odemeOzetleri || []).length === 0 ? (
                         <div style={{ color: '#94a3b8', padding: '20px' }}>Ödeme kaydı bulunmuyor.</div>
                       ) : raporData.odemeOzetleri.map(odeme => (
@@ -23596,7 +23596,7 @@ Toplam Ciro: {toplam}
                     </div>
 
                     <div style={styles.panelCard}>
-                      <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>🕒 Saatlik Satış Yoğunluğu</h3>
+                      <h3 style={{ fontSize: '18px', margin: '0 0 15px', color: '#1e293b' }}>🕒 Saatlik Satış Yoğunluğu</h3>
                       {(raporData.saatlikOzetler || []).length === 0 ? (
                         <div style={{ color: '#94a3b8', padding: '20px' }}>Saatlik satış verisi bulunmuyor.</div>
                       ) : raporData.saatlikOzetler.map(saat => (
@@ -23620,7 +23620,7 @@ Toplam Ciro: {toplam}
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '16px', marginTop: '16px' }}>
                       <div style={styles.panelCard}>
-                        <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>🏢 Tedarikçi Alış Özeti</h3>
+                        <h3 style={{ fontSize: '18px', margin: '0 0 15px', color: '#1e293b' }}>🏢 Tedarikçi Alış Özeti</h3>
                         {(raporData.tedarikciOzetleri || []).length === 0 ? <div style={{ color: '#94a3b8', padding: '20px' }}>Bu dönemde kalıcı alış fişi bulunmuyor.</div> : raporData.tedarikciOzetleri.map(tedarikci => (
                           <div key={tedarikci.tedarikci} style={styles.dataRow}>
                             <span><strong>{tedarikci.tedarikci}</strong><small style={{ display: 'block', color: '#94a3b8' }}>{tedarikci.fisSayisi} fiş</small></span>
@@ -23630,7 +23630,7 @@ Toplam Ciro: {toplam}
                       </div>
 
                       <div style={styles.panelCard}>
-                        <h3 style={{ fontSize: '16px', margin: '0 0 15px', color: '#1e293b' }}>📦 Güncel Stok Değeri</h3>
+                        <h3 style={{ fontSize: '18px', margin: '0 0 15px', color: '#1e293b' }}>📦 Güncel Stok Değeri</h3>
                         <div style={styles.dataRow}><span>Stokta bulunan menü ürünü</span><strong>{raporData.stokDegeri?.menuUrunSayisi || 0} çeşit / {raporData.stokDegeri?.menuMiktari || 0} adet</strong></div>
                         <div style={styles.dataRow}><span>Menü ürünleri alış değeri</span><strong>{raporData.stokDegeri?.menuAlisDegeri || 0} TL</strong></div>
                         <div style={styles.dataRow}><span>Hammadde alış değeri</span><strong>{raporData.stokDegeri?.hammaddeAlisDegeri || 0} TL</strong></div>
@@ -23644,8 +23644,8 @@ Toplam Ciro: {toplam}
                   <div style={{ ...styles.panelCard, marginTop: '25px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '15px' }}>
                       <div>
-                        <h3 style={{ fontSize: '16px', margin: 0, color: '#1e293b' }}>📒 Cari Borç ve Tahsilat Hareketleri</h3>
-                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px', fontWeight: '700' }}>
+                        <h3 style={{ fontSize: '18px', margin: 0, color: '#1e293b' }}>📒 Cari Borç ve Tahsilat Hareketleri</h3>
+                        <div style={{ color: '#64748b', fontSize: '14px', marginTop: '5px', fontWeight: '700' }}>
                           Veresiye satış geçmişi silinmez; sonradan alınan ödeme ayrı tahsilat olarak görünür ve açık bakiyeyi düşürür.
                         </div>
                       </div>
@@ -23656,7 +23656,7 @@ Toplam Ciro: {toplam}
                     </div>
 
                     {(!raporData.cariHareketleri || raporData.cariHareketleri.length === 0) ? (
-                      <div style={{ color: '#94a3b8', fontSize: '14px', textAlign: 'center', padding: '30px' }}>
+                      <div style={{ color: '#94a3b8', fontSize: '16px', textAlign: 'center', padding: '30px' }}>
                         Bu dönemde cari borç veya tahsilat hareketi bulunmuyor.
                       </div>
                     ) : (
@@ -23678,7 +23678,7 @@ Toplam Ciro: {toplam}
                               return (
                                 <tr key={hareket.id || `${hareket.cariId}-${hareket.tarih}-${index}`} style={styles.tr}>
                                   <td style={styles.td}>{hareket.tarih ? new Date(hareket.tarih).toLocaleString('tr-TR') : '-'}</td>
-                                  <td style={{ ...styles.td, fontWeight: '900' }}>{hareket.cariAdi}<div style={{ color: '#94a3b8', fontSize: '10px' }}>{hareket.cariTelefon || ''}</div></td>
+                                  <td style={{ ...styles.td, fontWeight: '900' }}>{hareket.cariAdi}<div style={{ color: '#94a3b8', fontSize: '12px' }}>{hareket.cariTelefon || ''}</div></td>
                                   <td style={styles.td}><span style={tahsilatMi ? styles.badgeActive : styles.badgePending}>{hareket.tip || 'Hareket'}</span></td>
                                   <td style={styles.td}>{hareket.odeme_tipi || '-'}</td>
                                   <td style={styles.td}>{hareket.aciklama || '-'}</td>
@@ -23698,16 +23698,16 @@ Toplam Ciro: {toplam}
                   <div style={{ ...styles.panelCard, marginTop: '25px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '15px' }}>
                       <div>
-                        <h3 style={{ fontSize: '16px', margin: 0, color: '#1e293b' }}>🛵 Paket Servis Raporu</h3>
-                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px', fontWeight: '700' }}>
+                        <h3 style={{ fontSize: '18px', margin: 0, color: '#1e293b' }}>🛵 Paket Servis Raporu</h3>
+                        <div style={{ color: '#64748b', fontSize: '14px', marginTop: '5px', fontWeight: '700' }}>
                           Seçili dönemde kapatılan paket servisleri ve ürün detayları. Gün sonu kapatılan paketler bu listeden kalkar, Kasa bölümündeki Z raporunda saklanır.
                         </div>
                       </div>
-                      <div style={{ ...styles.priceTag, fontSize: '18px' }}>Toplam: {raporData.paketToplam || 0} TL</div>
+                      <div style={{ ...styles.priceTag, fontSize: '20px' }}>Toplam: {raporData.paketToplam || 0} TL</div>
                     </div>
 
                     {(!raporData.paketRaporu || raporData.paketRaporu.length === 0) ? (
-                      <div style={{ color: '#94a3b8', fontSize: '14px', textAlign: 'center', padding: '30px' }}>
+                      <div style={{ color: '#94a3b8', fontSize: '16px', textAlign: 'center', padding: '30px' }}>
                         Bu periyotta kapatılmış paket servis satışı bulunmuyor.
                       </div>
                     ) : (
@@ -23739,7 +23739,7 @@ Toplam Ciro: {toplam}
                             </summary>
 
                             <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '800' }}>
+                              <div style={{ fontSize: '15px', color: '#64748b', fontWeight: '800' }}>
                                 Kurye/Personel: {paket.kuryeAdi || '-'} / Ürün Adedi: {paket.adet}
                               </div>
 
@@ -23750,7 +23750,7 @@ Toplam Ciro: {toplam}
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     gap: '10px',
-                                    fontSize: '13px',
+                                    fontSize: '15px',
                                     color: '#334155',
                                     backgroundColor: '#fff',
                                     padding: '8px 10px',
@@ -23776,9 +23776,9 @@ Toplam Ciro: {toplam}
 
                 {raporSekmesi === 'garson' && (
                   <div style={{ ...styles.panelCard, marginTop: '25px' }}>
-                    <h3 style={{ fontSize: '16px', margin: '0 0 15px 0', color: '#1e293b' }}>👤 Garson Performansı</h3>
+                    <h3 style={{ fontSize: '18px', margin: '0 0 15px 0', color: '#1e293b' }}>👤 Garson Performansı</h3>
                     {(!raporData.garsonOzetleri || raporData.garsonOzetleri.length === 0) ? (
-                      <div style={{ color: '#94a3b8', fontSize: '14px', textAlign: 'center', padding: '30px' }}>
+                      <div style={{ color: '#94a3b8', fontSize: '16px', textAlign: 'center', padding: '30px' }}>
                         Bu periyotta garson performansı verisi yok.
                       </div>
                     ) : (
@@ -23821,10 +23821,10 @@ Toplam Ciro: {toplam}
                       }}
                     >
                       <div>
-                        <h3 style={{ fontSize: '16px', margin: 0, color: '#1e293b' }}>
+                        <h3 style={{ fontSize: '18px', margin: 0, color: '#1e293b' }}>
                           🧾 Kapalı Adisyon Geçmişi
                         </h3>
-                        <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px', fontWeight: '700' }}>
+                        <div style={{ color: '#64748b', fontSize: '14px', marginTop: '5px', fontWeight: '700' }}>
                           Seçili rapor dönemindeki kapatılmış adisyonlar ve indirim detayları.
                         </div>
                       </div>
@@ -23840,7 +23840,7 @@ Toplam Ciro: {toplam}
                           borderRadius: '10px',
                           cursor: 'pointer',
                           fontWeight: '900',
-                          fontSize: '12px',
+                          fontSize: '14px',
                         }}
                       >
                         🖨️ Gün Sonu Raporu Yazdır
@@ -23848,7 +23848,7 @@ Toplam Ciro: {toplam}
                     </div>
 
                     {adisyonGecmisiData.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: '14px', textAlign: 'center', padding: '25px' }}>
+                      <div style={{ color: '#94a3b8', fontSize: '16px', textAlign: 'center', padding: '25px' }}>
                         Bu periyotta kapatılmış adisyon bulunmuyor.
                       </div>
                     ) : (
@@ -23885,12 +23885,12 @@ Toplam Ciro: {toplam}
                             </summary>
 
                             <div style={{ marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
-                              <div style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
+                              <div style={{ fontSize: '15px', color: '#475569', marginBottom: '8px' }}>
                                 <strong>Açılış:</strong> {saatYaz(adisyon.adisyonAcilisSaati)} {' '} / {' '}
                                 <strong>Kapanış:</strong> {saatYaz(adisyon.adisyonKapanisSaati)}
                               </div>
 
-                              <div style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
+                              <div style={{ fontSize: '15px', color: '#475569', marginBottom: '8px' }}>
                                 <strong>Ödeme:</strong> {odemeOzetYazisi(adisyon.odemeler)}
                               </div>
 
@@ -23906,7 +23906,7 @@ Toplam Ciro: {toplam}
                                     borderRadius: '10px',
                                     cursor: 'pointer',
                                     fontWeight: '900',
-                                    fontSize: '12px',
+                                    fontSize: '14px',
                                     marginBottom: '10px',
                                   }}
                                 >
@@ -23914,7 +23914,7 @@ Toplam Ciro: {toplam}
                                 </button>
                               ) : null}
 
-                              <div style={{ fontSize: '13px', color: '#475569', marginBottom: '10px' }}>
+                              <div style={{ fontSize: '15px', color: '#475569', marginBottom: '10px' }}>
                                 <strong>Toplam İndirim:</strong>{' '}
                                 <span style={{ color: '#ef4444', fontWeight: '900' }}>
                                   {Number(adisyon.toplamIndirim || 0)} TL
@@ -23929,7 +23929,7 @@ Toplam Ciro: {toplam}
                                       display: 'flex',
                                       justifyContent: 'space-between',
                                       gap: '10px',
-                                      fontSize: '13px',
+                                      fontSize: '15px',
                                       color: '#334155',
                                       backgroundColor: '#fff',
                                       padding: '8px 10px',
@@ -23984,7 +23984,7 @@ Toplam Ciro: {toplam}
                   </button>
                 </div>
 
-                <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px', padding: '12px 14px', color: '#1e40af', fontSize: '12px', lineHeight: 1.6, marginBottom: '16px' }}>
+                <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px', padding: '12px 14px', color: '#1e40af', fontSize: '14px', lineHeight: 1.6, marginBottom: '16px' }}>
                   <strong>Güvenli yönetim:</strong> Mevcut parola hiçbir zaman gösterilmez. Buradan yalnızca yeni parola belirlenir. Supabase Secret Key tarayıcıya gönderilmez; işlem yetkili Edge Function içinde yapılır.
                 </div>
 
@@ -24019,13 +24019,13 @@ Toplam Ciro: {toplam}
                         <div key={kayit.restaurantId} style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '13px', backgroundColor: '#fff' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
                             <div style={{ minWidth: 0 }}>
-                              <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>🏢 {kayit.isletmeAdi}</div>
-                              <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
+                              <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '17px' }}>🏢 {kayit.isletmeAdi}</div>
+                              <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>
                                 {kayit.yetkiliAdi || 'Yetkili adı yok'} · {kayit.email || 'E-posta yok'}{kayit.telefon ? ` · ${kayit.telefon}` : ''}
                               </div>
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                                 <span style={{
-                                  fontSize: '10px',
+                                  fontSize: '12px',
                                   fontWeight: '900',
                                   padding: '4px 7px',
                                   borderRadius: '999px',
@@ -24035,7 +24035,7 @@ Toplam Ciro: {toplam}
                                   {kayit.authBagli ? '✓ Supabase Auth bağlı' : '⚠ Auth geçişi bekliyor'}
                                 </span>
                                 <span style={{
-                                  fontSize: '10px',
+                                  fontSize: '12px',
                                   fontWeight: '900',
                                   padding: '4px 7px',
                                   borderRadius: '999px',
@@ -24045,13 +24045,13 @@ Toplam Ciro: {toplam}
                                   {hesapAktif ? 'Aktif giriş' : 'Pasif giriş'}
                                 </span>
                                 {kayit.authBagli && (
-                                  <span style={{ fontSize: '10px', fontWeight: '900', padding: '4px 7px', borderRadius: '999px', color: kayit.emailOnayli ? '#1e40af' : '#92400e', backgroundColor: kayit.emailOnayli ? '#dbeafe' : '#fef3c7' }}>
+                                  <span style={{ fontSize: '12px', fontWeight: '900', padding: '4px 7px', borderRadius: '999px', color: kayit.emailOnayli ? '#1e40af' : '#92400e', backgroundColor: kayit.emailOnayli ? '#dbeafe' : '#fef3c7' }}>
                                     {kayit.emailOnayli ? 'E-posta onaylı' : 'E-posta onaysız'}
                                   </span>
                                 )}
                               </div>
                               {kayit.authBagli && (
-                                <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '7px' }}>
+                                <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '7px' }}>
                                   Son giriş: {kayit.sonGiris ? tarihSaatYaz(kayit.sonGiris) : 'Henüz giriş yapılmadı'}
                                 </div>
                               )}
@@ -24079,7 +24079,7 @@ Toplam Ciro: {toplam}
                           {formAcik && (
                             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
                               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(220px, 1.2fr) minmax(180px, 1fr) minmax(180px, 1fr)', gap: '9px' }}>
-                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '11px', fontWeight: '900' }}>
+                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '13px', fontWeight: '900' }}>
                                   Giriş e-postası
                                   <input
                                     type="email"
@@ -24089,7 +24089,7 @@ Toplam Ciro: {toplam}
                                     style={styles.input}
                                   />
                                 </label>
-                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '11px', fontWeight: '900' }}>
+                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '13px', fontWeight: '900' }}>
                                   {kayit.authBagli ? 'Yeni şifre (isteğe bağlı)' : 'Yeni şifre'}
                                   <input
                                     type={adminIsletmeSifreGoster ? 'text' : 'password'}
@@ -24100,7 +24100,7 @@ Toplam Ciro: {toplam}
                                     style={styles.input}
                                   />
                                 </label>
-                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '11px', fontWeight: '900' }}>
+                                <label style={{ display: 'grid', gap: '5px', color: '#475569', fontSize: '13px', fontWeight: '900' }}>
                                   Yeni şifre tekrar
                                   <input
                                     type={adminIsletmeSifreGoster ? 'text' : 'password'}
@@ -24113,7 +24113,7 @@ Toplam Ciro: {toplam}
                                 </label>
                               </div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '11px', color: '#64748b', cursor: 'pointer' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>
                                   <input
                                     type="checkbox"
                                     checked={adminIsletmeSifreGoster}
@@ -24184,17 +24184,17 @@ Toplam Ciro: {toplam}
                   <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '18px', padding: '16px' }}>
                     <h3 style={{ margin: '0 0 12px', color: '#1e293b' }}>🔔 Son Admin Bildirimleri</h3>
                     {adminBildirimleri.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: '13px' }}>Henüz bildirim yok.</div>
+                      <div style={{ color: '#94a3b8', fontSize: '15px' }}>Henüz bildirim yok.</div>
                     ) : (
                       <div style={{ display: 'grid', gap: '10px', maxHeight: '280px', overflowY: 'auto' }}>
                         {adminBildirimleri.slice(0, 8).map(b => (
                           <div key={b.id} style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '12px', padding: '12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
                               <strong style={{ color: '#1e293b' }}>{b.baslik}</strong>
-                              <span style={{ fontSize: '11px', color: '#ff6b35', fontWeight: '900' }}>{b.tip}</span>
+                              <span style={{ fontSize: '13px', color: '#ff6b35', fontWeight: '900' }}>{b.tip}</span>
                             </div>
-                            <div style={{ color: '#475569', fontSize: '12px', marginTop: '6px', lineHeight: 1.5 }}>{b.mesaj}</div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '6px' }}>{tarihSaatYaz(b.createdAt)}</div>
+                            <div style={{ color: '#475569', fontSize: '14px', marginTop: '6px', lineHeight: 1.5 }}>{b.mesaj}</div>
+                            <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '6px' }}>{tarihSaatYaz(b.createdAt)}</div>
                           </div>
                         ))}
                       </div>
@@ -24207,19 +24207,19 @@ Toplam Ciro: {toplam}
                       <button type="button" onClick={() => setActiveTab('admin_destek')} style={styles.filterBtn}>Panele Git</button>
                     </div>
                     {destekTalepleri.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: '13px' }}>Henüz destek talebi yok.</div>
+                      <div style={{ color: '#94a3b8', fontSize: '15px' }}>Henüz destek talebi yok.</div>
                     ) : (
                       <div style={{ display: 'grid', gap: '10px', maxHeight: '280px', overflowY: 'auto' }}>
                         {destekTalepleri.slice(0, 8).map(t => (
                           <div key={t.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
                               <strong style={{ color: '#1e293b' }}>{t.firmaAdi}</strong>
-                              <span style={{ fontSize: '11px', color: '#0f766e', fontWeight: '900' }}>{t.talepTipi}</span>
+                              <span style={{ fontSize: '13px', color: '#0f766e', fontWeight: '900' }}>{t.talepTipi}</span>
                             </div>
-                            <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px' }}>{t.email}{t.telefon ? ` / ${t.telefon}` : ''}</div>
-                            <div style={{ color: '#1e293b', fontSize: '13px', marginTop: '7px', fontWeight: '800' }}>{t.konu || 'Konu yok'}</div>
-                            <div style={{ color: '#475569', fontSize: '12px', marginTop: '4px', lineHeight: 1.5 }}>{t.mesaj}</div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '6px' }}>{tarihSaatYaz(t.createdAt)}</div>
+                            <div style={{ color: '#64748b', fontSize: '14px', marginTop: '5px' }}>{t.email}{t.telefon ? ` / ${t.telefon}` : ''}</div>
+                            <div style={{ color: '#1e293b', fontSize: '15px', marginTop: '7px', fontWeight: '800' }}>{t.konu || 'Konu yok'}</div>
+                            <div style={{ color: '#475569', fontSize: '14px', marginTop: '4px', lineHeight: 1.5 }}>{t.mesaj}</div>
+                            <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '6px' }}>{tarihSaatYaz(t.createdAt)}</div>
                           </div>
                         ))}
                       </div>
@@ -24245,9 +24245,9 @@ Toplam Ciro: {toplam}
                         <tr key={r.id} style={styles.tr}>
                           <td style={styles.td}>
                             <div style={{ fontWeight: 'bold', color: '#1e293b' }}>💼 {r.ad}</div>
-                            <div style={{ fontSize: '12px', color: '#64748b' }}>Yetkili: <strong>{r.yetkiliAdi || '-'}</strong></div>
-                            <div style={{ fontSize: '12px', color: '#64748b' }}>E-posta: <strong>{r.email || '-'}</strong></div>
-                            <div style={{ fontSize: '12px', color: '#64748b' }}>Telefon: <strong>{r.firmaTelefon || '-'}</strong></div>
+                            <div style={{ fontSize: '14px', color: '#64748b' }}>Yetkili: <strong>{r.yetkiliAdi || '-'}</strong></div>
+                            <div style={{ fontSize: '14px', color: '#64748b' }}>E-posta: <strong>{r.email || '-'}</strong></div>
+                            <div style={{ fontSize: '14px', color: '#64748b' }}>Telefon: <strong>{r.firmaTelefon || '-'}</strong></div>
                             <button
                               type="button"
                               onClick={() => setAdminDetayAcikId(adminDetayAcikId === r.id ? null : r.id)}
@@ -24257,7 +24257,7 @@ Toplam Ciro: {toplam}
                             </button>
 
                             {adminDetayAcikId === r.id && (
-                              <div style={{ marginTop: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', fontSize: '12px', color: '#475569', lineHeight: 1.7 }}>
+                              <div style={{ marginTop: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px', fontSize: '14px', color: '#475569', lineHeight: 1.7 }}>
                                 <div><strong>Adres:</strong> {r.firmaAdres || '-'}</div>
                                 <div><strong>Başvuru Paketi:</strong> {r.basvuruPaketi || r.paketAdi || '-'}</div>
                                 <div><strong>Kayıt Tarihi:</strong> {tarihSaatYaz(r.createdAt)}</div>
@@ -24268,17 +24268,17 @@ Toplam Ciro: {toplam}
                           </td>
                           <td style={styles.td}>
                             <div>Paket: <strong>{r.paketAdi || 'Profesyonel'}</strong></div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Modül Paketi: <strong>{modulPaketSablonuBul(r.modulPaketi || r.paketAdi)?.label || r.modulPaketi || 'Premium'}</strong></div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Açık Sekme: <strong>{isletmeSekmeleriniHazirla(r.aktifSekmeler, r.modulPaketi || r.paketAdi).length} / {personelSekmeSecenekleri.length}</strong></div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Aylık: <strong>{Number(r.aylikUcret || 0)} TL</strong></div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Son ödeme: <strong>{r.sonOdemeTarihi || '-'}</strong></div>
+                            <div style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Modül Paketi: <strong>{modulPaketSablonuBul(r.modulPaketi || r.paketAdi)?.label || r.modulPaketi || 'Premium'}</strong></div>
+                            <div style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Açık Sekme: <strong>{isletmeSekmeleriniHazirla(r.aktifSekmeler, r.modulPaketi || r.paketAdi).length} / {personelSekmeSecenekleri.length}</strong></div>
+                            <div style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Aylık: <strong>{Number(r.aylikUcret || 0)} TL</strong></div>
+                            <div style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Son ödeme: <strong>{r.sonOdemeTarihi || '-'}</strong></div>
                           </td>
                           <td style={styles.td}>
                             <span style={r.durum === 'Aktif' ? styles.badgeActive : styles.badgePending}>{r.durum}</span>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                            <div style={{ fontSize: '14px', color: '#64748b', marginTop: '6px' }}>
                               Lisans: <strong>{r.lisansDurumu || r.durum}</strong>
                             </div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                            <div style={{ fontSize: '14px', color: '#64748b', marginTop: '6px' }}>
                               Tip: <strong>{r.rol === 'owner' ? 'Yönetici / Sahip' : 'Personel'}</strong>
                             </div>
                           </td>
@@ -24296,7 +24296,7 @@ Toplam Ciro: {toplam}
                                 fontWeight: '900',
                               }}
                             />
-                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                            <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
                               0 = sınırsız
                             </div>
                           </td>
@@ -24355,15 +24355,15 @@ Toplam Ciro: {toplam}
                           <div key={r.id} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', backgroundColor: '#fff', display: 'grid', gap: '10px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                               <div>
-                                <strong style={{ color: '#1e293b', fontSize: '16px' }}>{r.ad}</strong>
-                                <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>{r.email} / {r.firmaTelefon || r.telefon || 'Telefon yok'}</div>
+                                <strong style={{ color: '#1e293b', fontSize: '18px' }}>{r.ad}</strong>
+                                <div style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>{r.email} / {r.firmaTelefon || r.telefon || 'Telefon yok'}</div>
                               </div>
                               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                <span style={{ backgroundColor: rozet.zemin, color: rozet.renk, padding: '6px 10px', borderRadius: '999px', fontWeight: '900', fontSize: '12px' }}>{rozet.etiket}</span>
-                                <span style={{ backgroundColor: ozet.riskPuani >= 40 ? '#fee2e2' : '#dcfce7', color: ozet.riskPuani >= 40 ? '#b91c1c' : '#15803d', padding: '6px 10px', borderRadius: '999px', fontWeight: '900', fontSize: '12px' }}>{ozet.durumEtiketi}</span>
+                                <span style={{ backgroundColor: rozet.zemin, color: rozet.renk, padding: '6px 10px', borderRadius: '999px', fontWeight: '900', fontSize: '14px' }}>{rozet.etiket}</span>
+                                <span style={{ backgroundColor: ozet.riskPuani >= 40 ? '#fee2e2' : '#dcfce7', color: ozet.riskPuani >= 40 ? '#b91c1c' : '#15803d', padding: '6px 10px', borderRadius: '999px', fontWeight: '900', fontSize: '14px' }}>{ozet.durumEtiketi}</span>
                               </div>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '12px', color: '#475569' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '14px', color: '#475569' }}>
                               <div>Bugün ciro<br /><strong>{ozet.bugunCiro} TL</strong></div>
                               <div>Son 7 gün<br /><strong>{ozet.yediGunCiro} TL</strong></div>
                               <div>Masa / Ürün<br /><strong>{ozet.masaSayisi} / {ozet.menuSayisi}</strong></div>
@@ -24463,12 +24463,12 @@ Toplam Ciro: {toplam}
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: '14px' }}>
                             <div>
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <strong style={{ color: '#1e293b', fontSize: '17px' }}>🏢 {r.ad}</strong>
-                                <span style={{ fontSize: '11px', color: rozet.renk, backgroundColor: rozet.zemin, padding: '5px 9px', borderRadius: '999px', fontWeight: '900' }}>
+                                <strong style={{ color: '#1e293b', fontSize: '19px' }}>🏢 {r.ad}</strong>
+                                <span style={{ fontSize: '13px', color: rozet.renk, backgroundColor: rozet.zemin, padding: '5px 9px', borderRadius: '999px', fontWeight: '900' }}>
                                   {rozet.etiket}
                                 </span>
                               </div>
-                              <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px' }}>
+                              <div style={{ color: '#64748b', fontSize: '14px', marginTop: '5px' }}>
                                 {r.yetkiliAdi ? `${r.yetkiliAdi} / ` : ''}{r.email}{r.firmaTelefon ? ` / ${r.firmaTelefon}` : ''}
                               </div>
                             </div>
@@ -24484,7 +24484,7 @@ Toplam Ciro: {toplam}
                           </div>
 
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Paket
                               <select
                                 value={r.paketAdi || 'Profesyonel'}
@@ -24499,7 +24499,7 @@ Toplam Ciro: {toplam}
                               </select>
                             </label>
 
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Aylık Ücret
                               <input
                                 type="number"
@@ -24510,7 +24510,7 @@ Toplam Ciro: {toplam}
                               />
                             </label>
 
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Kullanıcı Limiti
                               <input
                                 type="number"
@@ -24521,7 +24521,7 @@ Toplam Ciro: {toplam}
                               />
                             </label>
 
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Lisans Durumu
                               <select
                                 value={r.lisansDurumu || r.durum || 'Onay Bekliyor'}
@@ -24536,7 +24536,7 @@ Toplam Ciro: {toplam}
                               </select>
                             </label>
 
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Ödeme Durumu
                               <select
                                 value={r.odemeDurumu || 'Ödeme Bekliyor'}
@@ -24550,7 +24550,7 @@ Toplam Ciro: {toplam}
                               </select>
                             </label>
 
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Son Ödeme Tarihi
                               <input
                                 type="date"
@@ -24560,7 +24560,7 @@ Toplam Ciro: {toplam}
                               />
                             </label>
 
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Sonraki Ödeme Tarihi
                               <input
                                 type="date"
@@ -24570,7 +24570,7 @@ Toplam Ciro: {toplam}
                               />
                             </label>
 
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Son Ödeme Tutarı
                               <input
                                 type="number"
@@ -24581,7 +24581,7 @@ Toplam Ciro: {toplam}
                               />
                             </label>
 
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Ödeme Yöntemi
                               <select
                                 value={r.sonOdemeYontemi || 'Banka / Havale'}
@@ -24598,7 +24598,7 @@ Toplam Ciro: {toplam}
                           </div>
 
                           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '10px', alignItems: 'end', marginTop: '12px' }}>
-                            <label style={{ display: 'grid', gap: '5px', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+                            <label style={{ display: 'grid', gap: '5px', fontSize: '14px', color: '#64748b', fontWeight: '800' }}>
                               Lisans / Ödeme Notu
                               <input
                                 defaultValue={r.lisansNotu || ''}
@@ -24608,7 +24608,7 @@ Toplam Ciro: {toplam}
                               />
                             </label>
 
-                            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px', fontSize: '12px', color: '#475569', minWidth: isMobile ? '100%' : '220px' }}>
+                            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px', fontSize: '14px', color: '#475569', minWidth: isMobile ? '100%' : '220px' }}>
                               <div><strong>Kalan gün:</strong> {kalanGun === null ? '-' : kalanGun < 0 ? `${Math.abs(kalanGun)} gün gecikti` : `${kalanGun} gün`}</div>
                               <div><strong>Son ödeme:</strong> {r.sonOdemeTarihi || '-'}</div>
                               <div><strong>Sonraki ödeme:</strong> {r.sonrakiOdemeTarihi || '-'}</div>
@@ -24647,7 +24647,7 @@ Toplam Ciro: {toplam}
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '18px' }}>
                   <input value={adminLisansArama} onChange={e => setAdminLisansArama(e.target.value)} placeholder="Firma, yetkili, mail veya paket ara..." style={{ ...styles.input, minWidth: isMobile ? '100%' : '320px' }} />
                   {modulPaketSablonlari.map(paket => (
-                    <span key={paket.key} style={{ fontSize: '11px', color: '#475569', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 9px', borderRadius: '999px', fontWeight: '900' }}>
+                    <span key={paket.key} style={{ fontSize: '13px', color: '#475569', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 9px', borderRadius: '999px', fontWeight: '900' }}>
                       {paket.label}: {paket.sekmeler.length} sekme
                     </span>
                   ))}
@@ -24663,12 +24663,12 @@ Toplam Ciro: {toplam}
                       <div key={r.id} style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '16px', boxShadow: '0 18px 36px -30px rgba(15,23,42,0.28)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                           <div>
-                            <strong style={{ color: '#1e293b', fontSize: '17px' }}>🏢 {r.ad}</strong>
-                            <div style={{ color: '#64748b', fontSize: '12px', marginTop: '5px' }}>
+                            <strong style={{ color: '#1e293b', fontSize: '19px' }}>🏢 {r.ad}</strong>
+                            <div style={{ color: '#64748b', fontSize: '14px', marginTop: '5px' }}>
                               {r.yetkiliAdi ? `${r.yetkiliAdi} / ` : ''}{r.email}{r.firmaTelefon ? ` / ${r.firmaTelefon}` : ''}
                             </div>
                           </div>
-                          <span style={{ fontSize: '11px', color: '#0f766e', backgroundColor: '#ccfbf1', padding: '5px 9px', borderRadius: '999px', fontWeight: '900' }}>
+                          <span style={{ fontSize: '13px', color: '#0f766e', backgroundColor: '#ccfbf1', padding: '5px 9px', borderRadius: '999px', fontWeight: '900' }}>
                             {modulPaketSablonuBul(r.modulPaketi || r.paketAdi)?.label || 'Premium'}
                           </span>
                         </div>
@@ -24741,14 +24741,14 @@ Toplam Ciro: {toplam}
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                             <div>
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '6px' }}>
-                                <strong style={{ color: '#1e293b', fontSize: '16px' }}>🏢 {t.firmaAdi || 'Firma adı yok'}</strong>
-                                <span style={{ fontSize: '11px', color: '#0f766e', fontWeight: '900', backgroundColor: '#ccfbf1', padding: '4px 8px', borderRadius: '999px' }}>{t.talepTipi}</span>
-                                <span style={{ fontSize: '11px', color: tamamlandi ? '#166534' : '#c2410c', fontWeight: '900', backgroundColor: tamamlandi ? '#dcfce7' : '#ffedd5', padding: '4px 8px', borderRadius: '999px' }}>{durum}</span>
+                                <strong style={{ color: '#1e293b', fontSize: '18px' }}>🏢 {t.firmaAdi || 'Firma adı yok'}</strong>
+                                <span style={{ fontSize: '13px', color: '#0f766e', fontWeight: '900', backgroundColor: '#ccfbf1', padding: '4px 8px', borderRadius: '999px' }}>{t.talepTipi}</span>
+                                <span style={{ fontSize: '13px', color: tamamlandi ? '#166534' : '#c2410c', fontWeight: '900', backgroundColor: tamamlandi ? '#dcfce7' : '#ffedd5', padding: '4px 8px', borderRadius: '999px' }}>{durum}</span>
                               </div>
-                              <div style={{ color: '#64748b', fontSize: '12px' }}>
+                              <div style={{ color: '#64748b', fontSize: '14px' }}>
                                 {t.adSoyad ? `${t.adSoyad} / ` : ''}{t.email}{t.telefon ? ` / ${t.telefon}` : ''}
                               </div>
-                              <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Gönderim: {tarihSaatYaz(t.createdAt)}</div>
+                              <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>Gönderim: {tarihSaatYaz(t.createdAt)}</div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -24771,7 +24771,7 @@ Toplam Ciro: {toplam}
 
                           <div style={{ marginTop: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}>
                             <div style={{ color: '#1e293b', fontWeight: '900', marginBottom: '6px' }}>{t.konu || 'Konu yok'}</div>
-                            <div style={{ color: '#475569', fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{t.mesaj}</div>
+                            <div style={{ color: '#475569', fontSize: '15px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{t.mesaj}</div>
                           </div>
                         </div>
                       );
@@ -24818,7 +24818,7 @@ const styles = {
     border: '1px solid #fed7aa',
     borderRadius: '999px',
     padding: '6px 10px',
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: '900',
     marginBottom: '8px',
   },
@@ -24826,14 +24826,14 @@ const styles = {
   smartGuideTitle: {
     margin: '0 0 6px',
     color: '#0f172a',
-    fontSize: '22px',
+    fontSize: '25px',
     letterSpacing: '-0.02em',
   },
 
   smartGuideText: {
     margin: 0,
     color: '#64748b',
-    fontSize: '13px',
+    fontSize: '15px',
     lineHeight: 1.65,
     fontWeight: '650',
   },
@@ -24846,7 +24846,7 @@ const styles = {
     padding: '8px 12px',
     cursor: 'pointer',
     fontWeight: '900',
-    fontSize: '12px',
+    fontSize: '14px',
   },
 
   smartGuideShowBtn: {
@@ -24857,7 +24857,7 @@ const styles = {
     padding: '9px 13px',
     cursor: 'pointer',
     fontWeight: '900',
-    fontSize: '12px',
+    fontSize: '14px',
     marginBottom: '14px',
     boxShadow: '0 12px 28px -24px rgba(249,115,22,0.55)',
   },
@@ -24885,7 +24885,7 @@ const styles = {
     borderRadius: '14px',
     padding: '10px 12px',
     color: '#334155',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '850',
   },
 
@@ -24900,7 +24900,7 @@ const styles = {
     justifyContent: 'center',
     fontWeight: '900',
     flex: '0 0 24px',
-    fontSize: '11px',
+    fontSize: '13px',
   },
 
   smartGuideActions: {
@@ -24918,13 +24918,13 @@ const styles = {
     padding: '9px 12px',
     cursor: 'pointer',
     fontWeight: '900',
-    fontSize: '12px',
+    fontSize: '14px',
   },
 
   navSectionTitle: {
     margin: '12px 0 5px',
     color: '#7890a9',
-    fontSize: '10px',
+    fontSize: '12px',
     letterSpacing: '0.10em',
     textTransform: 'uppercase',
     fontWeight: '900',
@@ -24968,7 +24968,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    fontSize: '24px',
+    fontSize: '27px',
     fontWeight: '800',
   },
 
@@ -24985,7 +24985,7 @@ const styles = {
   navLinkItem: {
     textDecoration: 'none',
     color: '#475569',
-    fontSize: '14px',
+    fontSize: '16px',
     fontWeight: '600',
   },
 
@@ -24997,7 +24997,7 @@ const styles = {
     color: '#1e293b',
     fontWeight: '700',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '16px',
   },
 
   navbarRegisterBtn: {
@@ -25008,7 +25008,7 @@ const styles = {
     color: '#fff',
     fontWeight: '900',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '16px',
     boxShadow: '0 16px 34px -16px rgba(249,115,22,0.85)',
   },
 
@@ -25035,7 +25035,7 @@ const styles = {
     color: '#c2410c',
     padding: '9px 15px',
     borderRadius: '999px',
-    fontSize: '13px',
+    fontSize: '15px',
     fontWeight: '900',
     border: '1px solid #fed7aa',
     boxShadow: '0 14px 32px -26px rgba(234,88,12,0.75)',
@@ -25052,7 +25052,7 @@ const styles = {
   },
 
   heroSubtitle: {
-    fontSize: '17px',
+    fontSize: '19px',
     color: '#475569',
     lineHeight: '1.75',
     marginBottom: '28px',
@@ -25071,7 +25071,7 @@ const styles = {
     color: '#fff',
     padding: '15px 25px',
     borderRadius: '14px',
-    fontSize: '15px',
+    fontSize: '17px',
     fontWeight: '900',
     cursor: 'pointer',
     boxShadow: '0 22px 50px -20px rgba(249,115,22,0.88)',
@@ -25083,7 +25083,7 @@ const styles = {
     color: '#1e293b',
     padding: '14px 24px',
     borderRadius: '14px',
-    fontSize: '15px',
+    fontSize: '17px',
     fontWeight: '900',
     cursor: 'pointer',
     boxShadow: '0 14px 34px -28px rgba(15,23,42,0.35)',
@@ -25106,13 +25106,13 @@ const styles = {
   },
 
   heroStatValue: {
-    fontSize: '22px',
+    fontSize: '25px',
     fontWeight: '900',
     color: '#0f172a',
   },
 
   heroStatLabel: {
-    fontSize: '12px',
+    fontSize: '14px',
     color: '#64748b',
     marginTop: '6px',
     fontWeight: '600',
@@ -25140,7 +25140,7 @@ const styles = {
     backgroundColor: '#f8fafc',
     padding: '14px 16px',
     borderBottom: '1px solid #e2e8f0',
-    fontSize: '12px',
+    fontSize: '14px',
     color: '#94a3b8',
     display: 'flex',
     gap: '6px',
@@ -25161,12 +25161,12 @@ const styles = {
     color: '#2563eb',
     padding: '8px 12px',
     borderRadius: '999px',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '800',
   },
 
   mockupMuted: {
-    fontSize: '12px',
+    fontSize: '14px',
     color: '#64748b',
     fontWeight: '700',
   },
@@ -25186,7 +25186,7 @@ const styles = {
     flexDirection: 'column',
     gap: '8px',
     color: '#1e293b',
-    fontSize: '14px',
+    fontSize: '16px',
   },
 
   mockupReceipt: {
@@ -25205,7 +25205,7 @@ const styles = {
   mockupReceiptRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontSize: '14px',
+    fontSize: '16px',
     color: '#475569',
     padding: '8px 0',
     borderBottom: '1px solid #eef2f7',
@@ -25229,7 +25229,7 @@ const styles = {
     color: '#0f172a',
     padding: '14px 20px',
     borderRadius: '14px',
-    fontSize: '15px',
+    fontSize: '17px',
     fontWeight: '900',
     boxShadow: '0 14px 34px -28px rgba(15,23,42,0.35)',
   },
@@ -25264,21 +25264,21 @@ const styles = {
     justifyContent: 'center',
     background: '#fff7ed',
     border: '1px solid #fed7aa',
-    fontSize: '20px',
+    fontSize: '22px',
     flex: '0 0 38px',
   },
 
   trustPillTitle: {
     display: 'block',
     color: '#0f172a',
-    fontSize: '14px',
+    fontSize: '16px',
     fontWeight: '900',
     marginBottom: '4px',
   },
 
   trustPillText: {
     color: '#64748b',
-    fontSize: '12px',
+    fontSize: '14px',
     lineHeight: 1.55,
     margin: 0,
     fontWeight: '600',
@@ -25303,7 +25303,7 @@ const styles = {
     color: '#fff',
     borderRadius: '11px',
     padding: '9px 12px',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '900',
     cursor: 'pointer',
   },
@@ -25317,7 +25317,7 @@ const styles = {
     color: '#0f172a',
     borderRadius: '11px',
     padding: '9px 12px',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '900',
   },
 
@@ -25340,7 +25340,7 @@ const styles = {
     background: '#fff7ed',
     color: '#ea580c',
     fontWeight: '800',
-    fontSize: '12px',
+    fontSize: '14px',
     border: '1px solid #fed7aa',
     marginBottom: '12px',
   },
@@ -25354,7 +25354,7 @@ const styles = {
   },
 
   sectionSubtitle: {
-    fontSize: '16px',
+    fontSize: '18px',
     color: '#64748b',
     lineHeight: '1.7',
     margin: 0,
@@ -25378,18 +25378,18 @@ const styles = {
   },
 
   featureIcon: {
-    fontSize: '30px',
+    fontSize: '33px',
     marginBottom: '16px',
   },
 
   featureTitle: {
-    fontSize: '18px',
+    fontSize: '20px',
     color: '#0f172a',
     margin: '0 0 10px',
   },
 
   featureText: {
-    fontSize: '14px',
+    fontSize: '16px',
     color: '#64748b',
     lineHeight: '1.7',
     margin: 0,
@@ -25430,27 +25430,27 @@ const styles = {
     background: '#ff6b35',
     color: '#fff',
     fontWeight: '800',
-    fontSize: '12px',
+    fontSize: '14px',
     padding: '7px 12px',
     borderRadius: '999px',
   },
 
   pricePlan: {
-    fontSize: '18px',
+    fontSize: '20px',
     fontWeight: '900',
     color: '#0f172a',
     marginBottom: '10px',
   },
 
   priceValue: {
-    fontSize: '36px',
+    fontSize: '40px',
     fontWeight: '900',
     color: '#0f172a',
     marginBottom: '18px',
   },
 
   pricePeriod: {
-    fontSize: '14px',
+    fontSize: '16px',
     color: '#64748b',
     marginLeft: '4px',
     fontWeight: '700',
@@ -25466,7 +25466,7 @@ const styles = {
   },
 
   priceListItem: {
-    fontSize: '14px',
+    fontSize: '16px',
     color: '#475569',
     position: 'relative',
     paddingLeft: '18px',
@@ -25522,13 +25522,13 @@ const styles = {
 
   footerHeading: {
     color: '#ffffff',
-    fontSize: '16px',
+    fontSize: '18px',
     fontWeight: 'bold',
     marginBottom: '15px',
   },
 
   footerText: {
-    fontSize: '13px',
+    fontSize: '15px',
     lineHeight: '1.8',
     color: '#94a3b8',
     maxWidth: '700px',
@@ -25541,7 +25541,7 @@ const styles = {
   },
 
   footerListItem: {
-    fontSize: '13px',
+    fontSize: '15px',
     marginBottom: '10px',
     color: '#cbd5e1',
   },
@@ -25551,7 +25551,7 @@ const styles = {
     borderTop: '1px solid rgba(255,255,255,0.08)',
     marginTop: '40px',
     paddingTop: '20px',
-    fontSize: '12px',
+    fontSize: '14px',
     color: '#64748b',
   },
 
@@ -25580,7 +25580,7 @@ const styles = {
   authTitle: {
     textAlign: 'center',
     color: '#1e293b',
-    fontSize: '16px',
+    fontSize: '18px',
     margin: '6px 0 18px 0',
     fontWeight: '800',
   },
@@ -25595,7 +25595,7 @@ const styles = {
     padding: '13px 14px',
     borderRadius: '12px',
     border: '1px solid #cbd5e1',
-    fontSize: '14px',
+    fontSize: '16px',
     outline: 'none',
     background: '#fff',
   },
@@ -25608,7 +25608,7 @@ const styles = {
     color: '#fff',
     fontWeight: '800',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '16px',
   },
 
   authBtnOrange: {
@@ -25619,7 +25619,7 @@ const styles = {
     color: '#fff',
     fontWeight: '800',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '16px',
   },
 
   cancelReturnBtn: {
@@ -25630,14 +25630,14 @@ const styles = {
     borderRadius: '12px',
     backgroundColor: 'transparent',
     color: '#64748b',
-    fontSize: '13px',
+    fontSize: '15px',
     fontWeight: '700',
     cursor: 'pointer',
   },
 
   authFooter: {
     textAlign: 'center',
-    fontSize: '13px',
+    fontSize: '15px',
     color: '#64748b',
     marginTop: '16px',
   },
@@ -25654,7 +25654,7 @@ const styles = {
     padding: '12px',
     backgroundColor: '#f8fafc',
     borderRadius: '12px',
-    fontSize: '11px',
+    fontSize: '13px',
     color: '#475569',
     lineHeight: '1.6',
     border: '1px dashed #cbd5e1',
@@ -25747,7 +25747,7 @@ const styles = {
     backgroundColor: 'rgba(255,255,255,0.08)',
     color: '#fff',
     cursor: 'pointer',
-    fontSize: '24px',
+    fontSize: '27px',
     fontWeight: '900',
     lineHeight: 1,
   },
@@ -25820,7 +25820,7 @@ const styles = {
   },
 
   sidebarLogo: {
-    fontSize: '24px',
+    fontSize: '27px',
     fontWeight: '900',
     marginBottom: '20px',
   },
@@ -25856,7 +25856,7 @@ const styles = {
     textAlign: 'left',
     cursor: 'pointer',
     borderRadius: '10px',
-    fontSize: '14px',
+    fontSize: '16px',
     fontWeight: '600',
   },
 
@@ -25871,7 +25871,7 @@ const styles = {
     cursor: 'pointer',
     borderRadius: '10px',
     fontWeight: '800',
-    fontSize: '14px',
+    fontSize: '16px',
     boxShadow: '0 18px 35px -20px rgba(255,107,53,0.8)',
   },
 
@@ -25941,7 +25941,7 @@ const styles = {
   },
 
   pageTitle: {
-    fontSize: '20px',
+    fontSize: '22px',
     color: '#1e293b',
     fontWeight: '900',
     margin: 0,
@@ -25952,7 +25952,7 @@ const styles = {
     borderRadius: '8px',
     border: '1px solid #cbd5e1',
     outline: 'none',
-    fontSize: '13px',
+    fontSize: '15px',
   },
 
   addBtnMini: {
@@ -25963,7 +25963,7 @@ const styles = {
     borderRadius: '8px',
     cursor: 'pointer',
     fontWeight: '800',
-    fontSize: '13px',
+    fontSize: '15px',
   },
 
   mesaGrid: {
@@ -25991,7 +25991,7 @@ const styles = {
   },
 
   mesaStatusText: {
-    fontSize: '14px',
+    fontSize: '16px',
     fontWeight: '900',
     marginTop: '8px',
   },
@@ -26071,7 +26071,7 @@ const styles = {
   },
 
   mobilAdisyonMasaAdi: {
-    fontSize: '17px',
+    fontSize: '19px',
     fontWeight: '900',
     color: '#1e293b',
     whiteSpace: 'nowrap',
@@ -26086,7 +26086,7 @@ const styles = {
     whiteSpace: 'nowrap',
     WebkitOverflowScrolling: 'touch',
     color: '#475569',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '800',
     marginTop: '5px',
     paddingBottom: '2px',
@@ -26100,7 +26100,7 @@ const styles = {
     backgroundColor: '#fee2e2',
     color: '#b91c1c',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '16px',
     fontWeight: '900',
     flex: '0 0 auto',
     display: 'flex',
@@ -26138,7 +26138,7 @@ const styles = {
     borderRadius: '12px',
     cursor: 'pointer',
     fontWeight: '900',
-    fontSize: '13px',
+    fontSize: '15px',
   },
 
   mobilAdisyonSekmeAktif: {
@@ -26149,11 +26149,11 @@ const styles = {
     borderRadius: '12px',
     cursor: 'pointer',
     fontWeight: '900',
-    fontSize: '13px',
+    fontSize: '15px',
   },
 
   panelTitle: {
-    fontSize: '15px',
+    fontSize: '17px',
     color: '#1e293b',
     margin: '0 0 12px 0',
     borderBottom: '1px solid #f1f5f9',
@@ -26174,7 +26174,7 @@ const styles = {
     borderRadius: '8px',
     border: '1px solid #cbd5e1',
     outline: 'none',
-    fontSize: '13px',
+    fontSize: '15px',
   },
 
   panelAddBtn: {
@@ -26185,7 +26185,7 @@ const styles = {
     borderRadius: '8px',
     cursor: 'pointer',
     fontWeight: '800',
-    fontSize: '13px',
+    fontSize: '15px',
   },
 
   receiptContainer: {
@@ -26201,7 +26201,7 @@ const styles = {
   emptyReceipt: {
     textAlign: 'center',
     color: '#94a3b8',
-    fontSize: '12px',
+    fontSize: '14px',
     marginTop: '20px',
   },
 
@@ -26212,14 +26212,14 @@ const styles = {
     gap: '8px',
     padding: '8px 0',
     borderBottom: '1px solid #f1f5f9',
-    fontSize: '13px',
+    fontSize: '15px',
   },
 
   deleteItemBtn: {
     backgroundColor: 'transparent',
     border: 'none',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '14px',
     padding: '2px 6px',
   },
 
@@ -26246,7 +26246,7 @@ const styles = {
     borderRadius: '10px',
     fontWeight: '800',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '16px',
   },
 
   panelCard: {
@@ -26270,7 +26270,7 @@ const styles = {
     borderRadius: '12px',
     border: '1px solid #cbd5e1',
     outline: 'none',
-    fontSize: '13px',
+    fontSize: '15px',
     minWidth: '180px',
     backgroundColor: '#fff',
     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
@@ -26284,7 +26284,7 @@ const styles = {
     borderRadius: '12px',
     cursor: 'pointer',
     fontWeight: '900',
-    fontSize: '13px',
+    fontSize: '15px',
     boxShadow: '0 15px 30px -20px rgba(249,115,22,0.8)',
   },
 
@@ -26295,7 +26295,7 @@ const styles = {
     backgroundColor: '#f8fafc',
     borderRadius: '8px',
     marginBottom: '8px',
-    fontSize: '13px',
+    fontSize: '15px',
     border: '1px solid #eef2f7',
   },
 
@@ -26317,7 +26317,7 @@ const styles = {
     padding: '7px 14px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '14px',
     backgroundColor: 'transparent',
     color: '#475569',
     fontWeight: '700',
@@ -26328,7 +26328,7 @@ const styles = {
     padding: '7px 14px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '14px',
     backgroundColor: '#fff',
     color: '#1e293b',
     fontWeight: '800',
@@ -26350,13 +26350,13 @@ const styles = {
   },
 
   statsTitle: {
-    fontSize: '13px',
+    fontSize: '15px',
     color: '#64748b',
     fontWeight: '700',
   },
 
   statsValue: {
-    fontSize: '24px',
+    fontSize: '27px',
     fontWeight: '900',
     color: '#1e293b',
     marginTop: '8px',
@@ -26374,14 +26374,14 @@ const styles = {
     textAlign: 'left',
     borderBottom: '2px solid #e2e8f0',
     color: '#64748b',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '800',
   },
 
   td: {
     padding: '12px 10px',
     borderBottom: '1px solid #e2e8f0',
-    fontSize: '13px',
+    fontSize: '15px',
     color: '#334155',
     verticalAlign: 'middle',
   },
@@ -26393,7 +26393,7 @@ const styles = {
     color: '#15803d',
     padding: '5px 10px',
     borderRadius: '999px',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '800',
   },
 
@@ -26402,7 +26402,7 @@ const styles = {
     color: '#b45309',
     padding: '5px 10px',
     borderRadius: '999px',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '800',
   },
 
@@ -26413,7 +26413,7 @@ const styles = {
     padding: '7px 12px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '800',
   },
 
@@ -26424,7 +26424,7 @@ const styles = {
     padding: '7px 12px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: '800',
   },
 };
