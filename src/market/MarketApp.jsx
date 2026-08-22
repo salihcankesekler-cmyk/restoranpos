@@ -1791,6 +1791,46 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     }, gecikme);
   };
 
+  useEffect(() => {
+    const satisPenceresiAcik = sekme === 'satis'
+      && !satisSiralamaModu
+      && !bekleyenSepetIsleniyor
+      && !fiyatBekleyenUrun
+      && !gramajBekleyenUrun
+      && !urunIndirimFormu
+      && !genelIndirimPenceresi
+      && !bekleyenSepetPenceresi
+      && !satisCariPenceresi;
+    if (!satisPenceresiAcik) return undefined;
+
+    const odakZamanlayicisi = window.setTimeout(() => {
+      const barkodAlani = barkodRef.current;
+      if (!barkodAlani || barkodAlani.disabled) return;
+      const aktifAlan = document.activeElement;
+      const baskaYaziAlaniAcik = aktifAlan
+        && aktifAlan !== barkodAlani
+        && aktifAlan.matches?.('input, textarea, select, [contenteditable="true"]');
+      if (baskaYaziAlaniAcik) return;
+      barkodAlani.focus({ preventScroll: true });
+      barkodAlani.select();
+    }, 80);
+
+    return () => window.clearTimeout(odakZamanlayicisi);
+  }, [
+    bekleyenSepetIsleniyor,
+    bekleyenSepetPenceresi,
+    fiyatBekleyenUrun,
+    genelIndirimPenceresi,
+    gramajBekleyenUrun,
+    onFisYazdiriliyor,
+    satisCariPenceresi,
+    satisGrubu,
+    satisSiralamaModu,
+    sekme,
+    sepet,
+    urunIndirimFormu,
+  ]);
+
   const urunuFiyatKontrolluEkle = (urun, adet) => {
     if (Number(urun.satis_fiyati || 0) <= 0) {
       setFiyatBekleyenUrun({ urun, adet: Math.max(Number(adet || 1), 0.001) });
