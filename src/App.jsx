@@ -42,6 +42,7 @@ import {
   MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI,
   musteriEkranGorseliniHazirla,
   musteriEkraniBelgesiniYaz,
+  musteriEkraniKonumunuKaydet,
 } from './lib/customerDisplay';
 import './quick-sale.css';
 
@@ -1181,6 +1182,16 @@ Toplam Ciro: {toplam}
     }
     setRestoranArkaEkranOtomatik(false);
     setRestoranArkaEkranDurumu('Kapalı');
+  };
+
+  const restoranArkaEkranKonumunuKaydet = () => {
+    const kayit = musteriEkraniKonumunuKaydet(restoranArkaEkranPenceresiRef.current);
+    if (!kayit) {
+      bildirimGoster('Önce müşteri ekranını açın. Ardından ikinci ekrana taşıyıp büyütün.', 'warning');
+      return;
+    }
+    setRestoranArkaEkranDurumu('İkinci ekranda açık · konum kayıtlı');
+    bildirimGoster('İkinci ekranın konumu ve büyüklüğü kaydedildi. Sonraki açılışlarda bu ekran kullanılacak.', 'success');
   };
 
   useEffect(() => {
@@ -17890,13 +17901,14 @@ Toplam Ciro: {toplam}
                     </label>
                     <div style={{ display: 'grid', gap: '8px', marginTop: '14px' }}>
                       <button type="button" onClick={() => restoranArkaEkraniAc(false)} style={{ ...styles.btnOrange, width: '100%', minHeight: '46px' }}>🖥️ İkinci Ekrana Yansıt</button>
+                      <button type="button" onClick={restoranArkaEkranKonumunuKaydet} style={{ width: '100%', minHeight: '42px', border: '1px solid #bfdbfe', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#1d4ed8', fontWeight: '900', cursor: 'pointer' }}>📌 Bu Konumu Kaydet</button>
                       <button type="button" onClick={restoranArkaEkraniKapat} style={{ width: '100%', minHeight: '42px', border: '1px solid #fecaca', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b91c1c', fontWeight: '900', cursor: 'pointer' }}>× Arka Ekranı Kapat</button>
                     </div>
                     <div style={{ marginTop: '9px', padding: '9px 11px', borderRadius: '9px', backgroundColor: restoranArkaEkranOtomatik ? '#ecfdf5' : '#f8fafc', color: restoranArkaEkranOtomatik ? '#047857' : '#64748b', fontSize: '10px', fontWeight: '850' }}>
                       {restoranArkaEkranOtomatik ? '✓ Bu kasada otomatik açılış etkin' : 'İkinci ekrana yansıttığınızda otomatik açılış etkinleşir.'}
                     </div>
                     <div style={{ marginTop: '14px', padding: '11px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#1e3a8a', fontSize: '10px', lineHeight: 1.55 }}>
-                      İlk kullanımda tarayıcı ekran yerleştirme izni isteyebilir. İzin verdiğinizde Windows'taki birinci olmayan ekran otomatik seçilir.
+                      Ana ekranda açılırsa pencereyi ikinci ekrana taşıyıp büyütün ve “Bu Konumu Kaydet”e bir kez basın. Sonraki açılışlarda kayıtlı ekran ve boyut kullanılır.
                     </div>
                   </div>
 

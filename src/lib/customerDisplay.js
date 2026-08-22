@@ -14,6 +14,50 @@ const miktarYaz = value => Number(value || 0).toLocaleString('tr-TR', {
 });
 
 export const MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI = 'integra-market-musteri-ekrani-guncelle';
+const MUSTERI_EKRANI_KONUM_ANAHTARI = 'integra-musteri-ekrani-windows-konumu';
+
+const ekranKonumunuTemizle = konum => {
+  const sol = Number(konum?.sol);
+  const ust = Number(konum?.ust);
+  const genislik = Number(konum?.genislik);
+  const yukseklik = Number(konum?.yukseklik);
+  if (![sol, ust, genislik, yukseklik].every(Number.isFinite) || genislik < 320 || yukseklik < 240) return null;
+  return {
+    sol: Math.round(sol),
+    ust: Math.round(ust),
+    genislik: Math.round(genislik),
+    yukseklik: Math.round(yukseklik),
+  };
+};
+
+const kayitliEkranKonumunuGetir = () => {
+  try {
+    return ekranKonumunuTemizle(JSON.parse(localStorage.getItem(MUSTERI_EKRANI_KONUM_ANAHTARI) || 'null'));
+  } catch {
+    return null;
+  }
+};
+
+const ekranKonumunuSakla = konum => {
+  const temizKonum = ekranKonumunuTemizle(konum);
+  if (!temizKonum) return null;
+  try {
+    localStorage.setItem(MUSTERI_EKRANI_KONUM_ANAHTARI, JSON.stringify(temizKonum));
+    return temizKonum;
+  } catch {
+    return null;
+  }
+};
+
+export const musteriEkraniKonumunuKaydet = pencere => {
+  if (!pencere || pencere.closed) return null;
+  return ekranKonumunuSakla({
+    sol: pencere.screenX ?? pencere.screenLeft,
+    ust: pencere.screenY ?? pencere.screenTop,
+    genislik: pencere.outerWidth,
+    yukseklik: pencere.outerHeight,
+  });
+};
 
 export const musteriEkranGorseliniHazirla = file => new Promise((resolve, reject) => {
   if (!String(file?.type || '').startsWith('image/')) {
@@ -80,7 +124,11 @@ export const musteriEkraniBelgesiniYaz = (pencere, {
 };
 
 export const ikinciEkranPenceresiniAc = async (pencereAdi = 'integra-restoran-arka-ekran') => {
-  const pencere = window.open('', pencereAdi, 'popup=yes,width=1280,height=720');
+  const kayitliKonum = kayitliEkranKonumunuGetir();
+  const pencereOzellikleri = kayitliKonum
+    ? `popup=yes,left=${kayitliKonum.sol},top=${kayitliKonum.ust},width=${kayitliKonum.genislik},height=${kayitliKonum.yukseklik}`
+    : 'popup=yes,width=1280,height=720';
+  const pencere = window.open('', pencereAdi, pencereOzellikleri);
   if (!pencere) return { pencere: null, ikincilEkranBulundu: false, hata: 'popup' };
 
   let hedefEkran = null;
@@ -95,18 +143,32 @@ export const ikinciEkranPenceresiniAc = async (pencereAdi = 'integra-restoran-ar
     hedefEkran = null;
   }
 
-  if (hedefEkran) {
-    const sol = hedefEkran.availLeft ?? hedefEkran.left ?? 0;
-    const ust = hedefEkran.availTop ?? hedefEkran.top ?? 0;
-    const genislik = hedefEkran.availWidth ?? hedefEkran.width ?? 1280;
-    const yukseklik = hedefEkran.availHeight ?? hedefEkran.height ?? 720;
-    try {
-      pencere.moveTo(sol, ust);
-      pencere.resizeTo(genislik, yukseklik);
-    } catch {
-      // Bazı tarayıcılar pencere taşıma iznini kısıtlayabilir.
-    }
+  const hedefKonum = hedefEkran ? ekranKonumunuSakla({
+    sol: hedefEkran.availLeft ?? hedefEkran.left ?? 0,
+    ust: hedefEkran.availTop ?? hedefEkran.top ?? 0,
+    genislik: hedefEkran.availWidth ?? hedefEkran.width ?? 1280,
+    yukseklik: hedefEkran.availHeight ?? hedefEkran.height ?? 720,
+  }) : kayitliKonum;
+
+  if (hedefKonum) {
+    const konumuUygula = () => {
+      if (pencere.closed) return;
+      try {
+        pencere.moveTo(hedefKonum.sol, hedefKonum.ust);
+        pencere.resizeTo(hedefKonum.genislik, hedefKonum.yukseklik);
+      } catch {
+        // Pencere yerleşimi tarayıcı tarafından engellenirse kayıtlı konum korunur.
+      }
+    };
+    konumuUygula();
+    window.setTimeout(konumuUygula, 120);
+    window.setTimeout(konumuUygula, 450);
   }
 
-  return { pencere, ikincilEkranBulundu: Boolean(hedefEkran), hata: '' };
+  return {
+    pencere,
+    ikincilEkranBulundu: Boolean(hedefEkran || kayitliKonum),
+    kayitliKonumKullanildi: Boolean(!hedefEkran && kayitliKonum),
+    hata: '',
+  };
 };

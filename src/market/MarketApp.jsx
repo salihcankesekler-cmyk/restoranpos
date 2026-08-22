@@ -39,6 +39,7 @@ import {
 import {
   ikinciEkranPenceresiniAc,
   MARKET_MUSTERI_EKRANI_GUNCELLEME_OLAYI,
+  musteriEkraniKonumunuKaydet,
 } from '../lib/customerDisplay';
 import './market.css';
 
@@ -1306,6 +1307,15 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     bildir(sonuc.ikincilEkranBulundu
       ? 'Arka ekran Windows ikinci ekranına yansıtıldı; sonraki açılışlar otomatik yapılacak.'
       : 'Arka ekran açıldı. İkinci ekran otomatik seçilemedi; pencereyi ikinci ekrana taşıyın.', sonuc.ikincilEkranBulundu ? 'success' : 'warning');
+  };
+
+  const arkaEkranKonumunuKaydet = () => {
+    const kayit = musteriEkraniKonumunuKaydet(arkaEkranPenceresiRef.current);
+    if (!kayit) {
+      bildir('Önce arka ekranı açın. Ardından ikinci ekrana taşıyıp büyütün.', 'warning');
+      return;
+    }
+    bildir('İkinci ekranın konumu ve büyüklüğü kaydedildi. Sonraki açılışlarda otomatik kullanılacak.', 'success');
   };
 
   const satisCariAramaMetni = satisCariArama.trim().toLocaleLowerCase('tr-TR');
@@ -3552,8 +3562,8 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             {!arkaEkranGorselleri.length && <div className="market-customer-display-empty">Henüz görsel eklenmedi. Ekran boştayken işletme adı gösterilecek.</div>}
           </div>
           <label className="market-customer-display-message">Boş ekranda gösterilecek mesaj<textarea rows="2" maxLength="160" value={arkaEkranMesaji} onChange={event => arkaEkranMesajiniDegistir(event.target.value)} placeholder="Örn. Afiyet olsun, yine bekleriz." /><small>Mesaj yazdıkça açık müşteri ekranına anında yansır.</small></label>
-          <small className="market-customer-display-note">Görseller ve mesaj bu kasa bilgisayarında saklanır. İzin verildiğinde Windows'taki ikinci ekran otomatik seçilir.</small>
-          <footer><button className="market-primary" type="button" onClick={arkaEkraniAc}>🖥 İkinci Ekrana Yansıt</button><small>İlk başarılı açılıştan sonra bu kasada otomatik çalışır.</small></footer>
+          <small className="market-customer-display-note">Ana ekranda açılırsa pencereyi ikinci ekrana taşıyıp büyütün ve konumu bir kez kaydedin.</small>
+          <footer><button className="market-primary" type="button" onClick={arkaEkraniAc}>🖥 İkinci Ekrana Yansıt</button><button type="button" onClick={arkaEkranKonumunuKaydet}>📌 Bu Konumu Kaydet</button><small>Sonraki açılışlarda kayıtlı ekran ve boyut otomatik kullanılır.</small></footer>
         </div>
       </div>}
 
