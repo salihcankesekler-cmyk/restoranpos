@@ -82,6 +82,12 @@ const para = value => new Intl.NumberFormat('tr-TR', {
 const ODEME_TIPLERI = ['Nakit', 'Kredi Kartı', 'Cari / Veresiye'];
 const MARKET_OFFLINE_QUEUE_TYPE = 'market-sale';
 const paraYuvarla = value => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+const kdvDagiliminiHesapla = (kdvDahilTutar, kdvOrani) => {
+  const toplam = Math.max(Number(kdvDahilTutar || 0), 0);
+  const oran = Math.min(Math.max(Number(kdvOrani || 0), 0), 100);
+  const kdv = oran > 0 ? toplam * oran / (100 + oran) : 0;
+  return { oran, toplam, matrah: toplam - kdv, kdv };
+};
 const odemeDagiliminiCoz = (odemeTipi, toplamTutar = 0) => {
   const metin = String(odemeTipi || '').trim();
   if (ODEME_TIPLERI.includes(metin)) return [{ tip: metin, tutar: paraYuvarla(toplamTutar) }];
@@ -966,7 +972,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
     const secilenSatislar = satislar.filter(satis => {
       const satisTarihi = new Date(satis.created_at);
       if ((!baslangic || satisTarihi >= baslangic) && (!bitis || satisTarihi < bitis)) {
-        if (raporOdeme && !['marka', 'grup', 'alis'].includes(raporSekmesi)
+        if (raporOdeme && !['marka', 'grup', 'alis', 'kdv'].includes(raporSekmesi)
           && !odemeDagiliminiCoz(satis.odeme_tipi, satis.toplam_tutar).some(odeme => odeme.tip === raporOdeme)) return false;
         if (raporCariId && String(satis.cari_id || '') !== String(raporCariId)) return false;
         return true;
@@ -1129,6 +1135,93 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
       alisMiktari: raporFaturalari.reduce((toplam, faturaKaydi) => toplam + faturaKaydi.raporKalemleri.reduce((araToplam, kalem) => araToplam + Number(kalem.miktar || 0), 0), 0),
     };
   }, [faturalar, gruplar, rapor.satislar, raporAraligi, raporCariId, raporGrupId, raporUrunArama, tumUrunler]);
+
+  const kdvRaporu = useMemo(() => {
+    const urunHaritasi = new Map(tumUrunler.map(urun => [String(urun.id), urun]));
+    const oranlaraEkle = (harita, kalem, tur, tarih) => {
+      const oran = Number(kalem.oran || 0);
+      const anahtar = oran.toFixed(2);
+      const kayit = harita.get(anahtar) || {
+        oran,
+        satisMatrah: 0,
+        satisKdv: 0,
+        satisToplam: 0,
+        alisMatrah: 0,
+        alisKdv: 0,
+        alisToplam: 0,
+      };
+      if (tur === 'satis') {
+        kayit.satisMatrah += kalem.matrah;
+        kayit.satisKdv += kalem.kdv;
+        kayit.satisToplam += kalem.toplam;
+      } else {
+        kayit.alisMatrah += kalem.matrah;
+        kayit.alisKdv += kalem.kdv;
+        kayit.alisToplam += kalem.toplam;
+      }
+      harita.set(anahtar, kayit);
+      if (!tarih) return;
+      const gunKaydi = gunler.get(tarih) || {
+        tarih,
+        satisMatrah: 0,
+        satisKdv: 0,
+        alisMatrah: 0,
+        alisKdv: 0,
+      };
+      if (tur === 'satis') {
+        gunKaydi.satisMatrah += kalem.matrah;
+        gunKaydi.satisKdv += kalem.kdv;
+      } else {
+        gunKaydi.alisMatrah += kalem.matrah;
+        gunKaydi.alisKdv += kalem.kdv;
+      }
+      gunler.set(tarih, gunKaydi);
+    };
+    const oranlar = new Map();
+    const gunler = new Map();
+
+    rapor.satislar.forEach(satis => {
+      const tarih = gunAnahtari(satis.created_at);
+      (satis.raporKalemleri || []).forEach(satir => {
+        const urun = urunHaritasi.get(String(satir.urun_id));
+        const miktar = Math.max(Number(satir.adet || 0) - Number(satir.iade_adedi || 0), 0);
+        const kdvOrani = satir.kdv_orani ?? urun?.kdv_orani ?? 0;
+        oranlaraEkle(oranlar, kdvDagiliminiHesapla(miktar * Number(satir.birim_fiyat || 0), kdvOrani), 'satis', tarih);
+      });
+    });
+    ticariRapor.faturalar.forEach(faturaKaydi => {
+      const tarih = gunAnahtari(`${String(faturaKaydi.fatura_tarihi || faturaKaydi.created_at).slice(0, 10)}T12:00:00`);
+      (faturaKaydi.raporKalemleri || []).forEach(satir => {
+        const toplam = Number(satir.satir_toplami || Number(satir.miktar || 0) * Number(satir.birim_alis_fiyati || 0));
+        oranlaraEkle(oranlar, kdvDagiliminiHesapla(toplam, satir.kdv_orani || 0), 'alis', tarih);
+      });
+    });
+
+    const oranlarListesi = Array.from(oranlar.values())
+      .map(kayit => ({ ...kayit, fark: kayit.satisKdv - kayit.alisKdv }))
+      .sort((a, b) => a.oran - b.oran);
+    const toplamlar = oranlarListesi.reduce((toplam, kayit) => ({
+      satisMatrah: toplam.satisMatrah + kayit.satisMatrah,
+      satisKdv: toplam.satisKdv + kayit.satisKdv,
+      satisToplam: toplam.satisToplam + kayit.satisToplam,
+      alisMatrah: toplam.alisMatrah + kayit.alisMatrah,
+      alisKdv: toplam.alisKdv + kayit.alisKdv,
+      alisToplam: toplam.alisToplam + kayit.alisToplam,
+    }), { satisMatrah: 0, satisKdv: 0, satisToplam: 0, alisMatrah: 0, alisKdv: 0, alisToplam: 0 });
+    return {
+      ...toplamlar,
+      netKdv: toplamlar.satisKdv - toplamlar.alisKdv,
+      etkinSatisOrani: toplamlar.satisMatrah > 0 ? toplamlar.satisKdv / toplamlar.satisMatrah * 100 : 0,
+      oranlar: oranlarListesi,
+      gunler: Array.from(gunler.values())
+        .map(kayit => ({
+          ...kayit,
+          netKdv: kayit.satisKdv - kayit.alisKdv,
+          etkinSatisOrani: kayit.satisMatrah > 0 ? kayit.satisKdv / kayit.satisMatrah * 100 : 0,
+        }))
+        .sort((a, b) => b.tarih.localeCompare(a.tarih)),
+    };
+  }, [rapor.satislar, ticariRapor.faturalar, tumUrunler]);
 
   const stokRaporu = useMemo(() => {
     const urunMetni = raporUrunArama.trim().toLocaleLowerCase('tr-TR');
@@ -3027,6 +3120,19 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
         urun.alisDegeri.toFixed(2), urun.satisDegeri.toFixed(2), urun.potansiyelKar.toFixed(2),
       ]),
     };
+    if (raporSekmesi === 'kdv') return {
+      baslik: 'KDV Raporu',
+      kolonlar: ['Tarih', 'KDV Oranı', 'Satış Matrahı', 'Satış KDV', 'Alış Matrahı', 'Alış KDV', 'Net KDV', 'Etkin Satış KDV Oranı'],
+      satirlar: [
+        ...kdvRaporu.oranlar.map(oran => [
+        'Dönem toplamı', `%${oran.oran.toLocaleString('tr-TR')}`,
+        oran.satisMatrah.toFixed(2), oran.satisKdv.toFixed(2),
+        oran.alisMatrah.toFixed(2), oran.alisKdv.toFixed(2),
+        oran.fark.toFixed(2), `%${oran.satisMatrah > 0 ? (oran.satisKdv / oran.satisMatrah * 100).toFixed(2) : '0,00'}`,
+      ]),
+        ['GENEL TOPLAM', '', kdvRaporu.satisMatrah.toFixed(2), kdvRaporu.satisKdv.toFixed(2), kdvRaporu.alisMatrah.toFixed(2), kdvRaporu.alisKdv.toFixed(2), kdvRaporu.netKdv.toFixed(2), `%${kdvRaporu.etkinSatisOrani.toFixed(2)}`],
+      ],
+    };
     if (raporSekmesi === 'marka' || raporSekmesi === 'grup') {
       const kayitlar = raporSekmesi === 'marka' ? ticariRapor.markalar : ticariRapor.gruplar;
       return {
@@ -3988,7 +4094,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             <div><span>MARKET RAPORLARI</span><h2>Rapor merkezi</h2></div>
             {raporSekmesi === 'gun_sonu'
               ? <label>Gün seçin<input type="date" value={raporTarihi} onChange={event => setRaporTarihi(event.target.value)} /></label>
-              : ['kar', 'fisler', 'marka', 'grup', 'alis'].includes(raporSekmesi) && <label>Dönem<select value={raporAraligi} onChange={event => setRaporAraligi(event.target.value)}><option value="bugun">Bugün</option><option value="7gun">Son 7 gün</option><option value="30gun">Son 30 gün</option><option value="ay">Bu ay</option><option value="tumu">Tüm kayıtlar</option></select></label>}
+              : ['kar', 'fisler', 'marka', 'grup', 'alis', 'kdv'].includes(raporSekmesi) && <label>Dönem<select value={raporAraligi} onChange={event => setRaporAraligi(event.target.value)}><option value="bugun">Bugün</option><option value="7gun">Son 7 gün</option><option value="30gun">Son 30 gün</option><option value="ay">Bu ay</option><option value="tumu">Tüm kayıtlar</option></select></label>}
           </div>
           <div className="market-report-subtabs">
             {[
@@ -3998,6 +4104,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               ['marka', 'Marka Raporu'],
               ['grup', 'Grup Raporu'],
               ['alis', 'Alış Raporu'],
+              ['kdv', 'KDV Raporu'],
               ['stok', 'Eldeki Stok'],
               ['fisler', 'Satış Fişleri'],
             ].map(([key, label]) => <button type="button" key={key} className={raporSekmesi === key ? 'active' : ''} onClick={() => setRaporSekmesi(key)}>{label}</button>)}
@@ -4006,7 +4113,7 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
             <label>Grup<select value={raporGrupId} onChange={event => setRaporGrupId(event.target.value)}><option value="">Tüm gruplar</option>{gruplar.map(grup => <option key={grup.id} value={grup.id}>{grup.grup_adi}</option>)}</select></label>
             <label>Ürün / Barkod<input value={raporUrunArama} onChange={event => setRaporUrunArama(event.target.value)} placeholder="Tümü" /></label>
             {raporSekmesi !== 'stok' && <label>Cari<select value={raporCariId} onChange={event => setRaporCariId(event.target.value)}><option value="">Tüm cariler</option>{cariler.map(cari => <option key={cari.id} value={cari.id}>{cari.ad}</option>)}</select></label>}
-            {!['stok', 'marka', 'grup', 'alis'].includes(raporSekmesi) && <label>Ödeme<select value={raporOdeme} onChange={event => setRaporOdeme(event.target.value)}><option value="">Tüm ödemeler</option><option value="Nakit">Nakit</option><option value="Kredi Kartı">Kredi Kartı</option><option value="Cari / Veresiye">Cari / Veresiye</option></select></label>}
+            {!['stok', 'marka', 'grup', 'alis', 'kdv'].includes(raporSekmesi) && <label>Ödeme<select value={raporOdeme} onChange={event => setRaporOdeme(event.target.value)}><option value="">Tüm ödemeler</option><option value="Nakit">Nakit</option><option value="Kredi Kartı">Kredi Kartı</option><option value="Cari / Veresiye">Cari / Veresiye</option></select></label>}
           </div>}
           <div className="market-report-export"><button type="button" onClick={raporuCsvIndir}>Excel / CSV İndir</button><button type="button" onClick={raporuPdfIndir}>PDF İndir</button></div>
         </div>
@@ -4039,6 +4146,29 @@ export default function MarketApp({ restaurantId, restaurantName, currentUserNam
               {!rapor.saatler.length ? <p className="market-empty">Seçilen günde saatlik veri bulunmuyor.</p> : <div className="market-hour-list">{rapor.saatler.map(saat => <div key={saat.saat}><span>{saat.saat}</span><div><i style={{ width: `${Math.max((saat.ciro / Math.max(...rapor.saatler.map(item => item.ciro), 1)) * 100, 3)}%` }} /></div><strong>{saat.satisAdedi} satış · {para(saat.ciro)}</strong></div>)}</div>}
             </div>
           </div>
+        </>}
+
+        {raporSekmesi === 'kdv' && <>
+          <div className="market-card">
+            <div className="market-heading"><div><span>KDV RAPORU</span><h2>Alış, satış ve net KDV özeti</h2></div><strong>{raporAraligi === 'bugun' ? 'Bugün' : 'Seçilen dönem'}</strong></div>
+            <div className="market-report-stats">
+              <article><span>Satış KDV</span><strong>{para(kdvRaporu.satisKdv)}</strong><small>Hesaplanan KDV</small></article>
+              <article><span>Alış KDV</span><strong>{para(kdvRaporu.alisKdv)}</strong><small>İndirilecek KDV</small></article>
+              <article><span>{kdvRaporu.netKdv >= 0 ? 'Ödenecek KDV' : 'Devreden KDV'}</span><strong className={kdvRaporu.netKdv >= 0 ? 'red' : 'green'}>{para(Math.abs(kdvRaporu.netKdv))}</strong><small>Satış KDV − Alış KDV</small></article>
+              <article><span>Etkin Satış KDV Oranı</span><strong>%{kdvRaporu.etkinSatisOrani.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</strong><small>Satış matrahına göre</small></article>
+            </div>
+          </div>
+          <div className="market-grid-two">
+            <div className="market-card">
+              <div className="market-heading"><div><span>ORAN BAZINDA</span><h2>KDV dağılımı</h2></div></div>
+              {!kdvRaporu.oranlar.length ? <p className="market-empty">Seçilen dönemde KDV hesaplanacak alış veya satış bulunmuyor.</p> : <div className="market-table"><table><thead><tr><th>KDV</th><th>Satış Matrahı</th><th>Satış KDV</th><th>Alış KDV</th><th>Net Fark</th></tr></thead><tbody>{kdvRaporu.oranlar.map(kayit => <tr key={kayit.oran}><td><strong>%{kayit.oran.toLocaleString('tr-TR')}</strong></td><td>{para(kayit.satisMatrah)}</td><td>{para(kayit.satisKdv)}</td><td>{para(kayit.alisKdv)}</td><td className={kayit.fark >= 0 ? 'red' : 'green'}>{para(kayit.fark)}</td></tr>)}</tbody></table></div>}
+            </div>
+            <div className="market-card">
+              <div className="market-heading"><div><span>GÜNLÜK SATIŞ KDV</span><h2>Günlük oran ve KDV farkı</h2></div></div>
+              {!kdvRaporu.gunler.length ? <p className="market-empty">Seçilen dönemde günlük KDV verisi bulunmuyor.</p> : <div className="market-table"><table><thead><tr><th>Tarih</th><th>Satış Matrahı</th><th>Satış KDV</th><th>Etkin Oran</th><th>Net KDV</th></tr></thead><tbody>{kdvRaporu.gunler.map(gun => <tr key={gun.tarih}><td><strong>{tarihYaz(gun.tarih)}</strong></td><td>{para(gun.satisMatrah)}</td><td>{para(gun.satisKdv)}</td><td>%{gun.etkinSatisOrani.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</td><td className={gun.netKdv >= 0 ? 'red' : 'green'}>{para(gun.netKdv)}</td></tr>)}</tbody></table></div>}
+            </div>
+          </div>
+          <p className="market-note">Tutarlar KDV dâhil satış ve alış satırlarından ayrıştırılır. İade edilen miktarlar satış KDV’sinden düşülür; net fark, muhasebe beyanı öncesi kontrol amaçlıdır.</p>
         </>}
 
         {raporSekmesi === 'sayim' && <div className="market-card">
